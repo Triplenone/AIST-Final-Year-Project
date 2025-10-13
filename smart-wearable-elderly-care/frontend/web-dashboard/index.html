@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Elderly Care Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top-bar">
+      <div class="brand">SmartCare</div>
+      <nav aria-label="Primary navigation">
+        <ul class="nav-list">
+          <li><a href="#overview">Care Overview</a></li>
+          <li><a href="#residents">Residents</a></li>
+          <li><a href="#operations">Operations</a></li>
+          <li><a href="#family">Family Engagement</a></li>
+        </ul>
+      </nav>
+      <div class="user-menu" aria-label="User menu">
+        <span class="user-name">Dr. Taylor</span>
+        <button class="sign-out" type="button">Sign Out</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="overview" class="panel">
+        <header class="panel-header">
+          <h1>Daily Care Overview</h1>
+          <button type="button" class="primary">Generate Report</button>
+        </header>
+        <div class="card-grid">
+          <article class="card">
+            <h2>Wellbeing Score</h2>
+            <p class="metric">82</p>
+            <p class="description">Average resident wellbeing for the last 24 hours.</p>
+          </article>
+          <article class="card">
+            <h2>Alerts Resolved</h2>
+            <p class="metric">14</p>
+            <p class="description">Alerts escalated and closed by care staff.</p>
+          </article>
+          <article class="card">
+            <h2>High Priority Cases</h2>
+            <p class="metric metric--warning">3</p>
+            <p class="description">Residents requiring immediate attention.</p>
+          </article>
+        </div>
+        <div class="split-grid">
+          <article class="card card--wide">
+            <h3>Recommended Interventions</h3>
+            <ul class="list">
+              <li>Schedule hydration reminder for Room 204.</li>
+              <li>Increase night check-ins for Mrs. Chen.</li>
+              <li>Coordinate physiotherapy follow-up for Mr. Lee.</li>
+            </ul>
+          </article>
+          <article class="card card--wide">
+            <h3>Recent Alerts</h3>
+            <ul class="list list--alerts">
+              <li>
+                <span class="badge badge--critical">Critical</span>
+                Fall detected in west wing corridor at 09:32.
+              </li>
+              <li>
+                <span class="badge badge--warning">Warning</span>
+                Elevated heart rate reported for Mrs. Singh.
+              </li>
+              <li>
+                <span class="badge badge--info">Info</span>
+                Battery low for wearable ID #A52.
+              </li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="residents" class="panel">
+        <header class="panel-header">
+          <h1>Resident Directory</h1>
+          <label class="search">
+            <span class="sr-only">Search residents</span>
+            <input type="search" placeholder="Search residents" />
+          </label>
+        </header>
+        <div class="resident-table" role="table" aria-label="Resident vitals">
+          <div class="table-row table-row--header" role="row">
+            <span role="columnheader">Resident</span>
+            <span role="columnheader">Room</span>
+            <span role="columnheader">Last Check-In</span>
+            <span role="columnheader">Vitals</span>
+            <span role="columnheader">Notes</span>
+          </div>
+          <div class="table-row" role="row">
+            <span role="cell">Mrs. Chen</span>
+            <span role="cell">204</span>
+            <span role="cell">08:45</span>
+            <span role="cell">BP 118/76 • HR 72</span>
+            <span role="cell">Hydration reminder set</span>
+          </div>
+          <div class="table-row" role="row">
+            <span role="cell">Mr. Lee</span>
+            <span role="cell">310</span>
+            <span role="cell">07:55</span>
+            <span role="cell">BP 130/82 • HR 80</span>
+            <span role="cell">Awaiting PT session</span>
+          </div>
+          <div class="table-row" role="row">
+            <span role="cell">Mrs. Singh</span>
+            <span role="cell">118</span>
+            <span role="cell">09:10</span>
+            <span role="cell">BP 110/70 • HR 96</span>
+            <span role="cell">Monitoring elevated HR</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="operations" class="panel">
+        <header class="panel-header">
+          <h1>Facility Operations</h1>
+          <div class="panel-actions">
+            <button type="button">Download Schedule</button>
+            <button type="button">Adjust Staffing</button>
+          </div>
+        </header>
+        <div class="split-grid">
+          <article class="card card--wide">
+            <h3>Occupancy Snapshot</h3>
+            <p class="metric">56 / 64 beds occupied</p>
+            <p class="description">Two rooms undergoing maintenance until Friday.</p>
+            <progress max="64" value="56" aria-label="Occupancy level"></progress>
+          </article>
+          <article class="card card--wide">
+            <h3>Today's Activities</h3>
+            <ul class="list">
+              <li>10:00 — Morning stretching with physiotherapist.</li>
+              <li>13:00 — Family video calls.</li>
+              <li>16:30 — Memory care workshop.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="family" class="panel">
+        <header class="panel-header">
+          <h1>Family Engagement</h1>
+          <button type="button" class="primary">New Message</button>
+        </header>
+        <div class="split-grid">
+          <article class="card card--wide">
+            <h3>Message Center</h3>
+            <ul class="list list--messages">
+              <li>
+                <span class="message-author">Alex Chen</span>
+                <span class="message-preview">Thanks for the update on hydration goals.</span>
+                <time datetime="2024-04-02">2 Apr</time>
+              </li>
+              <li>
+                <span class="message-author">Priya Singh</span>
+                <span class="message-preview">Can we schedule a call this evening?</span>
+                <time datetime="2024-04-02">2 Apr</time>
+              </li>
+              <li>
+                <span class="message-author">Daniel Lee</span>
+                <span class="message-preview">Please confirm tomorrow's PT session.</span>
+                <time datetime="2024-04-01">1 Apr</time>
+              </li>
+            </ul>
+          </article>
+          <article class="card card--wide">
+            <h3>Visit Planner</h3>
+            <ol class="timeline">
+              <li>
+                <span class="timeline-time">09:00</span>
+                <span class="timeline-event">Lee family arrival</span>
+              </li>
+              <li>
+                <span class="timeline-time">11:30</span>
+                <span class="timeline-event">Singh family virtual call</span>
+              </li>
+              <li>
+                <span class="timeline-time">15:00</span>
+                <span class="timeline-event">Chen family in-person visit</span>
+              </li>
+            </ol>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 2024 SmartCare Collaborative • Secure • Accessible • Compassionate</p>
+    </footer>
+
+    <script src="scripts.js"></script>
+  </body>
+</html>
