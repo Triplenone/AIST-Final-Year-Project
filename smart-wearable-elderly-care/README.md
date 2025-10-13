@@ -12,4 +12,4 @@ This directory captures the reference environment derived from the "Smart Wearab
 - `data/`: Data engineering pipelines, AI/ML models, and analytics artifacts.
 - `operations/`: Processes for deployment, compliance, and ongoing operations.
 
-Refer to `docs/architecture-overview.md` for a detailed explanation of how these components interact.
+Refer to `docs/architecture-overview.md` for a detailed explanation of how these components interact. For a mapping between the proposal's objectives and this environment, see `docs/proposal-alignment.md`.
