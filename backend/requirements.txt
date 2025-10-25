@@ -4,7 +4,7 @@ sqlalchemy==2.0.32
 psycopg[binary]==3.2.1
 alembic==1.13.2
 pydantic==2.8.2
-paho-mqtt==1.6.1
+paho-mqtt==2.1.0
 asyncio-mqtt==0.16.1
 pywebpush==1.14.0
 python-jose==3.3.0
