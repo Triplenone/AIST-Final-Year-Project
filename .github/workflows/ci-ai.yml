@@ -1,0 +1,14 @@
+name: AI CI
+on:
+  push:
+    branches: [main, dev]
+    paths: ["ai/**"]
+  pull_request:
+    branches: [main, dev]
+    paths: ["ai/**"]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO: run notebooks/service tests."

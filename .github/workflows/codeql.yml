@@ -1,0 +1,12 @@
+name: CodeQL
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO: configure CodeQL languages (python, javascript, cpp)."

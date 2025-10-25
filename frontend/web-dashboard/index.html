@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Elderly Care Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <header class="top-bar">
+      <div class="brand">SmartCare</div>
+      <nav aria-label="Primary navigation">
+        <ul class="nav-list">
+          <li><a href="#overview">Care Overview</a></li>
+          <li><a href="#residents">Residents</a></li>
+          <li><a href="#operations">Operations</a></li>
+          <li><a href="#family">Family Engagement</a></li>
+        </ul>
+      </nav>
+      <div class="top-bar__actions">
+        <button class="chip chip--quiet" type="button" id="theme-toggle" aria-pressed="false">
+          <span class="chip__icon" aria-hidden="true">🌞</span>
+          <span class="chip__label">Light</span>
+        </button>
+        <div class="user-menu" aria-label="User menu">
+          <span class="user-name">Dr. Taylor</span>
+          <button class="sign-out" type="button">Sign Out</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section id="overview" class="panel panel--hero">
+        <header class="panel-header">
+          <div>
+            <h1>Daily Care Overview</h1>
+            <p class="panel-subtitle">
+              Synced <span data-last-sync>just now</span> • 64 residents connected
+            </p>
+          </div>
+          <div class="panel-actions">
+            <button type="button" class="chip" data-refresh>
+              <span class="chip__icon" aria-hidden="true">⟳</span>
+              Refresh Data
+            </button>
+            <button type="button" class="primary">Generate Report</button>
+          </div>
+        </header>
+
+        <div class="chip-row" aria-label="Quick filters">
+          <button type="button" class="chip chip--primary" aria-pressed="true">All residents</button>
+          <button type="button" class="chip">High priority</button>
+          <button type="button" class="chip">Requires follow-up</button>
+          <button type="button" class="chip">Stable</button>
+        </div>
+
+        <div class="card-grid">
+          <article class="card card--accent">
+            <header class="card__header">
+              <h2>Wellbeing Score</h2>
+              <span class="trend trend--up" aria-label="4 point increase">+4</span>
+            </header>
+            <p class="metric">82</p>
+            <p class="description">Average resident wellbeing over the last 24 hours.</p>
+            <svg class="sparkline" viewBox="0 0 100 40" role="img" aria-label="Wellbeing trend">
+              <polyline points="0,28 12,24 24,30 36,20 48,18 60,14 72,16 84,10 96,12" />
+            </svg>
+          </article>
+
+          <article class="card">
+            <header class="card__header">
+              <h2>Alerts Resolved</h2>
+              <span class="trend trend--neutral" aria-label="No change">0</span>
+            </header>
+            <p class="metric">14</p>
+            <p class="description">Alerts escalated and closed by care staff.</p>
+            <div class="stacked-progress" role="img" aria-label="Alerts by severity">
+              <span style="--size: 55%" class="stacked-progress__bar stacked-progress__bar--ok">
+                <span class="sr-only">55% informational</span>
+              </span>
+              <span style="--size: 30%" class="stacked-progress__bar stacked-progress__bar--warn">
+                <span class="sr-only">30% warning</span>
+              </span>
+              <span style="--size: 15%" class="stacked-progress__bar stacked-progress__bar--crit">
+                <span class="sr-only">15% critical</span>
+              </span>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card__header">
+              <h2>High Priority Cases</h2>
+              <span class="trend trend--down" aria-label="1 fewer case">-1</span>
+            </header>
+            <p class="metric metric--warning">3</p>
+            <p class="description">Residents requiring immediate attention.</p>
+            <ul class="list list--compact">
+              <li>Mrs. Singh • Elevated HR monitoring</li>
+              <li>Mr. Han • Night wander alerts</li>
+              <li>Ms. Lopez • Rehab plan check-in</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="insight-grid">
+          <article class="card card--wide">
+            <h3>Recommended Interventions</h3>
+            <ul class="list">
+              <li>Schedule hydration reminder for Room 204.</li>
+              <li>Increase night check-ins for Mrs. Chen.</li>
+              <li>Coordinate physiotherapy follow-up for Mr. Lee.</li>
+              <li>Document family visit feedback for Ms. Lopez.</li>
+            </ul>
+          </article>
+          <article class="card card--wide card--alerts">
+            <header class="card__header">
+              <h3>Recent Alerts</h3>
+              <button class="chip chip--quiet" type="button">View all</button>
+            </header>
+            <ul class="list list--alerts">
+              <li>
+                <span class="badge badge--critical">Critical</span>
+                Fall detected in west wing corridor at 09:32.
+              </li>
+              <li>
+                <span class="badge badge--warning">Warning</span>
+                Elevated heart rate reported for Mrs. Singh.
+              </li>
+              <li>
+                <span class="badge badge--info">Info</span>
+                Battery low for wearable ID #A52.
+              </li>
+              <li>
+                <span class="badge badge--info">Info</span>
+                New firmware ready for OTA deployment.
+              </li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="residents" class="panel">
+        <header class="panel-header">
+          <div>
+            <h1>Resident Directory</h1>
+            <p class="panel-subtitle">Monitor vitals and notes in real time.</p>
+          </div>
+          <div class="panel-actions">
+            <label class="search">
+              <span class="sr-only">Search residents</span>
+              <input type="search" placeholder="Search residents" id="resident-search" />
+            </label>
+            <button type="button">Add Resident</button>
+          </div>
+        </header>
+        <div class="resident-table" role="table" aria-label="Resident vitals">
+          <div class="table-row table-row--header" role="row">
+            <span role="columnheader">Resident</span>
+            <span role="columnheader">Room</span>
+            <span role="columnheader">Last Check-In</span>
+            <span role="columnheader">Vitals</span>
+            <span role="columnheader">Notes</span>
+          </div>
+          <div class="table-row" role="row" data-name="mrs. chen">
+            <span role="cell">Mrs. Chen</span>
+            <span role="cell">204</span>
+            <span role="cell">08:45</span>
+            <span role="cell">BP 118/76 • HR 72</span>
+            <span role="cell">Hydration reminder set</span>
+          </div>
+          <div class="table-row" role="row" data-name="mr. lee">
+            <span role="cell">Mr. Lee</span>
+            <span role="cell">310</span>
+            <span role="cell">07:55</span>
+            <span role="cell">BP 130/82 • HR 80</span>
+            <span role="cell">Awaiting PT session</span>
+          </div>
+          <div class="table-row" role="row" data-name="mrs. singh">
+            <span role="cell">Mrs. Singh</span>
+            <span role="cell">118</span>
+            <span role="cell">09:10</span>
+            <span role="cell">BP 110/70 • HR 96</span>
+            <span role="cell">Monitoring elevated HR</span>
+          </div>
+          <div class="table-row" role="row" data-name="ms. lopez">
+            <span role="cell">Ms. Lopez</span>
+            <span role="cell">122</span>
+            <span role="cell">08:20</span>
+            <span role="cell">BP 116/74 • HR 68</span>
+            <span role="cell">Awaiting OT follow-up</span>
+          </div>
+        </div>
+        <p class="empty-state" data-empty-state hidden>No residents match your search.</p>
+      </section>
+
+      <section id="operations" class="panel">
+        <header class="panel-header">
+          <div>
+            <h1>Facility Operations</h1>
+            <p class="panel-subtitle">Stay ahead of staffing and scheduled care.</p>
+          </div>
+          <div class="panel-actions">
+            <button type="button">Download Schedule</button>
+            <button type="button">Adjust Staffing</button>
+          </div>
+        </header>
+        <div class="split-grid">
+          <article class="card card--wide">
+            <h3>Occupancy Snapshot</h3>
+            <p class="metric">56 / 64 beds occupied</p>
+            <p class="description">Two rooms undergoing maintenance until Friday.</p>
+            <progress max="64" value="56" aria-label="Occupancy level"></progress>
+            <dl class="stat-list">
+              <div>
+                <dt>Admissions this week</dt>
+                <dd>+3</dd>
+              </div>
+              <div>
+                <dt>Discharges scheduled</dt>
+                <dd>1</dd>
+              </div>
+              <div>
+                <dt>Average stay (days)</dt>
+                <dd>142</dd>
+              </div>
+            </dl>
+          </article>
+          <article class="card card--wide">
+            <h3>Today's Activities</h3>
+            <ul class="list">
+              <li>10:00 — Morning stretching with physiotherapist.</li>
+              <li>13:00 — Family video calls.</li>
+              <li>16:30 — Memory care workshop.</li>
+              <li>18:00 — Calm music session.</li>
+            </ul>
+            <div class="calendar-hint">
+              <p>Need to reschedule? Drag and drop from the operations calendar.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="family" class="panel">
+        <header class="panel-header">
+          <div>
+            <h1>Family Engagement</h1>
+            <p class="panel-subtitle">Keep families informed and involved.</p>
+          </div>
+          <button type="button" class="primary">New Message</button>
+        </header>
+        <div class="split-grid">
+          <article class="card card--wide">
+            <h3>Message Center</h3>
+            <ul class="list list--messages">
+              <li>
+                <span class="message-author">Alex Chen</span>
+                <span class="message-preview">Thanks for the update on hydration goals.</span>
+                <time datetime="2024-04-02">2 Apr</time>
+              </li>
+              <li>
+                <span class="message-author">Priya Singh</span>
+                <span class="message-preview">Can we schedule a call this evening?</span>
+                <time datetime="2024-04-02">2 Apr</time>
+              </li>
+              <li>
+                <span class="message-author">Daniel Lee</span>
+                <span class="message-preview">Please confirm tomorrow's PT session.</span>
+                <time datetime="2024-04-01">1 Apr</time>
+              </li>
+            </ul>
+          </article>
+          <article class="card card--wide">
+            <h3>Visit Planner</h3>
+            <ol class="timeline">
+              <li>
+                <span class="timeline-time">09:00</span>
+                <span class="timeline-event">Lee family arrival</span>
+              </li>
+              <li>
+                <span class="timeline-time">11:30</span>
+                <span class="timeline-event">Singh family virtual call</span>
+              </li>
+              <li>
+                <span class="timeline-time">15:00</span>
+                <span class="timeline-event">Chen family in-person visit</span>
+              </li>
+            </ol>
+            <div class="cta-box">
+              <p>
+                Encourage families to explore daily highlights via the SmartCare companion PWA.
+              </p>
+              <button type="button" class="chip chip--primary">Share access link</button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 2024 SmartCare Collaborative • Secure • Accessible • Compassionate</p>
+    </footer>
+
+    <script src="app-config.js"></script>
+    <script src="data-layer.js"></script>
+    <script src="scripts.js"></script>
+  </body>
+</html>

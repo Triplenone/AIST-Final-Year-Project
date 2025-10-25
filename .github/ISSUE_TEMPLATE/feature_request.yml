@@ -1,0 +1,21 @@
+name: Feature Request
+description: Request a new capability or enhancement.
+labels: ["type:feat"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation / 背景
+      description: Why is this needed?
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / 驗收標準
+  - type: textarea
+    id: changes
+    attributes:
+      label: API/DB Impact / 介面或資料庫變動
+  - type: textarea
+    id: tests
+    attributes:
+      label: Test Plan / 測試計畫

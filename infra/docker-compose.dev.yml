@@ -1,0 +1,37 @@
+version: "3.9"
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883", "8883:8883"]
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/certs:/mosquitto/certs:ro
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: eldercare
+    ports: ["5432:5432"]
+  minio:
+    image: quay.io/minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports: ["9000:9000", "9001:9001"]
+  backend:
+    build: ../backend
+    depends_on: [mqtt, db, minio]
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:app@db:5432/eldercare
+      MQTT_URL: mqtts://mqtt:8883
+      ALLOW_ORIGINS: http://localhost:5173
+    ports: ["8000:8000"]
+  frontend:
+    image: node:20
+    working_dir: /work
+    command: bash -lc "npm install && npm run dev -- --host"
+    volumes:
+      - ../frontend:/work
+    ports: ["5173:5173"]

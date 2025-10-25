@@ -1,0 +1,10 @@
+name: Docker Publish
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "TODO: publish backend/AI containers when ready."

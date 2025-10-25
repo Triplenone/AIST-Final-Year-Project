@@ -1,0 +1,29 @@
+name: Bug Report
+description: Report a regression or defect.
+labels: ["type:bug"]
+body:
+  - type: input
+    id: area
+    attributes:
+      label: Area / 模組
+      description: firmware | backend | frontend | ai | infra
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce / 重現步驟
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result / 預期結果
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result / 實際結果
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Screenshots

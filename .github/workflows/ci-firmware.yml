@@ -1,0 +1,15 @@
+name: Firmware CI
+on:
+  push:
+    branches: [main, dev]
+    paths: ["firmware/**"]
+  pull_request:
+    branches: [main, dev]
+    paths: ["firmware/**"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: echo "TODO: add PlatformIO build once firmware is ready."
