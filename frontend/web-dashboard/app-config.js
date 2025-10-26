@@ -1,13 +1,31 @@
 /**
  * Runtime configuration for the standalone dashboard.
- * Set `dataMode` to 'api' once the FastAPI backend is ready,
- * and update `apiBase` / `auth` fields accordingly.
+ * Values can be overridden by defining `window.APP_CONFIG_ENV`
+ * before this script executes (e.g. via build-time injection).
  */
-window.APP_CONFIG = Object.assign(window.APP_CONFIG || {}, {
-  dataMode: 'local', // 'local' or 'api'
-  apiBase: 'http://localhost:8000/api/v1',
-  auth: {
-    token: null // TODO: populate with JWT when backend is connected
-  }
-});
+(function applyAppConfig(global) {
+  const defaultConfig = {
+    dataMode: 'local', // 'local', 'api', or 'hybrid'
+    apiBase: 'http://localhost:8000/api/v1',
+    features: {
+      auditTrail: false,
+      offlineQueue: true
+    },
+    auth: {
+      token: null
+    },
+    sync: {
+      retryMs: 4000,
+      maxRetries: 3
+    }
+  };
 
+  const envOverrides = global.APP_CONFIG_ENV || {};
+  global.APP_CONFIG = Object.freeze({
+    ...defaultConfig,
+    ...envOverrides,
+    features: { ...defaultConfig.features, ...(envOverrides.features || {}) },
+    auth: { ...defaultConfig.auth, ...(envOverrides.auth || {}) },
+    sync: { ...defaultConfig.sync, ...(envOverrides.sync || {}) }
+  });
+})(window);

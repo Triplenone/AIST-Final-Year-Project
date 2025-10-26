@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self' http://localhost:8000 http://localhost:5173; frame-ancestors 'none'; script-src 'self';"
+    />
     <title>Smart Elderly Care Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +34,7 @@
           <span class="chip__label">Light</span>
         </button>
         <div class="user-menu" aria-label="User menu">
-          <span class="user-name">Dr. Taylor</span>
+          <span class="user-name">Dr. Taylor</span> 
           <button class="sign-out" type="button">Sign Out</button>
         </div>
       </div>
@@ -62,7 +66,7 @@
         </div>
 
         <div class="card-grid">
-          <article class="card card--accent">
+          <article class="card card--accent" data-card="wellbeing">
             <header class="card__header">
               <h2>Wellbeing Score</h2>
               <span class="trend trend--up" aria-label="4 point increase">+4</span>
@@ -74,7 +78,7 @@
             </svg>
           </article>
 
-          <article class="card">
+          <article class="card" data-card="alerts">
             <header class="card__header">
               <h2>Alerts Resolved</h2>
               <span class="trend trend--neutral" aria-label="No change">0</span>
@@ -110,7 +114,7 @@
         </div>
 
         <div class="insight-grid">
-          <article class="card card--wide">
+          <article class="card card--wide" data-list="interventions">
             <h3>Recommended Interventions</h3>
             <ul class="list">
               <li>Schedule hydration reminder for Room 204.</li>
@@ -119,7 +123,7 @@
               <li>Document family visit feedback for Ms. Lopez.</li>
             </ul>
           </article>
-          <article class="card card--wide card--alerts">
+          <article class="card card--wide card--alerts" data-list="recent-alerts">
             <header class="card__header">
               <h3>Recent Alerts</h3>
               <button class="chip chip--quiet" type="button">View all</button>
@@ -306,6 +310,8 @@
     <footer class="footer">
       <p>© 2024 SmartCare Collaborative • Secure • Accessible • Compassionate</p>
     </footer>
+
+    <div id="sr-announcer" class="sr-announcer" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <script src="app-config.js"></script>
     <script src="data-layer.js"></script>

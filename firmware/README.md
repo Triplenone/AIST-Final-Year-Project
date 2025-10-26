@@ -1,21 +1,35 @@
-# Firmware Skeleton / ¶´Åé°©¬[
+# Firmware Skeleton
 
-## English
-This directory is a placeholder for the ESP32-based wearable firmware. It already matches the PlatformIO layout (src/include/test) and pulls in the libraries we expect to use (MPU6050, MAX30102, TinyGPS++, PubSubClient, ArduinoJson). Add your implementation to `src/` and keep secrets (Wi-Fi, MQTT credentials, TLS certs) inside `src/util/config.h` or a separate config file that is git-ignored.
+## English Version
+`firmware/` is a PlatformIO project targeting the ESP32 wearable. Dependencies (MPU6050, MAX3010x, TinyGPS++, PubSubClient, ArduinoJson) are pinned in `platformio.ini`. Application code belongs under `src/`, and secrets (Wi-Fi, MQTT creds, TLS material) must be placed in ignored headers (e.g., `src/util/config.h`).
 
-### TODO checklist
-1. Implement Wi-Fi bootstrap with exponential backoff.
-2. BLE beacon scanner that emits `{beacon_id, rssi}` at a configurable duty-cycle.
-3. GNSS reader (ATGM336H) via TinyGPS++.
-4. MQTT/TLS publisher + SOS / OTA subscribers.
+### Build & Monitor
+```bash
+pio run            # build
+pio device monitor # optional serial monitor
+```
+Add Unity-based tests under `test/` once modules (sensor fusion, telemetry encoding, OTA validators) stabilize.
+
+### Todo Checklist
+1. Wi-Fi bootstrap with exponential backoff.
+2. BLE beacon scanner emitting `{beacon_id, rssi}` at configurable duty cycle.
+3. GNSS (ATGM336H) ingestion via TinyGPS++.
+4. MQTT/TLS publisher with SOS + OTA subscribers.
 5. OTA client that validates SHA256 + signature before flashing.
 
-## ÁcÅé¤¤¤å
-¥»¸ê®Æ§¨¬° ESP32 ¶´Åéªº¹w¯dªÅ¶¡¡A¤w³]©w¦n PlatformIO ©Ò»İªºÀÉ®×µ²ºc»P±`¥Î¨ç¦¡®w¡C¥¼¨Ó½Ğ§â¹ê§@µ{¦¡©ñ¦b `src/`¡A¨Ã°È¥²±N Wi-Fi / MQTT / TLS ¾ÌÃÒµ¥±Ó·P¸ê°T©ñ¦b `.gitignore` ªº³]©wÀÉ¤¤¡C
+## ç¹é«”ä¸­æ–‡ï¼ˆé¦™æ¸¯ï¼‰ç‰ˆæœ¬
+`firmware/` ç‚º ESP32 ç©¿æˆ´è£ç½®çš„ PlatformIO å°ˆæ¡ˆã€‚`platformio.ini` å·²é–å®š MPU6050ã€MAX3010xã€TinyGPS++ã€PubSubClientã€ArduinoJson ç­‰ä¾è³´ï¼›é‚è¼¯ç¨‹å¼ç¢¼è«‹æ”¾æ–¼ `src/`ã€‚Wi-Fiã€MQTT æ†‘è­‰èˆ‡ TLS è³‡æ–™å¿…é ˆå¯«åœ¨ `.gitignore` çš„æª”æ¡ˆï¼ˆå¦‚ `src/util/config.h`ï¼‰ã€‚
 
-### «İ¿ì¨Æ¶µ
-1. «Ø¥ß Wi-Fi ³s½u¬yµ{¡]§t­«¸Õ/backoff¡^¡C
-2. ¼¶¼g BLE Beacon ±½´y¾¹¡A©w´Á¿é¥X `{beacon_id, rssi}`¡C
-3. ¨Ï¥Î TinyGPS++ Åª¨ú ATGM336H GNSS ¼Ò²Õ¡C
-4. ³z¹L MQTT/TLS ¤W¦æ¸ê®Æ¡A¨ÃºÊÅ¥ SOS/OTA «ü¥O¡C
-5. ¹ê§@ OTA ÅçÃÒ¡]SHA256 + Ã±³¹¡^«á¦A¼g¤J§Ö°{°O¾ĞÅé¡C
+### ç·¨è­¯èˆ‡ç›£çœ‹
+```bash
+pio run            # ç·¨è­¯
+pio device monitor # åºåˆ—åŸ ç›£çœ‹ï¼ˆå¯é¸ï¼‰
+```
+å¾…æ¨¡çµ„ï¼ˆæ„Ÿæ¸¬å™¨èåˆã€é™æ¸¬ç·¨ç¢¼ã€OTA é©—è­‰ï¼‰ç©©å®šå¾Œï¼Œå¯åœ¨ `test/` åŠ å…¥ Unity æ¸¬è©¦ã€‚
+
+### å¾…è¾¦æ¸…å–®
+1. Wi-Fi å•Ÿå‹•èˆ‡æŒ‡æ•¸é€€é¿ã€‚
+2. BLE Beacon æƒæï¼Œä¾ duty cycle è¼¸å‡º `{beacon_id, rssi}`ã€‚
+3. é€é TinyGPS++ è®€å– ATGM336H GNSSã€‚
+4. MQTT/TLS ä¸Šå‚³èˆ‡ SOSï¼OTA è¨‚é–±ã€‚
+5. OTA å‰é©—è­‰ SHA256 èˆ‡ç°½ç« å¾Œå†å¯«å…¥ã€‚
