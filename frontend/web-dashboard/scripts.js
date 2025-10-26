@@ -862,7 +862,6 @@
       toast(L.toastApiFallback);
     }
   }
-})();
   // overview edit (admin)
   function injectEditOverview(){
     const actions=document.querySelector('#overview .panel-actions');
@@ -938,3 +937,4 @@
       });
     }
   }
+})();
