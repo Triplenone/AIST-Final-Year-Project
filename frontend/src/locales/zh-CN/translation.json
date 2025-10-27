@@ -1,0 +1,107 @@
+{
+  "common": {
+    "language": "语言",
+    "switchTo": "切换至{{label}}"
+  },
+  "layout": {
+    "subtitle": "帮一线照护人员更快交接的操作中心",
+    "nav": {
+      "aria": "主导航",
+      "overview": "总览",
+      "residents": "住民",
+      "operations": "运营",
+      "family": "家属互动"
+    },
+    "footer": "© 2024 SmartCare Collaborative — 为照护团队而生"
+  },
+  "actions": {
+    "simulate": "模拟更新数据"
+  },
+  "hero": {
+    "eyebrow": "渐进式网页应用原型",
+    "title": "为 SmartCare 团队打造的贴心控制室",
+    "description": "当旧版仪表板仍在线上服务时，先预览全新的 React 体验。",
+    "lastUpdated": "最后更新：{{time}}"
+  },
+  "stats": {
+    "wellbeing": {
+      "title": "健康指数",
+      "description": "依据穿戴装置摘要计算的整体健康分数。"
+    },
+    "alertsResolved": {
+      "title": "已处理警报",
+      "description": "本班次照护团队完成处理的警报数量。"
+    },
+    "responseTime": {
+      "title": "平均响应时间",
+      "description": "从警报触发到第一次进房巡查的分钟数。",
+      "unit": "分钟"
+    },
+    "delta": {
+      "label": "{{direction}}{{delta}}",
+      "up": "提升",
+      "down": "下降",
+      "points": "{{count}} 分",
+      "minutes": "{{count}} 分钟"
+    }
+  },
+  "filters": {
+    "all": "全部",
+    "high": "高优先",
+    "followUp": "需跟进",
+    "stable": "稳定"
+  },
+  "residents": {
+    "title": "住民目录",
+    "subtitle": "即时查看生命体征与最新巡房时间。",
+    "filters": {
+      "aria": "按状态筛选住民"
+    },
+    "tableCaption": "住民生命体征与状态表",
+    "columns": {
+      "name": "住民",
+      "room": "房号",
+      "lastCheck": "最后巡房",
+      "vitals": "生命体征",
+      "status": "状态"
+    },
+    "empty": "目前没有符合此筛选条件的住民。",
+    "status": {
+      "stable": "稳定",
+      "followUp": "需跟进",
+      "high": "高优先"
+    },
+    "hrLabel": "心率 {{value}} 次"
+  },
+  "alerts": {
+    "title": "最新警报",
+    "subtitle": "今日最需要注意的讯息",
+    "items": {
+      "fall": "西侧走廊侦测到跌倒事件。",
+      "heartRate": "辛格女士心率偏高。",
+      "wearable": "穿戴装置 A52 电量低于 10%。",
+      "ota": "新的固件可供 OTA 更新。"
+    }
+  },
+  "alertLevels": {
+    "critical": "紧急",
+    "warning": "警示",
+    "info": "信息"
+  },
+  "insights": {
+    "title": "照护洞察",
+    "subtitle": "照护团队建议的后续动作",
+    "items": {
+      "hydration": "保持 C 区域的补水提醒。",
+      "nightRounds": "为陈女士增加夜间巡房。",
+      "physiotherapy": "协调李先生的物理治疗回诊。",
+      "familyFeedback": "记录洛佩斯女士家访回馈。"
+    }
+  },
+  "nextSteps": {
+    "title": "下一步",
+    "mapDataGateway": "用类型安全的 React Hook 包装 DataGateway API。",
+    "portTokens": "把静态仪表板的设计 Token 汇入共享 CSS 变量。",
+    "addRouting": "加入验证路由并逐步迁移真实面板。"
+  }
+}

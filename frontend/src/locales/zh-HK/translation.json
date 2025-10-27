@@ -1,0 +1,107 @@
+{
+  "common": {
+    "language": "語言",
+    "switchTo": "切換至{{label}}"
+  },
+  "layout": {
+    "subtitle": "幫前線照護員更快交接的操作面板",
+    "nav": {
+      "aria": "主導覽",
+      "overview": "總覽",
+      "residents": "住民",
+      "operations": "營運",
+      "family": "家屬互動"
+    },
+    "footer": "© 2024 SmartCare Collaborative — 與照護團隊一起打造"
+  },
+  "actions": {
+    "simulate": "模擬更新資料"
+  },
+  "hero": {
+    "eyebrow": "漸進式網頁應用原型",
+    "title": "為 SmartCare 團隊準備的溫柔控制室",
+    "description": "在舊版儀表板仍服務線上時，先預覽即將到來的 React 體驗。",
+    "lastUpdated": "最後更新：{{time}}"
+  },
+  "stats": {
+    "wellbeing": {
+      "title": "健康指標",
+      "description": "依穿戴裝置摘要計算的整體健康分數。"
+    },
+    "alertsResolved": {
+      "title": "已處理警報",
+      "description": "本班次照護團隊完成的警報處理數。"
+    },
+    "responseTime": {
+      "title": "平均回應時間",
+      "description": "從警報觸發到第一次到房巡視的分鐘數。",
+      "unit": "分鐘"
+    },
+    "delta": {
+      "label": "{{direction}}{{delta}}",
+      "up": "提升",
+      "down": "下降",
+      "points": "{{count}} 分",
+      "minutes": "{{count}} 分鐘"
+    }
+  },
+  "filters": {
+    "all": "全部",
+    "high": "高優先",
+    "followUp": "需後續追蹤",
+    "stable": "穩定"
+  },
+  "residents": {
+    "title": "住民名冊",
+    "subtitle": "即時顯示生命徵象與最近巡房時間。",
+    "filters": {
+      "aria": "依狀態篩選住民"
+    },
+    "tableCaption": "住民生命徵象與狀態表",
+    "columns": {
+      "name": "住民",
+      "room": "房號",
+      "lastCheck": "最後巡房",
+      "vitals": "生命徵象",
+      "status": "狀態"
+    },
+    "empty": "目前沒有符合此篩選的住民。",
+    "status": {
+      "stable": "穩定",
+      "followUp": "需追蹤",
+      "high": "高優先"
+    },
+    "hrLabel": "心率 {{value}} 下"
+  },
+  "alerts": {
+    "title": "最新警報",
+    "subtitle": "今天最急需注意的事件",
+    "items": {
+      "fall": "西側走廊偵測到跌倒事件。",
+      "heartRate": "辛格女士回報心率偏高。",
+      "wearable": "穿戴裝置 A52 電量低於 10%。",
+      "ota": "有新的韌體可供 OTA 更新。"
+    }
+  },
+  "alertLevels": {
+    "critical": "緊急",
+    "warning": "警示",
+    "info": "資訊"
+  },
+  "insights": {
+    "title": "照護洞見",
+    "subtitle": "照護團隊建議的追蹤事項",
+    "items": {
+      "hydration": "保持 C 區的補水提醒。",
+      "nightRounds": "為陳太太增加夜間巡房。",
+      "physiotherapy": "協調李先生的物理治療追蹤。",
+      "familyFeedback": "記錄羅培茲女士家訪回饋。"
+    }
+  },
+  "nextSteps": {
+    "title": "下一步",
+    "mapDataGateway": "以型別安全的 React Hook 包裝 DataGateway API。",
+    "portTokens": "把靜態儀表板的設計 Token 匯入共享 CSS 變數。",
+    "addRouting": "導入驗證路由，逐步遷移實際面板。"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "common": {
+    "language": "Language",
+    "switchTo": "Switch to {{label}}"
+  },
+  "layout": {
+    "subtitle": "Faster handover hub for frontline carers",
+    "nav": {
+      "aria": "Primary navigation",
+      "overview": "Overview",
+      "residents": "Residents",
+      "operations": "Operations",
+      "family": "Family engagement"
+    },
+    "footer": "© 2024 SmartCare Collaborative — Built for compassionate teams"
+  },
+  "actions": {
+    "simulate": "Simulate new data"
+  },
+  "hero": {
+    "eyebrow": "Progressive web app prototype",
+    "title": "A gentler control room for SmartCare staff",
+    "description": "Preview the upcoming React experience while the classic dashboard stays live in production.",
+    "lastUpdated": "Last updated {{time}}"
+  },
+  "stats": {
+    "wellbeing": {
+      "title": "Wellbeing score",
+      "description": "Average resident wellbeing taken from wearable summaries."
+    },
+    "alertsResolved": {
+      "title": "Alerts resolved",
+      "description": "Escalations closed by the care team in the past shift."
+    },
+    "responseTime": {
+      "title": "Average response time",
+      "description": "Minutes from alert raised to the first bedside check.",
+      "unit": "min"
+    },
+    "delta": {
+      "label": "{{direction}} by {{delta}}",
+      "up": "Improved",
+      "down": "Reduced",
+      "points": "{{count}} pts",
+      "minutes": "{{count}} min"
+    }
+  },
+  "filters": {
+    "all": "All",
+    "high": "High priority",
+    "followUp": "Needs follow-up",
+    "stable": "Stable"
+  },
+  "residents": {
+    "title": "Resident directory",
+    "subtitle": "Live vitals and most recent room rounds.",
+    "filters": {
+      "aria": "Filter residents by status"
+    },
+    "tableCaption": "Resident vital signs and status",
+    "columns": {
+      "name": "Resident",
+      "room": "Room",
+      "lastCheck": "Last check-in",
+      "vitals": "Vitals",
+      "status": "Status"
+    },
+    "empty": "No residents match this filter right now.",
+    "status": {
+      "stable": "Stable",
+      "followUp": "Follow-up needed",
+      "high": "High priority"
+    },
+    "hrLabel": "HR {{value}} bpm"
+  },
+  "alerts": {
+    "title": "Recent alerts",
+    "subtitle": "Most urgent updates from the day",
+    "items": {
+      "fall": "Fall detected in the west wing corridor.",
+      "heartRate": "Mrs. Singh reports elevated heart rate.",
+      "wearable": "Wearable ID #A52 battery is below 10%.",
+      "ota": "New firmware ready for OTA deployment."
+    }
+  },
+  "alertLevels": {
+    "critical": "Critical",
+    "warning": "Warning",
+    "info": "Info"
+  },
+  "insights": {
+    "title": "Care insights",
+    "subtitle": "Suggested follow-ups from the care team",
+    "items": {
+      "hydration": "Keep hydration reminders active for wing C.",
+      "nightRounds": "Add extra night rounds for Mrs. Chen.",
+      "physiotherapy": "Coordinate PT follow-up for Mr. Lee.",
+      "familyFeedback": "Log family visit feedback for Ms. Lopez."
+    }
+  },
+  "nextSteps": {
+    "title": "Next steps",
+    "mapDataGateway": "Wrap DataGateway APIs with type-safe React hooks.",
+    "portTokens": "Port visual tokens from the static dashboard into shared CSS variables.",
+    "addRouting": "Add authenticated routing and progressively migrate real panels."
+  }
+}
