@@ -29,9 +29,9 @@ This monorepo captures the full SmartCare wearable ecosystem (firmware → MQTT 
 1. **Clone** the repo and install tooling per module.
 2. **Dashboard demo**
    ```bash
-   cd frontend/web-dashboard
+   
    python -m http.server 5500
-   ```
+   `cd frontend/web-dashboard``
    Visit `http://localhost:5500` (Ctrl+F5). Admin login: `Admin/admin`. Caregiver: `Ms.Testing/admin`.
 3. **Backend shell**
    ```bash

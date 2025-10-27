@@ -21,7 +21,7 @@ module.exports = {
       version: 'detect'
     }
   },
-  ignorePatterns: ['dist', 'node_modules'],
+  ignorePatterns: ['dist', 'node_modules', 'vite.config.ts', 'web-dashboard/**'],
   rules: {
     'react/react-in-jsx-scope': 'off'
   }
