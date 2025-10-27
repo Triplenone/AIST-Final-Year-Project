@@ -1,28 +1,29 @@
-;(function(){
-  // storage helpers (pluggable via data-layer.js)
-  const store = window.DataStore || {
-    get(k,f){
-      try{
-        const v=localStorage.getItem(k);
-        return v?JSON.parse(v):f;
-      }catch{
-        return f;
-      }
-    },
-    set(k,v){
-      localStorage.setItem(k,JSON.stringify(v));
-    }
-  };
-  if(!window.DataStore){
-    window.DataStore = store;
-  }
+import i18n, { LANGUAGE_OPTIONS, i18nReady } from './i18n.js';
 
-  const gateway = window.DataGateway || null;
-  const srAnnouncer=document.getElementById('sr-announcer');
-  const focusableSelectors='a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-  let activeModal=null;
-  let lastFocused=null;
-  let lastSyncedAt=new Date();
+// storage helpers (pluggable via data-layer.js)
+const store = window.DataStore || {
+  get(k,f){
+    try{
+      const v=localStorage.getItem(k);
+      return v?JSON.parse(v):f;
+    }catch{
+      return f;
+    }
+  },
+  set(k,v){
+    localStorage.setItem(k,JSON.stringify(v));
+  }
+};
+if(!window.DataStore){
+  window.DataStore = store;
+}
+
+const gateway = window.DataGateway || null;
+const srAnnouncer=document.getElementById('sr-announcer');
+const focusableSelectors='a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+let activeModal=null;
+let lastFocused=null;
+let lastSyncedAt=new Date();
 
   function announce(message){
     if(!srAnnouncer) return;
@@ -100,224 +101,63 @@
   applyTheme(themeInit);
   tbtn?.addEventListener('click',()=>{const th=document.body.dataset.theme==='dark'?'light':'dark';applyTheme(th);localStorage.setItem('dashboard-theme',th)});
 
-  // language selector and minimal i18n
-  const I18N={
-    en:{
-      navCare:'Care Overview',navRes:'Residents',navOps:'Operations',navFam:'Family Engagement',
-      heroTitle:'Daily Care Overview',resTitle:'Resident Directory',resSub:'Monitor vitals and notes in real time.',
-      opsTitle:'Facility Operations',opsSub:'Stay ahead of staffing and scheduled care.',
-      famTitle:'Family Engagement',famSub:'Keep families informed and involved.',
-      filterAll:'All residents',filterHigh:'High priority',filterFollow:'Requires follow-up',filterStable:'Stable',
-      colResident:'Resident',colRoom:'Room',colLast:'Last Check-In',colVitals:'Vitals',colNotes:'Notes',
-      addRes:'Add Resident',refresh:'Refresh Data',genReport:'Generate Report',editOverview:'Edit Overview',
-      downloadSchedule:'Download Schedule',adjStaff:'Adjust Staffing',newMsg:'New Message',share:'Share access link',
-      signIn:'Sign In',signOut:'Sign Out',signUp:'Sign Up'
-    },
-    'zh-Hant':{
-      navCare:'\u7167\u8b77\u7e3d\u89bd',navRes:'\u4f4f\u6c11',navOps:'\u71df\u904b',navFam:'\u5bb6\u5c6c\u4ea4\u6d41',
-      heroTitle:'\u6bcf\u65e5\u7167\u8b77\u7e3d\u89bd',resTitle:'\u4f4f\u6c11\u76ee\u9304',resSub:'\u5373\u6642\u76e3\u63a7\u751f\u547d\u5fb5\u8c61\u8207\u5099\u8a3b\u3002',
-      opsTitle:'\u6a5f\u69cb\u71df\u904b',opsSub:'\u638c\u63e1\u4eba\u529b\u8207\u6392\u7a0b\u3002',
-      famTitle:'\u5bb6\u5c6c\u4ea4\u6d41',famSub:'\u8b93\u5bb6\u5c6c\u96a8\u6642\u638c\u63e1\u8fd1\u6cc1\u3002',
-      filterAll:'\u6240\u6709\u4f4f\u6c11',filterHigh:'\u9ad8\u512a\u5148',filterFollow:'\u9700\u5f8c\u7e8c\u8ffd\u8e64',filterStable:'\u7a69\u5b9a',
-      colResident:'\u4f4f\u6c11',colRoom:'\u623f\u865f',colLast:'\u6700\u5f8c\u5de1\u623f',colVitals:'\u751f\u547d\u9ad4\u5fb5',colNotes:'\u5099\u8a3b',
-      addRes:'\u65b0\u589e\u4f4f\u6c11',refresh:'\u66f4\u65b0\u8cc7\u6599',genReport:'\u532f\u51fa\u5831\u544a',editOverview:'\u7de8\u8f2f\u7e3d\u89bd',
-      downloadSchedule:'\u4e0b\u8f09\u6392\u7a0b',adjStaff:'\u8abf\u6574\u4eba\u529b',newMsg:'\u65b0\u8a0a\u606f',share:'\u5206\u4eab\u5b58\u53d6\u9023\u7d50',
-      signIn:'\u767b\u5165',signOut:'\u767b\u51fa',signUp:'\u8a3b\u518a'
-    },
-    'zh-Hans':{
-      navCare:'\u62a4\u7406\u603b\u89c8',navRes:'\u4f4f\u6c11',navOps:'\u673a\u6784\u8fd0\u8425',navFam:'\u5bb6\u5c5e\u6c9f\u901a',
-      heroTitle:'\u6bcf\u65e5\u62a4\u7406\u603b\u89c8',resTitle:'\u4f4f\u6c11\u76ee\u5f55',resSub:'\u5b9e\u65f6\u76d1\u63a7\u751f\u547d\u4f53\u5f81\u4e0e\u5907\u6ce8\u3002',
-      opsTitle:'\u673a\u6784\u8fd0\u8425',opsSub:'\u638c\u63e1\u4eba\u529b\u4e0e\u6392\u7a0b\u3002',
-      famTitle:'\u5bb6\u5c5e\u6c9f\u901a',famSub:'\u8ba9\u5bb6\u5c5e\u968f\u65f6\u638c\u63e1\u8fd1\u51b5\u3002',
-      filterAll:'\u6240\u6709\u4f4f\u6c11',filterHigh:'\u9ad8\u4f18\u5148',filterFollow:'\u9700\u8ddf\u8fdb',filterStable:'\u7a33\u5b9a',
-      colResident:'\u4f4f\u6c11',colRoom:'\u623f\u865f',colLast:'\u6700\u540e\u5de1\u623f',colVitals:'\u751f\u547d\u4f53\u5f81',colNotes:'\u5907\u6ce8',
-      addRes:'\u65b0\u589e\u4f4f\u6c11',refresh:'\u66f4\u65b0\u6570\u636e',genReport:'\u5bfc\u51fa\u62a5\u544a',editOverview:'\u7f16\u8f91\u603b\u89c8',
-      downloadSchedule:'\u4e0b\u8f7d\u6392\u7a0b',adjStaff:'\u8c03\u6574\u4eba\u529b',newMsg:'\u65b0\u6d88\u606f',share:'\u5206\u4eab\u8bbf\u95ee\u94fe\u63a5',
-      signIn:'\u767b\u5f55',signOut:'\u767b\u51fa',signUp:'\u6ce8\u518c'
-    }
-  };
+  const translator=new Proxy({}, {
+  get(_target, prop){
+    if(typeof prop==='symbol') return undefined;
+    return i18n.t(String(prop));
+  }
+});
 
-  Object.assign(I18N['en'], {
-    btnCancel:'Cancel',
-    btnSave:'Save',
-    btnCreate:'Create',
-    btnSend:'Send',
-    labelName:'Name',
-    labelRoom:'Room',
-    labelLastCheck:'Last Check-In (HH:MM)',
-    labelPriority:'Priority',
-    labelBp:'BP (Systolic/Diastolic)',
-    labelHr:'HR',
-    labelNotes:'Notes',
-    labelTo:'To (name)',
-    labelDate:'Date',
-    labelMessage:'Message',
-    labelRole:'Role: Caregiver',
-    labelUsername:'Username',
-    labelPassword:'Password',
-    ctaNeedAccount:'Caregiver? Sign up',
-    ctaHaveAccount:'Have an account?',
-    labelOccupied:'Occupied Beds',
-    labelTotal:'Total Beds',
-    labelAdmissions:'Admissions this week',
-    labelDischarges:'Discharges scheduled',
-    labelAvgStay:'Average stay (days)',
-    labelWellbeing:'Wellbeing Score',
-    labelAlertsResolved:'Alerts Resolved',
-    labelInterventions:'Recommended Interventions (one per line)',
-    labelRecentAlerts:'Recent Alerts (level: message)',
-    actionEdit:'Edit',
-    actionDelete:'Delete',
-    toastSignedIn:'Signed in',
-    toastSignedOut:'Signed out',
-    toastInvalidCreds:'Invalid credentials',
-    toastAccountCreated:'Account created',
-    toastUsernameExists:'Username already exists',
-    toastInvalidUsername:'Username must have at least two characters (letters, numbers, . or _)',
-    toastAdminOnly:'Admin required',
-    toastStaffingSaved:'Staffing saved',
-    toastMessageSent:'Message sent',
-    toastResidentSaved:'Resident saved',
-    toastResidentDeleted:'Resident removed',
-    toastLinkCopied:'Link copied',
-    toastLinkManual:'Link: ',
-    toastOverviewSaved:'Overview saved',
-    toastReportReady:'Report ready',
-    toastApiFallback:'Server unavailable, showing local data',
-    priorityLow:'Low',
-    priorityMedium:'Medium',
-    priorityHigh:'High',
-    overviewSyncedPrefix:'Synced',
-    overviewResidentsSuffix:'residents connected',
-    headingWellbeing:'Wellbeing Score',
-    headingAlerts:'Alerts Resolved',
-    headingInterventions:'Recommended Interventions',
-    headingRecentAlerts:'Recent Alerts',
-  });
+function T(){
+  return translator;
+}
 
-  Object.assign(I18N['zh-Hant'], {
-    btnCancel:'\u53d6\u6d88',
-    btnSave:'\u5132\u5b58',
-    btnCreate:'\u5efa\u7acb',
-    btnSend:'\u50b3\u9001',
-    labelName:'\u59d3\u540d',
-    labelRoom:'\u623f\u865f',
-    labelLastCheck:'\u6700\u5f8c\u5de1\u623f\uff08HH:MM\uff09',
-    labelPriority:'\u512a\u5148\u6b21\u5e8f',
-    labelBp:'\u8840\u58d3\uff08\u6536\u7e2e/\u8212\u5f35\uff09',
-    labelHr:'\u5fc3\u7387',
-    labelNotes:'\u5099\u8a3b',
-    labelTo:'\u6536\u4ef6\u8005\u59d3\u540d',
-    labelDate:'\u65e5\u671f',
-    labelMessage:'\u8a0a\u606f\u5167\u5bb9',
-    labelRole:'\u89d2\u8272\uff1a\u7167\u9867\u54e1',
-    labelUsername:'\u5e33\u865f',
-    labelPassword:'\u5bc6\u78bc',
-    ctaNeedAccount:'\u7167\u9867\u54e1\uff1f\u99ac\u4e0a\u7533\u8acb',
-    ctaHaveAccount:'\u5df2\u7d93\u6709\u5e33\u865f\uff1f',
-    labelOccupied:'\u5df2\u4f7f\u7528\u5e8a\u4f4d',
-    labelTotal:'\u5e8a\u4f4d\u7e3d\u6578',
-    labelAdmissions:'\u672c\u9031\u65b0\u5165\u4f4f',
-    labelDischarges:'\u9810\u8a08\u51fa\u9662',
-    labelAvgStay:'\u5e73\u5747\u5165\u4f4f\u65e5\u6578',
-    labelWellbeing:'\u6574\u9ad4\u5065\u5eb7\u5206\u6578',
-    labelAlertsResolved:'\u5df2\u8655\u7406\u8b66\u5831',
-    labelInterventions:'\u5efa\u8b70\u4ecb\u5165\uff08\u6bcf\u884c\u4e00\u7b46\uff09',
-    labelRecentAlerts:'\u6700\u65b0\u8b66\u5831\uff08\u7b49\u7d1a\uff1a\u5167\u5bb9\uff09',
-    actionEdit:'\u7de8\u8f2f',
-    actionDelete:'\u522a\u9664',
-    toastSignedIn:'\u5df2\u767b\u5165',
-    toastSignedOut:'\u5df2\u767b\u51fa',
-    toastInvalidCreds:'\u5e33\u865f\u6216\u5bc6\u78bc\u4e0d\u6b63\u78ba',
-    toastAccountCreated:'\u5df2\u5efa\u7acb\u5e33\u865f',
-    toastUsernameExists:'\u5e33\u865f\u5df2\u5b58\u5728',
-    toastInvalidUsername:'\u5e33\u865f\u9700\u81f3\u5c11\u5169\u500b\u5b57\u5143\uff0c\u53ea\u80fd\u5305\u542b\u5b57\u6bcd/\u6578\u5b57/./_',
-    toastAdminOnly:'\u9700\u8981\u7ba1\u7406\u54e1\u6b0a\u9650',
-    toastStaffingSaved:'\u5df2\u5132\u5b58\u71df\u904b\u8cc7\u8a0a',
-    toastMessageSent:'\u8a0a\u606f\u5df2\u9001\u51fa',
-    toastResidentSaved:'\u5df2\u5132\u5b58\u4f4f\u6c11\u8cc7\u6599',
-    toastResidentDeleted:'\u5df2\u522a\u9664\u4f4f\u6c11',
-    toastLinkCopied:'\u5df2\u8907\u88fd\u9023\u7d50',
-    toastLinkManual:'\u7121\u6cd5\u8907\u88fd\uff0c\u8acb\u81ea\u884c\u8907\u88fd\uff1a',
-    toastOverviewSaved:'\u5df2\u66f4\u65b0\u7e3d\u89bd',
-    toastReportReady:'\u5831\u544a\u5df2\u532f\u51fa',
-    toastApiFallback:'\u4f3a\u670d\u5668\u66ab\u4e0d\u53ef\u7528\uff0c\u6539\u7528\u96e2\u7dda\u8cc7\u6599',
-    priorityLow:'\u4f4e',
-    priorityMedium:'\u4e2d',
-    priorityHigh:'\u9ad8',
-    overviewSyncedPrefix:'\u540c\u6b65\u6642\u9593',
-    overviewResidentsSuffix:'\u540d\u4f4f\u6c11\u5df2\u9023\u7dda',
-  });
-
-  Object.assign(I18N['zh-Hans'], {
-    btnCancel:'\u53d6\u6d88',
-    btnSave:'\u4fdd\u5b58',
-    btnCreate:'\u5efa\u7acb',
-    btnSend:'\u53d1\u9001',
-    labelName:'\u59d3\u540d',
-    labelRoom:'\u623f\u53f7',
-    labelLastCheck:'\u6700\u540e\u5de1\u623f\uff08HH:MM\uff09',
-    labelPriority:'\u4f18\u5148\u7ea7',
-    labelBp:'\u8840\u538b\uff08\u6536\u7f29/\u8212\u5f20\uff09',
-    labelHr:'\u5fc3\u7387',
-    labelNotes:'\u5907\u6ce8',
-    labelTo:'\u6536\u4ef6\u4eba',
-    labelDate:'\u65e5\u671f',
-    labelMessage:'\u8baf\u606f\u5185\u5bb9',
-    labelRole:'\u89d2\u8272\uff1a\u770b\u62a4\u8005',
-    labelUsername:'\u5e10\u53f7',
-    labelPassword:'\u5bc6\u7801',
-    ctaNeedAccount:'\u770b\u62a4\u8005\uff1f\u7acb\u5373\u6ce8\u518c',
-    ctaHaveAccount:'\u5df2\u6709\u5e10\u53f7\uff1f',
-    labelOccupied:'\u5df2\u7528\u5e8a\u4f4d',
-    labelTotal:'\u603b\u5e8a\u4f4d',
-    labelAdmissions:'\u672c\u5468\u5165\u4f4f',
-    labelDischarges:'\u9884\u5b9a\u51fa\u9662',
-    labelAvgStay:'\u5e73\u5747\u5165\u4f4f\u5929\u6570',
-    labelWellbeing:'\u6574\u4f53\u5065\u5eb7\u5206\u6570',
-    labelAlertsResolved:'\u5df2\u5904\u7406\u8b66\u62a5',
-    labelInterventions:'\u5efa\u8bae\u4ecb\u5165\uff08\u6bcf\u884c\u4e00\u6761\uff09',
-    labelRecentAlerts:'\u6700\u65b0\u8b66\u62a5\uff08\u7b49\u7ea7\uff1a\u5185\u5bb9\uff09',
-    actionEdit:'\u7f16\u8f91',
-    actionDelete:'\u5220\u9664',
-    toastSignedIn:'\u5df2\u767b\u5f55',
-    toastSignedOut:'\u5df2\u767b\u51fa',
-    toastInvalidCreds:'\u8d26\u53f7\u6216\u5bc6\u7801\u9519\u8bef',
-    toastAccountCreated:'\u5df2\u5efa\u7acb\u8d26\u53f7',
-    toastUsernameExists:'\u8d26\u53f7\u5df2\u5b58\u5728',
-    toastInvalidUsername:'\u8d26\u53f7\u81f3\u5c11\u4e24\u5b57\u7b26\uff0c\u4ec5\u9650\u5b57\u6bcd/\u6570\u5b57/./_',
-    toastAdminOnly:'\u9700\u8981\u7ba1\u7406\u5458\u6743\u9650',
-    toastStaffingSaved:'\u8fd0\u8425\u4fe1\u606f\u5df2\u4fdd\u5b58',
-    toastMessageSent:'\u8baf\u606f\u5df2\u53d1\u9001',
-    toastResidentSaved:'\u4f4f\u6c11\u8d44\u6599\u5df2\u4fdd\u5b58',
-    toastResidentDeleted:'\u4f4f\u6c11\u5df2\u5220\u9664',
-    toastLinkCopied:'\u8fde\u7ed3\u5df2\u590d\u5236',
-    toastLinkManual:'\u65e0\u6cd5\u590d\u5236\uff0c\u8bf7\u624b\u52a8\u590d\u5236\uff1a',
-    toastOverviewSaved:'\u603b\u89c8\u5df2\u66f4\u65b0',
-    toastReportReady:'\u62a5\u544a\u5df2\u5bfc\u51fa',
-    toastApiFallback:'\u4f3a\u670d\u5668\u6682\u4e0d\u53ef\u7528\uff0c\u663e\u793a\u79bb\u7ebf\u8d44\u6599',
-    priorityLow:'\u4f4e',
-    priorityMedium:'\u4e2d',
-    priorityHigh:'\u9ad8',
-    overviewSyncedPrefix:'\u540c\u6b65\u65f6\u95f4',
-    overviewResidentsSuffix:'\u540d\u4f4f\u6c11\u5df2\u8fde\u7ebf',
-  });
-
-  function ensureLang(){
-    const actions=document.querySelector('.top-bar__actions');
-    if(!actions || document.getElementById('lang-select')) return;
-    const sel=document.createElement('select');
+function ensureLang(){
+  const actions=document.querySelector('.top-bar__actions');
+  if(!actions) return;
+  let sel=document.getElementById('lang-select');
+  if(!sel){
+    sel=document.createElement('select');
     sel.id='lang-select';
     sel.className='chip chip--quiet lang-select';
-    sel.innerHTML='<option value="en">EN</option><option value="zh-Hant">繁</option><option value="zh-Hans">简</option>';
-    sel.value=store.get('lang','en');
+    LANGUAGE_OPTIONS.forEach(option=>{
+      const opt=document.createElement('option');
+      opt.value=option.code;
+      opt.textContent=option.shortLabel;
+      sel.appendChild(opt);
+    });
     actions.insertBefore(sel, actions.firstChild);
-    sel.addEventListener('change',()=>{store.set('lang',sel.value);applyI18n();});
+    sel.addEventListener('change',event=>{
+      const nextLang=event.target.value;
+      if(nextLang && nextLang!==i18n.language){
+        void i18n.changeLanguage(nextLang);
+      }
+    });
   }
+  sel.setAttribute('aria-label', i18n.t('languageLabel'));
+  const resolved=i18n.resolvedLanguage || i18n.language || 'en';
+  if(resolved!==sel.value){
+    sel.value=resolved;
+  }
+}
 
-  function T(){
-    return I18N[store.get('lang','en')]||I18N.en;
-  }
+i18nReady.then(()=>{
+  applyI18n();
+  updateOverviewSubtitle();
+  injectEditOverview();
+  renderResidents();
+  applyMessages();
+  updateAuthUI();
+  hydrateFromApi();
+});
+
+i18n.on('languageChanged',()=>{
+  applyI18n();
+  updateOverviewSubtitle();
+  renderResidents();
+  applyMessages();
+  updateAuthUI();
+});
 
   function setText(selector, value){
     const el=document.querySelector(selector);
@@ -333,8 +173,9 @@
   }
 
   function applyI18n(){
+    ensureLang();
     const L=T();
-    document.documentElement.lang=store.get('lang','en');
+    document.documentElement.lang=i18n.language || 'en';
     const nav=document.querySelectorAll('.nav-list a');
     if(nav[0]) nav[0].textContent=L.navCare;
     if(nav[1]) nav[1].textContent=L.navRes;
@@ -371,10 +212,7 @@
     const headers=document.querySelectorAll('.table-row--header span[role="columnheader"]');
     const headerLabels=[L.colResident,L.colRoom,L.colLast,L.colVitals,L.colNotes];
     headers.forEach((cell,idx)=>{if(headerLabels[idx]) cell.textContent=headerLabels[idx];});
-    updateAuthUI();
   }
-
-  ensureLang();
 
 
   // accounts and session
@@ -414,7 +252,7 @@
       btn.onclick=()=>signOut();
       staffingBtn?.removeAttribute('disabled');
     }else{
-      if(label) label.textContent='Guest';
+      if(label) label.textContent=i18n.t('guest');
       btn.textContent=lang.signIn;
       btn.onclick=()=>openAuthModal('signin');
       staffingBtn?.setAttribute('disabled','disabled');
@@ -815,12 +653,6 @@
   applyOps();
   applyOverview();
   applyMessages();
-  renderResidents();
-  injectEditOverview();
-  updateOverviewSubtitle();
-  applyI18n();
-  updateAuthUI();
-  hydrateFromApi();
   // report export
   document.querySelector('#overview .panel-actions .primary')?.addEventListener('click',()=>{
     const blob=new Blob([JSON.stringify({generatedAt:new Date().toISOString(),residents:state.residents,overview:state.overview,ops:state.ops},null,2)],{type:'application/json'});
@@ -929,7 +761,7 @@
       alertsList.innerHTML='';
       state.overview.recentAlerts.forEach(alert=>{
         const cls=alert.level==='critical'?'badge--critical':alert.level==='warning'?'badge--warning':'badge--info';
-        const label=alert.level==='critical'?'Critical':alert.level==='warning'?'Warning':'Info';
+        const label=i18n.t(`alertLevels.${alert.level}`);
         const li=createEl('li');
         li.appendChild(createEl('span',{className:'badge '+cls,text:label}));
         li.appendChild(document.createTextNode(alert.text));
@@ -937,4 +769,3 @@
       });
     }
   }
-})();

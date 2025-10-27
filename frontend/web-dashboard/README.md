@@ -1,7 +1,7 @@
 # SmartCare Web Dashboard
 
 ## English Version
-The legacy dashboard is a standalone HTML/CSS/JavaScript app that demonstrates the SmartCare resident experience with no backend dependency. It supports dual data modes (localStorage vs API/Hybrid via DataGateway), multi-role auth, localization (EN/繁/简), Light/Dark themes, and JSON export.
+The legacy dashboard is a standalone HTML/CSS/JavaScript app that demonstrates the SmartCare resident experience with no backend dependency. It supports dual data modes (localStorage vs API/Hybrid via DataGateway), multi-role auth, localization (EN/繁/简 powered by i18next), Light/Dark themes, and JSON export.
 
 ### Quick Start
 1. `cd frontend/web-dashboard`
@@ -25,13 +25,13 @@ The legacy dashboard is a standalone HTML/CSS/JavaScript app that demonstrates t
 ### Customisation
 | Area | Notes |
 |------|-------|
-| Strings | Extend the `I18N` dictionary in `scripts.js`. |
+| Strings | Update `i18n-resources.js` (i18next resources shared with React). |
 | Styling | Update `styles.css` tokens; modals/toasts already centralized. |
 | Data layer | Add namespaces or API calls in `data-layer.js`. |
 | Export | Modify the JSON payload inside `scripts.js` (Generate Report handler). |
 
 ## 繁體中文（香港）版本
-此儀表板為純 HTML/CSS/JavaScript 實作，可無後端依賴展示 SmartCare 流程。支援雙資料模式（localStorage 或 API/Hybrid via DataGateway）、多角色登入、英/繁/简 語系、明暗主題、JSON 匯出。
+此儀表板為純 HTML/CSS/JavaScript 實作，可無後端依賴展示 SmartCare 流程。支援雙資料模式（localStorage 或 API/Hybrid via DataGateway）、多角色登入、英/繁/简 語系（由 i18next 驅動）、明暗主題、JSON 匯出。
 
 ### 快速開始
 1. `cd frontend/web-dashboard`
@@ -55,7 +55,7 @@ The legacy dashboard is a standalone HTML/CSS/JavaScript app that demonstrates t
 ### 自訂方式
 | 領域 | 說明 |
 |------|------|
-| 字串 | 在 `scripts.js` 的 `I18N` 字典新增語句。 |
+| 字串 | 在 `i18n-resources.js` 補上字串（與 React 端共用的 i18next 資源）。 |
 | 樣式 | 修改 `styles.css` Token；Modal/Toast 已集中。 |
 | 資料層 | 在 `data-layer.js` 增加 namespace 或 API 呼叫。 |
 | 匯出 | 編輯 `scripts.js` 中 Generate Report 的 JSON 結構。 |

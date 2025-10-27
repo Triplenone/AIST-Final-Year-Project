@@ -1,53 +1,73 @@
 # SmartCare Dashboard Adventure / 智慧照護小冒險
 
-## English Version
-### What Is This?
-Think of the dashboard as a digital noticeboard for a care home. It shows how residents feel, lets helpers add notes, and reminds families to say hi. Everything runs in your browser, so you can explore even without internet.
+## English Version — Explain Like I’m in Fifth Grade
+### What You Need
+1. **Node.js LTS** (Download from [https://nodejs.org](https://nodejs.org) → click the green “LTS” button and install). This gives you Node + npm.
+2. **Python 3** (already bundled on macOS/Linux; Windows users can grab it from the Microsoft Store). We only use it to serve the old dashboard quickly.
+3. A terminal (Command Prompt, PowerShell, or macOS Terminal).
 
-### How Do I Use It?
-1. Open a terminal, run `python -m http.server 5500` inside `frontend/web-dashboard`.
-2. Visit `http://localhost:5500` (Ctrl+F5).
-3. Sign in:
+### Start the New React App
+1. Open a terminal and run:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev -- --host
+   ```
+2. When Vite says `Local: http://localhost:5173`, open that link in your browser.
+3. Things to try:
+   - Press **Simulate new data** to shuffle the numbers.
+   - Click the language menu (Language / 語言 / 语言) and switch between English, 繁體中文, 简体中文.
+   - Filter residents with the round buttons (All / High priority / Needs follow-up / Stable).
+
+### Peek at the Legacy Dashboard
+1. In a **second terminal** run:
+   ```bash
+   cd frontend/web-dashboard
+   python -m http.server 5500
+   ```
+2. Visit `http://localhost:5500`.
+3. Sign in with:
    - Admin: `Admin / admin`
    - Caregiver: `Ms.Testing / admin`
-4. Explore tabs: Overview, Residents, Operations, Family.
-5. Try Light/Dark, language switch, “Generate Report” (downloads JSON).
+4. Explore the tabs, try dark mode, switch languages, and click **Generate Report** to download the JSON snapshot.
 
-### Behind the Scenes
-- The page saves data in `localStorage`, so refreshes keep your changes.
-- Switching `APP_CONFIG.dataMode` to `api` or `hybrid` makes the dashboard talk to FastAPI via DataGateway, preparing for real data.
-- Modals trap focus and a hidden announcer reads toast messages for screen readers.
+### If Something Looks Wrong
+- Blank screen? Check the terminal that runs `npm run dev` for red errors. Most of the time re-running `npm install` fixes missing packages.
+- Lots of red squiggles in VS Code? It usually means npm modules are missing. Run `npm install` inside `frontend/` and reload the window.
+- Need to stop the servers? Press `Ctrl + C` in the terminal windows.
 
-### Exploration Tips
-- Add a resident with a fun name and watch the overview counter update instantly.
-- Switch languages (EN/繁/简) and notice buttons/placeholders/toasts change.
-- Click “Share access link” in Family; it copies the URL or prints it if copying isn’t allowed.
+## 繁體中文（香港）版本 — 像教小學生
+### 需要準備
+1. **Node.js LTS**（到 [https://nodejs.org](https://nodejs.org) 下載綠色的 LTS 版並安裝）。內含 Node 與 npm。
+2. **Python 3**（macOS / Linux 已內建；Windows 可從 Microsoft Store 安裝）。我們只拿它來開啟舊儀表板。
+3. 一個終端機（Command Prompt、PowerShell 或 macOS Terminal）。
 
-### Ready for the Future
-When backend, MQTT, and OTA arrive, flip `APP_CONFIG.apiBase` to the live server and choose `hybrid` or `api`. The same UI controls real residents without rewrites.
+### 啟動新的 React 儀表板
+1. 打開終端機並輸入：
+   ```bash
+   cd frontend
+   npm install
+   npm run dev -- --host
+   ```
+2. 當 Vite 顯示 `Local: http://localhost:5173`，用瀏覽器開啟此網址。
+3. 可以玩的功能：
+   - 按 **模擬更新資料** 看數字與圖表隨機變化。
+   - 點語言選單（Language / 語言 / 语言）切換英／繁／简。
+   - 用圓形按鈕篩選住民（全部／高優先／需跟進／穩定）。
 
-## 繁體中文（香港）版本
-### 這是甚麼？
-把儀表板想成照護中心的大告示牌：顯示住民狀況、讓照顧員寫備註，也提醒家人打招呼。全部在瀏覽器內運作，就算沒有網路也能練習。
-
-### 怎樣使用？
-1. 打開終端機，在 `frontend/web-dashboard` 執行 `python -m http.server 5500`。
-2. 前往 `http://localhost:5500`（Ctrl+F5）。
-3. 登入：
+### 同時看看舊版儀表板
+1. 在**另一個終端機視窗**輸入：
+   ```bash
+   cd frontend/web-dashboard
+   python -m http.server 5500
+   ```
+2. 造訪 `http://localhost:5500`。
+3. 登入帳密：
    - Admin：`Admin / admin`
    - Caregiver：`Ms.Testing / admin`
-4. 逛四個分頁：總覽、住民、營運、家屬。
-5. 玩玩明暗主題、語言切換、以及「Generate Report」（會下載 JSON）。
+4. 逛逛各分頁、試試明暗主題、語言切換，按 **Generate Report** 可下載 JSON 報告。
 
-### 背後運作
-- 網頁把資料寫在 `localStorage`，重新整理也不會消失。
-- 將 `APP_CONFIG.dataMode` 換成 `api` 或 `hybrid`，儀表板會透過 DataGateway 與 FastAPI 對話，未來接真資料也不用重寫。
-- 每個彈窗都鎖住焦點，還有隱藏播報員把提示讀給螢幕閱讀器聽。
-
-### 探索提示
-- 新增一個有趣的住民名字，看看清單和總覽計數立即更新。
-- 切換語言（英/繁/简），觀察按鈕、提示、通知如何跟著改。
-- 在家屬分頁按「Share access link」，它會複製連結；若無法複製就直接顯示給你。
-
-### 為未來做準備
-等後端、MQTT、OTA 上線後，把 `APP_CONFIG.apiBase` 指向正式伺服器，再選 `hybrid` 或 `api` 模式，現有 UI 就能控制真實住民。
+### 發生問題怎麼辦？
+- 頁面空白？檢查執行 `npm run dev` 的終端機是否出現紅字，重新跑一次 `npm install` 通常可修復。
+- VS Code 出現一堆紅色波浪線？多半是 npm 套件還沒裝好，在 `frontend/` 內跑 `npm install` 後重開視窗。
+- 想停止伺服器？在終端機中按 `Ctrl + C` 即可。
