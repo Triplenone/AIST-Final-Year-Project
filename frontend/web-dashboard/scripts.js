@@ -51,6 +51,9 @@ let lastSyncedAt=new Date();
     children.forEach(child=>{if(child) el.appendChild(child);});
     return el;
   }
+  function clampMetric(value,min,max){
+    return Math.max(min,Math.min(max,value));
+  }
 
   function trapFocus(modal){
     const focusables=modal.querySelectorAll(focusableSelectors);
@@ -190,6 +193,9 @@ i18n.on('languageChanged',()=>{
     setText('#family .panel-subtitle',L.famSub);
     setText('[data-card="wellbeing"] h2',L.headingWellbeing);
     setText('[data-card="alerts"] h2',L.headingAlerts);
+    setText('[data-card="response"] h2',L.headingResponse ?? 'Average Response Time');
+    const responseDesc=document.querySelector('[data-card="response"] .description');
+    if(responseDesc){responseDesc.textContent=L.descResponse ?? responseDesc.textContent;}
     setText('[data-list="interventions"] h3',L.headingInterventions);
     setText('[data-list="recent-alerts"] h3',L.headingRecentAlerts);
     setText('#overview [data-refresh]',L.refresh);
@@ -216,7 +222,12 @@ i18n.on('languageChanged',()=>{
 
 
   // accounts and session
-  const DEFAULT_ACCOUNTS=[{username:'Admin',password:'admin',role:'admin'},{username:'Ms.Testing',password:'admin',role:'caregiver'}];
+  // 預設帳號（包含 guest / caregiver / admin 範例），會在 README 公開給測試者
+  const DEFAULT_ACCOUNTS=[
+    {username:'guest_demo',password:'guest123',role:'guest'},
+    {username:'care_demo',password:'care1234',role:'caregiver'},
+    {username:'admin_master',password:'admin888',role:'admin'}
+  ];
   const accounts=store.get('accounts',DEFAULT_ACCOUNTS);
   function saveAccounts(){store.set('accounts',accounts)}
   let session=store.get('session',null);
@@ -232,6 +243,7 @@ i18n.on('languageChanged',()=>{
     toast(lang.toastSignedIn);
     return true;
   }
+  function isCareTeam(){return session?.role==='caregiver'||session?.role==='admin'}
   function signOut(){
     const lang=T();
     session=null;
@@ -239,24 +251,39 @@ i18n.on('languageChanged',()=>{
     updateAuthUI();
     toast(lang.toastSignedOut);
   }
-  function signUpCaregiver(u,p){if(accounts.some(a=>a.username===u))return false;accounts.push({username:u,password:p,role:'caregiver'});saveAccounts();return true}
+  function registerAccount(payload){
+    if(accounts.some(a=>a.username===payload.username)) return false;
+    accounts.push(payload);
+    saveAccounts();
+    return true;
+  }
+  function roleLabel(role){
+    const lang=T();
+    if(role==='admin') return lang.roleAdmin ?? 'Admin';
+    if(role==='caregiver') return lang.roleCaregiver ?? 'Caregiver';
+    return lang.roleGuest ?? 'Guest';
+  }
   function updateAuthUI(){
     const label=document.querySelector('.user-name');
+    const roleTag=document.querySelector('.user-role');
     const btn=document.querySelector('.sign-out');
     const staffingBtn=document.querySelector('#operations .panel-actions button:last-of-type');
     const lang=T();
     if(!btn) return;
     if(isLoggedIn()){
       if(label) label.textContent=session.username;
+      if(roleTag) roleTag.textContent=roleLabel(session.role);
       btn.textContent=lang.signOut;
       btn.onclick=()=>signOut();
       staffingBtn?.removeAttribute('disabled');
     }else{
       if(label) label.textContent=i18n.t('guest');
+      if(roleTag) roleTag.textContent=roleLabel('guest');
       btn.textContent=lang.signIn;
       btn.onclick=()=>openAuthModal('signin');
       staffingBtn?.setAttribute('disabled','disabled');
     }
+    updateSimulatorControls();
   }
 
   // overview
@@ -292,19 +319,20 @@ i18n.on('languageChanged',()=>{
     {author:'Daniel Lee',text:"Please confirm tomorrow's PT session.",date:'2024-04-01'}
   ];
   const DEFAULT_OVERVIEW={
-    wellbeing:82,
-    alertsResolved:14,
+    wellbeing:86,
+    alertsResolved:18,
+    averageResponseTime:7,
     interventions:[
-      'Schedule hydration reminder for Room 204.',
-      'Increase night check-ins for Mrs. Chen.',
-      'Coordinate physiotherapy follow-up for Mr. Lee.',
-      'Document family visit feedback for Ms. Lopez.'
+      'Establish hydration check at 14:00 for Room 204.',
+      'Plan evening mobility stretch for Mr. Lee.',
+      'Review elevated heart rate trend with Mrs. Singh family.',
+      'Update rehab follow-up note for Ms. Lopez.'
     ],
     recentAlerts:[
-      {level:'critical',text:'Fall detected in west wing corridor at 09:32.'},
-      {level:'warning',text:'Elevated heart rate reported for Mrs. Singh.'},
-      {level:'info',text:'Battery low for wearable ID #A52.'},
-      {level:'info',text:'New firmware ready for OTA deployment.'}
+      {level:'critical',text:'Manual alert placeholder – awaiting live data.'},
+      {level:'warning',text:'No active warning. Live vitals will populate.'},
+      {level:'info',text:'System ready for real-time streaming mock.'},
+      {level:'info',text:'Use simulator controls to trigger new events.'}
     ]
   };
   const state={
@@ -315,15 +343,117 @@ i18n.on('languageChanged',()=>{
     filterText:'',
     quickFilter:'all'
   };
+  const liveModel={
+    // 用來儲存最新生命徵象，避免畫面與 Service Worker 失去同步
+    vitals:new Map(),
+    generated:new Set()
+  };
+  state.residents=state.residents.map(res=>({
+    ...res,
+    spo2:res.spo2??97,
+    temp:res.temp??36.5,
+    priority:res.priority??'low',
+    lastUpdated:res.lastUpdated??null,
+    isGenerated:Boolean(res.isGenerated)
+  }));
+  state.overview.averageResponseTime=state.overview.averageResponseTime??8;
   const table=document.querySelector('.resident-table');
   const search=document.querySelector('#resident-search');
   const empty=document.querySelector('[data-empty-state]');
+  const simControls=document.getElementById('simulator-controls');
+  const simNotice=simControls?.querySelector('.sim-controls__notice');
+  const simStatus=document.querySelector('[data-sim-status]');
+  const simToggleBtn=document.querySelector('[data-sim-toggle]');
+  // 預設只有管理員可顯示模擬器面板，並記錄使用者上次的顯示狀態
+  let simHiddenState=store.get('simulatorHidden',null);
+  let simHidden=typeof simHiddenState==='boolean'?simHiddenState:true;
+  if(typeof simHiddenState!=='boolean'){
+    store.set('simulatorHidden',simHidden);
+  }
+  function triggerSimulation(action){
+    const L=T();
+    if(!isAdmin()){
+      toast(L.toastAdminOnly);
+      return;
+    }
+    if(!window.SSEMock){
+      toast(L.toastSimulatorUnavailable ?? 'Simulator offline');
+      return;
+    }
+    // 根據使用者選擇呼叫對應的模擬 API
+    const tasks={
+      'add-one':()=>window.SSEMock.checkInOne(),
+      'add-five':()=>window.SSEMock.checkInMany?.(5) ?? Promise.all(Array.from({length:5},()=>window.SSEMock.checkInOne())),
+      'reset':()=>window.SSEMock.clearGenerated?.()
+    }[action];
+    if(!tasks){
+      toast(L.toastSimulatorUnavailable ?? 'Simulator offline');
+      return;
+    }
+    Promise.resolve(tasks()).then(()=>{
+      toast(L.toastSimulatorTriggered ?? '已觸發模擬');
+    }).catch(()=>{
+      toast(L.toastSimulatorUnavailable ?? 'Simulator offline');
+    });
+  }
+  simControls?.addEventListener('click',event=>{
+    const btn=event.target.closest('button[data-sim-action]');
+    if(!btn) return;
+    triggerSimulation(btn.getAttribute('data-sim-action'));
+  });
+  simToggleBtn?.addEventListener('click',()=>{
+    if(!isAdmin()) return openAuthModal('signin');
+    simHidden=!simHidden;
+    store.set('simulatorHidden',simHidden);
+    updateSimulatorControls();
+  });
+  function updateSimulatorControls(){
+    if(!simControls) return;
+    const L=T();
+    const locked=!isAdmin();
+    if(locked && !simHidden){
+      simHidden=true;
+      store.set('simulatorHidden',simHidden);
+    }
+    simControls.classList.toggle('sim-controls--locked',locked);
+    simControls.querySelectorAll('button[data-sim-action]').forEach(btn=>{
+      if(locked){btn.setAttribute('disabled','disabled');}
+      else{btn.removeAttribute('disabled');}
+    });
+    if(simNotice){
+      simNotice.hidden=!locked;
+      simNotice.textContent=locked?(L.simulatorLockNotice ?? '請以管理員帳號登入以啟用模擬控制'):'';
+    }
+    const shouldHide=locked||simHidden;
+    if(simControls.hidden!==shouldHide){
+      simControls.hidden=shouldHide;
+    }else{
+      simControls.hidden=shouldHide;
+    }
+    if(simToggleBtn){
+      if(locked){
+        simToggleBtn.hidden=true;
+        simToggleBtn.removeAttribute('aria-pressed');
+      }else{
+        simToggleBtn.hidden=false;
+        simToggleBtn.textContent=simHidden?(L.simulatorShow ?? 'Show simulator controls'):(L.simulatorHide ?? 'Hide simulator controls');
+        simToggleBtn.setAttribute('aria-pressed',simHidden?'false':'true');
+      }
+    }
+  }
   function matchesQuick(r){switch(state.quickFilter){case'high':return r.priority==='high';case'follow':return /follow|monitor|await/i.test(r.notes)||r.priority==='high';case'stable':return r.priority==='low'&&!/follow|monitor|await/i.test(r.notes);default:return true}}
   function matchesText(r,q){if(!q)return true;const v=q.toLowerCase();return r.name.toLowerCase().includes(v)||r.room.toLowerCase().includes(v)||r.notes.toLowerCase().includes(v)||r.bp.includes(v)||String(r.hr).includes(v)}
   function rowEl(r){
     const L=T();
-    const row=createEl('div',{className:'table-row',attrs:{role:'row'},dataset:{name:r.name.toLowerCase()}});
-    const cells=[r.name,r.room,r.lastCheckIn,`BP ${r.bp} | HR ${r.hr}`];
+    const row=createEl('div',{className:`table-row priority-${r.priority}`,attrs:{role:'row'},dataset:{name:r.name.toLowerCase()}});
+    const vitalsParts=[
+      r.bp?`BP ${r.bp}`:null,
+      Number.isFinite(r.hr)?`HR ${r.hr}`:null,
+      Number.isFinite(r.spo2)?`SpO₂ ${r.spo2}%`:null,
+      Number.isFinite(r.temp)?`Temp ${r.temp}°C`:null
+    ].filter(Boolean);
+    const vitalsText=vitalsParts.length?vitalsParts.join(' • '):((L.labelNoVitals ?? '—'));
+    const cells=[r.name,r.room,r.lastCheckIn||'—',vitalsText];
     cells.forEach(text=>row.appendChild(createEl('span',{attrs:{role:'cell'},text})));
     const notesCell=createEl('span',{attrs:{role:'cell'}});
     const noteText=createEl('span',{text:r.notes||''});
@@ -335,6 +465,157 @@ i18n.on('languageChanged',()=>{
     notesCell.append(noteText, actions);
     row.appendChild(notesCell);
     return row;
+  }
+  function ensureResidentEntry(data){
+    // 透過 SSE 事件建立或更新住民基本資料，避免覆寫既有姓名/房號
+    let resident=state.residents.find(item=>item.id===data.id);
+    if(!resident){
+      resident={
+        id:data.id,
+        name:data.name || `Resident ${state.residents.length+1}`,
+        room:data.room || `Room ${Math.floor(Math.random()*200)+200}`,
+        lastCheckIn:'',
+        bp:'',
+        hr:null,
+        spo2:null,
+        temp:null,
+        notes:data.notes || '新住民已入住，等待首次量測',
+        priority:'medium',
+        isGenerated:data.isGenerated ?? true,
+        baselineVitals:data.baselineVitals || null,
+        lastUpdated:null,
+        risk:0,
+        suggestion:''
+      };
+      state.residents.unshift(resident);
+      if(resident.isGenerated) liveModel.generated.add(resident.id);
+    }else{
+      if(data.name && !resident.isGenerated){
+        resident.name=data.name;
+      }
+      if(data.room && !resident.isGenerated){
+        resident.room=data.room;
+      }
+      if(!resident.baselineVitals && data.baselineVitals){
+        resident.baselineVitals=data.baselineVitals;
+      }
+    }
+    if(data.gender) resident.gender=data.gender;
+    if(data.age) resident.age=data.age;
+    return resident;
+  }
+  function evaluateVitals(vitals,resident){
+    if(!vitals){
+      return {
+        priority:resident?.priority ?? 'low',
+        note:resident?.notes || '狀態穩定',
+        risk:resident?.risk ?? 0,
+        suggestion:resident?.suggestion || '維持常規巡視即可',
+        alertItems:resident?.alertItems || []
+      };
+    }
+    let risk=0;
+    const alerts=[];
+    const suggestions=[];
+    if(vitals.hr>=105){
+      risk+=2;
+      alerts.push(`心率 ${vitals.hr} bpm 偏高`);
+      suggestions.push('安排護理師評估活動量與休息狀況');
+    }else if(vitals.hr<=58){
+      risk+=1;
+      alerts.push(`心率 ${vitals.hr} bpm 偏低`);
+      suggestions.push('確認是否服用會影響心率的藥物');
+    }
+    if(vitals.spo2<=94){
+      risk+=3;
+      alerts.push(`血氧 ${vitals.spo2}% 過低`);
+      suggestions.push('檢查氧氣管線或指導深呼吸練習');
+    }
+    if(vitals.temp>=37.6){
+      risk+=2;
+      alerts.push(`體溫 ${vitals.temp}°C 偏高`);
+      suggestions.push('回報醫師並持續量測體溫');
+    }
+    if(vitals.bp.sys>=145 || vitals.bp.dia>=90){
+      risk+=1;
+      alerts.push(`血壓 ${vitals.bp.sys}/${vitals.bp.dia} 偏高`);
+      suggestions.push('提醒補水與放鬆呼吸');
+    }else if(vitals.bp.sys<=110 && vitals.bp.dia<=70){
+      risk+=1;
+      alerts.push(`血壓 ${vitals.bp.sys}/${vitals.bp.dia} 偏低`);
+      suggestions.push('確保起身動作緩慢並觀察頭暈');
+    }
+    const priority=risk>=4?'high':risk>=2?'medium':'low';
+    const note=alerts.length?alerts.join('，'):'狀態穩定';
+    const suggestion=suggestions.length?suggestions[0]:'維持常規巡視即可';
+    return {priority,note,risk,suggestion,alertItems:alerts};
+  }
+  function updateResidentFromVitals(id,vitals){
+    const resident=ensureResidentEntry({id});
+    liveModel.vitals.set(id,vitals);
+    resident.bp=`${vitals.bp.sys}/${vitals.bp.dia}`;
+    resident.hr=vitals.hr;
+    resident.spo2=vitals.spo2;
+    resident.temp=vitals.temp;
+    const updatedAt=vitals.ts?new Date(vitals.ts):new Date();
+    resident.lastCheckIn=updatedAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    resident.lastUpdated=updatedAt.toISOString();
+    const evalResult=evaluateVitals(vitals,resident);
+    resident.priority=evalResult.priority;
+    resident.notes=evalResult.note;
+    resident.risk=evalResult.risk;
+    resident.suggestion=evalResult.suggestion;
+    resident.alertItems=evalResult.alertItems;
+    store.set('residents',state.residents);
+    renderResidents();
+    recomputeOverviewMetrics();
+  }
+  function handleResidentCheckout(id){
+    const resident=state.residents.find(item=>item.id===id);
+    if(resident && resident.isGenerated){
+      state.residents=state.residents.filter(item=>item.id!==id);
+      liveModel.generated.delete(id);
+      liveModel.vitals.delete(id);
+      store.set('residents',state.residents);
+      renderResidents();
+      recomputeOverviewMetrics();
+    }else if(resident){
+      resident.notes='已離開房間，請更新狀態';
+      resident.priority='medium';
+      liveModel.vitals.delete(id);
+      store.set('residents',state.residents);
+      renderResidents();
+      recomputeOverviewMetrics();
+    }
+  }
+  function recomputeOverviewMetrics(){
+    // 依照最新生命徵象重新計算 KPI 與建議清單
+    const activeResidents=state.residents.filter(res=>liveModel.vitals.has(res.id));
+    if(!activeResidents.length){
+      applyOverview();
+      return;
+    }
+    const totalRisk=activeResidents.reduce((sum,res)=>sum+(res.risk??0),0);
+    const wellbeingBase=100 - (totalRisk/activeResidents.length)*8;
+    state.overview.wellbeing=Math.round(clampMetric(wellbeingBase,48,98));
+    const stableCount=activeResidents.filter(res=>(res.risk??0)<=1).length;
+    state.overview.alertsResolved=Math.max(0,stableCount*3);
+    state.overview.averageResponseTime=Math.round(clampMetric(6 + (totalRisk/activeResidents.length),4,15));
+    const sortedByRisk=[...activeResidents].sort((a,b)=>(b.risk??0)-(a.risk??0));
+    const alerts=[];
+    sortedByRisk.forEach(res=>{
+      if(!res.alertItems) return;
+      res.alertItems.slice(0,2).forEach(text=>{
+        const level=res.priority==='high'?'critical':res.priority==='medium'?'warning':'info';
+        alerts.push({level,text:`${res.name}：${text}`});
+      });
+    });
+    state.overview.recentAlerts=alerts.slice(0,4);
+    state.overview.interventions=sortedByRisk.slice(0,4).map(res=>{
+      return `${res.name}：${res.suggestion || '延續原有照護計畫'}`;
+    });
+    store.set('overview',state.overview);
+    applyOverview();
   }
   function renderResidents(){
     if(!table)return;
@@ -354,7 +635,7 @@ i18n.on('languageChanged',()=>{
   search?.addEventListener('input',e=>{state.filterText=e.target.value.trim();renderResidents()});
   (function quickChips(){const chips=document.querySelectorAll('#overview .chip-row .chip');if(!chips.length)return;chips[0].dataset.filter='all';chips[1].dataset.filter='high';chips[2].dataset.filter='follow';chips[3].dataset.filter='stable';chips.forEach((c,i)=>{if(i===0)c.setAttribute('aria-pressed','true');c.addEventListener('click',()=>{chips.forEach(x=>x.setAttribute('aria-pressed','false'));c.setAttribute('aria-pressed','true');state.quickFilter=c.dataset.filter||'all';renderResidents()})})})();
   document.querySelector('#residents .panel-actions button:last-of-type')?.addEventListener('click',()=>{if(!isLoggedIn())return openAuthModal('signin');openResidentModal()});
-  table?.addEventListener('click',e=>{const L=T();const b=e.target.closest('button');if(!b)return;const eid=b.getAttribute('data-edit');const did=b.getAttribute('data-delete');if(eid){if(!isLoggedIn())return openAuthModal('signin');const rr=state.residents.find(x=>x.id===eid);openResidentModal(rr);}else if(did){if(!isLoggedIn())return openAuthModal('signin');if(confirm(`${L.actionDelete}?`)){state.residents=state.residents.filter(x=>x.id!==did);store.set('residents',state.residents);renderResidents();toast(L.toastResidentDeleted);}}});
+  table?.addEventListener('click',e=>{const L=T();const b=e.target.closest('button');if(!b)return;const eid=b.getAttribute('data-edit');const did=b.getAttribute('data-delete');if(eid){if(!isLoggedIn())return openAuthModal('signin');const rr=state.residents.find(x=>x.id===eid);openResidentModal(rr);}else if(did){if(!isLoggedIn())return openAuthModal('signin');if(confirm(`${L.actionDelete}?`)){state.residents=state.residents.filter(x=>x.id!==did);store.set('residents',state.residents);renderResidents();recomputeOverviewMetrics();toast(L.toastResidentDeleted);}}});
   function openResidentModal(res){
     const L=T();
     const modalTitle=res?`${L.actionEdit} ${L.colResident}`:L.addRes;
@@ -409,6 +690,7 @@ i18n.on('languageChanged',()=>{
       if(idx>=0){ state.residents[idx]=payload; } else { state.residents.unshift(payload); }
       store.set('residents',state.residents);
       renderResidents();
+      recomputeOverviewMetrics();
       closeModal(m);
       toast(L.toastResidentSaved);
     },{once:true});
@@ -568,10 +850,18 @@ i18n.on('languageChanged',()=>{
       m.querySelector('.modal__header h2').textContent=L.signUp ?? 'Sign Up';
       body.innerHTML=`<form id="signup-form">
         <div class="form-row">
-          <label><span>${L.labelUsername}</span><input name="username" required placeholder="Ms.Testing"/></label>
-          <label><span>${L.labelPassword}</span><input name="password" type="password" required placeholder="••••" /></label>
+          <label><span>${L.labelUsername}</span><input name="username" required placeholder="guest_demo"/></label>
+          <label><span>${L.labelPassword}</span><input name="password" type="password" required placeholder="••••" minlength="4" /></label>
         </div>
-        <p>${L.labelRole}</p>
+        <div class="form-row">
+          <label><span>${L.labelRole}</span>
+            <select name="role">
+              <option value="guest">${L.roleGuest ?? 'Guest'}</option>
+              <option value="caregiver">${L.roleCaregiver ?? 'Caregiver'}</option>
+            </select>
+          </label>
+          <p class="form-hint">${L.hintAdminCredentials ?? 'Admin credentials are listed in README'}</p>
+        </div>
         <div class="modal__actions"><button type="button" class="chip" data-close>${L.btnCancel}</button><button class="primary" type="submit">${L.btnCreate}</button></div>
         <p>${L.ctaHaveAccount} <a href="#" data-goto-signin>${L.signIn}</a></p>
       </form>`;
@@ -586,7 +876,8 @@ i18n.on('languageChanged',()=>{
           toast(L.toastInvalidUsername);
           return;
         }
-        if(signUpCaregiver(d.username,d.password)){
+        const role=(d.role==='caregiver'?'caregiver':'guest');
+        if(registerAccount({username:d.username,password:d.password,role})){
           toast(L.toastAccountCreated);
           signInView();
         }else{
@@ -649,10 +940,33 @@ i18n.on('languageChanged',()=>{
     },2000);
   }
 
+  window.DashboardLiveBridge={
+    // 由 sse-client.js 呼叫，更新串流連線狀態
+    updateConnectionState(stateLabel){
+      if(simStatus){
+        simStatus.textContent=stateLabel;
+      }
+    },
+    handleNewResident(payload){
+      ensureResidentEntry({...payload});
+      store.set('residents',state.residents);
+      renderResidents();
+      recomputeOverviewMetrics();
+    },
+    handleVitals(payload){
+      updateResidentFromVitals(payload.id,payload);
+    },
+    handleCheckout(payload){
+      handleResidentCheckout(payload.id);
+    }
+  };
+  window.DashboardLiveBridge.updateConnectionState('等待連線');
+
   // run
   applyOps();
   applyOverview();
   applyMessages();
+  recomputeOverviewMetrics();
   // report export
   document.querySelector('#overview .panel-actions .primary')?.addEventListener('click',()=>{
     const blob=new Blob([JSON.stringify({generatedAt:new Date().toISOString(),residents:state.residents,overview:state.overview,ops:state.ops},null,2)],{type:'application/json'});
@@ -670,9 +984,18 @@ i18n.on('languageChanged',()=>{
         gateway.overview.fetch(state.overview)
       ]);
       if(residents?.updated){
-        state.residents=residents.data;
+        state.residents=residents.data.map(item=>({
+          ...item,
+          spo2:item.spo2??97,
+          temp:item.temp??36.5,
+          priority:item.priority??'low',
+          isGenerated:Boolean(item.isGenerated),
+          lastUpdated:item.lastUpdated??null,
+          risk:item.risk??0
+        }));
         store.set('residents',state.residents);
         renderResidents();
+        recomputeOverviewMetrics();
       }
       if(messages?.updated){
         state.messages=messages.data;
@@ -750,6 +1073,10 @@ i18n.on('languageChanged',()=>{
     const alertsMetric=document.querySelector('[data-card="alerts"] .metric');
     if(alertsMetric){
       alertsMetric.textContent=String(state.overview.alertsResolved);
+    }
+    const responseMetric=document.querySelector('[data-card="response"] .metric');
+    if(responseMetric){
+      responseMetric.textContent=`${state.overview.averageResponseTime} min`;
     }
     const intrList=document.querySelector('[data-list="interventions"] ul');
     if(intrList){

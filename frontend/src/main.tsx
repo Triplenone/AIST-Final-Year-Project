@@ -1,7 +1,9 @@
+// 進入點：在渲染儀表板之前掛載所有全域 Provider。
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
 import './i18n';
+import App from './App';
+import { ResidentLiveProvider } from './shared/resident-live-store';
 
 const container = document.getElementById('root');
 if (!container) {
@@ -10,6 +12,8 @@ if (!container) {
 
 ReactDOM.createRoot(container).render(
   <React.StrictMode>
-    <App />
+    <ResidentLiveProvider>
+      <App />
+    </ResidentLiveProvider>
   </React.StrictMode>
 );

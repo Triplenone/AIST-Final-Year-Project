@@ -1,61 +1,91 @@
 # SmartCare Web Dashboard
 
-## English Version
-The legacy dashboard is a standalone HTML/CSS/JavaScript app that demonstrates the SmartCare resident experience with no backend dependency. It supports dual data modes (localStorage vs API/Hybrid via DataGateway), multi-role auth, localization (EN/繁/简 powered by i18next), Light/Dark themes, and JSON export.
+## English
+
+The legacy SmartCare dashboard is now refreshed with a soft yellow–green visual system, role-based authentication, and a built-in SSE simulator that works without a backend. All critical interactions remain frontend-only so you can run it locally on any machine.
 
 ### Quick Start
 1. `cd frontend/web-dashboard`
-2. `python -m http.server 5500`
-3. Open `http://localhost:5500` (Ctrl+F5). Sign in with:
-   - Admin: `Admin / admin`
-   - Caregiver: `Ms.Testing / admin`
+2. Install dependencies only if you need the React playground (`npm install`), otherwise skip.
+3. Choose a dev server:
+   - **Option A: Vite (port 5173)** — `npm run dev -- --host`
+   - **Option B: Static server (port 5500)** — `python -m http.server 5500`
+4. Open `http://localhost:5173` or `http://localhost:5500`. Refresh once after the first load so the service worker takes control.
+5. Sign in with one of the sample accounts:
 
-### Features
-- **Care Overview**: Metrics, interventions, recent alerts (admin can edit cards).
-- **Residents**: Search, quick filters, CRUD modal, localized validation, JSON report export.
-- **Operations**: Staffing snapshot + admin-only staffing modal using DataGateway state.
-- **Family Engagement**: Messages list + composer, share-link copy fallback.
-- **Preferences**: Light/Dark, localization, session-aware buttons, accessible modals, aria-live toasts.
+| Role      | Username        | Password  | Notes                                    |
+|-----------|-----------------|-----------|------------------------------------------|
+| Guest     | `guest_demo`    | `guest123`| Read-only; can browse but cannot edit.   |
+| Caregiver | `care_demo`     | `care1234`| Can edit residents and leave messages.   |
+| Admin     | `admin_master`  | `admin888`| Unlocks simulator controls & staffing.   |
 
-### Data Modes
-- `dataMode: 'local'`: all data stored in `localStorage`.
-- `dataMode: 'api'`: uses FastAPI endpoints defined by `apiBase`.
-- `dataMode: 'hybrid'`: renders from cache then syncs via DataGateway.
+> Registering a new account (via the modal) lets you add more **guest** or **caregiver** users without touching this file. Admin accounts remain manual for safety.
 
-### Customisation
-| Area | Notes |
-|------|-------|
-| Strings | Update `i18n-resources.js` (i18next resources shared with React). |
-| Styling | Update `styles.css` tokens; modals/toasts already centralized. |
-| Data layer | Add namespaces or API calls in `data-layer.js`. |
-| Export | Modify the JSON payload inside `scripts.js` (Generate Report handler). |
+### Feature Highlights
+- **Role-aware UI**: The top bar shows who is logged in (Guest / Caregiver / Admin). Buttons disable gracefully for lower roles.
+- **SSE + Service Worker simulator**: `/sw-sse.js` streams vitals on `/events` and exposes REST shims:
+  - `POST /api/residents/random`
+  - `POST /api/residents/random-batch`
+  - `POST /api/residents/{id}/checkout`
+  - `POST /api/residents/generated/clear`
+- **Simulator controls** (Operations panel) — visible only to admins:
+  - Add 1 random resident / Add 5 in bulk / Clear generated
+  - Live connection badge mirrors SSE status (Firefox falls back to polling)
+- **Dynamic KPIs**: Wellbeing, Alerts Resolved, and Average Response Time recompute whenever vitals change or residents are edited. Recent Alerts & Care Insights lists stay in sync with severity.
+- **Design refresh**: Light theme uses sage + lemon gradients; Dark theme keeps high contrast. Residents table highlights risk bands, and the floating live feed panel tracks the latest 10 events.
+- **Chinese commentary in source**: Key JS/worker logic include inline Traditional Chinese notes so teammates can follow the mock flow quickly.
 
-## 繁體中文（香港）版本
-此儀表板為純 HTML/CSS/JavaScript 實作，可無後端依賴展示 SmartCare 流程。支援雙資料模式（localStorage 或 API/Hybrid via DataGateway）、多角色登入、英/繁/简 語系（由 i18next 驅動）、明暗主題、JSON 匯出。
+### Verification Checklist
+1. Load the dashboard as Guest → controls are disabled, Live Feed still streams vitals.
+2. Login as Admin → simulator buttons become active; try “Add five residents” and watch KPIs update.
+3. From DevTools: `await SSEMock.checkInOne()` or `await SSEMock.clearGenerated()` to trigger events manually.
+4. Confirm only one long-lived `/events` request stays pending in the Network tab (Chromium/Safari). Firefox gracefully switches to `/api/vitals-feed`.
+5. Compare `http://localhost:5173` (Vite) and `http://localhost:5500` (static) — the layout, theme toggle, and SSE behaviour match.
+
+### Troubleshooting
+- **Simulator offline**: Refresh once; the SW version bumps on every change (`swVersion = 'sse-mock-v2'`).
+- **HTTPS warning**: Browsers require HTTPS for service workers. `localhost` is whitelisted, so keep the dev server on `localhost`.
+- **Persisted data**: Everything lives in `localStorage`. Use DevTools Storage panel to reset if needed.
+
+---
+
+## 繁體中文
+
+這份儀表板已換上淺黃綠色系，支援角色型登入與前端 SSE 模擬器，無需串接後端即可示範即時資料。所有程式邏輯仍純前端，可在任何開發環境快速啟動。
 
 ### 快速開始
 1. `cd frontend/web-dashboard`
-2. `python -m http.server 5500`
-3. 開啟 `http://localhost:5500`（Ctrl+F5）。登入：
-   - Admin：`Admin / admin`
-   - Caregiver：`Ms.Testing / admin`
+2. 若僅瀏覽靜態頁面可跳過安裝套件；若需 React 開發環境再執行 `npm install`。
+3. 選擇開發伺服器：
+   - **方案 A：Vite（5173 埠）** — `npm run dev -- --host`
+   - **方案 B：Python 靜態伺服器（5500 埠）** — `python -m http.server 5500`
+4. 開啟 `http://localhost:5173` 或 `http://localhost:5500`，兩者樣式一致。首次載入後請重新整理一次，讓 Service Worker 生效。
+5. 使用以下測試帳號登入：
 
-### 功能
-- **照顧總覽**：顯示指標、建議介入、最近警報（管理員可編輯）。
-- **住民名冊**：搜尋、快速篩選、CRUD 模態窗、在地化驗證、JSON 匯出。
-- **營運**：床位與人力概況，管理員可透過模態窗更新，資料透過 DataGateway 保存。
-- **家屬互動**：訊息清單與撰寫視窗，含分享連結複製/顯示。
-- **偏好設定**：明暗主題、語系切換、Session 感知按鈕、可及性 Modal、aria-live 通知。
+| 角色     | 帳號             | 密碼      | 備註                             |
+|----------|------------------|-----------|----------------------------------|
+| 訪客     | `guest_demo`     | `guest123`| 僅瀏覽，無法編輯資料             |
+| 照顧員   | `care_demo`      | `care1234`| 可編輯住民/留言                  |
+| 管理員   | `admin_master`   | `admin888`| 可操作模擬器與人力設定           |
 
-### 資料模式
-- `dataMode: 'local'`：所有資料存於 `localStorage`。
-- `dataMode: 'api'`：透過 `apiBase` 指定的 FastAPI 端點。
-- `dataMode: 'hybrid'`：先顯示快取，再透過 DataGateway 同步。
+> Modal 註冊流程可新增 **訪客** 或 **照顧員**，管理員帳號仍由 README 管理以確保安全。
 
-### 自訂方式
-| 領域 | 說明 |
-|------|------|
-| 字串 | 在 `i18n-resources.js` 補上字串（與 React 端共用的 i18next 資源）。 |
-| 樣式 | 修改 `styles.css` Token；Modal/Toast 已集中。 |
-| 資料層 | 在 `data-layer.js` 增加 namespace 或 API 呼叫。 |
-| 匯出 | 編輯 `scripts.js` 中 Generate Report 的 JSON 結構。 |
+### 功能亮點
+- **角色感知介面**：頂部顯示登入者角色並自動調整按鈕啟用狀態。
+- **SSE 模擬器 + Service Worker**：`/sw-sse.js` 在 `/events` 推送資料，並提供 REST 模擬端點（見上表）。Firefox 會自動回退至 `/api/vitals-feed` 輪詢。
+- **模擬器控制面板**：僅管理員可見，可一鍵新增 1/5 位住民或清空模擬住民，右側同步顯示連線狀態。
+- **即時 KPI**：整體健康分數、已處理警報、平均回應時間會依住民狀態即時計算，「最新警報」、「照護洞察」同步更新。
+- **全新視覺**：柔和漸層黃綠系搭配深色模式，住民表格依風險加上色帶，右下角浮動面板保留最新 10 筆事件紀錄。
+- **程式內中文註解**：核心 JS 與 Service Worker 皆加入繁中註解，方便團隊快速理解模擬流程。
+
+### 驗收建議
+1. 以訪客登入：確認操作按鈕停用、Live Feed 仍持續更新。
+2. 轉為管理員：模擬器按鈕解鎖；嘗試「隨機新增 5 位」並觀察 KPI 變化。
+3. 在 DevTools 執行 `await SSEMock.checkInOne()` 或 `await SSEMock.clearGenerated()`，驗證 API 勾點。
+4. Network 面板僅見一個長連線 `/events`（Chromium/Safari），Firefox 會自動切換到輪詢。
+5. 比對 `localhost:5173` 與 `localhost:5500`，版面與功能需一致。
+
+### 疑難排解
+- **模擬器未啟動**：重新整理一次，或清除快取後再載入（SW 版本號：`sse-mock-v2`）。
+- **HTTPS 提示**：瀏覽器規定 Service Worker 必須在 HTTPS 或 `localhost`，請確保網址為 `localhost`。
+- **資料重置**：所有資料存放於 `localStorage`，可透過 DevTools Storage 清除。

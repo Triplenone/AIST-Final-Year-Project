@@ -36,7 +36,7 @@
 - Lots of red squiggles in VS Code? It usually means npm modules are missing. Run `npm install` inside `frontend/` and reload the window.
 - Need to stop the servers? Press `Ctrl + C` in the terminal windows.
 
-## 繁體中文（香港）版本 — 像教小學生
+## 繁體中文（香港）版本 
 ### 需要準備
 1. **Node.js LTS**（到 [https://nodejs.org](https://nodejs.org) 下載綠色的 LTS 版並安裝）。內含 Node 與 npm。
 2. **Python 3**（macOS / Linux 已內建；Windows 可從 Microsoft Store 安裝）。我們只拿它來開啟舊儀表板。

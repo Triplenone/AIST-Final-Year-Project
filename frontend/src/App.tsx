@@ -1,77 +1,320 @@
+// 儀表板殼層：結合隨機 KPI 與 SSE 推送的即時住民資料。
 import './styles/global.css';
 
-import { useCallback, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { DevPanel } from './components/DevPanel';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-import { LANGUAGE_OPTIONS } from './i18n';
+import {
+  initialMetrics,
+  metricOrder,
+  type MetricKey,
+  type Metrics
+} from './constants/metrics';
+import { useResidentEditor } from './hooks/useResidentEditor';
+import type { ResidentEditDraft } from './hooks/useResidentEditor';
+import { sendSimulatorMessage } from './services/simulator-controls';
+import { useResidentLiveStore } from './shared/resident-live-store';
+import type { Resident } from './sse/client';
+import {
+  deriveAlertsFromResidents,
+  deriveInsightsFromResidents,
+  deriveResidentMetrics,
+  statusOptions,
+  type RawMetrics
+} from './utils/resident-derived';
 
-type MetricKey = 'wellbeing' | 'alertsResolved' | 'responseTime';
+type Role = 'guest' | 'caregiver' | 'admin';
 
-type Metrics = Record<MetricKey, { value: number; delta: number }>;
-
-type ResidentStatus = 'stable' | 'followUp' | 'high';
-
-type Resident = {
-  id: string;
-  name: string;
-  room: string;
-  status: ResidentStatus;
-  lastCheck: string;
-  bp: string;
-  hr: number;
+type Account = {
+  username: string;
+  password: string;
+  role: Role;
 };
 
-type AlertLevel = 'critical' | 'warning' | 'info';
-
-type Alert = {
-  id: string;
-  level: AlertLevel;
-  messageKey: string;
-  time: string;
-};
-
-const metricOrder: readonly MetricKey[] = ['wellbeing', 'alertsResolved', 'responseTime'];
-
-const residentSeed: Resident[] = [
-  { id: 'r1', name: 'Mrs. Chen', room: '204', status: 'followUp', lastCheck: '08:45', bp: '118/76', hr: 72 },
-  { id: 'r2', name: 'Mr. Lee', room: '310', status: 'stable', lastCheck: '07:55', bp: '130/82', hr: 80 },
-  { id: 'r3', name: 'Mrs. Singh', room: '118', status: 'high', lastCheck: '09:10', bp: '110/70', hr: 96 },
-  { id: 'r4', name: 'Ms. Lopez', room: '122', status: 'followUp', lastCheck: '08:20', bp: '116/74', hr: 68 }
-];
-
-const alertTemplates: Alert[] = [
-  { id: 'a1', level: 'critical', messageKey: 'alerts.items.fall', time: '09:32' },
-  { id: 'a2', level: 'warning', messageKey: 'alerts.items.heartRate', time: '09:05' },
-  { id: 'a3', level: 'info', messageKey: 'alerts.items.wearable', time: '08:58' },
-  { id: 'a4', level: 'info', messageKey: 'alerts.items.ota', time: '08:41' }
-];
-
-const initialMetrics: Metrics = {
-  wellbeing: { value: 82, delta: 4 },
-  alertsResolved: { value: 14, delta: 0 },
-  responseTime: { value: 12, delta: -1 }
+type Session = {
+  username: string;
+  role: Role;
 };
 
 const filterOptions = ['all', 'high', 'followUp', 'stable'] as const;
 type FilterKey = (typeof filterOptions)[number];
 
-const randomBetween = (min: number, max: number) => Math.round(Math.random() * (max - min) + min);
-const pickRandom = <T,>(items: readonly T[]) => items[randomBetween(0, items.length - 1)];
+const DEFAULT_ACCOUNTS: Account[] = [
+  { username: 'guest_demo', password: 'guest123', role: 'guest' },
+  { username: 'care_demo', password: 'care1234', role: 'caregiver' },
+  { username: 'admin_master', password: 'admin888', role: 'admin' }
+];
+
+const STORAGE_KEYS = {
+  accounts: 'smartcare-react-accounts',
+  session: 'smartcare-react-session'
+} as const;
+
+const hasWindow = () => typeof window !== 'undefined';
+
+function readStorage<T>(key: string, fallback: T): T {
+  if (!hasWindow()) return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key: string, value: unknown) {
+  if (!hasWindow()) return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore storage quota issues
+  }
+}
+
+function removeStorage(key: string) {
+  if (!hasWindow()) return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+type Alerts = ReturnType<typeof deriveAlertsFromResidents>;
+type Alert = Alerts[number];
+type Insights = ReturnType<typeof deriveInsightsFromResidents>;
+type Insight = Insights[number];
 
 export default function App() {
   const { t, i18n } = useTranslation();
   const activeLanguage = i18n.resolvedLanguage ?? i18n.language ?? 'en';
-  const otherLanguages = useMemo(
-    () => LANGUAGE_OPTIONS.filter((option) => option.code !== activeLanguage),
+
+  const [accounts, setAccounts] = useState<Account[]>(() => {
+    const stored = readStorage<Account[]>(STORAGE_KEYS.accounts, []);
+    return stored.length ? stored : DEFAULT_ACCOUNTS;
+  });
+  const [session, setSession] = useState<Session | null>(() =>
+    readStorage<Session | null>(STORAGE_KEYS.session, null)
+  );
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authInfo, setAuthInfo] = useState<string | null>(null);
+  const authFirstFieldRef = useRef<HTMLInputElement | null>(null);
+  const [showSimulatorControls, setShowSimulatorControls] = useState<boolean>(false);
+
+  useEffect(() => {
+    writeStorage(STORAGE_KEYS.accounts, accounts);
+  }, [accounts]);
+
+  useEffect(() => {
+    if (session) {
+      writeStorage(STORAGE_KEYS.session, session);
+    } else {
+      removeStorage(STORAGE_KEYS.session);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (session?.role === 'admin') {
+      setShowSimulatorControls(true);
+    } else {
+      setShowSimulatorControls(false);
+    }
+  }, [session]);
+
+  const closeAuth = useCallback(() => {
+    setAuthMode(null);
+    setAuthError(null);
+    setAuthInfo(null);
+  }, []);
+
+  const openAuth = useCallback((mode: 'signin' | 'signup') => {
+    setAuthMode(mode);
+    setAuthError(null);
+    setAuthInfo(null);
+  }, []);
+
+  const switchAuthMode = useCallback(
+    (mode: 'signin' | 'signup', options?: { preserveInfo?: boolean }) => {
+      setAuthMode(mode);
+      setAuthError(null);
+      if (!options?.preserveInfo) {
+        setAuthInfo(null);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!authMode) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeAuth();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [authMode, closeAuth]);
+
+  useEffect(() => {
+    if (authMode && authFirstFieldRef.current) {
+      authFirstFieldRef.current.focus();
+    }
+  }, [authMode]);
+
+  const handleSignOut = useCallback(() => {
+    setSession(null);
+  }, []);
+
+  const handleSignInSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const formData = new FormData(event.currentTarget);
+      const username = String(formData.get('username') ?? '').trim();
+      const password = String(formData.get('password') ?? '');
+
+      setAuthError(null);
+      const matchedAccount = accounts.find(
+        (account) => account.username === username && account.password === password
+      );
+
+      if (!matchedAccount) {
+        setAuthError(t('auth.errors.invalidCredentials'));
+        return;
+      }
+
+      setSession({ username: matchedAccount.username, role: matchedAccount.role });
+      event.currentTarget.reset();
+      closeAuth();
+    },
+    [accounts, closeAuth, t]
+  );
+
+  const handleSignUpSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const formData = new FormData(event.currentTarget);
+      const username = String(formData.get('username') ?? '').trim();
+      const password = String(formData.get('password') ?? '');
+      const roleValue = String(formData.get('role') ?? 'guest') as Role;
+      const nextRole: Role = roleValue === 'caregiver' ? 'caregiver' : 'guest';
+
+      setAuthError(null);
+      if (!/^[\w.-]{2,}$/i.test(username)) {
+        setAuthError(t('auth.errors.usernameFormat'));
+        return;
+      }
+      if (password.length < 4) {
+        setAuthError(t('auth.errors.passwordLength'));
+        return;
+      }
+      const exists = accounts.some((account) => account.username === username);
+      if (exists) {
+        setAuthError(t('auth.errors.usernameTaken'));
+        return;
+      }
+
+      const nextAccount: Account = {
+        username,
+        password,
+        role: nextRole
+      };
+
+      setAccounts((prev) => [...prev, nextAccount]);
+      event.currentTarget.reset();
+      setAuthInfo(t('auth.feedback.accountCreated'));
+      switchAuthMode('signin', { preserveInfo: true });
+      setAuthError(null);
+    },
+    [accounts, switchAuthMode, t]
+  );
+
+  const { residents: residentMap, lastEventAt, connected, updateResident, removeResident } = useResidentLiveStore();
+
+  const [filter, setFilter] = useState<FilterKey>('all');
+  const [now, setNow] = useState(() => Date.now());
+  const [lastUpdated, setLastUpdated] = useState<Date>(() => new Date());
+  const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
+  const previousRawMetricsRef = useRef<RawMetrics | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const residentList = useMemo<Resident[]>(() => {
+    const values = Object.values(residentMap);
+    return values
+      .map((resident) => ({
+        ...resident,
+        updatedAt: resident.updatedAt ?? resident.createdAt
+      }))
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [residentMap]);
+
+  const filteredResidents = useMemo(() => {
+    if (filter === 'all') {
+      return residentList;
+    }
+    return residentList.filter((resident) => resident.status === filter);
+  }, [filter, residentList]);
+
+  const lastSeenFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(activeLanguage, {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
     [activeLanguage]
   );
 
-  const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
-  const [residents, setResidents] = useState<Resident[]>(residentSeed);
-  const [alerts, setAlerts] = useState<Alert[]>(alertTemplates);
-  const [filter, setFilter] = useState<FilterKey>('all');
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const alerts = useMemo<Alert[]>(() => {
+    return deriveAlertsFromResidents(residentList, now, lastSeenFormatter, t);
+  }, [residentList, now, lastSeenFormatter, t]);
+
+  const insights = useMemo<Insight[]>(() => {
+    return deriveInsightsFromResidents(residentList, now, t);
+  }, [residentList, now, t]);
+
+  useEffect(() => {
+    const raw = deriveResidentMetrics(residentList, now);
+    const previous = previousRawMetricsRef.current ?? raw;
+    const next: Metrics = {
+      wellbeing: {
+        value: raw.wellbeing,
+        delta: raw.wellbeing - previous.wellbeing
+      },
+      alertsResolved: {
+        value: raw.alertsResolved,
+        delta: raw.alertsResolved - previous.alertsResolved
+      },
+      responseTime: {
+        value: raw.responseTime,
+        delta: raw.responseTime - previous.responseTime
+      }
+    };
+    previousRawMetricsRef.current = raw;
+    setMetrics(next);
+  }, [residentList, now]);
+
+  useEffect(() => {
+    if (!lastEventAt) {
+      return;
+    }
+    const eventDate = new Date(lastEventAt);
+    setLastUpdated(Number.isNaN(eventDate.getTime()) ? new Date() : eventDate);
+  }, [lastEventAt]);
 
   const formattedTime = useMemo(() => {
     return new Intl.DateTimeFormat(activeLanguage, {
@@ -80,61 +323,80 @@ export default function App() {
     }).format(lastUpdated);
   }, [activeLanguage, lastUpdated]);
 
-  const filteredResidents = useMemo(() => {
-    if (filter === 'all') {
-      return residents;
+  const formatLastSeen = useCallback(
+    (resident: Resident) => {
+      const baseTimestamp = resident.lastSeenAt ?? resident.updatedAt ?? resident.createdAt;
+      if (!baseTimestamp) {
+        return t('residents.lastSeen.waiting');
+      }
+      const formatted = lastSeenFormatter.format(new Date(baseTimestamp));
+      const location = resident.lastSeenLocation ?? resident.room;
+      return t('residents.lastSeen.label', { time: formatted, location });
+    },
+    [lastSeenFormatter, t]
+  );
+
+  const describeVitals = useCallback(
+    (resident: Resident) => {
+      const vitals = resident.vitals;
+      if (!vitals) {
+        return t('residents.vitals.unknown');
+      }
+      const bp = t('residents.vitals.bp', { systolic: vitals.bpSystolic, diastolic: vitals.bpDiastolic });
+      const hr = t('residents.vitals.hr', { value: vitals.hr });
+      const spo2 = t('residents.vitals.spo2', { value: vitals.spo2 });
+      const temp = t('residents.vitals.temp', { value: vitals.temperature.toFixed(1) });
+      return `${bp} • ${hr} • ${spo2} • ${temp}`;
+    },
+    [t]
+  );
+
+  const lastEventBadge = useMemo(() => {
+    if (!lastEventAt) {
+      return null;
     }
-    return residents.filter((resident) => resident.status === filter);
-  }, [filter, residents]);
+    const elapsedSeconds = Math.max(0, Math.floor((now - lastEventAt) / 1000));
+    const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+    const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  }, [lastEventAt, now]);
+
+  const isLoggedIn = Boolean(session);
+  const isAdmin = session?.role === 'admin';
+  const userDisplayName = session?.username ?? t('auth.guestName');
+  const userRoleLabel = t(`auth.roles.${session?.role ?? 'guest'}`);
+  const signButtonLabel = t(isLoggedIn ? 'auth.signOut' : 'auth.signIn');
+
+  const liveStatusText = connected ? t('residents.live.streaming') : t('residents.live.paused');
 
   const handleSimulate = useCallback(() => {
-    setMetrics((prev) => ({
-      wellbeing: {
-        value: randomBetween(70, 95),
-        delta: randomBetween(-4, 6)
-      },
-      alertsResolved: {
-        value: randomBetween(8, 20),
-        delta: randomBetween(-3, 5)
-      },
-      responseTime: {
-        value: randomBetween(8, 18),
-        delta: randomBetween(-3, 3)
-      }
-    }));
+    void sendSimulatorMessage({ action: 'mutate' });
+  }, []);
 
-    setResidents((prev) =>
-      prev.map((resident) => {
-        const minutesAgo = randomBetween(2, 75);
-        const lastCheckDate = new Date(Date.now() - minutesAgo * 60 * 1000);
-        return {
-          ...resident,
-          status: pickRandom(['stable', 'followUp', 'high']),
-          lastCheck: new Intl.DateTimeFormat(activeLanguage, {
-            hour: '2-digit',
-            minute: '2-digit'
-          }).format(lastCheckDate),
-          bp: `${randomBetween(108, 134)}/${randomBetween(65, 88)}`,
-          hr: randomBetween(62, 104)
-        };
-      })
-    );
+  const handleResidentDelete = useCallback(
+    (id: string, resident: Resident) => {
+      removeResident(id);
+      void sendSimulatorMessage({ action: 'delete', id: resident.id });
+    },
+    [removeResident]
+  );
 
-    setAlerts(() => {
-      const variants: Alert[] = [
-        { id: 'a1', level: pickRandom(['critical', 'warning', 'info'] as const), messageKey: 'alerts.items.fall', time: '09:32' },
-        { id: 'a2', level: pickRandom(['critical', 'warning', 'info'] as const), messageKey: 'alerts.items.heartRate', time: '09:05' },
-        { id: 'a3', level: pickRandom(['critical', 'warning', 'info'] as const), messageKey: 'alerts.items.wearable', time: '08:58' },
-        { id: 'a4', level: pickRandom(['critical', 'warning', 'info'] as const), messageKey: 'alerts.items.ota', time: '08:41' }
-      ];
-      return variants;
-    });
+  const {
+    editingResident,
+    draft: editDraft,
+    error: editError,
+    beginEdit,
+    cancelEdit,
+    updateDraft,
+    handleSubmit: submitEdit,
+    handleDelete: deleteResident
+  } = useResidentEditor({ residents: residentMap, onSave: updateResident, onRemove: handleResidentDelete, t });
 
-    setLastUpdated(new Date());
-  }, [activeLanguage]);
+  const showEditModal = Boolean(isAdmin && editingResident && editDraft);
 
   return (
     <div className="app-background">
+      {isAdmin && showSimulatorControls ? <DevPanel onHide={() => setShowSimulatorControls(false)} /> : null}
       <main className="app-shell">
         <header className="app-header">
           <div className="brand">
@@ -147,7 +409,31 @@ export default function App() {
             <a href="#operations">{t('layout.nav.operations')}</a>
             <a href="#family">{t('layout.nav.family')}</a>
           </nav>
-          <LanguageSwitcher />
+          <div className="header-actions">
+            {isAdmin && !showSimulatorControls ? (
+              <button
+                type="button"
+                className="header-actions__button"
+                onClick={() => setShowSimulatorControls(true)}
+              >
+                {t('devPanel.show')}
+              </button>
+            ) : null}
+            <LanguageSwitcher />
+            <div className="auth-menu" aria-live="polite">
+              <div className="auth-menu__details">
+                <span className="auth-menu__name">{userDisplayName}</span>
+                <span className="auth-menu__role">{userRoleLabel}</span>
+              </div>
+              <button
+                type="button"
+                className="auth-menu__button"
+                onClick={isLoggedIn ? handleSignOut : () => openAuth('signin')}
+              >
+                {signButtonLabel}
+              </button>
+            </div>
+          </div>
         </header>
 
         <section id="overview" className="section hero">
@@ -205,13 +491,18 @@ export default function App() {
             <div>
               <h2>{t('residents.title')}</h2>
               <p>{t('residents.subtitle')}</p>
+              <div className="live-monitor" role="status" aria-live="polite">
+                <span className="live-monitor__badge">{t('residents.live.badge')}</span>
+                <span>{liveStatusText}</span>
+                {lastEventBadge ? <span>• {t('residents.live.lastEvent', { time: lastEventBadge })}</span> : null}
+              </div>
             </div>
             <div className="filters" role="group" aria-label={t('residents.filters.aria')}>
               {filterOptions.map((option) => (
                 <button
                   key={option}
                   type="button"
-                  className={option === filter ? 'chip chip--active' : 'chip'}
+                  className={`chip ${filter === option ? 'chip--active' : ''}`}
                   onClick={() => setFilter(option)}
                 >
                   {t(`filters.${option}`)}
@@ -229,12 +520,13 @@ export default function App() {
                   <th scope="col">{t('residents.columns.lastCheck')}</th>
                   <th scope="col">{t('residents.columns.vitals')}</th>
                   <th scope="col">{t('residents.columns.status')}</th>
+                  {isAdmin ? <th scope="col">{t('residents.columns.actions')}</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {filteredResidents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="empty-placeholder">
+                    <td colSpan={isAdmin ? 6 : 5} className="empty-placeholder">
                       {t('residents.empty')}
                     </td>
                   </tr>
@@ -243,15 +535,20 @@ export default function App() {
                     <tr key={resident.id}>
                       <td data-title={t('residents.columns.name')}>{resident.name}</td>
                       <td data-title={t('residents.columns.room')}>{resident.room}</td>
-                      <td data-title={t('residents.columns.lastCheck')}>{resident.lastCheck}</td>
-                      <td data-title={t('residents.columns.vitals')}>
-                        {resident.bp} • {t('residents.hrLabel', { value: resident.hr })}
-                      </td>
+                      <td data-title={t('residents.columns.lastCheck')}>{formatLastSeen(resident)}</td>
+                      <td data-title={t('residents.columns.vitals')}>{describeVitals(resident)}</td>
                       <td data-title={t('residents.columns.status')}>
                         <span className={`status status-${resident.status}`}>
-                          {t(`residents.status.${resident.status}`)}
+                          {t(`residents.status.${resident.status}`, { defaultValue: resident.status })}
                         </span>
                       </td>
+                      {isAdmin ? (
+                        <td data-title={t('residents.columns.actions')}>
+                          <button type="button" className="table-action-button" onClick={() => beginEdit(resident)}>
+                            {t('residents.actions.edit')}
+                          </button>
+                        </td>
+                      ) : null}
                     </tr>
                   ))
                 )}
@@ -270,8 +567,8 @@ export default function App() {
               {alerts.map((alert) => (
                 <li key={alert.id} className={`alert alert-${alert.level}`}>
                   <span className="alert-pill">{t(`alertLevels.${alert.level}`)}</span>
-                  <span className="alert-text">{t(alert.messageKey)}</span>
-                  <time className="alert-time" dateTime={alert.time}>
+                  <span className="alert-text">{alert.message}</span>
+                  <time className="alert-time" dateTime={alert.timestamp ?? undefined}>
                     {alert.time}
                   </time>
                 </li>
@@ -284,34 +581,169 @@ export default function App() {
               <span className="chip chip--quiet">{t('insights.subtitle')}</span>
             </header>
             <ul className="insight-list">
-              <li>{t('insights.items.hydration')}</li>
-              <li>{t('insights.items.nightRounds')}</li>
-              <li>{t('insights.items.physiotherapy')}</li>
-              <li>{t('insights.items.familyFeedback')}</li>
+              {insights.map((insight) => (
+                <li key={insight.id}>{insight.text}</li>
+              ))}
             </ul>
           </article>
         </section>
 
-        <footer className="app-footer">
-          <p>{t('layout.footer')}</p>
-        </footer>
-
-        <section className="section next-steps">
-          <h2>{t('nextSteps.title')}</h2>
-          <ol>
+        <section id="next" className="section next-steps">
+          <header className="section-heading">
+            <h2>{t('nextSteps.title')}</h2>
+          </header>
+          <ul className="next-steps-list">
             <li>{t('nextSteps.mapDataGateway')}</li>
             <li>{t('nextSteps.portTokens')}</li>
             <li>{t('nextSteps.addRouting')}</li>
-          </ol>
-          <div className="language-shortcuts">
-            {otherLanguages.map((option) => (
-              <span key={option.code} className="language-badge">
-                {t('common.switchTo', { label: option.label })}
-              </span>
-            ))}
-          </div>
+          </ul>
         </section>
       </main>
+
+      {authMode ? (
+        <div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+          <div className="auth-modal__backdrop" onClick={closeAuth} role="presentation" />
+          <div className="auth-modal__dialog" role="document">
+            <button type="button" className="auth-modal__close" onClick={closeAuth} aria-label={t('common.close')}>
+              ×
+            </button>
+            <h2 id="auth-modal-title">{t(authMode === 'signin' ? 'auth.signInTitle' : 'auth.signUpTitle')}</h2>
+            {authError ? (
+              <div className="auth-modal__alert auth-modal__alert--error" role="alert">
+                {authError}
+              </div>
+            ) : null}
+            {authInfo ? (
+              <div className="auth-modal__alert auth-modal__alert--info" role="status">
+                {authInfo}
+              </div>
+            ) : null}
+            <form
+              className="auth-modal__form"
+              onSubmit={authMode === 'signin' ? handleSignInSubmit : handleSignUpSubmit}
+              noValidate
+            >
+              <label>
+                <span>{t('auth.username')}</span>
+                <input ref={authFirstFieldRef} name="username" type="text" autoComplete="username" />
+              </label>
+              <label>
+                <span>{t('auth.password')}</span>
+                <input name="password" type="password" autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} />
+              </label>
+              {authMode === 'signup' ? (
+                <label>
+                  <span>{t('auth.role')}</span>
+                  <select name="role" defaultValue="guest">
+                    <option value="guest">{t('auth.roles.guest')}</option>
+                    <option value="caregiver">{t('auth.roles.caregiver')}</option>
+                  </select>
+                </label>
+              ) : null}
+              <button type="submit" className="primary auth-modal__submit">
+                {t(authMode === 'signin' ? 'auth.continue' : 'auth.create')}
+              </button>
+            </form>
+            <p className="auth-modal__switch">
+              {authMode === 'signin' ? (
+                <>
+                  {t('auth.noAccount')}{' '}
+                  <button type="button" className="auth-modal__link" onClick={() => switchAuthMode('signup')}>
+                    {t('auth.toSignUp')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {t('auth.haveAccount')}{' '}
+                  <button type="button" className="auth-modal__link" onClick={() => switchAuthMode('signin')}>
+                    {t('auth.toSignIn')}
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {showEditModal && editingResident && editDraft ? (
+        <div className="resident-edit-backdrop" role="presentation">
+          <div
+            className="resident-edit-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resident-edit-title"
+          >
+            <form className="resident-edit-form" onSubmit={submitEdit}>
+              <h2 id="resident-edit-title">{t('residents.edit.title')}</h2>
+              <div className="resident-edit-grid">
+                <label className="resident-edit-field">
+                  <span>{t('residents.edit.name')}</span>
+                  <input
+                    type="text"
+                    value={editDraft.name}
+                    onChange={(event) => updateDraft('name', event.target.value)}
+                  />
+                </label>
+                <label className="resident-edit-field">
+                  <span>{t('residents.edit.room')}</span>
+                  <input
+                    type="text"
+                    value={editDraft.room}
+                    onChange={(event) => updateDraft('room', event.target.value)}
+                  />
+                </label>
+                <label className="resident-edit-field">
+                  <span>{t('residents.edit.status')}</span>
+                  <select
+                    value={editDraft.status}
+                    onChange={(event) => updateDraft('status', event.target.value as ResidentEditDraft['status'])}
+                  >
+                    {statusOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`residents.status.${option}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="resident-edit-field">
+                  <span>{t('residents.edit.lastSeenAt')}</span>
+                  <input
+                    type="datetime-local"
+                    value={editDraft.lastSeenAt}
+                    onChange={(event) => updateDraft('lastSeenAt', event.target.value)}
+                  />
+                </label>
+                <label className="resident-edit-field resident-edit-field--wide">
+                  <span>{t('residents.edit.lastSeenLocation')}</span>
+                  <input
+                    type="text"
+                    value={editDraft.lastSeenLocation}
+                    onChange={(event) => updateDraft('lastSeenLocation', event.target.value)}
+                  />
+                </label>
+              </div>
+              {editError ? <div className="resident-edit-error">{editError}</div> : null}
+              <div className="resident-edit-actions">
+                {editingResident.origin !== 'seed' ? (
+                  <button type="button" className="resident-edit-delete" onClick={deleteResident}>
+                    {t('residents.edit.delete')}
+                  </button>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+                <div className="resident-edit-actions__group">
+                  <button type="button" className="resident-edit-cancel" onClick={cancelEdit}>
+                    {t('residents.edit.cancel')}
+                  </button>
+                  <button type="submit" className="primary">
+                    {t('residents.edit.save')}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

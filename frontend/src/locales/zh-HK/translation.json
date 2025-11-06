@@ -1,7 +1,8 @@
 {
   "common": {
     "language": "語言",
-    "switchTo": "切換至{{label}}"
+    "switchTo": "切換至{{label}}",
+    "close": "關閉"
   },
   "layout": {
     "subtitle": "幫前線照護員更快交接的操作面板",
@@ -13,6 +14,36 @@
       "family": "家屬互動"
     },
     "footer": "© 2024 SmartCare Collaborative — 與照護團隊一起打造"
+  },
+  "auth": {
+    "guestName": "訪客",
+    "signIn": "登入",
+    "signOut": "登出",
+    "signInTitle": "登入 SmartCare",
+    "signUpTitle": "建立帳號",
+    "username": "帳號",
+    "password": "密碼",
+    "role": "角色",
+    "continue": "登入",
+    "create": "建立帳號",
+    "noAccount": "還沒有帳號？",
+    "haveAccount": "已有帳號？",
+    "toSignUp": "立即註冊",
+    "toSignIn": "回到登入",
+    "roles": {
+      "guest": "訪客",
+      "caregiver": "照顧員",
+      "admin": "管理員"
+    },
+    "errors": {
+      "invalidCredentials": "帳號或密碼不正確。",
+      "usernameTaken": "此帳號已被使用。",
+      "usernameFormat": "帳號需至少 2 個字元，只能包含英數字、點或底線。",
+      "passwordLength": "密碼至少需 4 個字元。"
+    },
+    "feedback": {
+      "accountCreated": "已建立帳號，請登入繼續。"
+    }
   },
   "actions": {
     "simulate": "模擬更新資料"
@@ -63,15 +94,56 @@
       "room": "房號",
       "lastCheck": "最後巡房",
       "vitals": "生命徵象",
-      "status": "狀態"
+      "status": "狀態",
+      "actions": "操作"
+    },
+    "actions": {
+      "edit": "編輯",
+      "delete": "刪除"
     },
     "empty": "目前沒有符合此篩選的住民。",
     "status": {
       "stable": "穩定",
       "followUp": "需追蹤",
-      "high": "高優先"
+      "high": "高優先",
+      "checked_out": "已退房"
     },
-    "hrLabel": "心率 {{value}} 下"
+    "hrLabel": "心率 {{value}} 下",
+    "vitals": {
+      "bp": "{{systolic}}/{{diastolic}} mmHg",
+      "hr": "心率 {{value}} 下/分",
+      "spo2": "血氧 {{value}}%",
+      "temp": "體溫 {{value}}°C",
+      "unknown": "等待生命徵象"
+    },
+    "lastSeen": {
+      "label": "{{time}} • {{location}}",
+      "waiting": "等待首次巡房"
+    },
+    "edit": {
+      "title": "編輯住民資料",
+      "name": "住民姓名",
+      "room": "房號",
+      "status": "狀態",
+      "lastSeenAt": "最近巡房時間",
+      "lastSeenLocation": "最近巡房地點",
+      "cancel": "取消",
+      "save": "儲存變更",
+      "delete": "刪除住民",
+      "confirmDelete": "確定要從模擬器移除 {{name}} 嗎？此動作無法復原。",
+      "errors": {
+        "requiredName": "請輸入住民姓名。",
+        "requiredRoom": "請輸入房號。",
+        "deleteSeed": "預設住民無法刪除。"
+      }
+    },
+    "live": {
+      "badge": "LIVE",
+      "streaming": "串流中",
+      "paused": "重新連線中…",
+      "lastEvent": "上次事件 {{time}} 前",
+      "waiting": "等待串流"
+    }
   },
   "alerts": {
     "title": "最新警報",
@@ -81,6 +153,14 @@
       "heartRate": "辛格女士回報心率偏高。",
       "wearable": "穿戴裝置 A52 電量低於 10%。",
       "ota": "有新的韌體可供 OTA 更新。"
+    },
+    "generated": {
+      "highStatus": "{{name}}（{{room}}）需要緊急巡查。",
+      "followUp": "安排對 {{name}}（{{room}}）進行跟進檢查。",
+      "stale": "{{name}} 已 {{duration}} 未巡房，請安排查訪。",
+      "lowSpo2": "{{name}} 的血氧降至 {{spo2}}%。",
+      "highHr": "{{name}} 的心率升至 {{hr}} 次/分。",
+      "temperatureHigh": "{{name}} 的體溫達到 {{temperature}}°C。"
     }
   },
   "alertLevels": {
@@ -96,6 +176,13 @@
       "nightRounds": "為陳太太增加夜間巡房。",
       "physiotherapy": "協調李先生的物理治療追蹤。",
       "familyFeedback": "記錄羅培茲女士家訪回饋。"
+    },
+    "generated": {
+      "focusHigh": "指派應變團隊前往 {{room}} 留意 {{name}}。",
+      "followUp": "規劃 {{name}}（{{room}}）的跟進巡房。",
+      "hydration": "為 {{name}} 排程補水提醒（已 {{duration}} 未見）。",
+      "familyUpdate": "把 {{name}} 的穩定狀況通知家屬。",
+      "location": "下一輪巡查時留意 {{name}} 位於 {{location}}。"
     }
   },
   "nextSteps": {
@@ -103,5 +190,18 @@
     "mapDataGateway": "以型別安全的 React Hook 包裝 DataGateway API。",
     "portTokens": "把靜態儀表板的設計 Token 匯入共享 CSS 變數。",
     "addRouting": "導入驗證路由，逐步遷移實際面板。"
+  },
+  "devPanel": {
+    "aria": "模擬資料控制",
+    "title": "模擬器控制",
+    "refresh": "刷新一次",
+    "burst": "連發 10 筆",
+    "spawn": "產生新住民",
+    "clear": "清除新增住民",
+    "hide": "隱藏",
+    "show": "顯示模擬器控制",
+    "pending": "處理中…",
+    "sent": "已送出",
+    "error": "Service Worker 未就緒"
   }
 }

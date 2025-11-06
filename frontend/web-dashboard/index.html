@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#d7f0c3" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; font-src 'self' https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com; img-src 'self' data:; connect-src 'self' http://localhost:8000 http://localhost:5173; frame-ancestors 'none'; script-src 'self';"
@@ -34,8 +35,11 @@
           <span class="chip__label">Light</span>
         </button>
         <div class="user-menu" aria-label="User menu">
-          <span class="user-name">Dr. Taylor</span> 
-          <button class="sign-out" type="button">Sign Out</button>
+          <div class="user-menu__info">
+            <span class="user-name">Guest</span>
+            <span class="user-role">Guest</span>
+          </div>
+          <button class="sign-out" type="button">Sign In</button>
         </div>
       </div>
     </header>
@@ -86,30 +90,34 @@
             <p class="metric">14</p>
             <p class="description">Alerts escalated and closed by care staff.</p>
             <div class="stacked-progress" role="img" aria-label="Alerts by severity">
-              <span style="--size: 55%" class="stacked-progress__bar stacked-progress__bar--ok">
+              <span class="stacked-progress__bar stacked-progress__bar--ok stacked-progress__bar--size-55">
                 <span class="sr-only">55% informational</span>
               </span>
-              <span style="--size: 30%" class="stacked-progress__bar stacked-progress__bar--warn">
+              <span class="stacked-progress__bar stacked-progress__bar--warn stacked-progress__bar--size-30">
                 <span class="sr-only">30% warning</span>
               </span>
-              <span style="--size: 15%" class="stacked-progress__bar stacked-progress__bar--crit">
+              <span class="stacked-progress__bar stacked-progress__bar--crit stacked-progress__bar--size-15">
                 <span class="sr-only">15% critical</span>
               </span>
             </div>
           </article>
 
-          <article class="card">
+          <article class="card card--accent" data-card="response">
             <header class="card__header">
-              <h2>High Priority Cases</h2>
-              <span class="trend trend--down" aria-label="1 fewer case">-1</span>
+              <h2>Average Response Time</h2>
+              <span class="trend trend--neutral" aria-label="Stable performance">≈</span>
             </header>
-            <p class="metric metric--warning">3</p>
-            <p class="description">Residents requiring immediate attention.</p>
-            <ul class="list list--compact">
-              <li>Mrs. Singh • Elevated HR monitoring</li>
-              <li>Mr. Han • Night wander alerts</li>
-              <li>Ms. Lopez • Rehab plan check-in</li>
-            </ul>
+            <p class="metric">7 min</p>
+            <p class="description">Rolling average from latest escalations.</p>
+            <div class="response-mini-chart" aria-hidden="true">
+              <span style="--height:55%"></span>
+              <span style="--height:38%"></span>
+              <span style="--height:44%"></span>
+              <span style="--height:33%"></span>
+              <span style="--height:47%"></span>
+              <span style="--height:40%"></span>
+              <span style="--height:36%"></span>
+            </div>
           </article>
         </div>
 
@@ -215,6 +223,26 @@
             <button type="button">Adjust Staffing</button>
           </div>
         </header>
+        <button
+          type="button"
+          class="chip chip--quiet sim-controls__toggle"
+          data-sim-toggle
+          hidden
+        >
+          Show simulator controls
+        </button>
+        <div id="simulator-controls" class="sim-controls" aria-live="polite" hidden>
+          <div class="sim-controls__header">
+            <h3>Simulator Controls｜模擬器控制</h3>
+            <p class="sim-controls__status">SSE 狀態：<span data-sim-status>等待連線</span></p>
+          </div>
+          <p class="sim-controls__notice">請以管理員帳號登入以啟用模擬控制</p>
+          <div class="sim-controls__buttons">
+            <button type="button" class="chip" data-sim-action="add-one">隨機新增 1 位</button>
+            <button type="button" class="chip" data-sim-action="add-five">隨機新增 5 位</button>
+            <button type="button" class="chip chip--quiet" data-sim-action="reset">清空新增住民</button>
+          </div>
+        </div>
         <div class="split-grid">
           <article class="card card--wide">
             <h3>Occupancy Snapshot</h3>
@@ -316,5 +344,6 @@
     <script src="app-config.js"></script>
     <script src="data-layer.js"></script>
     <script type="module" src="scripts.js"></script>
+    <script src="./sse-client.js" defer></script>
   </body>
 </html>

@@ -1,7 +1,8 @@
 {
   "common": {
     "language": "Language",
-    "switchTo": "Switch to {{label}}"
+    "switchTo": "Switch to {{label}}",
+    "close": "Close"
   },
   "layout": {
     "subtitle": "Faster handover hub for frontline carers",
@@ -13,6 +14,36 @@
       "family": "Family engagement"
     },
     "footer": "© 2024 SmartCare Collaborative — Built for compassionate teams"
+  },
+  "auth": {
+    "guestName": "Guest",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signInTitle": "Sign in to SmartCare",
+    "signUpTitle": "Create an account",
+    "username": "Username",
+    "password": "Password",
+    "role": "Role",
+    "continue": "Continue",
+    "create": "Create account",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "toSignUp": "Create one",
+    "toSignIn": "Back to sign in",
+    "roles": {
+      "guest": "Guest",
+      "caregiver": "Caregiver",
+      "admin": "Admin"
+    },
+    "errors": {
+      "invalidCredentials": "We couldn't match that username and password.",
+      "usernameTaken": "That username is already in use.",
+      "usernameFormat": "Use at least 2 characters (letters, numbers, . or _).",
+      "passwordLength": "Use a password with at least 4 characters."
+    },
+    "feedback": {
+      "accountCreated": "Account created! Sign in to continue."
+    }
   },
   "actions": {
     "simulate": "Simulate new data"
@@ -63,15 +94,56 @@
       "room": "Room",
       "lastCheck": "Last check-in",
       "vitals": "Vitals",
-      "status": "Status"
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
     },
     "empty": "No residents match this filter right now.",
     "status": {
       "stable": "Stable",
       "followUp": "Follow-up needed",
-      "high": "High priority"
+      "high": "High priority",
+      "checked_out": "Checked out"
     },
-    "hrLabel": "HR {{value}} bpm"
+    "hrLabel": "HR {{value}} bpm",
+    "vitals": {
+      "bp": "{{systolic}}/{{diastolic}} mmHg",
+      "hr": "HR {{value}} bpm",
+      "spo2": "SpO₂ {{value}}%",
+      "temp": "Temp {{value}}°C",
+      "unknown": "Pending vitals"
+    },
+    "lastSeen": {
+      "label": "{{time}} • {{location}}",
+      "waiting": "Awaiting first round"
+    },
+    "edit": {
+      "title": "Edit resident details",
+      "name": "Resident name",
+      "room": "Room",
+      "status": "Status",
+      "lastSeenAt": "Last seen time",
+      "lastSeenLocation": "Last seen location",
+      "cancel": "Cancel",
+      "save": "Save changes",
+      "delete": "Delete resident",
+      "confirmDelete": "Remove {{name}} from the simulator? This action cannot be undone.",
+      "errors": {
+        "requiredName": "Enter a resident name.",
+        "requiredRoom": "Enter a room number.",
+        "deleteSeed": "Base residents cannot be removed."
+      }
+    },
+    "live": {
+      "badge": "LIVE",
+      "streaming": "Streaming",
+      "paused": "Reconnecting…",
+      "lastEvent": "Last event {{time}} ago",
+      "waiting": "Waiting for stream"
+    }
   },
   "alerts": {
     "title": "Recent alerts",
@@ -81,6 +153,14 @@
       "heartRate": "Mrs. Singh reports elevated heart rate.",
       "wearable": "Wearable ID #A52 battery is below 10%.",
       "ota": "New firmware ready for OTA deployment."
+    },
+    "generated": {
+      "highStatus": "{{name}} requires urgent review in room {{room}}.",
+      "followUp": "Schedule follow-up check for {{name}} in room {{room}}.",
+      "stale": "No new round for {{name}} — last seen {{duration}} ago.",
+      "lowSpo2": "{{name}} SpO₂ dropped to {{spo2}}%.",
+      "highHr": "{{name}} heart rate reached {{hr}} bpm.",
+      "temperatureHigh": "{{name}} temperature is {{temperature}}°C."
     }
   },
   "alertLevels": {
@@ -96,6 +176,13 @@
       "nightRounds": "Add extra night rounds for Mrs. Chen.",
       "physiotherapy": "Coordinate PT follow-up for Mr. Lee.",
       "familyFeedback": "Log family visit feedback for Ms. Lopez."
+    },
+    "generated": {
+      "focusHigh": "Assign rapid response to {{name}} in room {{room}}.",
+      "followUp": "Plan follow-up visit for {{name}} in room {{room}}.",
+      "hydration": "Queue hydration reminder for {{name}} (last seen {{duration}} ago).",
+      "familyUpdate": "Share stable progress update with {{name}}'s family.",
+      "location": "Check on {{name}} around {{location}} during next rounds."
     }
   },
   "nextSteps": {
@@ -103,5 +190,18 @@
     "mapDataGateway": "Wrap DataGateway APIs with type-safe React hooks.",
     "portTokens": "Port visual tokens from the static dashboard into shared CSS variables.",
     "addRouting": "Add authenticated routing and progressively migrate real panels."
+  },
+  "devPanel": {
+    "aria": "Simulator developer controls",
+    "title": "Simulator controls",
+    "refresh": "Single update",
+    "burst": "Burst ×10",
+    "spawn": "Spawn new resident",
+    "clear": "Clear additions",
+    "hide": "Hide",
+    "show": "Show simulator controls",
+    "pending": "Working…",
+    "sent": "Command sent",
+    "error": "Service worker not ready"
   }
 }

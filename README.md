@@ -25,24 +25,33 @@ This monorepo captures the full SmartCare wearable ecosystem (firmware → MQTT 
 | `docs/` | 🟡 Scaffold | Professional documentation set. |
 | `.github/` | 🟡 Scaffold | CI stubs, templates, CODEOWNERS. |
 
-### Runbook
-1. **Clone** the repo and install tooling per module.
-2. **Dashboard demo**
+### Quick Start (Monorepo)
+1. Clone the repo and choose a module to run.
+2. Frontend PWA (React + Vite)
    ```bash
-   
-   python -m http.server 5500
-   `cd frontend/web-dashboard``
-   Visit `http://localhost:5500` (Ctrl+F5). Admin login: `Admin/admin`. Caregiver: `Ms.Testing/admin`.
-3. **Backend shell**
+   cd frontend
+   npm install
+   npm run dev -- --host   # http://localhost:5173
+   ```
+   - LIVE residents stream from the built‑in service worker (no backend).
+   - Sample accounts: `guest_demo/guest123`, `care_demo/care1234`, `admin_master/admin888`.
+   - Admins can open Simulator controls, spawn/mutate/clear residents, edit details, and delete dynamically added residents.
+3. Legacy static dashboard
+   ```bash
+   cd frontend/web-dashboard
+   python -m http.server 5500   # http://localhost:5500
+   ```
+   Refresh once after the first load so the service worker takes control.
+4. Backend (FastAPI skeleton)
    ```bash
    cd backend
-   uvicorn app.main:app --reload
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload   # http://localhost:8000/healthz
    ```
-   Health probe: `http://localhost:8000/healthz`.
-4. **Full dev stack**
+5. Full dev stack (docker-compose)
    ```bash
    cd infra
-   ./mkcert-dev-certs.sh   # once per machine
+   ./mkcert-dev-certs.sh               # once per machine
    docker compose -f docker-compose.dev.yml up --build
    ```
 
@@ -57,6 +66,20 @@ This monorepo captures the full SmartCare wearable ecosystem (firmware → MQTT 
 3. Port dashboard features into the React PWA with Web Push.
 4. Implement firmware Wi-Fi/BLE/GNSS/MQTT/TLS/OTA logic.
 5. Keep `docs/` synchronized with implemented APIs/data.
+
+---
+
+## Frontend PWA Feature Guide (Overview)
+
+- LIVE residents via service worker SSE (`/sim/sse`), no backend required.
+- Stable seeded roster + dynamic additions under admin control.
+- Admin‑only Simulator controls (toggleable panel):
+  - `spawn` (add one), `burst` (10 updates), `mutate` (single update), `clear` (remove dynamic residents).
+  - `delete` removes a selected dynamic resident from the simulator.
+- Admin can edit resident name/room/status/last seen; deletion is blocked for seeded residents.
+- KPI cards (Wellbeing, Alerts Resolved, Response Time), Recent Alerts, and Care Insights are derived from the resident directory in real time.
+
+See `frontend/README.md` for detailed developer docs, simulator protocol, i18n, and layout rules.
 
 ## 繁體中文（香港）版本
 此 Monorepo 覆蓋整個 SmartCare 穿戴式生態（韌體 → MQTT → 後端 → 前端 → AI → 基礎設施）。所有模組皆已依提案骨架配置，團隊可直接擴充而不必猜測結構。目前僅靜態儀表板可直接展示，其餘模組為待開發骨架。

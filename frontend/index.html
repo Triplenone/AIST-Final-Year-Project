@@ -8,5 +8,10 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sse-sw.js', { scope: '/' }).catch(console.error);
+      }
+    </script>
   </body>
 </html>
