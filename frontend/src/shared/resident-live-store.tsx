@@ -1,9 +1,10 @@
 // 將 SSE 模擬器送出的住民資料同步到 React 全域 Context。
-import { createContext, useContext, useEffect, useMemo, useReducer, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useReducer, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 
 import type { Resident, ResidentEvent } from '../sse/client';
 import { openResidentSSE } from '../sse/client';
+import { fetchResidentSnapshot } from '../services/simulator-controls';
 
 type State = {
   residents: Record<string, Resident>;
@@ -16,7 +17,9 @@ type Action =
   | { type: 'disconnected' }
   | { type: 'event'; payload: ResidentEvent }
   | { type: 'localUpdate'; payload: { id: string; updates: Partial<Resident> } }
-  | { type: 'localRemove'; payload: { id: string } };
+  | { type: 'localRemove'; payload: { id: string } }
+  | { type: 'localAdd'; payload: { resident: Resident } }
+  | { type: 'hydrate'; payload: { residents: Resident[] } };
 
 const initialState: State = {
   residents: {},
@@ -114,6 +117,29 @@ const residentReducer = (state: State, action: Action): State => {
         connected: state.connected
       };
     }
+    case 'localAdd': {
+      const { resident } = action.payload;
+      const nextResidents: Record<string, Resident> = {
+        ...state.residents,
+        [resident.id]: resident
+      };
+      return {
+        residents: nextResidents,
+        lastEventAt: Date.now(),
+        connected: state.connected
+      };
+    }
+    case 'hydrate': {
+      const nextResidents: Record<string, Resident> = {};
+      action.payload.residents.forEach((resident) => {
+        nextResidents[resident.id] = resident;
+      });
+      return {
+        residents: nextResidents,
+        lastEventAt: Date.now(),
+        connected: state.connected
+      };
+    }
     default:
       return state;
   }
@@ -122,6 +148,10 @@ const residentReducer = (state: State, action: Action): State => {
 type ResidentLiveContextValue = State & {
   updateResident: (id: string, updates: Partial<Resident>) => void;
   removeResident: (id: string) => void;
+  addResident: (resident: Resident) => void;
+  refreshResidents: () => Promise<Resident[]>;
+  startStream: () => void;
+  stopStream: () => void;
 };
 
 const ResidentLiveContext = createContext<ResidentLiveContextValue | undefined>(undefined);
@@ -133,9 +163,43 @@ type ProviderProps = {
 // 啟動 SSE 連線並把住民狀態提供給整個應用。
 export const ResidentLiveProvider = ({ children }: ProviderProps) => {
   const [state, dispatch] = useReducer(residentReducer, initialState);
+  const connectionRef = useRef<ReturnType<typeof openResidentSSE> | null>(null);
+  const connectionHandlersRef = useRef<{
+    unsubNew: () => void;
+    unsubUpdate: () => void;
+    unsubCheckout: () => void;
+    handleOpen: () => void;
+    handleError: () => void;
+  } | null>(null);
 
-  useEffect(() => {
+  const stopStream = useCallback(() => {
+    const activeConnection = connectionRef.current;
+    if (!activeConnection) {
+      dispatch({ type: 'disconnected' });
+      return;
+    }
+
+    const handlers = connectionHandlersRef.current;
+    if (handlers) {
+      handlers.unsubNew();
+      handlers.unsubUpdate();
+      handlers.unsubCheckout();
+      activeConnection.source.removeEventListener('open', handlers.handleOpen);
+      activeConnection.source.removeEventListener('error', handlers.handleError);
+    }
+
+    activeConnection.close();
+    connectionRef.current = null;
+    connectionHandlersRef.current = null;
+    dispatch({ type: 'disconnected' });
+  }, []);
+
+  const startStream = useCallback(() => {
+    if (connectionRef.current) {
+      return;
+    }
     const connection = openResidentSSE();
+    connectionRef.current = connection;
 
     const forwardEvent = (payload: ResidentEvent) => {
       dispatch({ type: 'event', payload });
@@ -156,14 +220,26 @@ export const ResidentLiveProvider = ({ children }: ProviderProps) => {
     connection.source.addEventListener('open', handleOpen);
     connection.source.addEventListener('error', handleError);
 
-    return () => {
-      unsubNew();
-      unsubUpdate();
-      unsubCheckout();
-      connection.source.removeEventListener('open', handleOpen);
-      connection.source.removeEventListener('error', handleError);
-      connection.close();
+    connectionHandlersRef.current = {
+      unsubNew,
+      unsubUpdate,
+      unsubCheckout,
+      handleOpen,
+      handleError
     };
+  }, []);
+
+  useEffect(() => {
+    startStream();
+    return () => {
+      stopStream();
+    };
+  }, [startStream, stopStream]);
+
+  const refreshResidents = useCallback(async () => {
+    const snapshot = await fetchResidentSnapshot();
+    dispatch({ type: 'hydrate', payload: { residents: snapshot } });
+    return snapshot;
   }, []);
 
   const updateResident = useCallback((id: string, updates: Partial<Resident>) => {
@@ -174,13 +250,21 @@ export const ResidentLiveProvider = ({ children }: ProviderProps) => {
     dispatch({ type: 'localRemove', payload: { id } });
   }, []);
 
+  const addResident = useCallback((resident: Resident) => {
+    dispatch({ type: 'localAdd', payload: { resident } });
+  }, []);
+
   const value = useMemo<ResidentLiveContextValue>(
     () => ({
       ...state,
       updateResident,
-      removeResident
+      removeResident,
+      addResident,
+      refreshResidents,
+      startStream,
+      stopStream
     }),
-    [state, updateResident, removeResident]
+    [state, updateResident, removeResident, addResident, refreshResidents, startStream, stopStream]
   );
 
   return <ResidentLiveContext.Provider value={value}>{children}</ResidentLiveContext.Provider>;

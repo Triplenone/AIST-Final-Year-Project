@@ -17,6 +17,11 @@ uvicorn app.main:app --reload
 ```
 Add routers under `app/api/v1/`, register them in `app/main.py`, and expose dependencies (DB session, auth) via FastAPI `Depends`.
 
+### Latest Alignment (Feb 2025)
+- The React PWA now offers start/stop streaming, `/sim/snapshot` manual refresh, admin delete, and custom resident creation. Mirror these flows with future endpoints such as `GET /api/v1/residents/stream`, `GET /api/v1/residents/snapshot`, `POST /api/v1/residents`, and `DELETE /api/v1/residents/{id}` so the simulator can be replaced without UI changes.
+- Enforce role-aware RBAC scopes (guest/caregiver/admin) so the frontend can drop its mock gatekeeper and rely on JWT claims for edit/delete permissions.
+- Provide idempotent delete/restore semantics (soft delete + audit metadata); the UI now expects immediate confirmation after removing a resident.
+
 ### Roadmap
 1. Implement `/api/v1/residents`, `/devices`, `/events`, `/telemetry`, `/push`, `/ota` routers with OpenAPI schemas.
 2. Add ORM models + Alembic migrations; seed reference data using `infra/sql`.
@@ -41,6 +46,10 @@ uvicorn app.main:app --reload
 ```
 在 `app/api/v1/` 新增 Router，於 `app/main.py` 註冊，並透過 FastAPI `Depends` 注入資料庫與認證依賴。
 
+### 最新對齊（2025-02）
+- React PWA 已能啟停串流、透過 `/sim/snapshot` 手動刷新並新增/刪除住民。後端規畫時請預留對應 API（例如 `GET /api/v1/residents/stream`、`GET /api/v1/residents/snapshot`、`POST /api/v1/residents`、`DELETE /api/v1/residents/{id}`）以便日後接軌。
+- 依角色（guest/caregiver/admin）配置 JWT Claim 與 RBAC，讓前端可直接依據權杖決定可否編輯／刪除。
+- 刪除流程建議採 soft-delete＋稽核欄位，因為前端現在會在確認後立即重新整理 KPI 與警報。
 ### 路線圖
 1. 實作 `/api/v1/residents`、`/devices`、`/events`、`/telemetry`、`/push`、`/ota` Router 與 OpenAPI Schema。
 2. 建立 ORM Model 與 Alembic 遷移，並使用 `infra/sql` 初始化資料。

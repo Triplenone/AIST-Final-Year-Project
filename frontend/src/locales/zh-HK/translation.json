@@ -99,7 +99,8 @@
     },
     "actions": {
       "edit": "編輯",
-      "delete": "刪除"
+      "delete": "刪除",
+      "confirmDelete": "確定從模擬資料中移除 {{name}} 嗎？"
     },
     "empty": "目前沒有符合此篩選的住民。",
     "status": {
@@ -133,14 +134,15 @@
       "confirmDelete": "確定要從模擬器移除 {{name}} 嗎？此動作無法復原。",
       "errors": {
         "requiredName": "請輸入住民姓名。",
-        "requiredRoom": "請輸入房號。",
-        "deleteSeed": "預設住民無法刪除。"
+        "requiredRoom": "請輸入房號。"
       }
     },
     "live": {
       "badge": "LIVE",
       "streaming": "串流中",
       "paused": "重新連線中…",
+      "manual": "手動刷新",
+      "stopped": "已暫停",
       "lastEvent": "上次事件 {{time}} 前",
       "waiting": "等待串流"
     }
@@ -190,6 +192,43 @@
     "mapDataGateway": "以型別安全的 React Hook 包裝 DataGateway API。",
     "portTokens": "把靜態儀表板的設計 Token 匯入共享 CSS 變數。",
     "addRouting": "導入驗證路由，逐步遷移實際面板。"
+  },
+  "simulator": {
+    "live": {
+      "title": "即時串流",
+      "start": "啟動即時更新",
+      "stop": "停止即時更新"
+    },
+    "refresh": {
+      "title": "快照刷新",
+      "now": "立即刷新",
+      "pending": "刷新中…",
+      "success": "{{time}} 已更新",
+      "error": "刷新失敗，請稍後再試。",
+      "lastRun": "上次刷新 {{time}}",
+      "never": "尚未手動刷新",
+      "intervalLabel": "自動刷新間隔（秒）",
+      "enable": "啟用自動刷新",
+      "disable": "停用自動刷新"
+    },
+    "dataset": {
+      "title": "模擬資料集",
+      "addCustom": "新增自訂住民",
+      "hideForm": "收合自訂住民表單",
+      "submit": "新增住民",
+      "pending": "新增中…",
+      "success": "已加入模擬資料。",
+      "reset": "清除表單",
+      "errors": {
+        "name": "請輸入住民姓名。",
+        "room": "請輸入房號。",
+        "generic": "無法新增此住民，請稍後再試。"
+      }
+    },
+    "actions": {
+      "clearAll": "清空所有住民",
+      "confirmClearAll": "確定要清空住民名冊嗎？僅影響示範資料。"
+    }
   },
   "devPanel": {
     "aria": "模擬資料控制",

@@ -45,6 +45,16 @@ body {
   gap: 2.5rem;
 }
 
+.app-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #1d4ed8;
+}
+
 .section {
   background: rgba(255, 255, 255, 0.92);
   border-radius: 20px;
@@ -54,10 +64,11 @@ body {
 }
 
 .app-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: space-between;
+  gap: 1.25rem 1.5rem;
+  flex-wrap: wrap;
   background: rgba(255, 255, 255, 0.92);
   padding: 1.5rem 2rem;
   border-radius: 20px;
@@ -69,6 +80,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  flex: 1 1 240px;
+  min-width: 220px;
 }
 
 .brand-mark {
@@ -82,12 +95,18 @@ body {
   margin: 0;
   font-size: 0.95rem;
   color: #475569;
+  max-width: 28ch;
+  line-height: 1.35;
+  text-wrap: balance;
 }
 
 .header-nav {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: center;
+  flex: 1.4 1 320px;
+  gap: 0.85rem;
+  flex-wrap: wrap;
   font-size: 0.95rem;
 }
 
@@ -109,7 +128,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 1rem;
-  justify-self: end;
+  justify-content: flex-end;
+  flex: 1 1 240px;
+  flex-wrap: wrap;
 }
 
 .header-actions__button {
@@ -576,6 +597,228 @@ tbody tr:focus-within {
   outline: none;
 }
 
+.table-actions {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.table-action-button--danger {
+  color: #b91c1c;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.table-action-button--danger:hover,
+.table-action-button--danger:focus-visible {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.simulator-panel {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 18px;
+  padding: 1.25rem 1.5rem;
+  background: rgba(248, 250, 252, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.simulator-panel__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.simulator-panel__group {
+  flex: 1 1 260px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.simulator-panel__title {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.simulator-panel__status {
+  margin: 0;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.simulator-panel__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.simulator-panel__button {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.simulator-panel__button:hover,
+.simulator-panel__button:focus-visible {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #1d4ed8;
+  outline: none;
+}
+
+.simulator-panel__button--danger {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #b91c1c;
+}
+
+.simulator-panel__button--danger:hover,
+.simulator-panel__button--danger:focus-visible {
+  background: rgba(248, 113, 113, 0.16);
+  border-color: rgba(248, 113, 113, 0.7);
+}
+
+.simulator-panel__button--accent {
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  color: #fff;
+  border-color: rgba(37, 99, 235, 0.6);
+}
+
+.simulator-panel__button--accent:hover,
+.simulator-panel__button--accent:focus-visible {
+  background: linear-gradient(135deg, #1d4ed8, #0ea5e9);
+  color: #fff;
+}
+
+.simulator-panel__button--ghost {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.simulator-panel__button--active {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.4);
+  color: #0891b2;
+}
+
+.simulator-panel__custom {
+  border-top: 1px solid rgba(148, 163, 184, 0.3);
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.simulator-panel__toggle {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.simulator-panel__toggle:hover,
+.simulator-panel__toggle:focus-visible {
+  color: #1d4ed8;
+  outline: none;
+}
+
+.simulator-panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.simulator-panel__inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.simulator-panel__inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+.simulator-panel__inputs input,
+.simulator-panel__inputs select {
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.95rem;
+}
+
+.simulator-panel__inputs input:focus-visible,
+.simulator-panel__inputs select:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.7);
+  outline-offset: 2px;
+}
+
+.simulator-panel__full {
+  grid-column: 1 / -1;
+}
+
+.simulator-panel__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.simulator-panel__label input {
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  padding: 0.4rem 0.6rem;
+}
+
+.simulator-panel__feedback {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.simulator-panel__feedback--success {
+  color: #047857;
+}
+
+.simulator-panel__feedback--error {
+  color: #b91c1c;
+}
+
+.simulator-panel__feedback--pending {
+  color: #0f172a;
+}
+
+.simulator-panel__formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .simulator-panel__row {
+    flex-direction: column;
+  }
+}
+
 .resident-edit-backdrop {
   position: fixed;
   inset: 0;
@@ -1032,14 +1275,18 @@ tbody tr:focus-within {
 
 @media (max-width: 860px) {
   .app-header {
-    grid-template-columns: 1fr;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-nav {
+    justify-content: flex-start;
   }
 
   .header-actions {
     width: 100%;
-    flex-wrap: wrap;
     gap: 0.75rem;
+    justify-content: flex-start;
   }
 
   .language-switcher {

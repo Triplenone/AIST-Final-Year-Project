@@ -117,10 +117,6 @@ export const useResidentEditor = ({ residents, onSave, onRemove, t }: UseResiden
       cancelEdit();
       return;
     }
-    if (resident.origin === 'seed') {
-      setError(t('residents.edit.errors.deleteSeed'));
-      return;
-    }
     const confirmed = window.confirm(t('residents.edit.confirmDelete', { name: resident.name }));
     if (!confirmed) {
       return;

@@ -4,6 +4,10 @@
 
 The legacy SmartCare dashboard is now refreshed with a soft yellow–green visual system, role-based authentication, and a built-in SSE simulator that works without a backend. All critical interactions remain frontend-only so you can run it locally on any machine.
 
+### February 2025 Update
+- The React PWA (`frontend/`) is now the primary playground: responsive header, inline simulator controls (spawn/burst/clear/clearAll/addCustom), start/stop streaming, manual snapshot refresh, and full admin deletion.
+- Keep this legacy README for static demos, but align copy/fixtures with the React behaviour so handovers stay consistent.
+
 ### Quick Start
 1. `cd frontend/web-dashboard`
 2. Install dependencies only if you need the React playground (`npm install`), otherwise skip.
@@ -52,6 +56,10 @@ The legacy SmartCare dashboard is now refreshed with a soft yellow–green visua
 ## 繁體中文
 
 這份儀表板已換上淺黃綠色系，支援角色型登入與前端 SSE 模擬器，無需串接後端即可示範即時資料。所有程式邏輯仍純前端，可在任何開發環境快速啟動。
+
+### 2025-02 更新
+- React PWA（`frontend/`）已成主要示範版本：整合響應式頁首與模擬器控制（連發／清除／自訂）、啟停串流、手動 snapshot 刷新，以及完整的管理員刪除流程。
+- 此 README 仍保留給靜態 Demo，但請在文案與測試資料上對齊 React 行為，確保交班體驗一致。
 
 ### 快速開始
 1. `cd frontend/web-dashboard`

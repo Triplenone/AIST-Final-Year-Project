@@ -99,7 +99,8 @@
     },
     "actions": {
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "confirmDelete": "Remove {{name}} from the simulation dataset?"
     },
     "empty": "No residents match this filter right now.",
     "status": {
@@ -133,14 +134,15 @@
       "confirmDelete": "Remove {{name}} from the simulator? This action cannot be undone.",
       "errors": {
         "requiredName": "Enter a resident name.",
-        "requiredRoom": "Enter a room number.",
-        "deleteSeed": "Base residents cannot be removed."
+        "requiredRoom": "Enter a room number."
       }
     },
     "live": {
       "badge": "LIVE",
       "streaming": "Streaming",
       "paused": "Reconnecting…",
+      "manual": "Manual refresh",
+      "stopped": "Updates paused",
       "lastEvent": "Last event {{time}} ago",
       "waiting": "Waiting for stream"
     }
@@ -190,6 +192,43 @@
     "mapDataGateway": "Wrap DataGateway APIs with type-safe React hooks.",
     "portTokens": "Port visual tokens from the static dashboard into shared CSS variables.",
     "addRouting": "Add authenticated routing and progressively migrate real panels."
+  },
+  "simulator": {
+    "live": {
+      "title": "Live data stream",
+      "start": "Start live updates",
+      "stop": "Stop live updates"
+    },
+    "refresh": {
+      "title": "Snapshot refresh",
+      "now": "Refresh now",
+      "pending": "Refreshing…",
+      "success": "Updated at {{time}}",
+      "error": "Refresh failed. Try again.",
+      "lastRun": "Last refresh {{time}}",
+      "never": "No manual refresh yet",
+      "intervalLabel": "Auto-refresh interval (seconds)",
+      "enable": "Enable auto refresh",
+      "disable": "Disable auto refresh"
+    },
+    "dataset": {
+      "title": "Simulator dataset",
+      "addCustom": "Add custom resident",
+      "hideForm": "Hide custom resident form",
+      "submit": "Add resident",
+      "pending": "Adding…",
+      "success": "Resident added to the simulation.",
+      "reset": "Reset form",
+      "errors": {
+        "name": "Enter a resident name.",
+        "room": "Enter a room number.",
+        "generic": "Could not add this resident. Try again."
+      }
+    },
+    "actions": {
+      "clearAll": "Clear all residents",
+      "confirmClearAll": "Clear the entire resident directory? This only affects the demo data."
+    }
   },
   "devPanel": {
     "aria": "Simulator developer controls",

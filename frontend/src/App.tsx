@@ -5,8 +5,8 @@ import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { DevPanel } from './components/DevPanel';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { SimulatorControls, type CustomResidentFormValues } from './components/SimulatorControls';
 import {
   initialMetrics,
   metricOrder,
@@ -15,13 +15,14 @@ import {
 } from './constants/metrics';
 import { useResidentEditor } from './hooks/useResidentEditor';
 import type { ResidentEditDraft } from './hooks/useResidentEditor';
-import { sendSimulatorMessage } from './services/simulator-controls';
+import { simulatorActions } from './services/simulator-controls';
 import { useResidentLiveStore } from './shared/resident-live-store';
 import type { Resident } from './sse/client';
 import {
   deriveAlertsFromResidents,
   deriveInsightsFromResidents,
   deriveResidentMetrics,
+  fromLocalDateTimeInputValue,
   statusOptions,
   type RawMetrics
 } from './utils/resident-derived';
@@ -41,6 +42,17 @@ type Session = {
 
 const filterOptions = ['all', 'high', 'followUp', 'stable'] as const;
 type FilterKey = (typeof filterOptions)[number];
+const MIN_REFRESH_INTERVAL = 2;
+const DEFAULT_REFRESH_INTERVAL = 10;
+const generateManualResidentId = () => `manual-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36)}`;
+const randomBetween = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const buildManualVitals = () => ({
+  hr: randomBetween(60, 96),
+  bpSystolic: randomBetween(108, 134),
+  bpDiastolic: randomBetween(65, 88),
+  spo2: randomBetween(95, 99),
+  temperature: Number((36.3 + Math.random() * 0.6).toFixed(1))
+});
 
 const DEFAULT_ACCOUNTS: Account[] = [
   { username: 'guest_demo', password: 'guest123', role: 'guest' },
@@ -104,7 +116,6 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<string | null>(null);
   const authFirstFieldRef = useRef<HTMLInputElement | null>(null);
-  const [showSimulatorControls, setShowSimulatorControls] = useState<boolean>(false);
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.accounts, accounts);
@@ -118,13 +129,6 @@ export default function App() {
     }
   }, [session]);
 
-  useEffect(() => {
-    if (session?.role === 'admin') {
-      setShowSimulatorControls(true);
-    } else {
-      setShowSimulatorControls(false);
-    }
-  }, [session]);
 
   const closeAuth = useCallback(() => {
     setAuthMode(null);
@@ -236,13 +240,30 @@ export default function App() {
     [accounts, switchAuthMode, t]
   );
 
-  const { residents: residentMap, lastEventAt, connected, updateResident, removeResident } = useResidentLiveStore();
+  const {
+    residents: residentMap,
+    lastEventAt,
+    connected,
+    updateResident,
+    removeResident,
+    addResident,
+    refreshResidents,
+    startStream,
+    stopStream
+  } = useResidentLiveStore();
 
   const [filter, setFilter] = useState<FilterKey>('all');
   const [now, setNow] = useState(() => Date.now());
   const [lastUpdated, setLastUpdated] = useState<Date>(() => new Date());
   const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
   const previousRawMetricsRef = useRef<RawMetrics | null>(null);
+  const refreshPromiseRef = useRef<Promise<void> | null>(null);
+  const [streamingEnabled, setStreamingEnabled] = useState(true);
+  const [manualRefreshState, setManualRefreshState] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [lastManualRefreshAt, setLastManualRefreshAt] = useState<Date | null>(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const [refreshIntervalSec, setRefreshIntervalSec] = useState(DEFAULT_REFRESH_INTERVAL);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -316,6 +337,51 @@ export default function App() {
     setLastUpdated(Number.isNaN(eventDate.getTime()) ? new Date() : eventDate);
   }, [lastEventAt]);
 
+  const handleManualRefresh = useCallback(async () => {
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
+    }
+    setManualRefreshState('pending');
+    setRefreshError(null);
+    const refreshPromise = (async () => {
+      try {
+        await refreshResidents();
+        setManualRefreshState('success');
+        setLastManualRefreshAt(new Date());
+      } catch (error) {
+        console.warn('[Residents] Manual refresh failed', error);
+        setManualRefreshState('error');
+        setRefreshError(t('simulator.refresh.error'));
+      } finally {
+        refreshPromiseRef.current = null;
+        window.setTimeout(() => {
+          setManualRefreshState('idle');
+        }, 1500);
+      }
+    })();
+    refreshPromiseRef.current = refreshPromise;
+    return refreshPromise;
+  }, [refreshResidents, t]);
+
+  useEffect(() => {
+    if (!autoRefreshEnabled) {
+      return;
+    }
+    const intervalMs = Math.max(MIN_REFRESH_INTERVAL, refreshIntervalSec) * 1000;
+    const timer = window.setInterval(() => {
+      void handleManualRefresh();
+    }, intervalMs);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [autoRefreshEnabled, refreshIntervalSec, handleManualRefresh]);
+
+  useEffect(() => {
+    if (streamingEnabled && autoRefreshEnabled) {
+      setAutoRefreshEnabled(false);
+    }
+  }, [streamingEnabled, autoRefreshEnabled]);
+
   const formattedTime = useMemo(() => {
     return new Intl.DateTimeFormat(activeLanguage, {
       hour: '2-digit',
@@ -367,18 +433,119 @@ export default function App() {
   const userRoleLabel = t(`auth.roles.${session?.role ?? 'guest'}`);
   const signButtonLabel = t(isLoggedIn ? 'auth.signOut' : 'auth.signIn');
 
-  const liveStatusText = connected ? t('residents.live.streaming') : t('residents.live.paused');
+  const liveStatusText = useMemo(() => {
+    if (streamingEnabled) {
+      return connected ? t('residents.live.streaming') : t('residents.live.paused');
+    }
+    return autoRefreshEnabled ? t('residents.live.manual') : t('residents.live.stopped');
+  }, [streamingEnabled, connected, autoRefreshEnabled, t]);
 
-  const handleSimulate = useCallback(() => {
-    void sendSimulatorMessage({ action: 'mutate' });
-  }, []);
+  // Streaming and simulator controls (inside component scope)
+  const handleStartStreaming = useCallback(() => {
+    setStreamingEnabled(true);
+    startStream();
+  }, [startStream]);
+
+  const handleStopStreaming = useCallback(() => {
+    setStreamingEnabled(false);
+    stopStream();
+  }, [stopStream]);
+
+  const runSimulatorCommand = useCallback(
+    async (command: () => Promise<boolean>, options?: { forceRefresh?: boolean }) => {
+      const ok = await command();
+      if (ok && (!streamingEnabled || options?.forceRefresh)) {
+        await refreshResidents();
+      }
+      return ok;
+    },
+    [refreshResidents, streamingEnabled]
+  );
+
+  const handleBurstUpdates = useCallback(() => runSimulatorCommand(simulatorActions.burstUpdate), [runSimulatorCommand]);
+
+  const handleSpawnResident = useCallback(() => runSimulatorCommand(simulatorActions.spawnResident), [runSimulatorCommand]);
+
+  const handleClearDynamicResidents = useCallback(
+    () => runSimulatorCommand(simulatorActions.clearDynamicResidents, { forceRefresh: true }),
+    [runSimulatorCommand]
+  );
+
+  const handleClearAllResidents = useCallback(
+    () =>
+      runSimulatorCommand(
+        async () => {
+          const confirmed = window.confirm(t('simulator.actions.confirmClearAll'));
+          if (!confirmed) {
+            return false;
+          }
+          return simulatorActions.clearAllResidents();
+        },
+        { forceRefresh: true }
+      ),
+    [runSimulatorCommand, t]
+  );
+
+  const handleAddCustomResident = useCallback(
+    async (input: CustomResidentFormValues) => {
+      const nowIso = new Date().toISOString();
+      const lastSeenAtIso = fromLocalDateTimeInputValue(input.lastSeenAt) ?? nowIso;
+      const resident: Resident = {
+        id: generateManualResidentId(),
+        name: input.name,
+        room: input.room,
+        status: input.status,
+        lastSeenAt: lastSeenAtIso,
+        lastSeenLocation: input.lastSeenLocation.trim() || input.room,
+        vitals: buildManualVitals(),
+        checkedOut: false,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        origin: 'manual'
+      };
+      addResident(resident);
+      try {
+        const ok = await simulatorActions.addCustomResident({
+          id: resident.id,
+          name: resident.name,
+          room: resident.room,
+          status: resident.status,
+          lastSeenAt: lastSeenAtIso,
+          lastSeenLocation: resident.lastSeenLocation
+        });
+        if (!ok) {
+          throw new Error('Simulator rejected custom resident');
+        }
+        if (!streamingEnabled) {
+          await refreshResidents();
+        }
+      } catch (error) {
+        removeResident(resident.id);
+        throw error;
+      }
+    },
+    [addResident, refreshResidents, removeResident, streamingEnabled]
+  );
+
+  const triggerSingleUpdate = useCallback(() => runSimulatorCommand(simulatorActions.singleUpdate), [runSimulatorCommand]);
 
   const handleResidentDelete = useCallback(
     (id: string, resident: Resident) => {
       removeResident(id);
-      void sendSimulatorMessage({ action: 'delete', id: resident.id });
+      void simulatorActions.deleteResident(resident.id);
     },
     [removeResident]
+  );
+
+  const handleResidentRowDelete = useCallback(
+    (resident: Resident) => {
+      const confirmed = window.confirm(t('residents.actions.confirmDelete', { name: resident.name }));
+      if (!confirmed) {
+        return;
+      }
+      handleResidentDelete(resident.id, resident);
+    },
+    [handleResidentDelete, t]
   );
 
   const {
@@ -396,7 +563,6 @@ export default function App() {
 
   return (
     <div className="app-background">
-      {isAdmin && showSimulatorControls ? <DevPanel onHide={() => setShowSimulatorControls(false)} /> : null}
       <main className="app-shell">
         <header className="app-header">
           <div className="brand">
@@ -410,15 +576,6 @@ export default function App() {
             <a href="#family">{t('layout.nav.family')}</a>
           </nav>
           <div className="header-actions">
-            {isAdmin && !showSimulatorControls ? (
-              <button
-                type="button"
-                className="header-actions__button"
-                onClick={() => setShowSimulatorControls(true)}
-              >
-                {t('devPanel.show')}
-              </button>
-            ) : null}
             <LanguageSwitcher />
             <div className="auth-menu" aria-live="polite">
               <div className="auth-menu__details">
@@ -443,7 +600,7 @@ export default function App() {
             <p>{t('hero.description')}</p>
           </div>
           <div className="hero-actions">
-            <button type="button" className="primary" onClick={handleSimulate}>
+            <button type="button" className="primary" onClick={() => void triggerSingleUpdate()}>
               {t('actions.simulate')}
             </button>
             <span className="timestamp" aria-live="polite">
@@ -497,20 +654,45 @@ export default function App() {
                 {lastEventBadge ? <span>• {t('residents.live.lastEvent', { time: lastEventBadge })}</span> : null}
               </div>
             </div>
-            <div className="filters" role="group" aria-label={t('residents.filters.aria')}>
-              {filterOptions.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={`chip ${filter === option ? 'chip--active' : ''}`}
-                  onClick={() => setFilter(option)}
-                >
-                  {t(`filters.${option}`)}
-                </button>
-              ))}
-            </div>
-          </header>
-          <div className="table-wrapper">
+          <div className="filters" role="group" aria-label={t('residents.filters.aria')}>
+            {filterOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`chip ${filter === option ? 'chip--active' : ''}`}
+                onClick={() => setFilter(option)}
+              >
+                {t(`filters.${option}`)}
+              </button>
+            ))}
+          </div>
+        </header>
+        {isAdmin ? (
+          <SimulatorControls
+            streamingEnabled={streamingEnabled}
+            connected={connected}
+            onStartStream={handleStartStreaming}
+            onStopStream={handleStopStreaming}
+            manualRefreshState={manualRefreshState}
+            refreshError={refreshError}
+            lastManualRefresh={lastManualRefreshAt}
+            onManualRefresh={handleManualRefresh}
+            refreshIntervalSec={refreshIntervalSec}
+            minRefreshInterval={MIN_REFRESH_INTERVAL}
+            onRefreshIntervalChange={(value) => setRefreshIntervalSec(Math.max(MIN_REFRESH_INTERVAL, Math.round(value)))}
+            autoRefreshEnabled={autoRefreshEnabled}
+            onToggleAutoRefresh={setAutoRefreshEnabled}
+            actions={{
+              singleUpdate: triggerSingleUpdate,
+              burstUpdate: handleBurstUpdates,
+              spawn: handleSpawnResident,
+              clearDynamic: handleClearDynamicResidents,
+              clearAll: handleClearAllResidents
+            }}
+            onAddCustomResident={handleAddCustomResident}
+          />
+        ) : null}
+        <div className="table-wrapper">
             <table>
               <caption className="sr-only">{t('residents.tableCaption')}</caption>
               <thead>
@@ -544,9 +726,18 @@ export default function App() {
                       </td>
                       {isAdmin ? (
                         <td data-title={t('residents.columns.actions')}>
-                          <button type="button" className="table-action-button" onClick={() => beginEdit(resident)}>
-                            {t('residents.actions.edit')}
-                          </button>
+                          <div className="table-actions">
+                            <button type="button" className="table-action-button" onClick={() => beginEdit(resident)}>
+                              {t('residents.actions.edit')}
+                            </button>
+                            <button
+                              type="button"
+                              className="table-action-button table-action-button--danger"
+                              onClick={() => handleResidentRowDelete(resident)}
+                            >
+                              {t('residents.actions.delete')}
+                            </button>
+                          </div>
                         </td>
                       ) : null}
                     </tr>

@@ -20,7 +20,7 @@ export type Resident = {
   checkedOut: boolean;
   createdAt: string;
   updatedAt: string;
-  origin?: 'seed' | 'dynamic';
+  origin?: 'seed' | 'dynamic' | 'manual';
 };
 
 export type ResidentEventType = 'resident.new' | 'resident.update' | 'resident.checkout';

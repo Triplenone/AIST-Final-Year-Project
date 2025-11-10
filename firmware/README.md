@@ -10,6 +10,10 @@ pio device monitor # optional serial monitor
 ```
 Add Unity-based tests under `test/` once modules (sensor fusion, telemetry encoding, OTA validators) stabilize.
 
+### Latest Alignment (Feb 2025)
+- Frontend KPIs now depend on `status`, `lastSeenAt`, `lastSeenLocation`, and vitals (HR/BP/SpO₂/temperature). Ensure telemetry payloads publish the same schema so we can phase out the simulator.
+- Manual resident creation in the PWA distinguishes `origin: 'manual'`; firmware events should set `origin: 'device'` (or similar) to keep provenance clear.
+- The simulator can pause streaming and poll snapshots. When we wire live devices, expose throttling/backoff hooks so the UI can temporarily pause ingestion without rebooting wearables.
 ### Todo Checklist
 1. Wi-Fi bootstrap with exponential backoff.
 2. BLE beacon scanner emitting `{beacon_id, rssi}` at configurable duty cycle.
@@ -27,6 +31,10 @@ pio device monitor # 序列埠監看（可選）
 ```
 待模組（感測器融合、遙測編碼、OTA 驗證）穩定後，可在 `test/` 加入 Unity 測試。
 
+### 最新對齊（2025-02）
+- 前端 KPI 依賴 `status`、`lastSeenAt`、`lastSeenLocation` 與生命徵象（HR/BP/SpO₂/溫度）；實際遙測請輸出相同欄位，以便替換模擬資料。
+- React PWA 會標記 `origin: 'manual'`；韌體可採 `origin: 'device'` 或類似欄位維持資料來源追蹤。
+- UI 允許暫停串流改用輪詢，未來接上實機時需提供節流／暫停機制，避免穿戴端在短暫離線時重新開機。
 ### 待辦清單
 1. Wi-Fi 啟動與指數退避。
 2. BLE Beacon 掃描，依 duty cycle 輸出 `{beacon_id, rssi}`。

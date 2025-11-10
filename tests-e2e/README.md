@@ -10,6 +10,11 @@
 | k6 | API + MQTT load (telemetry bursts, OTA fan-out). |
 | Reporting | Publish JUnit + HTML artifacts to CI. |
 
+### Latest Alignment (Feb 2025)
+- Add coverage for the new responsive header (brand/tagline, nav, auth) across desktop/tablet breakpoints.
+- Write admin flows for the inline simulator block: start/stop streaming, manual refresh, auto-refresh interval, spawn/burst/clear, add custom resident, delete resident with confirmation.
+- Verify derived widgets (KPIs, alerts, insights) update after snapshot refreshes, manual additions, and deletions.
+
 ### Getting Started
 1. Choose Playwright or Cypress and add dependencies to `package.json`.
 2. Create `tests-e2e/.env.example` for base URLs, seeded accounts, feature flags.
@@ -24,6 +29,11 @@
 | Playwright / Cypress | 瀏覽器自動化：登入、住民 CRUD、人力調整、訊息、語系、離線切換。 |
 | k6 | API 與 MQTT 壓測（遙測尖峰、OTA 廣播）。 |
 | 報告 | 在 CI 匯出 JUnit 與 HTML 結果。 |
+
+### 最新對齊（2025-02）
+- 新增響應式頁首測試，確認品牌標語、導覽、登入資訊在桌機／平板皆維持版面。
+- 撰寫管理員劇本：啟停串流、手動刷新、自動刷新間隔、連發／清除／自訂住民、刪除並檢查確認提示。
+- 驗證 KPI／警報／洞察會在 snapshot、手動新增、刪除後立即更新。
 
 ### 開始使用
 1. 選定 Playwright 或 Cypress，並在 `package.json` 安裝依賴。

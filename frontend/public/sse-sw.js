@@ -1,5 +1,6 @@
 // 由 Service Worker 支援的 SSE 模擬器，無需後端即可產生住民事件。
 const SSE_PATH = '/sim/sse';
+const SNAPSHOT_PATH = '/sim/snapshot';
 const SSE_HEADERS = {
   'Content-Type': 'text/event-stream',
   'Cache-Control': 'no-cache',
@@ -13,6 +14,8 @@ const encode = (input) => textEncoder.encode(input);
 const residentRegistry = new Map();
 // activeConnections 記錄所有開啟中的串流，方便群播事件。
 const activeConnections = new Set();
+let allowEmptyRoster = false;
+const suppressedSeedIds = new Set();
 
 const givenNames = ['Anna', 'Li', 'Dewei', 'Maria', 'Haruto', 'Mei', 'Chloe', 'Mateo', 'Aisha', 'Noah', 'Sara', 'Wei', 'Lucas', 'Yuna'];
 const surnames = ['Chen', 'Singh', 'Lopez', 'Tanaka', 'Ng', 'Garcia', 'Lee', 'Patel', 'Silva', 'Wong', 'Smith', 'Khan', 'Ito', 'Martinez'];
@@ -35,6 +38,14 @@ const baseResidentSeeds = [
 
 const baseResidentIdSet = new Set(baseResidentSeeds.map((seed) => seed.id));
 const dynamicResidentIds = new Set();
+
+const getActiveResidents = () => Array.from(residentRegistry.values()).filter((resident) => !resident.checkedOut);
+
+const markRosterActive = () => {
+  if (allowEmptyRoster) {
+    allowEmptyRoster = false;
+  }
+};
 
 // 立即啟用，確保首次載入就能攔截 /sim/sse。
 self.addEventListener('install', () => {
@@ -81,26 +92,29 @@ const buildVitals = (previousVitals) => {
 // 產生一筆模擬住民資料，並附上合理的生理數據。
 const createResident = (seed = null) => {
   const now = new Date();
+  const nowIso = now.toISOString();
   const resident = {
     id: seed?.id ?? nextResidentId(),
     name: seed?.name ?? `${pick(givenNames)} ${pick(surnames)}`,
     room: seed?.room ?? `${pick(roomPrefixes)}-${pick(roomNumbers)}`,
-    status: pick(statuses),
-    lastSeenAt: now.toISOString(),
-    lastSeenLocation: pick(locations),
-    vitals: buildVitals(),
+    status: seed?.status ?? pick(statuses),
+    lastSeenAt: seed?.lastSeenAt ?? nowIso,
+    lastSeenLocation: seed?.lastSeenLocation ?? pick(locations),
+    vitals: seed?.vitals ?? buildVitals(seed?.vitals),
     checkedOut: false,
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-    origin: seed ? 'seed' : 'dynamic'
+    createdAt: seed?.createdAt ?? nowIso,
+    updatedAt: seed?.updatedAt ?? nowIso,
+    origin: seed?.origin ?? (seed ? 'seed' : 'dynamic')
   };
   residentRegistry.set(resident.id, resident);
-  if (seed) {
+  if (resident.origin === 'seed') {
     baseResidentIdSet.add(resident.id);
+    suppressedSeedIds.delete(resident.id);
     dynamicResidentIds.delete(resident.id);
   } else {
     dynamicResidentIds.add(resident.id);
   }
+  markRosterActive();
   return resident;
 };
 
@@ -110,11 +124,19 @@ const touchResident = (resident) => {
 };
 
 const initializeResidentBase = () => {
+  if (allowEmptyRoster) {
+    return;
+  }
   baseResidentSeeds.forEach((seed) => {
+    if (suppressedSeedIds.has(seed.id)) {
+      return;
+    }
     const existing = residentRegistry.get(seed.id);
     if (!existing) {
       createResident(seed);
-    } else if (existing.checkedOut) {
+      return;
+    }
+    if (existing.checkedOut) {
       existing.checkedOut = false;
       existing.status = pick(statuses);
       existing.lastSeenAt = new Date().toISOString();
@@ -122,9 +144,9 @@ const initializeResidentBase = () => {
       existing.vitals = buildVitals(existing.vitals);
       existing.origin = 'seed';
       touchResident(existing);
-    } else {
-      existing.origin = 'seed';
+      return;
     }
+    existing.origin = 'seed';
   });
 };
 
@@ -165,10 +187,22 @@ const clearDynamicResidents = () => {
   return cleared;
 };
 
+const clearAllResidents = () => {
+  const cleared = [];
+  residentRegistry.forEach((resident, id) => {
+    const checkedOut = checkoutResident(resident);
+    cleared.push(checkedOut);
+    residentRegistry.delete(id);
+    dynamicResidentIds.delete(id);
+    if (baseResidentIdSet.has(id)) {
+      suppressedSeedIds.add(id);
+    }
+  });
+  allowEmptyRoster = true;
+  return cleared;
+};
+
 const deleteResidentById = (id) => {
-  if (baseResidentIdSet.has(id)) {
-    return null;
-  }
   const resident = residentRegistry.get(id);
   if (!resident) {
     return null;
@@ -176,7 +210,32 @@ const deleteResidentById = (id) => {
   const checkedOut = checkoutResident(resident);
   residentRegistry.delete(id);
   dynamicResidentIds.delete(id);
+  if (baseResidentIdSet.has(id)) {
+    suppressedSeedIds.add(id);
+  }
   return checkedOut;
+};
+
+const createManualResident = (input) => {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const safeName = input.name?.trim() || `${pick(givenNames)} ${pick(surnames)}`;
+  const safeRoom = input.room?.trim() || `${pick(roomPrefixes)}-${pick(roomNumbers)}`;
+  const safeStatus = statuses.includes(input.status) ? input.status : 'stable';
+  const safeLocation = input.lastSeenLocation?.trim() || safeRoom;
+  const safeTimestamp = input.lastSeenAt || nowIso;
+  const seed = {
+    id: input.id || nextResidentId(),
+    name: safeName,
+    room: safeRoom,
+    status: safeStatus,
+    lastSeenAt: safeTimestamp,
+    lastSeenLocation: safeLocation,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    origin: 'manual'
+  };
+  return createResident(seed);
 };
 
 // 標記住民已退房，同時保留其資料。
@@ -198,13 +257,21 @@ const composeEventPayload = (type, resident) => ({
   resident
 });
 
+const firstAvailableSeed = () => baseResidentSeeds.find((seed) => !suppressedSeedIds.has(seed.id)) ?? null;
+
 const payloadFactories = {
   'resident.new': () => composeEventPayload('resident.new', createResident()),
   'resident.update': () => {
     initializeResidentBase();
     let target = randomActiveResident();
     if (!target) {
-      const fallbackSeed = baseResidentSeeds[0];
+      if (allowEmptyRoster) {
+        return null;
+      }
+      const fallbackSeed = firstAvailableSeed();
+      if (!fallbackSeed) {
+        return null;
+      }
       target = residentRegistry.get(fallbackSeed.id) ?? createResident(fallbackSeed);
     }
     return composeEventPayload('resident.update', mutateResident(target));
@@ -212,11 +279,30 @@ const payloadFactories = {
   'resident.checkout': () => {
     let target = randomActiveResident();
     if (!target) {
-      const fallbackSeed = baseResidentSeeds[0];
+      if (allowEmptyRoster) {
+        return null;
+      }
+      const fallbackSeed = firstAvailableSeed();
+      if (!fallbackSeed) {
+        return null;
+      }
       target = residentRegistry.get(fallbackSeed.id) ?? createResident(fallbackSeed);
     }
     return composeEventPayload('resident.checkout', checkoutResident(target));
   }
+};
+
+const ensureRosterForCommand = () => {
+  if (residentRegistry.size === 0) {
+    const fallbackSeed = firstAvailableSeed();
+    if (fallbackSeed) {
+      createResident(fallbackSeed);
+    } else {
+      createResident();
+    }
+    return;
+  }
+  markRosterActive();
 };
 
 // 確保串流中至少存在一位活躍住民，並維持預設名單。
@@ -242,7 +328,7 @@ const nextRandomEvent = () => {
 
 const sendRosterSnapshot = (connection) => {
   ensureResidentBase();
-  const activeResidents = Array.from(residentRegistry.values()).filter((resident) => !resident.checkedOut);
+  const activeResidents = getActiveResidents();
   activeResidents.forEach((resident) => {
     const payload = composeEventPayload('resident.new', resident);
     sendEvent(connection, payload.type, payload);
@@ -283,7 +369,9 @@ const scheduleNextEvent = (connection) => {
   const delay = randomInt(1000, 3000);
   connection.eventTimer = setTimeout(() => {
     const payload = nextRandomEvent();
-    sendEvent(connection, payload.type, payload);
+    if (payload) {
+      sendEvent(connection, payload.type, payload);
+    }
     if (!connection.closed) {
       scheduleNextEvent(connection);
     }
@@ -309,6 +397,19 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  if (request.method === 'GET' && url.pathname === SNAPSHOT_PATH) {
+    const body = JSON.stringify(getActiveResidents());
+    event.respondWith(
+      new Response(body, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      })
+    );
+    return;
+  }
+
   if (request.method === 'GET' && url.pathname === SSE_PATH) {
     let connection = null;
     const stream = new ReadableStream({
@@ -328,7 +429,9 @@ self.addEventListener('fetch', (event) => {
         scheduleKeepAlive(connection);
         sendRosterSnapshot(connection);
         const initialPayload = nextRandomEvent();
-        sendEvent(connection, initialPayload.type, initialPayload);
+        if (initialPayload) {
+          sendEvent(connection, initialPayload.type, initialPayload);
+        }
         scheduleNextEvent(connection);
 
         const abortConnection = () => closeConnection(connection);
@@ -370,23 +473,42 @@ self.addEventListener('message', (event) => {
     switch (payload.action) {
       case 'spawn': {
         const newcomer = payloadFactories['resident.new']();
-        broadcastPayload(newcomer);
+        if (newcomer) {
+          broadcastPayload(newcomer);
+        }
         break;
       }
       case 'burst': {
+        ensureRosterForCommand();
         for (let index = 0; index < 10; index += 1) {
           const updatePayload = payloadFactories['resident.update']();
-          broadcastPayload(updatePayload);
+          if (updatePayload) {
+            broadcastPayload(updatePayload);
+          }
         }
         break;
       }
       case 'mutate': {
+        ensureRosterForCommand();
         const updatePayload = payloadFactories['resident.update']();
-        broadcastPayload(updatePayload);
+        if (updatePayload) {
+          broadcastPayload(updatePayload);
+        }
         break;
       }
       case 'clear': {
         const cleared = clearDynamicResidents();
+        if (cleared.length === 0) {
+          break;
+        }
+        cleared.forEach((resident) => {
+          const checkoutPayload = composeEventPayload('resident.checkout', resident);
+          broadcastPayload(checkoutPayload);
+        });
+        break;
+      }
+      case 'clearAll': {
+        const cleared = clearAllResidents();
         if (cleared.length === 0) {
           break;
         }
@@ -405,6 +527,15 @@ self.addEventListener('message', (event) => {
           const checkoutPayload = composeEventPayload('resident.checkout', deleted);
           broadcastPayload(checkoutPayload);
         }
+        break;
+      }
+      case 'addCustom': {
+        if (!payload.resident || typeof payload.resident !== 'object') {
+          break;
+        }
+        const manual = createManualResident(payload.resident);
+        const manualPayload = composeEventPayload('resident.new', manual);
+        broadcastPayload(manualPayload);
         break;
       }
       default:

@@ -19,6 +19,11 @@ docker compose -f docker-compose.dev.yml up --build
 ```
 Set `APP_CONFIG.apiBase = 'http://localhost:8000/api/v1'` and `dataMode = 'hybrid'` to exercise the whole stack.
 
+### Latest Alignment (Feb 2025)
+- The React PWA now depends on `/sim/sse` and `/sim/snapshot`. When fronting the app with nginx/Caddy, ensure both endpoints are reachable (and cache-bypassed) at the site root.
+- Streaming can be paused while polling snapshots; configure reverse proxies to keep SSE read timeouts ≥ 60 s and allow HTTP/1.1 keep-alive.
+- Manual resident creation and delete calls will soon map to backend APIs. Plan port mappings (e.g., 5173 → 8443) so future gateway testing mimics production TLS.
+
 ### Hardening TODO
 - Disable anonymous MQTT and require client certificates for prod.
 - Add observability stack (Prometheus/Grafana/Loki).
@@ -43,6 +48,10 @@ docker compose -f docker-compose.dev.yml up --build
 ```
 將 `APP_CONFIG.apiBase` 設為 `http://localhost:8000/api/v1`，並切換 `dataMode = 'hybrid'`，即可測試端到端流程。
 
+### 最新對齊（2025-02）
+- React PWA 仰賴 `/sim/sse` 與 `/sim/snapshot`，部署時請確保這兩個路徑可直接由 root 存取並跳過快取。
+- 串流可能暫停改用輪詢，反向代理需允許 SSE 連線逾時 ≥ 60 秒並保持 HTTP/1.1 keep-alive。
+- 管理員刪除／自訂住民未來會改接後端 API，提前規畫對外埠號與 TLS 配置，以便日後在 Gateway 環境複製相同行為。
 ### 強化待辦
 - 正式環境需停用匿名 MQTT，並改用客戶端證書。
 - 新增觀察性堆疊（Prometheus/Grafana/Loki）。

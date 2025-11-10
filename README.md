@@ -12,6 +12,12 @@ This monorepo captures the full SmartCare wearable ecosystem (firmware → MQTT 
 - **Testing (tests-e2e/)**: Placeholder for Cypress/Playwright/k6 suites.
 - **Documentation (docs/)**: System design, API, data dictionary, OTA, security references.
 
+### What’s New (2025-02)
+- Responsive header keeps the SmartCare brand/tagline, nav, and auth controls readable on every breakpoint.
+- Resident directory supports full-field editing, admin delete with confirmation, and inline status chips that never overlap.
+- Simulator controls are now embedded above the resident table with start/stop streaming, manual/auto refresh, spawn/burst/mutate/clear, and custom resident creation.
+- Service worker adds `/sim/snapshot`, `clearAll`, and `addCustom` so the React PWA, tests, and future backend APIs share the same contract.
+
 ### Repository Layout
 | Path | Status | Description |
 |------|--------|-------------|
@@ -33,9 +39,9 @@ This monorepo captures the full SmartCare wearable ecosystem (firmware → MQTT 
    npm install
    npm run dev -- --host   # http://localhost:5173
    ```
-   - LIVE residents stream from the built‑in service worker (no backend).
+   - LIVE residents stream via the service worker (no backend) with `/sim/snapshot` fallback + manual refresh controls.
    - Sample accounts: `guest_demo/guest123`, `care_demo/care1234`, `admin_master/admin888`.
-   - Admins can open Simulator controls, spawn/mutate/clear residents, edit details, and delete dynamically added residents.
+   - Admins manage the inline simulator panel: start/stop streaming, adjust refresh intervals, spawn/burst/mutate/clear rosters, add custom residents, and delete any entry.
 3. Legacy static dashboard
    ```bash
    cd frontend/web-dashboard
@@ -71,13 +77,11 @@ This monorepo captures the full SmartCare wearable ecosystem (firmware → MQTT 
 
 ## Frontend PWA Feature Guide (Overview)
 
-- LIVE residents via service worker SSE (`/sim/sse`), no backend required.
-- Stable seeded roster + dynamic additions under admin control.
-- Admin‑only Simulator controls (toggleable panel):
-  - `spawn` (add one), `burst` (10 updates), `mutate` (single update), `clear` (remove dynamic residents).
-  - `delete` removes a selected dynamic resident from the simulator.
-- Admin can edit resident name/room/status/last seen; deletion is blocked for seeded residents.
-- KPI cards (Wellbeing, Alerts Resolved, Response Time), Recent Alerts, and Care Insights are derived from the resident directory in real time.
+- Live SSE stream at `/sim/sse` plus `/sim/snapshot` REST fallback keeps data fresh even when streaming is paused.
+- Responsive header: SmartCare brand/tagline, nav links, language switcher, and auth controls stay aligned across breakpoints.
+- Resident directory: filterable table with full-field editing, admin delete with confirmation, and status chips that never overlap.
+- Inline simulator controls (admin only): start/stop streaming, manual refresh, configurable auto-refresh interval, spawn/burst/mutate, clear dynamic/all residents, and add custom residents via a form.
+- KPI cards (Wellbeing, Alerts Resolved, Response Time), Recent Alerts, and Care Insights re-derive instantly from the shared resident store after every edit, deletion, or simulator action.
 
 See `frontend/README.md` for detailed developer docs, simulator protocol, i18n, and layout rules.
 
@@ -92,6 +96,12 @@ See `frontend/README.md` for detailed developer docs, simulator protocol, i18n, 
 - **基礎設施（infra/）**：利用 docker-compose 啟動 Mosquitto、TimescaleDB、MinIO、後端、前端。
 - **測試（tests-e2e/）**：保留給 Cypress/Playwright/k6。
 - **文件（docs/）**：系統設計、API、資料字典、OTA、安全參考。
+
+### 最新亮點（2025-02）
+- 響應式頁首：品牌標誌、標語、導覽列表與登入資訊在桌機與平板皆維持穩定版面。
+- 住民名冊：可編輯所有欄位並對任何住民執行刪除，刪除前會跳出模擬資料確認訊息。
+- 模擬器控制：整合於住民區塊上方，可啟停串流、手動/自動刷新、連發/新增/清空、輸入自訂住民。
+- Service Worker 新增 `/sim/snapshot`、`clearAll`、`addCustom`，確保 React PWA、測試與未來後端 API 行為一致。
 
 ### 目錄概況
 | 路徑 | 狀態 | 說明 |
@@ -108,19 +118,27 @@ See `frontend/README.md` for detailed developer docs, simulator protocol, i18n, 
 
 ### 執行步驟
 1. **Clone** 並安裝各模組需求。
-2. **儀表板 Demo**
+2. **React PWA（Vite）**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev -- --host   # http://localhost:5173
+   ```
+   - 內建 Service Worker SSE，亦提供 `/sim/snapshot` 手動刷新與自訂住民表單。
+   - 測試帳號：`guest_demo/guest123`、`care_demo/care1234`、`admin_master/admin888`。
+3. **儀表板 Demo**
    ```bash
    cd frontend/web-dashboard
    python -m http.server 5500
    ```
    連至 `http://localhost:5500`（Ctrl+F5）。Admin：`Admin/admin`；Caregiver：`Ms.Testing/admin`。
-3. **後端骨架**
+4. **後端骨架**
    ```bash
    cd backend
    uvicorn app.main:app --reload
    ```
    健康檢查：`http://localhost:8000/healthz`。
-4. **完整開發堆疊**
+5. **完整開發堆疊**
    ```bash
    cd infra
    ./mkcert-dev-certs.sh   # 每台機器一次
@@ -138,3 +156,11 @@ See `frontend/README.md` for detailed developer docs, simulator protocol, i18n, 
 3. 將儀表板功能遷移至 React PWA，並加入 Web Push。
 4. 在韌體端實作 Wi-Fi/BLE/GNSS/MQTT/TLS/OTA。
 5. 持續同步 `docs/` 與已完成的 API/資料。
+
+### 前端 PWA 功能概覽
+
+- Service Worker SSE (`/sim/sse`) 搭配 `/sim/snapshot` REST 備援，即使暫停串流依舊能手動刷新。
+- 新版頁首確保 SmartCare 品牌、導覽與登入資訊在各種解析度皆保持整齊。
+- 住民名冊可編輯姓名／房號／狀態／最後巡房資訊，並提供管理員刪除與確認流程。
+- 模擬器控制（僅限管理員）整合啟停串流、手動刷新、自動刷新間隔、連發/新增、清除動態或全體住民，以及自訂住民表單。
+- KPI 卡、最新警報、照護洞察皆即時重新推導，確保任何編輯或模擬器操作立刻反映。
