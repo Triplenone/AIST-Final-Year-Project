@@ -2,18 +2,62 @@
   "common": {
     "language": "語言",
     "switchTo": "切換至{{label}}",
-    "close": "關閉"
+    "close": "關閉",
+    "loading": "載入中..."
   },
   "layout": {
-    "subtitle": "幫前線照護員更快交接的操作面板",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "nav": {
       "aria": "主導覽",
       "overview": "總覽",
       "residents": "住民",
+      "location": "位置",
       "operations": "營運",
-      "family": "家屬互動"
+      "family": "家屬互動",
+      "admin": "系統管理"
     },
     "footer": "© 2024 SmartCare Collaborative — 與照護團隊一起打造"
+  },
+  "admin": {
+    "title": "系統管理",
+    "subtitle": "直接連接 TestStage-FYP 後端資源",
+    "detailsTitle": "Proactive Guardian Care 詳細資料",
+    "detailsSubtitle": "System Admin 儀表板：長者院舍智慧穿戴安全系統",
+    "tabs": {
+      "users": "用戶",
+      "devices": "設備",
+      "locations": "位置",
+      "events": "事件",
+      "logs": "設備日誌",
+      "status": "用戶狀態",
+      "residents": "住民",
+      "kpi": "KPI"
+    },
+    "residents": {
+      "title": "住民名冊",
+      "subtitle": "同步自 /api/v1/residents",
+      "searchPlaceholder": "搜尋姓名或房號",
+      "statusFilterLabel": "狀態",
+      "allStatuses": "全部狀態",
+      "refresh": "重新整理",
+      "lastUpdated": "更新於 {{time}}",
+      "columns": {
+        "id": "ID",
+        "name": "住民",
+        "room": "房號",
+        "status": "狀態",
+        "lastSeen": "最後出現",
+        "vitals": "生命徵象",
+        "device": "裝置",
+        "updated": "更新時間"
+      },
+      "noData": "目前沒有住民資料。",
+      "lastSeenUnknown": "未知",
+      "deviceUnknown": "未綁定",
+      "vitalsUnknown": "等待生命徵象",
+      "error": "無法取得住民資料，請稍後重試。"
+    }
   },
   "auth": {
     "guestName": "訪客",
@@ -46,11 +90,12 @@
     }
   },
   "actions": {
-    "simulate": "模擬更新資料"
+    "simulate": "模擬更新資料",
+    "exitDemo": "退出示範模式"
   },
   "hero": {
     "eyebrow": "漸進式網頁應用原型",
-    "title": "為 SmartCare 團隊準備的溫柔控制室",
+    "title": "為 SmartCare 團隊準備的溫馨控制室",
     "description": "在舊版儀表板仍服務線上時，先預覽即將到來的 React 體驗。",
     "lastUpdated": "最後更新：{{time}}"
   },
@@ -76,6 +121,24 @@
       "minutes": "{{count}} 分鐘"
     }
   },
+  "charts": {
+    "title": "護理狀態概覽",
+    "subtitle": "即時視覺化呈現住戶狀態、區域活動與警示。",
+    "status": {
+      "title": "住戶狀態分佈",
+      "subtitle": "目前住戶狀態的比例。"
+    },
+    "zones": {
+      "title": "區域佔用",
+      "subtitle": "按最後出現位置統計。"
+    },
+    "alerts": {
+      "title": "警示活動",
+      "subtitle": "過去 6 小時的高優先事件。",
+      "series": "警示"
+    },
+    "empty": "暫無資料"
+  },
   "filters": {
     "all": "全部",
     "high": "高優先",
@@ -83,8 +146,8 @@
     "stable": "穩定"
   },
   "residents": {
-    "title": "住民名冊",
-    "subtitle": "即時顯示生命徵象與最近巡房時間。",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "filters": {
       "aria": "依狀態篩選住民"
     },
@@ -147,6 +210,67 @@
       "waiting": "等待串流"
     }
   },
+  "location": {
+    "title": "位置總覽",
+    "subtitle": "室內平面圖（課堂示範）。",
+    "refresh": "更新地圖資料",
+    "map": {
+      "aria": "位置地圖",
+      "status": "狀態",
+      "zone": "區域"
+    },
+    "zones": {
+      "bedroom1": "睡房 1",
+      "bedroom2": "睡房 2",
+      "bathroom": "浴室",
+      "commonLounge": "公共休息區",
+      "unknown": "未知區域"
+    },
+    "legend": {
+      "title": "圖例",
+      "indoorZones": "室內區域",
+      "safeZone": "安全區",
+      "alerts": "活躍事件",
+      "residents": "住民"
+    },
+    "occupancy": {
+      "title": "區域入住情況",
+      "subtitle": "依最近位置分組的住民。",
+      "aria": "區域入住列表",
+      "empty": "此區域暫無住民。"
+    },
+    "events": {
+      "status": "狀態",
+      "time": "時間",
+      "types": {
+        "fall": "跌倒",
+        "bed_exit": "離床",
+        "bathroom_retention": "浴室逗留",
+        "geofence_breach": "圍欄越界",
+        "sos": "SOS",
+        "vital_signs_abnormal": "生命徵象異常"
+      }
+    },
+    "breaches": {
+      "title": "圍欄越界",
+      "subtitle": "更新於 {{time}}",
+      "empty": "目前沒有活躍的圍欄越界事件。",
+      "aria": "活躍的圍欄越界事件",
+      "itemTitle": "越界事件 #{{id}}",
+      "zone": "區域",
+      "zoneUnknown": "未知區域",
+      "time": "時間",
+      "coords": "座標",
+      "coordsUnknown": "未知",
+      "approx": "估算",
+      "status": "狀態"
+    },
+    "actions": {
+      "ack": "確認",
+      "resolve": "解決",
+      "falseAlarm": "誤報"
+    }
+  },
   "alerts": {
     "title": "最新警報",
     "subtitle": "今天最急需注意的事件",
@@ -157,6 +281,7 @@
       "ota": "有新的韌體可供 OTA 更新。"
     },
     "generated": {
+      "fall": "偵測到 {{name}} 可能在 {{location}} 跌倒。",
       "highStatus": "{{name}}（{{room}}）需要緊急巡查。",
       "followUp": "安排對 {{name}}（{{room}}）進行跟進檢查。",
       "stale": "{{name}} 已 {{duration}} 未巡房，請安排查訪。",

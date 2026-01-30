@@ -1,43 +1,30 @@
-# Firmware Skeleton
+# Firmware (ESP32 PlatformIO scaffold)
 
-## English Version
-`firmware/` is a PlatformIO project targeting the ESP32 wearable. Dependencies (MPU6050, MAX3010x, TinyGPS++, PubSubClient, ArduinoJson) are pinned in `platformio.ini`. Application code belongs under `src/`, and secrets (Wi-Fi, MQTT creds, TLS material) must be placed in ignored headers (e.g., `src/util/config.h`).
+This folder is a **PlatformIO project scaffold** for an ESP32 wearable.
 
-### Build & Monitor
+## What exists (repo evidence)
+
+- `platformio.ini` defines `env:esp32dev` and pins libraries:
+  - Adafruit MPU6050
+  - SparkFun MAX3010x
+  - TinyGPSPlus
+  - PubSubClient
+  - ArduinoJson
+- `src/` contains placeholder folders only (`.gitkeep`).
+
+## Build & monitor (verified commands)
+
 ```bash
-pio run            # build
-pio device monitor # optional serial monitor
+cd firmware
+pio run
 ```
-Add Unity-based tests under `test/` once modules (sensor fusion, telemetry encoding, OTA validators) stabilize.
 
-### Latest Alignment (Feb 2025)
-- Frontend KPIs now depend on `status`, `lastSeenAt`, `lastSeenLocation`, and vitals (HR/BP/SpO₂/temperature). Ensure telemetry payloads publish the same schema so we can phase out the simulator.
-- Manual resident creation in the PWA distinguishes `origin: 'manual'`; firmware events should set `origin: 'device'` (or similar) to keep provenance clear.
-- The simulator can pause streaming and poll snapshots. When we wire live devices, expose throttling/backoff hooks so the UI can temporarily pause ingestion without rebooting wearables.
-### Todo Checklist
-1. Wi-Fi bootstrap with exponential backoff.
-2. BLE beacon scanner emitting `{beacon_id, rssi}` at configurable duty cycle.
-3. GNSS (ATGM336H) ingestion via TinyGPS++.
-4. MQTT/TLS publisher with SOS + OTA subscribers.
-5. OTA client that validates SHA256 + signature before flashing.
+Optional serial monitor:
 
-## 繁體中文（香港）版本
-`firmware/` 為 ESP32 穿戴裝置的 PlatformIO 專案。`platformio.ini` 已鎖定 MPU6050、MAX3010x、TinyGPS++、PubSubClient、ArduinoJson 等依賴；邏輯程式碼請放於 `src/`。Wi-Fi、MQTT 憑證與 TLS 資料必須寫在 `.gitignore` 的檔案（如 `src/util/config.h`）。
-
-### 編譯與監看
 ```bash
-pio run            # 編譯
-pio device monitor # 序列埠監看（可選）
+pio device monitor
 ```
-待模組（感測器融合、遙測編碼、OTA 驗證）穩定後，可在 `test/` 加入 Unity 測試。
 
-### 最新對齊（2025-02）
-- 前端 KPI 依賴 `status`、`lastSeenAt`、`lastSeenLocation` 與生命徵象（HR/BP/SpO₂/溫度）；實際遙測請輸出相同欄位，以便替換模擬資料。
-- React PWA 會標記 `origin: 'manual'`；韌體可採 `origin: 'device'` 或類似欄位維持資料來源追蹤。
-- UI 允許暫停串流改用輪詢，未來接上實機時需提供節流／暫停機制，避免穿戴端在短暫離線時重新開機。
-### 待辦清單
-1. Wi-Fi 啟動與指數退避。
-2. BLE Beacon 掃描，依 duty cycle 輸出 `{beacon_id, rssi}`。
-3. 透過 TinyGPS++ 讀取 ATGM336H GNSS。
-4. MQTT/TLS 上傳與 SOS／OTA 訂閱。
-5. OTA 前驗證 SHA256 與簽章後再寫入。
+## Not found (in this repo)
+
+- Firmware application code under `src/` (sensor reading, Wi-Fi/MQTT upload, OTA, etc.).

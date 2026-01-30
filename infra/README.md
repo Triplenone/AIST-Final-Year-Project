@@ -1,58 +1,36 @@
-# Infrastructure Skeleton
+# Infrastructure (scaffold / not verified end-to-end)
 
-## English Version
-`infra/` defines the local/dev stack that mirrors production: Mosquitto for MQTT, TimescaleDB for time-series storage, MinIO for artifacts, and containers for backend/frontend. TLS assets are generated with `mkcert`, enabling HTTPS/TLS even in local demos.
+This folder contains **docker-compose scaffolding** and TLS helper scripts for a future “full stack” environment.
 
-### Key Files
-| File | Description |
-|------|-------------|
-| `docker-compose.dev.yml` | Brings up MQTT (1883/8883), TimescaleDB (5432), MinIO (9000/9001), backend (8000), frontend (5173). |
-| `mkcert-dev-certs.sh` | Generates `server.crt/key` and copies dev root CA for Mosquitto TLS. |
-| `mosquitto/mosquitto.conf` | Dual listeners (1883 plaintext, 8883 TLS) with anonymous dev access. |
-| `sql/000_init.sql` | Placeholder schema to be replaced by real migrations. |
+## What exists (repo evidence)
 
-### Usage
+| File | Purpose |
+|------|---------|
+| `docker-compose.dev.yml` | Defines MQTT (Mosquitto), a Postgres/Timescale DB, MinIO, a frontend container, and a backend build stub. |
+| `mkcert-dev-certs.sh` | Generates Mosquitto TLS certs using `mkcert`. |
+| `mosquitto/mosquitto.conf` | Mosquitto listeners/config. |
+| `sql/000_init.sql` | Placeholder SQL. |
+
+## Not verified / mismatches (repo evidence)
+
+- **Not found**: any `Dockerfile` in the repo → `docker-compose.dev.yml` has `backend: build: ../backend`, but there is no Dockerfile under `backend/`.
+- **DB mismatch**: compose uses Postgres/Timescale, but the implemented backend uses **MySQL** (`backend/backend/app/config.py` → `mysql+pymysql://...`).
+- **Env mismatch**: compose sets `DATABASE_URL`, but the backend reads `DB_HOST`, `DB_USER`, etc (see `backend/backend/app/config.py`).
+- **Not implemented**: backend `/sim/*` endpoints (the primary UI polls `/api/v1/*`).
+
+## Optional (scaffold) commands
+
+These commands exist in this folder, but the stack is **not expected to run end-to-end** until the mismatches above are addressed:
+
 ```bash
 cd infra
-./mkcert-dev-certs.sh   # run once per machine
+./mkcert-dev-certs.sh
 docker compose -f docker-compose.dev.yml up --build
 ```
-Set `APP_CONFIG.apiBase = 'http://localhost:8000/api/v1'` and `dataMode = 'hybrid'` to exercise the whole stack.
 
-### Latest Alignment (Feb 2025)
-- The React PWA now depends on `/sim/sse` and `/sim/snapshot`. When fronting the app with nginx/Caddy, ensure both endpoints are reachable (and cache-bypassed) at the site root.
-- Streaming can be paused while polling snapshots; configure reverse proxies to keep SSE read timeouts ≥ 60 s and allow HTTP/1.1 keep-alive.
-- Manual resident creation and delete calls will soon map to backend APIs. Plan port mappings (e.g., 5173 → 8443) so future gateway testing mimics production TLS.
+## How to make this runnable (next steps)
 
-### Hardening TODO
-- Disable anonymous MQTT and require client certificates for prod.
-- Add observability stack (Prometheus/Grafana/Loki).
-- Provide edge-mode compose for gateway deployments.
-
-## 繁體中文（香港）版本
-`infra/` 負責定義本地／開發用堆疊，模擬正式環境：Mosquitto（MQTT）、TimescaleDB（時序資料）、MinIO（檔案），以及後端／前端容器。透過 `mkcert` 產生 TLS 憑證，可在本機也使用 HTTPS/TLS。
-
-### 重要檔案
-| 檔案 | 說明 |
-|------|------|
-| `docker-compose.dev.yml` | 啟動 MQTT(1883/8883)、TimescaleDB(5432)、MinIO(9000/9001)、後端(8000)、前端(5173)。 |
-| `mkcert-dev-certs.sh` | 產生 `server.crt/key` 並複製本機根憑證供 Mosquitto TLS 使用。 |
-| `mosquitto/mosquitto.conf` | 1883 明文 + 8883 TLS，開發模式允許匿名。 |
-| `sql/000_init.sql` | 占位 Schema，將來以實際遷移取代。 |
-
-### 使用方法
-```bash
-cd infra
-./mkcert-dev-certs.sh   # 每台機器一次
-docker compose -f docker-compose.dev.yml up --build
-```
-將 `APP_CONFIG.apiBase` 設為 `http://localhost:8000/api/v1`，並切換 `dataMode = 'hybrid'`，即可測試端到端流程。
-
-### 最新對齊（2025-02）
-- React PWA 仰賴 `/sim/sse` 與 `/sim/snapshot`，部署時請確保這兩個路徑可直接由 root 存取並跳過快取。
-- 串流可能暫停改用輪詢，反向代理需允許 SSE 連線逾時 ≥ 60 秒並保持 HTTP/1.1 keep-alive。
-- 管理員刪除／自訂住民未來會改接後端 API，提前規畫對外埠號與 TLS 配置，以便日後在 Gateway 環境複製相同行為。
-### 強化待辦
-- 正式環境需停用匿名 MQTT，並改用客戶端證書。
-- 新增觀察性堆疊（Prometheus/Grafana/Loki）。
-- 提供 Edge Gateway 專用的 compose 組態。
+- Add a backend `Dockerfile` (and decide how to provide DB config inside the container).
+- Choose one DB path:
+  - Update backend to accept `DATABASE_URL` + Postgres, or
+  - Update compose to run MySQL and pass `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME`.

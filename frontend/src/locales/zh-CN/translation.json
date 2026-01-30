@@ -2,18 +2,62 @@
   "common": {
     "language": "语言",
     "switchTo": "切换至{{label}}",
-    "close": "关闭"
+    "close": "关闭",
+    "loading": "载入中..."
   },
   "layout": {
-    "subtitle": "帮一线照护人员更快交接的操作中心",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "nav": {
       "aria": "主导航",
       "overview": "总览",
       "residents": "住民",
+      "location": "位置",
       "operations": "运营",
-      "family": "家属互动"
+      "family": "家属互动",
+      "admin": "系统管理"
     },
     "footer": "© 2024 SmartCare Collaborative — 为照护团队而生"
+  },
+  "admin": {
+    "title": "系统管理",
+    "subtitle": "直接连到 TestStage-FYP 后端资源",
+    "detailsTitle": "Proactive Guardian Care 详情",
+    "detailsSubtitle": "System Admin 控制台：长者院舍智慧穿戴安全系统",
+    "tabs": {
+      "users": "用户",
+      "devices": "设备",
+      "locations": "位置",
+      "events": "事件",
+      "logs": "设备日志",
+      "status": "用户状态",
+      "residents": "住民",
+      "kpi": "KPI"
+    },
+    "residents": {
+      "title": "住民名册",
+      "subtitle": "同步自 /api/v1/residents",
+      "searchPlaceholder": "搜姓名或房号",
+      "statusFilterLabel": "状态",
+      "allStatuses": "全部状态",
+      "refresh": "重新整理",
+      "lastUpdated": "更新于 {{time}}",
+      "columns": {
+        "id": "ID",
+        "name": "住民",
+        "room": "房号",
+        "status": "状态",
+        "lastSeen": "最后出现",
+        "vitals": "生命体征",
+        "device": "设备",
+        "updated": "更新时间"
+      },
+      "noData": "目前没有住民资料。",
+      "lastSeenUnknown": "未知",
+      "deviceUnknown": "未绑定",
+      "vitalsUnknown": "等待生命体征",
+      "error": "无法取得住民资料，请稍后再试。"
+    }
   },
   "auth": {
     "guestName": "访客",
@@ -46,7 +90,8 @@
     }
   },
   "actions": {
-    "simulate": "模拟更新数据"
+    "simulate": "模拟更新数据",
+    "exitDemo": "退出演示模式"
   },
   "hero": {
     "eyebrow": "渐进式网页应用原型",
@@ -76,6 +121,24 @@
       "minutes": "{{count}} 分钟"
     }
   },
+  "charts": {
+    "title": "护理状态概览",
+    "subtitle": "实时可视化呈现住户状态、区域活动与警报。",
+    "status": {
+      "title": "住户状态分布",
+      "subtitle": "当前住户状态占比。"
+    },
+    "zones": {
+      "title": "区域占用",
+      "subtitle": "按最后出现位置统计。"
+    },
+    "alerts": {
+      "title": "警报活动",
+      "subtitle": "过去 6 小时的高优先事件。",
+      "series": "警报"
+    },
+    "empty": "暂无数据"
+  },
   "filters": {
     "all": "全部",
     "high": "高优先",
@@ -83,8 +146,8 @@
     "stable": "稳定"
   },
   "residents": {
-    "title": "住民目录",
-    "subtitle": "即时查看生命体征与最新巡房时间。",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "filters": {
       "aria": "按状态筛选住民"
     },
@@ -147,6 +210,67 @@
       "waiting": "等待串流"
     }
   },
+  "location": {
+    "title": "位置总览",
+    "subtitle": "室内平面图（课堂演示）。",
+    "refresh": "更新地图数据",
+    "map": {
+      "aria": "位置地图",
+      "status": "状态",
+      "zone": "区域"
+    },
+    "zones": {
+      "bedroom1": "卧室 1",
+      "bedroom2": "卧室 2",
+      "bathroom": "浴室",
+      "commonLounge": "公共休息区",
+      "unknown": "未知区域"
+    },
+    "legend": {
+      "title": "图例",
+      "indoorZones": "室内区域",
+      "safeZone": "安全区",
+      "alerts": "活跃事件",
+      "residents": "住民"
+    },
+    "occupancy": {
+      "title": "区域入住情况",
+      "subtitle": "按最近位置分组的住民。",
+      "aria": "区域入住列表",
+      "empty": "该区域暂无住民。"
+    },
+    "events": {
+      "status": "状态",
+      "time": "时间",
+      "types": {
+        "fall": "跌倒",
+        "bed_exit": "离床",
+        "bathroom_retention": "浴室逗留",
+        "geofence_breach": "围栏越界",
+        "sos": "SOS",
+        "vital_signs_abnormal": "生命体征异常"
+      }
+    },
+    "breaches": {
+      "title": "围栏越界",
+      "subtitle": "更新于 {{time}}",
+      "empty": "目前没有活跃的围栏越界事件。",
+      "aria": "活跃的围栏越界事件",
+      "itemTitle": "越界事件 #{{id}}",
+      "zone": "区域",
+      "zoneUnknown": "未知区域",
+      "time": "时间",
+      "coords": "坐标",
+      "coordsUnknown": "未知",
+      "approx": "估算",
+      "status": "状态"
+    },
+    "actions": {
+      "ack": "确认",
+      "resolve": "解决",
+      "falseAlarm": "误报"
+    }
+  },
   "alerts": {
     "title": "最新警报",
     "subtitle": "今日最需要注意的讯息",
@@ -157,6 +281,7 @@
       "ota": "新的固件可供 OTA 更新。"
     },
     "generated": {
+      "fall": "侦测到 {{name}} 可能在 {{location}} 跌倒。",
       "highStatus": "{{name}}（{{room}}）需要紧急巡查。",
       "followUp": "安排对 {{name}}（{{room}}）的随访检查。",
       "stale": "{{name}} 已 {{duration}} 未巡房，请安排查访。",

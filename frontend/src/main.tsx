@@ -1,6 +1,7 @@
 // 進入點：在渲染儀表板之前掛載所有全域 Provider。
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
+import 'leaflet/dist/leaflet.css';
 import './i18n';
 import App from './App';
 import { ResidentLiveProvider } from './shared/resident-live-store';

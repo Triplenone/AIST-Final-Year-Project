@@ -6,26 +6,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-import { SimulatorControls, type CustomResidentFormValues } from './components/SimulatorControls';
 import {
   initialMetrics,
   metricOrder,
-  type MetricKey,
   type Metrics
 } from './constants/metrics';
-import { useResidentEditor } from './hooks/useResidentEditor';
-import type { ResidentEditDraft } from './hooks/useResidentEditor';
-import { simulatorActions } from './services/simulator-controls';
 import { useResidentLiveStore } from './shared/resident-live-store';
 import type { Resident } from './sse/client';
 import {
   deriveAlertsFromResidents,
   deriveInsightsFromResidents,
   deriveResidentMetrics,
-  fromLocalDateTimeInputValue,
-  statusOptions,
+  primaryTimestamp,
   type RawMetrics
 } from './utils/resident-derived';
+import { AdminSection } from './components/admin/AdminSection';
+import { DashboardCharts } from './components/charts/DashboardCharts';
+import { LocationDashboard } from './components/LocationDashboard';
 
 type Role = 'guest' | 'caregiver' | 'admin';
 
@@ -40,19 +37,10 @@ type Session = {
   role: Role;
 };
 
-const filterOptions = ['all', 'high', 'followUp', 'stable'] as const;
-type FilterKey = (typeof filterOptions)[number];
-const MIN_REFRESH_INTERVAL = 2;
-const DEFAULT_REFRESH_INTERVAL = 10;
-const generateManualResidentId = () => `manual-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36)}`;
-const randomBetween = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const buildManualVitals = () => ({
-  hr: randomBetween(60, 96),
-  bpSystolic: randomBetween(108, 134),
-  bpDiastolic: randomBetween(65, 88),
-  spo2: randomBetween(95, 99),
-  temperature: Number((36.3 + Math.random() * 0.6).toFixed(1))
-});
+type ThemeMode = 'light' | 'dark';
+
+type ResidentPatch = Partial<Resident> & { roleType?: Resident['roleType'] };
+
 
 const DEFAULT_ACCOUNTS: Account[] = [
   { username: 'guest_demo', password: 'guest123', role: 'guest' },
@@ -62,10 +50,38 @@ const DEFAULT_ACCOUNTS: Account[] = [
 
 const STORAGE_KEYS = {
   accounts: 'smartcare-react-accounts',
-  session: 'smartcare-react-session'
+  session: 'smartcare-react-session',
+  theme: 'smartcare-theme'
 } as const;
 
 const hasWindow = () => typeof window !== 'undefined';
+
+const INDOOR_ZONES = ['Bedroom 1', 'Bedroom 2', 'Bathroom', 'Common Lounge'];
+const SIM_STATUSES: Resident['status'][] = ['high', 'followUp', 'stable'];
+
+const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const pick = <T,>(values: T[]) => values[randomInt(0, values.length - 1)];
+
+const buildVitals = (status: Resident['status'], forceHighHr: boolean) => {
+  const hr =
+    forceHighHr || status === 'high'
+      ? randomInt(115, 135)
+      : status === 'followUp'
+        ? randomInt(85, 110)
+        : randomInt(60, 95);
+  const spo2 = status === 'high' ? randomInt(90, 95) : status === 'followUp' ? randomInt(93, 97) : randomInt(96, 99);
+  const temperature =
+    status === 'high'
+      ? Number((Math.random() * 0.6 + 37.8).toFixed(1))
+      : Number((Math.random() * 0.6 + 36.4).toFixed(1));
+  return {
+    hr,
+    bpSystolic: randomInt(105, 135),
+    bpDiastolic: randomInt(65, 90),
+    spo2,
+    temperature
+  };
+};
 
 function readStorage<T>(key: string, fallback: T): T {
   if (!hasWindow()) return fallback;
@@ -116,6 +132,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<string | null>(null);
   const authFirstFieldRef = useRef<HTMLInputElement | null>(null);
+  const [theme, setTheme] = useState<ThemeMode>(() => readStorage<ThemeMode>(STORAGE_KEYS.theme, 'light'));
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.accounts, accounts);
@@ -172,6 +189,11 @@ export default function App() {
       authFirstFieldRef.current.focus();
     }
   }, [authMode]);
+
+  useEffect(() => {
+    writeStorage(STORAGE_KEYS.theme, theme);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const handleSignOut = useCallback(() => {
     setSession(null);
@@ -240,30 +262,12 @@ export default function App() {
     [accounts, switchAuthMode, t]
   );
 
-  const {
-    residents: residentMap,
-    lastEventAt,
-    connected,
-    updateResident,
-    removeResident,
-    addResident,
-    refreshResidents,
-    startStream,
-    stopStream
-  } = useResidentLiveStore();
+  const { residents: residentMap, startStream, stopStream, updateResident, setDemoMode, demoMode } = useResidentLiveStore();
 
-  const [filter, setFilter] = useState<FilterKey>('all');
   const [now, setNow] = useState(() => Date.now());
-  const [lastUpdated, setLastUpdated] = useState<Date>(() => new Date());
+  const [lastUpdated] = useState<Date>(() => new Date());
   const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
   const previousRawMetricsRef = useRef<RawMetrics | null>(null);
-  const refreshPromiseRef = useRef<Promise<void> | null>(null);
-  const [streamingEnabled, setStreamingEnabled] = useState(true);
-  const [manualRefreshState, setManualRefreshState] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
-  const [refreshError, setRefreshError] = useState<string | null>(null);
-  const [lastManualRefreshAt, setLastManualRefreshAt] = useState<Date | null>(null);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
-  const [refreshIntervalSec, setRefreshIntervalSec] = useState(DEFAULT_REFRESH_INTERVAL);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -284,13 +288,6 @@ export default function App() {
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [residentMap]);
 
-  const filteredResidents = useMemo(() => {
-    if (filter === 'all') {
-      return residentList;
-    }
-    return residentList.filter((resident) => resident.status === filter);
-  }, [filter, residentList]);
-
   const lastSeenFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(activeLanguage, {
@@ -307,6 +304,89 @@ export default function App() {
   const insights = useMemo<Insight[]>(() => {
     return deriveInsightsFromResidents(residentList, now, t);
   }, [residentList, now, t]);
+
+  const statusChartData = useMemo(() => {
+    const statusKeys: Resident['status'][] = ['stable', 'followUp', 'high', 'checked_out'];
+    const tally: Record<Resident['status'], number> = {
+      stable: 0,
+      followUp: 0,
+      high: 0,
+      checked_out: 0
+    };
+
+    residentList.forEach((resident) => {
+      tally[resident.status] = (tally[resident.status] ?? 0) + 1;
+    });
+
+    return statusKeys
+      .map((status) => ({
+        name: t(`residents.status.${status}`),
+        value: tally[status]
+      }))
+      .filter((item) => item.value > 0);
+  }, [residentList, t]);
+
+  const zoneChartData = useMemo(() => {
+    const tally = new Map<string, number>();
+
+    residentList.forEach((resident) => {
+      if (resident.checkedOut) return;
+      const rawLabel = resident.lastSeenLocation?.trim() || resident.room?.trim() || '';
+      const label = rawLabel || t('location.zones.unknown');
+      tally.set(label, (tally.get(label) ?? 0) + 1);
+    });
+
+    return Array.from(tally.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [residentList, t]);
+
+  const alertTrendData = useMemo(() => {
+    const bucketCount = 6;
+    const bucketMs = 60 * 60 * 1000;
+    const start = now - bucketCount * bucketMs;
+    const formatter = new Intl.DateTimeFormat(activeLanguage, {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const buckets = Array.from({ length: bucketCount }, (_, index) => {
+      const bucketEnd = new Date(start + (index + 1) * bucketMs);
+      return { name: formatter.format(bucketEnd), alerts: 0 };
+    });
+
+    const pushToBucket = (timestamp: number) => {
+      const bucketIndex = Math.floor((timestamp - start) / bucketMs);
+      if (bucketIndex >= 0 && bucketIndex < bucketCount) {
+        buckets[bucketIndex].alerts += 1;
+      }
+    };
+
+    residentList.forEach((resident) => {
+      if (resident.checkedOut) return;
+      if (resident.status !== 'high' && resident.status !== 'followUp') return;
+      const timestamp = primaryTimestamp(resident);
+      if (!timestamp) return;
+      const parsed = Date.parse(timestamp);
+      if (Number.isNaN(parsed)) return;
+      pushToBucket(parsed);
+    });
+
+    return buckets;
+  }, [residentList, now, activeLanguage]);
+
+  const chartLabels = useMemo(
+    () => ({
+      statusTitle: t('charts.status.title'),
+      statusSubtitle: t('charts.status.subtitle'),
+      zoneTitle: t('charts.zones.title'),
+      zoneSubtitle: t('charts.zones.subtitle'),
+      alertsTitle: t('charts.alerts.title'),
+      alertsSubtitle: t('charts.alerts.subtitle'),
+      alertsSeries: t('charts.alerts.series'),
+      empty: t('charts.empty')
+    }),
+    [t]
+  );
 
   useEffect(() => {
     const raw = deriveResidentMetrics(residentList, now);
@@ -330,57 +410,11 @@ export default function App() {
   }, [residentList, now]);
 
   useEffect(() => {
-    if (!lastEventAt) {
-      return;
-    }
-    const eventDate = new Date(lastEventAt);
-    setLastUpdated(Number.isNaN(eventDate.getTime()) ? new Date() : eventDate);
-  }, [lastEventAt]);
-
-  const handleManualRefresh = useCallback(async () => {
-    if (refreshPromiseRef.current) {
-      return refreshPromiseRef.current;
-    }
-    setManualRefreshState('pending');
-    setRefreshError(null);
-    const refreshPromise = (async () => {
-      try {
-        await refreshResidents();
-        setManualRefreshState('success');
-        setLastManualRefreshAt(new Date());
-      } catch (error) {
-        console.warn('[Residents] Manual refresh failed', error);
-        setManualRefreshState('error');
-        setRefreshError(t('simulator.refresh.error'));
-      } finally {
-        refreshPromiseRef.current = null;
-        window.setTimeout(() => {
-          setManualRefreshState('idle');
-        }, 1500);
-      }
-    })();
-    refreshPromiseRef.current = refreshPromise;
-    return refreshPromise;
-  }, [refreshResidents, t]);
-
-  useEffect(() => {
-    if (!autoRefreshEnabled) {
-      return;
-    }
-    const intervalMs = Math.max(MIN_REFRESH_INTERVAL, refreshIntervalSec) * 1000;
-    const timer = window.setInterval(() => {
-      void handleManualRefresh();
-    }, intervalMs);
+    startStream();
     return () => {
-      window.clearInterval(timer);
+      stopStream();
     };
-  }, [autoRefreshEnabled, refreshIntervalSec, handleManualRefresh]);
-
-  useEffect(() => {
-    if (streamingEnabled && autoRefreshEnabled) {
-      setAutoRefreshEnabled(false);
-    }
-  }, [streamingEnabled, autoRefreshEnabled]);
+  }, [startStream, stopStream]);
 
   const formattedTime = useMemo(() => {
     return new Intl.DateTimeFormat(activeLanguage, {
@@ -389,194 +423,75 @@ export default function App() {
     }).format(lastUpdated);
   }, [activeLanguage, lastUpdated]);
 
-  const formatLastSeen = useCallback(
-    (resident: Resident) => {
-      const baseTimestamp = resident.lastSeenAt ?? resident.updatedAt ?? resident.createdAt;
-      if (!baseTimestamp) {
-        return t('residents.lastSeen.waiting');
-      }
-      const formatted = lastSeenFormatter.format(new Date(baseTimestamp));
-      const location = resident.lastSeenLocation ?? resident.room;
-      return t('residents.lastSeen.label', { time: formatted, location });
-    },
-    [lastSeenFormatter, t]
-  );
-
-  const describeVitals = useCallback(
-    (resident: Resident) => {
-      const vitals = resident.vitals;
-      if (!vitals) {
-        return t('residents.vitals.unknown');
-      }
-      const bp = t('residents.vitals.bp', { systolic: vitals.bpSystolic, diastolic: vitals.bpDiastolic });
-      const hr = t('residents.vitals.hr', { value: vitals.hr });
-      const spo2 = t('residents.vitals.spo2', { value: vitals.spo2 });
-      const temp = t('residents.vitals.temp', { value: vitals.temperature.toFixed(1) });
-      return `${bp} • ${hr} • ${spo2} • ${temp}`;
-    },
-    [t]
-  );
-
-  const lastEventBadge = useMemo(() => {
-    if (!lastEventAt) {
-      return null;
-    }
-    const elapsedSeconds = Math.max(0, Math.floor((now - lastEventAt) / 1000));
-    const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-    const seconds = String(elapsedSeconds % 60).padStart(2, '0');
-    return `${minutes}:${seconds}`;
-  }, [lastEventAt, now]);
-
   const isLoggedIn = Boolean(session);
-  const isAdmin = session?.role === 'admin';
   const userDisplayName = session?.username ?? t('auth.guestName');
   const userRoleLabel = t(`auth.roles.${session?.role ?? 'guest'}`);
   const signButtonLabel = t(isLoggedIn ? 'auth.signOut' : 'auth.signIn');
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  }, []);
 
-  const liveStatusText = useMemo(() => {
-    if (streamingEnabled) {
-      return connected ? t('residents.live.streaming') : t('residents.live.paused');
+  const handleSimulateNewData = useCallback(() => {
+    const targetResidents = residentList.slice(0, 7);
+    if (targetResidents.length === 0) return;
+
+    setDemoMode(true);
+    const caregiverIndex = randomInt(0, targetResidents.length - 1);
+    const statusAssignments = targetResidents.map(() => pick(SIM_STATUSES));
+
+    if (!statusAssignments.includes('high')) {
+      statusAssignments[randomInt(0, statusAssignments.length - 1)] = 'high';
     }
-    return autoRefreshEnabled ? t('residents.live.manual') : t('residents.live.stopped');
-  }, [streamingEnabled, connected, autoRefreshEnabled, t]);
+    if (!statusAssignments.includes('followUp') && statusAssignments.length > 1) {
+      statusAssignments[randomInt(0, statusAssignments.length - 1)] = 'followUp';
+    }
 
-  // Streaming and simulator controls (inside component scope)
-  const handleStartStreaming = useCallback(() => {
-    setStreamingEnabled(true);
-    startStream();
-  }, [startStream]);
+    targetResidents.forEach((resident, index) => {
+      const status = statusAssignments[index] ?? 'stable';
+      const roleType = index === caregiverIndex ? 'caregiver' : 'elderly';
+      const forceHighHr = roleType === 'elderly' && status === 'high';
+      const minutesAgo = randomInt(0, 90);
+      const lastSeenAt = new Date(Date.now() - minutesAgo * 60000).toISOString();
+      const lastSeenLocation = pick(INDOOR_ZONES);
 
-  const handleStopStreaming = useCallback(() => {
-    setStreamingEnabled(false);
-    stopStream();
-  }, [stopStream]);
-
-  const runSimulatorCommand = useCallback(
-    async (command: () => Promise<boolean>, options?: { forceRefresh?: boolean }) => {
-      const ok = await command();
-      if (ok && (!streamingEnabled || options?.forceRefresh)) {
-        await refreshResidents();
-      }
-      return ok;
-    },
-    [refreshResidents, streamingEnabled]
-  );
-
-  const handleBurstUpdates = useCallback(() => runSimulatorCommand(simulatorActions.burstUpdate), [runSimulatorCommand]);
-
-  const handleSpawnResident = useCallback(() => runSimulatorCommand(simulatorActions.spawnResident), [runSimulatorCommand]);
-
-  const handleClearDynamicResidents = useCallback(
-    () => runSimulatorCommand(simulatorActions.clearDynamicResidents, { forceRefresh: true }),
-    [runSimulatorCommand]
-  );
-
-  const handleClearAllResidents = useCallback(
-    () =>
-      runSimulatorCommand(
-        async () => {
-          const confirmed = window.confirm(t('simulator.actions.confirmClearAll'));
-          if (!confirmed) {
-            return false;
-          }
-          return simulatorActions.clearAllResidents();
-        },
-        { forceRefresh: true }
-      ),
-    [runSimulatorCommand, t]
-  );
-
-  const handleAddCustomResident = useCallback(
-    async (input: CustomResidentFormValues) => {
-      const nowIso = new Date().toISOString();
-      const lastSeenAtIso = fromLocalDateTimeInputValue(input.lastSeenAt) ?? nowIso;
-      const resident: Resident = {
-        id: generateManualResidentId(),
-        name: input.name,
-        room: input.room,
-        status: input.status,
-        lastSeenAt: lastSeenAtIso,
-        lastSeenLocation: input.lastSeenLocation.trim() || input.room,
-        vitals: buildManualVitals(),
-        checkedOut: false,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        origin: 'manual'
+      const updates: ResidentPatch = {
+        status,
+        roleType,
+        lastSeenLocation,
+        lastSeenAt,
+        vitals: buildVitals(status, forceHighHr),
+        checkedOut: false
       };
-      addResident(resident);
-      try {
-        const ok = await simulatorActions.addCustomResident({
-          id: resident.id,
-          name: resident.name,
-          room: resident.room,
-          status: resident.status,
-          lastSeenAt: lastSeenAtIso,
-          lastSeenLocation: resident.lastSeenLocation
-        });
-        if (!ok) {
-          throw new Error('Simulator rejected custom resident');
-        }
-        if (!streamingEnabled) {
-          await refreshResidents();
-        }
-      } catch (error) {
-        removeResident(resident.id);
-        throw error;
-      }
-    },
-    [addResident, refreshResidents, removeResident, streamingEnabled]
-  );
 
-  const triggerSingleUpdate = useCallback(() => runSimulatorCommand(simulatorActions.singleUpdate), [runSimulatorCommand]);
+      updateResident(resident.id, updates);
+    });
+  }, [residentList, setDemoMode, updateResident]);
 
-  const handleResidentDelete = useCallback(
-    (id: string, resident: Resident) => {
-      removeResident(id);
-      void simulatorActions.deleteResident(resident.id);
-    },
-    [removeResident]
-  );
-
-  const handleResidentRowDelete = useCallback(
-    (resident: Resident) => {
-      const confirmed = window.confirm(t('residents.actions.confirmDelete', { name: resident.name }));
-      if (!confirmed) {
-        return;
-      }
-      handleResidentDelete(resident.id, resident);
-    },
-    [handleResidentDelete, t]
-  );
-
-  const {
-    editingResident,
-    draft: editDraft,
-    error: editError,
-    beginEdit,
-    cancelEdit,
-    updateDraft,
-    handleSubmit: submitEdit,
-    handleDelete: deleteResident
-  } = useResidentEditor({ residents: residentMap, onSave: updateResident, onRemove: handleResidentDelete, t });
-
-  const showEditModal = Boolean(isAdmin && editingResident && editDraft);
+  const handleExitDemoMode = useCallback(() => {
+    setDemoMode(false);
+  }, [setDemoMode]);
 
   return (
     <div className="app-background">
       <main className="app-shell">
         <header className="app-header">
           <div className="brand">
-            <span className="brand-mark">SmartCare</span>
+            <span className="brand-mark">{t('layout.title')}</span>
             <p className="brand-tagline">{t('layout.subtitle')}</p>
           </div>
           <nav className="header-nav" aria-label={t('layout.nav.aria')}>
             <a href="#overview">{t('layout.nav.overview')}</a>
             <a href="#residents">{t('layout.nav.residents')}</a>
+            <a href="#location">{t('layout.nav.location')}</a>
             <a href="#operations">{t('layout.nav.operations')}</a>
             <a href="#family">{t('layout.nav.family')}</a>
+            <a href="#admin">{t('layout.nav.admin')}</a>
           </nav>
           <div className="header-actions">
             <LanguageSwitcher />
+            <button type="button" className="theme-toggle" onClick={toggleTheme}>
+              {theme === 'light' ? 'Dark mode' : 'Light mode'}
+            </button>
             <div className="auth-menu" aria-live="polite">
               <div className="auth-menu__details">
                 <span className="auth-menu__name">{userDisplayName}</span>
@@ -600,9 +515,14 @@ export default function App() {
             <p>{t('hero.description')}</p>
           </div>
           <div className="hero-actions">
-            <button type="button" className="primary" onClick={() => void triggerSingleUpdate()}>
+            <button type="button" className="primary" onClick={handleSimulateNewData}>
               {t('actions.simulate')}
             </button>
+            {demoMode ? (
+              <button type="button" className="secondary" onClick={handleExitDemoMode}>
+                {t('actions.exitDemo')}
+              </button>
+            ) : null}
             <span className="timestamp" aria-live="polite">
               {t('hero.lastUpdated', { time: formattedTime })}
             </span>
@@ -643,109 +563,25 @@ export default function App() {
           </div>
         </section>
 
-        <section id="residents" className="section residents">
+        <section className="section charts-section">
           <header className="section-heading">
             <div>
-              <h2>{t('residents.title')}</h2>
-              <p>{t('residents.subtitle')}</p>
-              <div className="live-monitor" role="status" aria-live="polite">
-                <span className="live-monitor__badge">{t('residents.live.badge')}</span>
-                <span>{liveStatusText}</span>
-                {lastEventBadge ? <span>• {t('residents.live.lastEvent', { time: lastEventBadge })}</span> : null}
-              </div>
+              <h2>{t('charts.title')}</h2>
+              <p className="muted">{t('charts.subtitle')}</p>
             </div>
-          <div className="filters" role="group" aria-label={t('residents.filters.aria')}>
-            {filterOptions.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={`chip ${filter === option ? 'chip--active' : ''}`}
-                onClick={() => setFilter(option)}
-              >
-                {t(`filters.${option}`)}
-              </button>
-            ))}
-          </div>
-        </header>
-        {isAdmin ? (
-          <SimulatorControls
-            streamingEnabled={streamingEnabled}
-            connected={connected}
-            onStartStream={handleStartStreaming}
-            onStopStream={handleStopStreaming}
-            manualRefreshState={manualRefreshState}
-            refreshError={refreshError}
-            lastManualRefresh={lastManualRefreshAt}
-            onManualRefresh={handleManualRefresh}
-            refreshIntervalSec={refreshIntervalSec}
-            minRefreshInterval={MIN_REFRESH_INTERVAL}
-            onRefreshIntervalChange={(value) => setRefreshIntervalSec(Math.max(MIN_REFRESH_INTERVAL, Math.round(value)))}
-            autoRefreshEnabled={autoRefreshEnabled}
-            onToggleAutoRefresh={setAutoRefreshEnabled}
-            actions={{
-              singleUpdate: triggerSingleUpdate,
-              burstUpdate: handleBurstUpdates,
-              spawn: handleSpawnResident,
-              clearDynamic: handleClearDynamicResidents,
-              clearAll: handleClearAllResidents
-            }}
-            onAddCustomResident={handleAddCustomResident}
+          </header>
+          <DashboardCharts
+            statusData={statusChartData}
+            zoneData={zoneChartData}
+            alertTrendData={alertTrendData}
+            labels={chartLabels}
           />
-        ) : null}
-        <div className="table-wrapper">
-            <table>
-              <caption className="sr-only">{t('residents.tableCaption')}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{t('residents.columns.name')}</th>
-                  <th scope="col">{t('residents.columns.room')}</th>
-                  <th scope="col">{t('residents.columns.lastCheck')}</th>
-                  <th scope="col">{t('residents.columns.vitals')}</th>
-                  <th scope="col">{t('residents.columns.status')}</th>
-                  {isAdmin ? <th scope="col">{t('residents.columns.actions')}</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredResidents.length === 0 ? (
-                  <tr>
-                    <td colSpan={isAdmin ? 6 : 5} className="empty-placeholder">
-                      {t('residents.empty')}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredResidents.map((resident) => (
-                    <tr key={resident.id}>
-                      <td data-title={t('residents.columns.name')}>{resident.name}</td>
-                      <td data-title={t('residents.columns.room')}>{resident.room}</td>
-                      <td data-title={t('residents.columns.lastCheck')}>{formatLastSeen(resident)}</td>
-                      <td data-title={t('residents.columns.vitals')}>{describeVitals(resident)}</td>
-                      <td data-title={t('residents.columns.status')}>
-                        <span className={`status status-${resident.status}`}>
-                          {t(`residents.status.${resident.status}`, { defaultValue: resident.status })}
-                        </span>
-                      </td>
-                      {isAdmin ? (
-                        <td data-title={t('residents.columns.actions')}>
-                          <div className="table-actions">
-                            <button type="button" className="table-action-button" onClick={() => beginEdit(resident)}>
-                              {t('residents.actions.edit')}
-                            </button>
-                            <button
-                              type="button"
-                              className="table-action-button table-action-button--danger"
-                              onClick={() => handleResidentRowDelete(resident)}
-                            >
-                              {t('residents.actions.delete')}
-                            </button>
-                          </div>
-                        </td>
-                      ) : null}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        </section>
+
+        <LocationDashboard />
+
+        <section id="residents" className="residents">
+          <AdminSection />
         </section>
 
         <section id="operations" className="section split">
@@ -820,7 +656,11 @@ export default function App() {
               </label>
               <label>
                 <span>{t('auth.password')}</span>
-                <input name="password" type="password" autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} />
+                {authMode === 'signin' ? (
+                  <input name="password" type="password" autoComplete="current-password" />
+                ) : (
+                  <input name="password" type="password" autoComplete="new-password" />
+                )}
               </label>
               {authMode === 'signup' ? (
                 <label>
@@ -856,85 +696,6 @@ export default function App() {
         </div>
       ) : null}
 
-      {showEditModal && editingResident && editDraft ? (
-        <div className="resident-edit-backdrop" role="presentation">
-          <div
-            className="resident-edit-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="resident-edit-title"
-          >
-            <form className="resident-edit-form" onSubmit={submitEdit}>
-              <h2 id="resident-edit-title">{t('residents.edit.title')}</h2>
-              <div className="resident-edit-grid">
-                <label className="resident-edit-field">
-                  <span>{t('residents.edit.name')}</span>
-                  <input
-                    type="text"
-                    value={editDraft.name}
-                    onChange={(event) => updateDraft('name', event.target.value)}
-                  />
-                </label>
-                <label className="resident-edit-field">
-                  <span>{t('residents.edit.room')}</span>
-                  <input
-                    type="text"
-                    value={editDraft.room}
-                    onChange={(event) => updateDraft('room', event.target.value)}
-                  />
-                </label>
-                <label className="resident-edit-field">
-                  <span>{t('residents.edit.status')}</span>
-                  <select
-                    value={editDraft.status}
-                    onChange={(event) => updateDraft('status', event.target.value as ResidentEditDraft['status'])}
-                  >
-                    {statusOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {t(`residents.status.${option}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="resident-edit-field">
-                  <span>{t('residents.edit.lastSeenAt')}</span>
-                  <input
-                    type="datetime-local"
-                    value={editDraft.lastSeenAt}
-                    onChange={(event) => updateDraft('lastSeenAt', event.target.value)}
-                  />
-                </label>
-                <label className="resident-edit-field resident-edit-field--wide">
-                  <span>{t('residents.edit.lastSeenLocation')}</span>
-                  <input
-                    type="text"
-                    value={editDraft.lastSeenLocation}
-                    onChange={(event) => updateDraft('lastSeenLocation', event.target.value)}
-                  />
-                </label>
-              </div>
-              {editError ? <div className="resident-edit-error">{editError}</div> : null}
-              <div className="resident-edit-actions">
-                {editingResident.origin !== 'seed' ? (
-                  <button type="button" className="resident-edit-delete" onClick={deleteResident}>
-                    {t('residents.edit.delete')}
-                  </button>
-                ) : (
-                  <span aria-hidden="true" />
-                )}
-                <div className="resident-edit-actions__group">
-                  <button type="button" className="resident-edit-cancel" onClick={cancelEdit}>
-                    {t('residents.edit.cancel')}
-                  </button>
-                  <button type="submit" className="primary">
-                    {t('residents.edit.save')}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
