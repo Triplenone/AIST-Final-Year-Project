@@ -1,6 +1,6 @@
-import type { TFunction } from 'i18next';
+﻿import type { TFunction } from 'i18next';
 
-import type { Resident } from '../sse/client';
+import type { Resident } from '../types/resident';
 import { initialMetrics } from '../constants/metrics';
 
 export type RawMetrics = {
@@ -135,7 +135,7 @@ export const formatAlertTime = (
 ): { label: string; iso: string | null } => {
   const timestamp = parseTimestamp(primaryTimestamp(resident));
   if (!timestamp) {
-    return { label: '—', iso: null };
+    return { label: '--', iso: null };
   }
   return { label: formatter.format(timestamp), iso: timestamp.toISOString() };
 };
@@ -382,3 +382,5 @@ export const deriveInsightsFromResidents = (residents: Resident[], now: number, 
 };
 
 export const statusOptions: Resident['status'][] = ['stable', 'followUp', 'high', 'checked_out'];
+
+

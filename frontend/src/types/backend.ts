@@ -167,3 +167,25 @@ export interface BackendKpiMetric {
   target_threshold: number;
   record_timestamp: string;
 }
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_id?: number | null;
+  user_agent?: string | null;
+}
+
+export interface PushSubscriptionResponse extends PushSubscriptionPayload {
+  id: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PushTestPayload {
+  title?: string | null;
+  body?: string | null;
+  url?: string | null;
+  data?: Record<string, unknown> | null;
+  endpoint?: string | null;
+}

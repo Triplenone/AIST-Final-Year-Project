@@ -20,7 +20,14 @@ class KPIMetrics(Base):
     
     kpi_metric_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(100), nullable=False)
-    calculation_cycle = Column(Enum(CalculationCycle, native_enum=False), nullable=False)
+    calculation_cycle = Column(
+        Enum(
+            CalculationCycle,
+            native_enum=False,
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
+        nullable=False,
+    )
     value = Column(Numeric(5, 2), nullable=False)
     target_threshold = Column(Numeric(5, 2), nullable=False)
     record_timestamp = Column(DateTime, nullable=False, server_default=func.now())

@@ -4,10 +4,13 @@
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 from app.database import get_db
 from app.schemas.device_data_log import DeviceDataLogCreate
+from app.models.event import Event, EventType, EventStatus
+from app.models.device import Device
+from app.models.location_zone import LocationZone
 from app import crud
 import json
 
@@ -20,6 +23,80 @@ _reception_stats = {
     "errors": 0,
     "last_log_id": None
 }
+
+
+def resolve_location_zone_id(db: Session, data: Dict[str, Any], device: Optional[Device]) -> Optional[int]:
+    """从 payload 或设备部署位置推断 location_zone_id"""
+    raw_zone_id = data.get("location_zone_id") or data.get("locationZoneId")
+    if raw_zone_id is not None:
+        try:
+            return int(raw_zone_id)
+        except (TypeError, ValueError):
+            pass
+
+    zone_name = data.get("location_zone_name") or data.get("locationZoneName")
+    geofence_payload = data.get("geofence_breach") or data.get("geofence")
+    if not zone_name and isinstance(geofence_payload, dict):
+        zone_name = geofence_payload.get("zone_name") or geofence_payload.get("location_name")
+
+    if zone_name:
+        location = db.query(LocationZone).filter(LocationZone.name == zone_name).first()
+        if location:
+            return location.location_zone_id
+
+    if device and device.deploy_location:
+        location = db.query(LocationZone).filter(LocationZone.name == device.deploy_location).first()
+        if location:
+            return location.location_zone_id
+
+    return None
+
+
+def resolve_event_timestamp(value: Any) -> datetime:
+    """解析事件时间（支持时间戳或 ISO 字符串）"""
+    if value is None:
+        return datetime.now()
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value)
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return datetime.now()
+    return datetime.now()
+
+
+def create_event_record(
+    db: Session,
+    event_type: EventType,
+    elderly_user_id: int,
+    device_id: int,
+    location_zone_id: Optional[int],
+    event_timestamp: datetime,
+    event_params: Dict[str, Any]
+) -> Event:
+    """创建事件并发送推送（最佳努力）"""
+    new_event = Event(
+        event_type=event_type,
+        related_user_id=elderly_user_id,
+        trigger_device_id=device_id,
+        location_zone_id=location_zone_id,
+        event_timestamp=event_timestamp,
+        event_params=event_params,
+        event_status=EventStatus.UNHANDLED,
+        handled_by=None,
+        handled_at=None,
+        remark=None
+    )
+    db.add(new_event)
+    db.commit()
+    db.refresh(new_event)
+    try:
+        from app.services.push_notifications import notify_event
+        notify_event(db, new_event)
+    except Exception:
+        pass
+    return new_event
 
 
 def convert_imu_data_to_device_data_log(data: Dict[str, Any]) -> DeviceDataLogCreate:
@@ -215,6 +292,69 @@ def receive_imu_data(
         _reception_stats["total_received"] += 1
         _reception_stats["last_receive_time"] = datetime.now().isoformat()
         _reception_stats["last_log_id"] = new_log.id
+
+        # 可选：处理 SOS / 生命体征异常 / 围栏越界事件
+        extra_events = []
+        device = db.query(Device).filter(Device.device_id == log_data.device_id).first()
+        if device and device.elderly_user_id:
+            location_zone_id = resolve_location_zone_id(db, data, device)
+
+            # SOS 事件
+            if data.get("sos") or data.get("sos_triggered"):
+                event_params = {"log_id": new_log.id}
+                create_event_record(
+                    db=db,
+                    event_type=EventType.SOS,
+                    elderly_user_id=device.elderly_user_id,
+                    device_id=log_data.device_id,
+                    location_zone_id=location_zone_id,
+                    event_timestamp=resolve_event_timestamp(data.get("sos_time") or data.get("event_timestamp")),
+                    event_params=event_params
+                )
+                extra_events.append("sos")
+
+            # 生命体征异常事件（需要显式标记为异常）
+            vitals = data.get("vitals") or data.get("vital_signs")
+            vitals_abnormal = data.get("vitals_abnormal") or data.get("vital_signs_abnormal") or data.get("vitals_alert")
+            if isinstance(vitals, dict) and vitals and vitals_abnormal:
+                event_params = {"log_id": new_log.id, **vitals}
+                create_event_record(
+                    db=db,
+                    event_type=EventType.VITAL_SIGNS_ABNORMAL,
+                    elderly_user_id=device.elderly_user_id,
+                    device_id=log_data.device_id,
+                    location_zone_id=location_zone_id,
+                    event_timestamp=resolve_event_timestamp(data.get("vitals_time") or data.get("event_timestamp")),
+                    event_params=event_params
+                )
+                extra_events.append("vital_signs_abnormal")
+
+            # 围栏越界事件
+            geofence_payload = data.get("geofence_breach") or data.get("geofence")
+            if geofence_payload:
+                breach = True
+                if isinstance(geofence_payload, dict):
+                    breach = bool(geofence_payload.get("breach", True))
+                else:
+                    breach = bool(geofence_payload)
+                if breach:
+                    event_params = {"log_id": new_log.id}
+                    if isinstance(geofence_payload, dict):
+                        for key in ["lat", "lng", "latitude", "longitude", "accuracy", "zone_name", "zone_id"]:
+                            if key in geofence_payload:
+                                event_params[key] = geofence_payload.get(key)
+                    create_event_record(
+                        db=db,
+                        event_type=EventType.GEOFENCE_BREACH,
+                        elderly_user_id=device.elderly_user_id,
+                        device_id=log_data.device_id,
+                        location_zone_id=location_zone_id,
+                        event_timestamp=resolve_event_timestamp(
+                            (geofence_payload or {}).get("timestamp") if isinstance(geofence_payload, dict) else None
+                        ),
+                        event_params=event_params
+                    )
+                    extra_events.append("geofence_breach")
         
         # 构建返回信息
         result = {
@@ -223,7 +363,8 @@ def receive_imu_data(
             "log_id": new_log.id,
             "server_time": data.get('server_receive_time', ''),
             "is_fall_confirmed": log_data.is_fall_confirmed,
-            "event_created": False
+            "event_created": False,
+            "extra_events_created": extra_events
         }
         
         # 如果确认跌倒，提示事件已创建

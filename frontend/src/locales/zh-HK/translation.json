@@ -1,371 +1,304 @@
-{
+﻿{
   "common": {
     "language": "語言",
-    "switchTo": "切換至{{label}}",
     "close": "關閉",
-    "loading": "載入中..."
+    "loading": "載入中...",
+    "unknown": "未知"
   },
   "layout": {
     "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
+    "subtitle": "安老院智慧穿戴監測儀表板",
     "nav": {
       "aria": "主導覽",
       "overview": "總覽",
-      "residents": "住民",
+      "residents": "住戶",
       "location": "位置",
-      "operations": "營運",
-      "family": "家屬互動",
-      "admin": "系統管理"
-    },
-    "footer": "© 2024 SmartCare Collaborative — 與照護團隊一起打造"
+      "operations": "操作",
+      "family": "洞察",
+      "admin": "管理"
+    }
+  },
+  "hero": {
+    "eyebrow": "React + Vite 前端",
+    "title": "單一前端主線，直接對接真實後端",
+    "description": "此儀表板現在只會讀取 /api/v1/* 的真實資料。舊模擬器、假登入與本地 demo 控制已移除。",
+    "lastUpdated": "最後更新 {{time}}"
   },
   "admin": {
-    "title": "系統管理",
-    "subtitle": "直接連接 TestStage-FYP 後端資源",
-    "detailsTitle": "Proactive Guardian Care 詳細資料",
-    "detailsSubtitle": "System Admin 儀表板：長者院舍智慧穿戴安全系統",
+    "detailsTitle": "管理後台",
+    "detailsSubtitle": "直接操作 /api/v1/* 提供的後端資源。",
     "tabs": {
-      "users": "用戶",
-      "devices": "設備",
+      "residents": "住戶",
+      "users": "使用者",
+      "devices": "裝置",
       "locations": "位置",
       "events": "事件",
-      "logs": "設備日誌",
-      "status": "用戶狀態",
-      "residents": "住民",
+      "logs": "裝置紀錄",
+      "userStatus": "使用者狀態",
       "kpi": "KPI"
     },
     "residents": {
-      "title": "住民名冊",
+      "title": "住戶清單",
       "subtitle": "同步自 /api/v1/residents",
-      "searchPlaceholder": "搜尋姓名或房號",
-      "statusFilterLabel": "狀態",
+      "searchPlaceholder": "以姓名或房號搜尋",
+      "statusFilterLabel": "狀態篩選",
       "allStatuses": "全部狀態",
       "refresh": "重新整理",
       "lastUpdated": "更新於 {{time}}",
       "columns": {
         "id": "ID",
-        "name": "住民",
-        "room": "房號",
+        "name": "住戶",
+        "room": "房間",
         "status": "狀態",
         "lastSeen": "最後出現",
-        "vitals": "生命徵象",
-        "device": "裝置",
-        "updated": "更新時間"
+        "vitals": "生命跡象",
+        "device": "裝置"
       },
-      "noData": "目前沒有住民資料。",
+      "noData": "找不到住戶資料。",
       "lastSeenUnknown": "未知",
-      "deviceUnknown": "未綁定",
-      "vitalsUnknown": "等待生命徵象",
-      "error": "無法取得住民資料，請稍後重試。"
+      "deviceUnknown": "未分配",
+      "vitalsUnknown": "等待生命跡象資料",
+      "error": "無法載入住戶資料"
     }
-  },
-  "auth": {
-    "guestName": "訪客",
-    "signIn": "登入",
-    "signOut": "登出",
-    "signInTitle": "登入 SmartCare",
-    "signUpTitle": "建立帳號",
-    "username": "帳號",
-    "password": "密碼",
-    "role": "角色",
-    "continue": "登入",
-    "create": "建立帳號",
-    "noAccount": "還沒有帳號？",
-    "haveAccount": "已有帳號？",
-    "toSignUp": "立即註冊",
-    "toSignIn": "回到登入",
-    "roles": {
-      "guest": "訪客",
-      "caregiver": "照顧員",
-      "admin": "管理員"
-    },
-    "errors": {
-      "invalidCredentials": "帳號或密碼不正確。",
-      "usernameTaken": "此帳號已被使用。",
-      "usernameFormat": "帳號需至少 2 個字元，只能包含英數字、點或底線。",
-      "passwordLength": "密碼至少需 4 個字元。"
-    },
-    "feedback": {
-      "accountCreated": "已建立帳號，請登入繼續。"
-    }
-  },
-  "actions": {
-    "simulate": "模擬更新資料",
-    "exitDemo": "退出示範模式"
-  },
-  "hero": {
-    "eyebrow": "漸進式網頁應用原型",
-    "title": "為 SmartCare 團隊準備的溫馨控制室",
-    "description": "在舊版儀表板仍服務線上時，先預覽即將到來的 React 體驗。",
-    "lastUpdated": "最後更新：{{time}}"
   },
   "stats": {
     "wellbeing": {
-      "title": "健康指標",
-      "description": "依穿戴裝置摘要計算的整體健康分數。"
+      "title": "健康分數",
+      "description": "依最新穿戴數據估算的住戶平均健康狀態。"
     },
     "alertsResolved": {
-      "title": "已處理警報",
-      "description": "本班次照護團隊完成的警報處理數。"
+      "title": "已穩定警示",
+      "description": "目前活躍住戶的整體穩定程度。"
     },
     "responseTime": {
       "title": "平均回應時間",
-      "description": "從警報觸發到第一次到房巡視的分鐘數。",
+      "description": "活躍住戶距離最後一次更新的平均分鐘數。",
       "unit": "分鐘"
     },
     "delta": {
-      "label": "{{direction}}{{delta}}",
-      "up": "提升",
+      "label": "{{direction}} {{delta}}",
+      "up": "改善",
       "down": "下降",
       "points": "{{count}} 分",
       "minutes": "{{count}} 分鐘"
     }
   },
   "charts": {
-    "title": "護理狀態概覽",
-    "subtitle": "即時視覺化呈現住戶狀態、區域活動與警示。",
+    "title": "照護摘要",
+    "subtitle": "根據後端資料生成的住戶狀態、區域分佈與警示趨勢。",
     "status": {
       "title": "住戶狀態分佈",
-      "subtitle": "目前住戶狀態的比例。"
+      "subtitle": "目前活躍住戶的狀態比例。"
     },
     "zones": {
-      "title": "區域佔用",
-      "subtitle": "按最後出現位置統計。"
+      "title": "區域人數",
+      "subtitle": "依最近位置分組的住戶數量。"
     },
     "alerts": {
       "title": "警示活動",
-      "subtitle": "過去 6 小時的高優先事件。",
+      "subtitle": "最近六小時的高優先級情況。",
       "series": "警示"
     },
-    "empty": "暫無資料"
-  },
-  "filters": {
-    "all": "全部",
-    "high": "高優先",
-    "followUp": "需後續追蹤",
-    "stable": "穩定"
+    "empty": "目前沒有資料"
   },
   "residents": {
-    "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
-    "filters": {
-      "aria": "依狀態篩選住民"
-    },
-    "tableCaption": "住民生命徵象與狀態表",
-    "columns": {
-      "name": "住民",
-      "room": "房號",
-      "lastCheck": "最後巡房",
-      "vitals": "生命徵象",
-      "status": "狀態",
-      "actions": "操作"
-    },
-    "actions": {
-      "edit": "編輯",
-      "delete": "刪除",
-      "confirmDelete": "確定從模擬資料中移除 {{name}} 嗎？"
-    },
-    "empty": "目前沒有符合此篩選的住民。",
+    "title": "住戶總覽",
+    "subtitle": "來自後端的即時住戶快照。",
     "status": {
       "stable": "穩定",
-      "followUp": "需追蹤",
-      "high": "高優先",
-      "checked_out": "已退房"
+      "followUp": "需跟進",
+      "high": "高優先級",
+      "checked_out": "已離院"
     },
-    "hrLabel": "心率 {{value}} 下",
     "vitals": {
-      "bp": "{{systolic}}/{{diastolic}} mmHg",
-      "hr": "心率 {{value}} 下/分",
+      "bp": "血壓 {{systolic}}/{{diastolic}} mmHg",
+      "hr": "心率 {{value}} bpm",
       "spo2": "血氧 {{value}}%",
-      "temp": "體溫 {{value}}°C",
-      "unknown": "等待生命徵象"
-    },
-    "lastSeen": {
-      "label": "{{time}} • {{location}}",
-      "waiting": "等待首次巡房"
-    },
-    "edit": {
-      "title": "編輯住民資料",
-      "name": "住民姓名",
-      "room": "房號",
-      "status": "狀態",
-      "lastSeenAt": "最近巡房時間",
-      "lastSeenLocation": "最近巡房地點",
-      "cancel": "取消",
-      "save": "儲存變更",
-      "delete": "刪除住民",
-      "confirmDelete": "確定要從模擬器移除 {{name}} 嗎？此動作無法復原。",
-      "errors": {
-        "requiredName": "請輸入住民姓名。",
-        "requiredRoom": "請輸入房號。"
-      }
-    },
-    "live": {
-      "badge": "LIVE",
-      "streaming": "串流中",
-      "paused": "重新連線中…",
-      "manual": "手動刷新",
-      "stopped": "已暫停",
-      "lastEvent": "上次事件 {{time}} 前",
-      "waiting": "等待串流"
+      "temp": "體溫 {{value}} C",
+      "unknown": "沒有生命跡象資料"
     }
   },
   "location": {
     "title": "位置總覽",
-    "subtitle": "室內平面圖（課堂示範）。",
-    "refresh": "更新地圖資料",
+    "subtitle": "以真實位置資料驅動的室內平面圖與戶外越界檢視。",
+    "refresh": "重新整理位置",
+    "views": {
+      "label": "位置檢視",
+      "indoor": "室內",
+      "outdoor": "室外",
+      "noOutdoor": "未設定室外區域。"
+    },
     "map": {
       "aria": "位置地圖",
       "status": "狀態",
       "zone": "區域"
     },
     "zones": {
-      "bedroom1": "睡房 1",
-      "bedroom2": "睡房 2",
-      "bathroom": "浴室",
+      "bedroom1": "房間 1",
+      "bedroom2": "房間 2",
+      "bathroom": "洗手間",
       "commonLounge": "公共休息區",
       "unknown": "未知區域"
     },
     "legend": {
-      "title": "圖例",
-      "indoorZones": "室內區域",
-      "safeZone": "安全區",
-      "alerts": "活躍事件",
-      "residents": "住民"
+      "title": "圖例"
     },
     "occupancy": {
-      "title": "區域入住情況",
-      "subtitle": "依最近位置分組的住民。",
-      "aria": "區域入住列表",
-      "empty": "此區域暫無住民。"
+      "title": "區域人數",
+      "subtitle": "依最新室內位置分組的住戶。",
+      "aria": "區域人數",
+      "empty": "此區域目前沒有住戶。"
     },
     "events": {
-      "status": "狀態",
-      "time": "時間",
       "types": {
         "fall": "跌倒",
         "bed_exit": "離床",
-        "bathroom_retention": "浴室逗留",
-        "geofence_breach": "圍欄越界",
+        "bathroom_retention": "洗手間逗留",
+        "geofence_breach": "越界",
         "sos": "SOS",
-        "vital_signs_abnormal": "生命徵象異常"
+        "vital_signs_abnormal": "生命跡象異常"
       }
     },
     "breaches": {
-      "title": "圍欄越界",
+      "title": "越界事件",
       "subtitle": "更新於 {{time}}",
-      "empty": "目前沒有活躍的圍欄越界事件。",
-      "aria": "活躍的圍欄越界事件",
-      "itemTitle": "越界事件 #{{id}}",
+      "empty": "目前沒有越界事件。",
+      "aria": "越界事件清單",
+      "itemTitle": "越界 #{{id}}",
       "zone": "區域",
       "zoneUnknown": "未知區域",
       "time": "時間",
       "coords": "座標",
-      "coordsUnknown": "未知",
-      "approx": "估算",
-      "status": "狀態"
+      "coordsUnknown": "未知"
     },
     "actions": {
       "ack": "確認",
-      "resolve": "解決",
+      "resolve": "處理完成",
       "falseAlarm": "誤報"
     }
   },
   "alerts": {
-    "title": "最新警報",
-    "subtitle": "今天最急需注意的事件",
+    "backend": {
+      "title": "即時警示",
+      "subtitle": "後端事件同步",
+      "empty": "目前沒有警示。",
+      "loading": "載入警示中...",
+      "item": "{{resident}} 於 {{location}}"
+    },
     "items": {
-      "fall": "西側走廊偵測到跌倒事件。",
-      "heartRate": "辛格女士回報心率偏高。",
-      "wearable": "穿戴裝置 A52 電量低於 10%。",
-      "ota": "有新的韌體可供 OTA 更新。"
+      "heartRate": "有住戶出現心率偏高。",
+      "wearable": "有穿戴裝置需要注意。",
+      "ota": "有維護更新可供部署。"
     },
     "generated": {
-      "fall": "偵測到 {{name}} 可能在 {{location}} 跌倒。",
-      "highStatus": "{{name}}（{{room}}）需要緊急巡查。",
-      "followUp": "安排對 {{name}}（{{room}}）進行跟進檢查。",
-      "stale": "{{name}} 已 {{duration}} 未巡房，請安排查訪。",
-      "lowSpo2": "{{name}} 的血氧降至 {{spo2}}%。",
-      "highHr": "{{name}} 的心率升至 {{hr}} 次/分。",
-      "temperatureHigh": "{{name}} 的體溫達到 {{temperature}}°C。"
+      "fall": "在 {{location}} 附近偵測到 {{name}} 可能跌倒。",
+      "highStatus": "房間 {{room}} 的 {{name}} 需要即時檢查。",
+      "followUp": "請安排跟進 {{name}}（房間 {{room}}）。",
+      "stale": "{{name}} 已有 {{duration}} 沒有新資料。",
+      "lowSpo2": "{{name}} 的血氧下降至 {{spo2}}%。",
+      "highHr": "{{name}} 的心率升至 {{hr}} bpm。",
+      "temperatureHigh": "{{name}} 的體溫為 {{temperature}} C。"
     }
   },
   "alertLevels": {
-    "critical": "緊急",
-    "warning": "警示",
+    "critical": "嚴重",
+    "warning": "警告",
     "info": "資訊"
   },
+  "events": {
+    "status": {
+      "unhandled": "未處理",
+      "confirmed": "已確認",
+      "false_alarm": "誤報",
+      "resolved": "已解決"
+    }
+  },
+  "emergency": {
+    "title": "緊急警示",
+    "subtitle": "需要照護人員立即留意。",
+    "badge": {
+      "fall": "偵測到跌倒",
+      "sos": "SOS 已觸發",
+      "vital_signs_abnormal": "生命跡象異常",
+      "geofence_breach": "越界事件",
+      "default": "緊急事件"
+    },
+    "labels": {
+      "resident": "住戶",
+      "location": "位置",
+      "time": "時間",
+      "status": "狀態",
+      "type": "類型"
+    },
+    "loading": "載入事件詳情中...",
+    "errors": {
+      "details": "無法載入事件詳情",
+      "update": "無法更新事件"
+    }
+  },
+  "push": {
+    "title": "推送通知",
+    "subtitle": "瀏覽器接收高優先級事件通知",
+    "status": {
+      "support": "支援",
+      "permission": "權限",
+      "subscription": "訂閱",
+      "vapid": "VAPID 金鑰"
+    },
+    "supported": "支援",
+    "unsupported": "不支援",
+    "permissions": {
+      "default": "未要求",
+      "granted": "已允許",
+      "denied": "已拒絕"
+    },
+    "subscription": {
+      "active": "已啟用",
+      "inactive": "未啟用"
+    },
+    "vapid": {
+      "ready": "已設定",
+      "missing": "缺少"
+    },
+    "actions": {
+      "enable": "啟用推送",
+      "disable": "停用",
+      "test": "發送測試"
+    },
+    "errors": {
+      "unsupported": "此瀏覽器不支援推送通知。",
+      "permission": "未取得通知權限。",
+      "vapid": "缺少 VAPID 公鑰。",
+      "subscribe": "無法訂閱推送通知。",
+      "unsubscribe": "無法取消推送通知。",
+      "test": "無法發送測試通知。"
+    },
+    "test": {
+      "title": "SmartCare 測試通知",
+      "body": "這是由後端發送的測試推送通知。"
+    }
+  },
   "insights": {
-    "title": "照護洞見",
-    "subtitle": "照護團隊建議的追蹤事項",
+    "title": "照護洞察",
+    "subtitle": "根據目前住戶狀態產生的跟進建議。",
     "items": {
-      "hydration": "保持 C 區的補水提醒。",
-      "nightRounds": "為陳太太增加夜間巡房。",
-      "physiotherapy": "協調李先生的物理治療追蹤。",
-      "familyFeedback": "記錄羅培茲女士家訪回饋。"
+      "hydration": "保持補水提醒。",
+      "nightRounds": "夜間巡房時加強留意。",
+      "physiotherapy": "安排物理治療跟進。",
+      "familyFeedback": "下次聯絡時準備家屬更新。"
     },
     "generated": {
-      "focusHigh": "指派應變團隊前往 {{room}} 留意 {{name}}。",
-      "followUp": "規劃 {{name}}（{{room}}）的跟進巡房。",
-      "hydration": "為 {{name}} 排程補水提醒（已 {{duration}} 未見）。",
-      "familyUpdate": "把 {{name}} 的穩定狀況通知家屬。",
-      "location": "下一輪巡查時留意 {{name}} 位於 {{location}}。"
+      "focusHigh": "優先處理房間 {{room}} 的 {{name}}。",
+      "followUp": "安排跟進探訪 {{name}}（房間 {{room}}）。",
+      "hydration": "{{name}} 已有 {{duration}} 沒有新資料，建議補水提醒。",
+      "familyUpdate": "可向 {{name}} 的家屬提供穩定進度更新。",
+      "location": "下一輪巡查時留意 {{location}} 附近的 {{name}}。"
     }
   },
   "nextSteps": {
     "title": "下一步",
-    "mapDataGateway": "以型別安全的 React Hook 包裝 DataGateway API。",
-    "portTokens": "把靜態儀表板的設計 Token 匯入共享 CSS 變數。",
-    "addRouting": "導入驗證路由，逐步遷移實際面板。"
-  },
-  "simulator": {
-    "live": {
-      "title": "即時串流",
-      "start": "啟動即時更新",
-      "stop": "停止即時更新"
-    },
-    "refresh": {
-      "title": "快照刷新",
-      "now": "立即刷新",
-      "pending": "刷新中…",
-      "success": "{{time}} 已更新",
-      "error": "刷新失敗，請稍後再試。",
-      "lastRun": "上次刷新 {{time}}",
-      "never": "尚未手動刷新",
-      "intervalLabel": "自動刷新間隔（秒）",
-      "enable": "啟用自動刷新",
-      "disable": "停用自動刷新"
-    },
-    "dataset": {
-      "title": "模擬資料集",
-      "addCustom": "新增自訂住民",
-      "hideForm": "收合自訂住民表單",
-      "submit": "新增住民",
-      "pending": "新增中…",
-      "success": "已加入模擬資料。",
-      "reset": "清除表單",
-      "errors": {
-        "name": "請輸入住民姓名。",
-        "room": "請輸入房號。",
-        "generic": "無法新增此住民，請稍後再試。"
-      }
-    },
-    "actions": {
-      "clearAll": "清空所有住民",
-      "confirmClearAll": "確定要清空住民名冊嗎？僅影響示範資料。"
-    }
-  },
-  "devPanel": {
-    "aria": "模擬資料控制",
-    "title": "模擬器控制",
-    "refresh": "刷新一次",
-    "burst": "連發 10 筆",
-    "spawn": "產生新住民",
-    "clear": "清除新增住民",
-    "hide": "隱藏",
-    "show": "顯示模擬器控制",
-    "pending": "處理中…",
-    "sent": "已送出",
-    "error": "Service Worker 未就緒"
+    "mapDataGateway": "繼續維持 adapter 作為後端 DTO 到 UI 的唯一邊界。",
+    "portTokens": "把剩餘視覺樣式收斂到共享 CSS 變數。",
+    "addRouting": "待後端 auth 完成後，再加入真實登入與路由保護。"
   }
 }

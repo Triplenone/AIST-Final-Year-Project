@@ -15,6 +15,11 @@
   min-height: 280px;
 }
 
+.chart-card--wide {
+  width: 100%;
+  min-height: 340px;
+}
+
 .chart-card__header h3 {
   margin: 0 0 0.35rem;
   font-size: 1.05rem;
@@ -29,6 +34,43 @@
   flex: 1;
   min-height: 220px;
   height: 220px;
+}
+
+.imu-chart__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.imu-chart__actions {
+  display: flex;
+  align-items: center;
+}
+
+.imu-chart__button {
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.imu-chart__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.imu-chart__body {
+  height: 280px;
+}
+
+.imu-chart__error {
+  color: #c0392b;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
 }
 
 .chart-empty {

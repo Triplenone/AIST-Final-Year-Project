@@ -8,6 +8,9 @@ import {
   BackendResident,
   BackendUser,
   BackendUserStatus,
+  PushSubscriptionPayload,
+  PushSubscriptionResponse,
+  PushTestPayload,
 } from '../types/backend';
 import { API_BASE_URL } from '../constants/backend';
 
@@ -111,6 +114,15 @@ export const kpiApi = {
   create: (data: Partial<BackendKpiMetric>) => api.post<BackendKpiMetric>('/kpi/', data),
   update: (id: number, data: Partial<BackendKpiMetric>) => api.put<BackendKpiMetric>(`/kpi/${id}`, data),
   delete: (id: number) => api.delete(`/kpi/${id}`),
+};
+
+// Web Push subscription APIs
+export const pushSubscriptionApi = {
+  getPublicKey: () => api.get<{ publicKey: string }>('/push-subscriptions/vapid-public-key'),
+  list: (params?: Record<string, unknown>) => api.get<PushSubscriptionResponse[]>('/push-subscriptions/', { params }),
+  subscribe: (data: PushSubscriptionPayload) => api.post<PushSubscriptionResponse>('/push-subscriptions/', data),
+  unsubscribe: (endpoint: string) => api.delete<PushSubscriptionResponse>('/push-subscriptions/', { params: { endpoint } }),
+  test: (payload: PushTestPayload) => api.post('/push-subscriptions/test', payload),
 };
 
 export default api;

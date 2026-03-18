@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CRS } from 'leaflet';
-import { CircleMarker, ImageOverlay, MapContainer, Polygon, Tooltip, useMap } from 'react-leaflet';
+import { CircleMarker, ImageOverlay, MapContainer, Polygon, TileLayer, Tooltip, useMap } from 'react-leaflet';
 
-import type { BackendLocation } from '../types/backend';
-import { locationApi } from '../services/api';
+import type { BackendEvent, BackendLocation } from '../types/backend';
+import { eventApi, locationApi } from '../services/api';
 import { useResidentLiveStore } from '../shared/resident-live-store';
-import type { Resident } from '../sse/client';
+import type { Resident } from '../types/resident';
+import { useBackendEvents } from '../hooks/useBackendEvents';
 import {
   getPolygonBoundsTuple,
   getPolygonCentroidTuple,
@@ -24,6 +25,8 @@ type ZoneShape = {
   centroid: LatLngTuple;
   bounds: [LatLngTuple, LatLngTuple];
 };
+
+type ViewMode = 'indoor' | 'outdoor';
 
 const FLOORPLAN_URL = '/indoor-nursing-home-map.png';
 
@@ -131,13 +134,14 @@ const isTooClose = (point: LatLng, others: LatLng[], minDistance: number): boole
 
 const computeShapes = (
   locations: BackendLocation[],
-  mapSize: { width: number; height: number } | null
+  mapSize: { width: number; height: number } | null,
+  mode: ViewMode
 ): ZoneShape[] => {
   const shapes: ZoneShape[] = [];
   for (const location of locations) {
-    const polygon = parseGeofenceCoordinates(location.geofence_coordinates, 'indoor');
+    const polygon = parseGeofenceCoordinates(location.geofence_coordinates, mode === 'indoor' ? 'indoor' : 'geo');
     if (!polygon) continue;
-    const scaledPolygon = scaleIndoorPolygon(polygon, mapSize);
+    const scaledPolygon = mode === 'indoor' ? scaleIndoorPolygon(polygon, mapSize) : polygon;
     const centroid = getPolygonCentroidTuple(scaledPolygon);
     const bounds = getPolygonBoundsTuple(scaledPolygon);
     shapes.push({ location, polygon: scaledPolygon, centroid, bounds });
@@ -218,13 +222,23 @@ const resolveResidentZoneName = (resident: Resident): string | null => {
 };
 
 export const LocationDashboard = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { residents: residentMap } = useResidentLiveStore();
+  const [viewMode, setViewMode] = useState<ViewMode>('indoor');
+
+  const { activeEvents: geofenceEvents, refresh: refreshGeofence } = useBackendEvents({
+    includeTypes: ['geofence_breach'],
+    activeStatuses: ['unhandled', 'confirmed'],
+    pollIntervalMs: 5000
+  });
 
   const [locations, setLocations] = useState<BackendLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapSize, setMapSize] = useState<{ width: number; height: number } | null>(null);
+  const [breachHandlingId, setBreachHandlingId] = useState<number | null>(null);
+
+  const isIndoor = viewMode === 'indoor';
 
   const loadLocations = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -266,33 +280,51 @@ export const LocationDashboard = () => {
     image.src = FLOORPLAN_URL;
   }, []);
 
-  const zoneShapes = useMemo(() => {
-    const allowed = new Set(ALLOWED_ZONE_NAMES);
-    return computeShapes(locations, mapSize).filter((shape) => allowed.has((shape.location.name ?? '').trim()));
-  }, [locations, mapSize]);
+  const indoorLocations = useMemo(
+    () => locations.filter((loc) => loc.category !== 'outdoor_area'),
+    [locations]
+  );
+  const outdoorLocations = useMemo(
+    () => locations.filter((loc) => loc.category === 'outdoor_area'),
+    [locations]
+  );
 
-  const orderedZoneShapes = useMemo(() => {
+  const indoorZoneShapes = useMemo(() => {
+    const allowed = new Set(ALLOWED_ZONE_NAMES);
+    return computeShapes(indoorLocations, mapSize, 'indoor').filter((shape) => allowed.has((shape.location.name ?? '').trim()));
+  }, [indoorLocations, mapSize]);
+
+  const outdoorZoneShapes = useMemo(() => {
+    return computeShapes(outdoorLocations, null, 'outdoor');
+  }, [outdoorLocations]);
+
+  const orderedIndoorZoneShapes = useMemo(() => {
     const order = ['Common Lounge', 'Bedroom 1', 'Bedroom 2', 'Bathroom'];
-    return [...zoneShapes].sort((a, b) => {
+    return [...indoorZoneShapes].sort((a, b) => {
       const aIndex = order.indexOf(a.location.name ?? '');
       const bIndex = order.indexOf(b.location.name ?? '');
       return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
     });
-  }, [zoneShapes]);
+  }, [indoorZoneShapes]);
 
   const zoneByName = useMemo(() => {
     const map = new Map<string, ZoneShape>();
-    zoneShapes.forEach((shape) => {
+    indoorZoneShapes.forEach((shape) => {
       const key = (shape.location.name ?? '').trim();
       if (key) map.set(key, shape);
     });
     return map;
-  }, [zoneShapes]);
+  }, [indoorZoneShapes]);
 
   const zoneBounds = useMemo<[LatLngTuple, LatLngTuple] | null>(() => {
-    if (zoneShapes.length === 0) return null;
-    return zoneShapes.map((s) => s.bounds).reduce((acc, next) => mergeBounds(acc, next));
-  }, [zoneShapes]);
+    if (indoorZoneShapes.length === 0) return null;
+    return indoorZoneShapes.map((s) => s.bounds).reduce((acc, next) => mergeBounds(acc, next));
+  }, [indoorZoneShapes]);
+
+  const outdoorBounds = useMemo<[LatLngTuple, LatLngTuple] | null>(() => {
+    if (outdoorZoneShapes.length === 0) return null;
+    return outdoorZoneShapes.map((s) => s.bounds).reduce((acc, next) => mergeBounds(acc, next));
+  }, [outdoorZoneShapes]);
 
   const mapBounds = useMemo<[LatLngTuple, LatLngTuple] | null>(() => {
     if (!mapSize) return null;
@@ -338,9 +370,14 @@ export const LocationDashboard = () => {
     return markers;
   }, [residentList, zoneByName]);
 
-  const fitBounds = mapBounds ?? zoneBounds;
-  const mapCenter = fitBounds
-    ? ([(fitBounds[0][0] + fitBounds[1][0]) / 2, (fitBounds[0][1] + fitBounds[1][1]) / 2] as LatLngTuple)
+  const indoorFitBounds = mapBounds ?? zoneBounds;
+  const indoorMapCenter = indoorFitBounds
+    ? ([(indoorFitBounds[0][0] + indoorFitBounds[1][0]) / 2, (indoorFitBounds[0][1] + indoorFitBounds[1][1]) / 2] as LatLngTuple)
+    : ([0, 0] as LatLngTuple);
+
+  const outdoorFitBounds = outdoorBounds;
+  const outdoorMapCenter = outdoorFitBounds
+    ? ([(outdoorFitBounds[0][0] + outdoorFitBounds[1][0]) / 2, (outdoorFitBounds[0][1] + outdoorFitBounds[1][1]) / 2] as LatLngTuple)
     : ([0, 0] as LatLngTuple);
 
   const zoneLabel = useCallback(
@@ -352,6 +389,103 @@ export const LocationDashboard = () => {
     [t]
   );
 
+  const parseNumber = useCallback((value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }, []);
+
+  const extractEventCoordinates = useCallback(
+    (event: BackendEvent): LatLngTuple | null => {
+      const params = event.event_params as Record<string, unknown> | null | undefined;
+      if (!params) return null;
+      const lat = parseNumber(params.lat ?? params.latitude);
+      const lng = parseNumber(params.lng ?? params.lon ?? params.longitude);
+      if (lat !== null && lng !== null) {
+        return [lat, lng];
+      }
+      const rawCoords = params.coords ?? params.coordinate ?? params.coordinates;
+      if (Array.isArray(rawCoords) && rawCoords.length >= 2) {
+        const first = parseNumber(rawCoords[0]);
+        const second = parseNumber(rawCoords[1]);
+        if (first === null || second === null) return null;
+        if (Math.abs(first) <= 90 && Math.abs(second) <= 180) {
+          return [first, second];
+        }
+        if (Math.abs(second) <= 90 && Math.abs(first) <= 180) {
+          return [second, first];
+        }
+      }
+      return null;
+    },
+    [parseNumber]
+  );
+
+  const geofenceItems = useMemo(() => {
+    return [...geofenceEvents].sort((a, b) => {
+      const aTime = Date.parse(String(a.event_timestamp ?? ''));
+      const bTime = Date.parse(String(b.event_timestamp ?? ''));
+      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+    });
+  }, [geofenceEvents]);
+
+  const geofenceMarkers = useMemo(
+    () =>
+      geofenceItems
+        .map((event) => {
+          const coords = extractEventCoordinates(event);
+          return coords ? { event, coords } : null;
+        })
+        .filter((item): item is { event: BackendEvent; coords: LatLngTuple } => Boolean(item)),
+    [extractEventCoordinates, geofenceItems]
+  );
+
+  const resolveGeofenceZoneLabel = useCallback(
+    (event: BackendEvent) => {
+      if (event.location_zone_id) {
+        const match = locations.find((loc) => loc.location_zone_id === event.location_zone_id);
+        if (match?.name) return match.name;
+      }
+      const params = event.event_params as Record<string, unknown> | null | undefined;
+      if (params && typeof params.zone_name === 'string') return params.zone_name;
+      if (params && typeof params.location_name === 'string') return params.location_name;
+      return t('location.breaches.zoneUnknown');
+    },
+    [locations, t]
+  );
+
+  const resolveGeofenceCoordsLabel = useCallback(
+    (event: BackendEvent) => {
+      const coords = extractEventCoordinates(event);
+      if (!coords) return t('location.breaches.coordsUnknown');
+      return `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
+    },
+    [extractEventCoordinates, t]
+  );
+
+  const formatEventTimestamp = useCallback(
+    (value?: string | null) => {
+      if (!value) return t('common.unknown');
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return t('common.unknown');
+      return date.toLocaleString(i18n.resolvedLanguage ?? i18n.language ?? 'en');
+    },
+    [i18n.language, i18n.resolvedLanguage, t]
+  );
+
+  const handleBreachAction = async (eventId: number, status: 'confirmed' | 'resolved' | 'false_alarm') => {
+    setBreachHandlingId(eventId);
+    try {
+      await eventApi.handle(eventId, status);
+      await refreshGeofence();
+    } finally {
+      setBreachHandlingId(null);
+    }
+  };
+
   const occupancy = useMemo(() => {
     const byZone = new Map<string, Resident[]>();
     residentList.forEach((resident) => {
@@ -361,7 +495,7 @@ export const LocationDashboard = () => {
       current.push(resident);
       byZone.set(zoneName, current);
     });
-    return orderedZoneShapes.map((shape) => {
+    return orderedIndoorZoneShapes.map((shape) => {
       const name = shape.location.name ?? `#${shape.location.location_zone_id}`;
       const residents = byZone.get(name) ?? [];
       return {
@@ -370,7 +504,7 @@ export const LocationDashboard = () => {
         residents
       };
     });
-  }, [residentList, orderedZoneShapes, zoneLabel]);
+  }, [residentList, orderedIndoorZoneShapes, zoneLabel]);
 
   return (
     <section id="location" className="section">
@@ -380,8 +514,24 @@ export const LocationDashboard = () => {
             <h2>{t('location.title')}</h2>
             <p className="muted">{t('location.subtitle')}</p>
           </div>
-          <div>
-            <button type="button" className="auth-menu__button" onClick={() => void loadLocations()} disabled={loading}>
+          <div className="location-dashboard__actions">
+            <div className="location-toggle" role="group" aria-label={t('location.views.label')}>
+              <button
+                type="button"
+                className={`location-toggle__button ${isIndoor ? 'active' : ''}`}
+                onClick={() => setViewMode('indoor')}
+              >
+                {t('location.views.indoor')}
+              </button>
+              <button
+                type="button"
+                className={`location-toggle__button ${!isIndoor ? 'active' : ''}`}
+                onClick={() => setViewMode('outdoor')}
+              >
+                {t('location.views.outdoor')}
+              </button>
+            </div>
+            <button type="button" className="secondary" onClick={() => void loadLocations()} disabled={loading}>
               {loading ? t('common.loading') : t('location.refresh')}
             </button>
           </div>
@@ -390,118 +540,210 @@ export const LocationDashboard = () => {
         {error ? <div className="admin-error">{error}</div> : null}
         <div className="location-dashboard__grid">
           <div className="location-dashboard__map" aria-label={t('location.map.aria')}>
-            <MapContainer
-              center={mapCenter}
-              zoom={0}
-              minZoom={-1}
-              crs={CRS.Simple}
-              scrollWheelZoom={false}
-              doubleClickZoom={false}
-              touchZoom={false}
-              dragging={false}
-              boxZoom={false}
-              keyboard={false}
-              zoomControl={false}
-              maxBounds={mapBounds ?? undefined}
-            >
-              {mapBounds ? <ImageOverlay url={FLOORPLAN_URL} bounds={mapBounds} /> : null}
-              {fitBounds ? <AutoFit bounds={fitBounds} /> : null}
+            {isIndoor ? (
+              <MapContainer
+                center={indoorMapCenter}
+                zoom={0}
+                minZoom={-1}
+                crs={CRS.Simple}
+                scrollWheelZoom={false}
+                doubleClickZoom={false}
+                touchZoom={false}
+                dragging={false}
+                boxZoom={false}
+                keyboard={false}
+                zoomControl={false}
+                maxBounds={mapBounds ?? undefined}
+              >
+                {mapBounds ? <ImageOverlay url={FLOORPLAN_URL} bounds={mapBounds} /> : null}
+                {indoorFitBounds ? <AutoFit bounds={indoorFitBounds} /> : null}
 
-              {orderedZoneShapes.map((shape) => {
-                const style = zoneColor(shape.location);
-                return (
-                  <Polygon
-                    key={shape.location.location_zone_id}
-                    positions={shape.polygon.map(toLatLngTuple)}
+                {orderedIndoorZoneShapes.map((shape) => {
+                  const style = zoneColor(shape.location);
+                  return (
+                    <Polygon
+                      key={shape.location.location_zone_id}
+                      positions={shape.polygon.map(toLatLngTuple)}
+                      pathOptions={{
+                        color: style.stroke,
+                        weight: 2,
+                        fillColor: style.fill,
+                        fillOpacity: style.opacity
+                      }}
+                    >
+                      <Tooltip sticky>
+                        {zoneLabel(shape.location.name ?? `#${shape.location.location_zone_id}`)}
+                      </Tooltip>
+                    </Polygon>
+                  );
+                })}
+
+                {residentMarkers.map(({ resident, position }) => (
+                  <CircleMarker
+                    key={`resident-${resident.id}`}
+                    center={position}
+                    radius={6}
                     pathOptions={{
-                      color: style.stroke,
+                      color: roleStrokeColor(resident.roleType),
                       weight: 2,
-                      fillColor: style.fill,
-                      fillOpacity: style.opacity
+                      fillColor: statusColor(resident.status),
+                      fillOpacity: 0.8
                     }}
                   >
-                    <Tooltip sticky>
-                      {zoneLabel(shape.location.name ?? `#${shape.location.location_zone_id}`)}
+                    <Tooltip direction="top" offset={[0, -6]} opacity={0.98}>
+                      <strong>{resident.name}</strong>
+                      <div>
+                        {t('location.map.status')}: {t(`residents.status.${resident.status}`)}
+                      </div>
+                      <div>
+                        {t('location.map.zone')}: {zoneLabel(resolveResidentZoneName(resident))}
+                      </div>
                     </Tooltip>
-                  </Polygon>
-                );
-              })}
-
-              {residentMarkers.map(({ resident, position }) => (
-                <CircleMarker
-                  key={`resident-${resident.id}`}
-                  center={position}
-                  radius={6}
-                  pathOptions={{
-                    color: roleStrokeColor(resident.roleType),
-                    weight: 2,
-                    fillColor: statusColor(resident.status),
-                    fillOpacity: 0.8
-                  }}
-                >
-                  <Tooltip direction="top" offset={[0, -6]} opacity={0.98}>
-                    <strong>{resident.name}</strong>
-                    <div>
-                      {t('location.map.status')}: {t(`residents.status.${resident.status}`)}
-                    </div>
-                    <div>
-                      {t('location.map.zone')}: {zoneLabel(resolveResidentZoneName(resident))}
-                    </div>
-                  </Tooltip>
-                </CircleMarker>
-              ))}
-            </MapContainer>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
+            ) : outdoorZoneShapes.length ? (
+              <MapContainer center={outdoorMapCenter} zoom={17} scrollWheelZoom>
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="穢 OpenStreetMap contributors"
+                />
+                {outdoorFitBounds ? <AutoFit bounds={outdoorFitBounds} /> : null}
+                {outdoorZoneShapes.map((shape) => {
+                  const style = zoneColor(shape.location);
+                  return (
+                    <Polygon
+                      key={`outdoor-${shape.location.location_zone_id}`}
+                      positions={shape.polygon.map(toLatLngTuple)}
+                      pathOptions={{
+                        color: style.stroke,
+                        weight: 2,
+                        fillColor: style.fill,
+                        fillOpacity: 0.18
+                      }}
+                    >
+                      <Tooltip sticky>
+                        {shape.location.name ?? `#${shape.location.location_zone_id}`}
+                      </Tooltip>
+                    </Polygon>
+                  );
+                })}
+                {geofenceMarkers.map(({ event, coords }) => (
+                  <CircleMarker
+                    key={`breach-${event.event_id}`}
+                    center={coords}
+                    radius={8}
+                    pathOptions={{ color: '#dc2626', weight: 2, fillColor: '#fca5a5', fillOpacity: 0.85 }}
+                  >
+                    <Tooltip direction="top" offset={[0, -6]} opacity={0.98}>
+                      {t('location.breaches.itemTitle', { id: event.event_id })}
+                    </Tooltip>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
+            ) : (
+              <div className="location-empty">{t('location.views.noOutdoor')}</div>
+            )}
           </div>
 
-          <aside className="location-dashboard__panel">
-            <h4>{t('location.legend.title')}</h4>
-            <div className="location-legend">
-              {orderedZoneShapes.map((shape) => {
-                const name = shape.location.name ?? `#${shape.location.location_zone_id}`;
-                const swatchClass = ZONE_SWATCH_CLASSES[name] ?? 'location-legend__swatch--default';
-                return (
-                  <div key={shape.location.location_zone_id} className="location-legend__row">
-                    <span className="location-legend__pill">
-                      <span className={`location-legend__swatch ${swatchClass}`} />
-                      {zoneLabel(name)}
-                    </span>
-                    <span>
-                      {occupancy.find((item) => item.name === name)?.residents.length ?? 0}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <hr className="location-divider" />
-
-            <h4>{t('location.occupancy.title')}</h4>
-            <p className="muted">{t('location.occupancy.subtitle')}</p>
-            <div className="location-occupancy" aria-label={t('location.occupancy.aria')}>
-              {occupancy.map((item) => (
-                <div key={item.name} className="location-occupancy__item">
-                  <div className="location-occupancy__header">
-                    <span>{item.label}</span>
-                    <span className="location-occupancy__count">{item.residents.length}</span>
-                  </div>
-                  {item.residents.length === 0 ? (
-                    <p className="muted">{t('location.occupancy.empty')}</p>
-                  ) : (
-                    <div className="location-occupancy__names">
-                      {item.residents.map((resident) => (
-                        <span key={resident.id} className="location-occupancy__pill">
-                          {resident.name}
-                        </span>
-                      ))}
+          {isIndoor ? (
+            <aside className="location-dashboard__panel">
+              <h4>{t('location.legend.title')}</h4>
+              <div className="location-legend">
+                {orderedIndoorZoneShapes.map((shape) => {
+                  const name = shape.location.name ?? `#${shape.location.location_zone_id}`;
+                  const swatchClass = ZONE_SWATCH_CLASSES[name] ?? 'location-legend__swatch--default';
+                  return (
+                    <div key={shape.location.location_zone_id} className="location-legend__row">
+                      <span className="location-legend__pill">
+                        <span className={`location-legend__swatch ${swatchClass}`} />
+                        {zoneLabel(name)}
+                      </span>
+                      <span>
+                        {occupancy.find((item) => item.name === name)?.residents.length ?? 0}
+                      </span>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </aside>
+                  );
+                })}
+              </div>
+
+              <hr className="location-divider" />
+
+              <h4>{t('location.occupancy.title')}</h4>
+              <p className="muted">{t('location.occupancy.subtitle')}</p>
+              <div className="location-occupancy" aria-label={t('location.occupancy.aria')}>
+                {occupancy.map((item) => (
+                  <div key={item.name} className="location-occupancy__item">
+                    <div className="location-occupancy__header">
+                      <span>{item.label}</span>
+                      <span className="location-occupancy__count">{item.residents.length}</span>
+                    </div>
+                    {item.residents.length === 0 ? (
+                      <p className="muted">{t('location.occupancy.empty')}</p>
+                    ) : (
+                      <div className="location-occupancy__names">
+                        {item.residents.map((resident) => (
+                          <span key={resident.id} className="location-occupancy__pill">
+                            {resident.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </aside>
+          ) : (
+            <aside className="location-dashboard__panel">
+              <h4>{t('location.breaches.title')}</h4>
+              <p className="muted">
+                {t('location.breaches.subtitle', {
+                  time: new Date().toLocaleTimeString(i18n.resolvedLanguage ?? i18n.language ?? 'en', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                })}
+              </p>
+              <div className="breach-list" aria-label={t('location.breaches.aria')}>
+                {geofenceItems.length === 0 ? (
+                  <p className="muted">{t('location.breaches.empty')}</p>
+                ) : (
+                  geofenceItems.map((event) => {
+                    const isBusy = breachHandlingId === event.event_id;
+                    return (
+                      <div key={event.event_id} className="breach-item">
+                        <div className="breach-item__header">
+                          <span>{t('location.breaches.itemTitle', { id: event.event_id })}</span>
+                          <span className="breach-item__status">{event.event_status}</span>
+                        </div>
+                        <div className="breach-item__meta">
+                          <span>{t('location.breaches.zone')}: {resolveGeofenceZoneLabel(event)}</span>
+                          <span>{t('location.breaches.time')}: {formatEventTimestamp(event.event_timestamp)}</span>
+                          <span>{t('location.breaches.coords')}: {resolveGeofenceCoordsLabel(event)}</span>
+                        </div>
+                        <div className="breach-item__actions">
+                          <button type="button" onClick={() => void handleBreachAction(event.event_id, 'confirmed')} disabled={isBusy}>
+                            {t('location.actions.ack')}
+                          </button>
+                          <button type="button" onClick={() => void handleBreachAction(event.event_id, 'resolved')} disabled={isBusy}>
+                            {t('location.actions.resolve')}
+                          </button>
+                          <button type="button" onClick={() => void handleBreachAction(event.event_id, 'false_alarm')} disabled={isBusy}>
+                            {t('location.actions.falseAlarm')}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+          )}
         </div>
       </div>
     </section>
   );
 };
+
+
 

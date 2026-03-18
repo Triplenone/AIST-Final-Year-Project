@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
 import { residentApi } from '../../services/api';
 import type { BackendResident, BackendResidentStatus } from '../../types/backend';
-import { useResidentLiveStore } from '../../shared/resident-live-store';
-import type { Resident } from '../../sse/client';
 
 const STATUS_OPTIONS: BackendResidentStatus[] = ['stable', 'followUp', 'high', 'checked_out'];
 
-// Resident directory (Admin) – connected to /api/v1/residents
 export const ResidentsAdmin = () => {
   const { t, i18n } = useTranslation();
   const [residents, setResidents] = useState<BackendResident[]>([]);
@@ -16,7 +14,6 @@ export const ResidentsAdmin = () => {
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<BackendResidentStatus | 'all'>('all');
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const { residents: liveResidents, demoMode } = useResidentLiveStore();
 
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
 
@@ -46,7 +43,7 @@ export const ResidentsAdmin = () => {
         return t('admin.residents.lastSeenUnknown');
       }
       const formatted = formatDateTime(resident.last_seen_at);
-      return resident.last_seen_location ? `${formatted} • ${resident.last_seen_location}` : formatted;
+      return resident.last_seen_location ? `${formatted} | ${resident.last_seen_location}` : formatted;
     },
     [formatDateTime, t]
   );
@@ -73,10 +70,7 @@ export const ResidentsAdmin = () => {
         parts.push(t('residents.vitals.bp', { systolic: bpSystolic, diastolic: bpDiastolic }));
       }
 
-      if (!parts.length) {
-        return t('admin.residents.vitalsUnknown');
-      }
-      return parts.join(' · ');
+      return parts.length ? parts.join(' | ') : t('admin.residents.vitalsUnknown');
     },
     [t]
   );
@@ -94,13 +88,12 @@ export const ResidentsAdmin = () => {
         parts.push(resident.device_current_status);
       }
 
-      return parts.length ? parts.join(' · ') : t('admin.residents.deviceUnknown');
+      return parts.length ? parts.join(' | ') : t('admin.residents.deviceUnknown');
     },
     [t]
   );
 
   const load = useCallback(async () => {
-    if (demoMode) return;
     setLoading(true);
     setError(null);
     try {
@@ -109,51 +102,20 @@ export const ResidentsAdmin = () => {
       setLastUpdated(new Date().toISOString());
     } catch (err) {
       const fallback = t('admin.residents.error');
-      const msg = err instanceof Error ? `${fallback} (${err.message})` : fallback;
-      setError(msg);
+      const message = err instanceof Error ? `${fallback} (${err.message})` : fallback;
+      setError(message);
     } finally {
       setLoading(false);
     }
-  }, [demoMode, t]);
+  }, [t]);
 
   useEffect(() => {
-    if (demoMode) return;
     void load();
-  }, [demoMode, load]);
-
-  const demoResidentList = useMemo(() => {
-    if (!demoMode) return [];
-    return Object.values(liveResidents).map((resident: Resident): BackendResident => ({
-      id: resident.id,
-      name: resident.name,
-      room: resident.room,
-      status: resident.status,
-      role_type: resident.roleType,
-      last_seen_at: resident.lastSeenAt ?? null,
-      last_seen_location: resident.lastSeenLocation ?? null,
-      vitals: {
-        hr: resident.vitals?.hr ?? null,
-        bp_systolic: resident.vitals?.bpSystolic ?? null,
-        bp_diastolic: resident.vitals?.bpDiastolic ?? null,
-        spo2: resident.vitals?.spo2 ?? null,
-        temperature: resident.vitals?.temperature ?? null
-      },
-      checked_out: resident.checkedOut,
-      created_at: resident.createdAt,
-      updated_at: resident.updatedAt
-    }));
-  }, [demoMode, liveResidents]);
-
-  useEffect(() => {
-    if (!demoMode) return;
-    setLastUpdated(new Date().toISOString());
-  }, [demoMode, demoResidentList]);
-
-  const dataset = demoMode ? demoResidentList : residents;
+  }, [load]);
 
   const filtered = useMemo(() => {
     const keywordLower = keyword.trim().toLowerCase();
-    return dataset.filter((resident) => {
+    return residents.filter((resident) => {
       const matchesKeyword =
         !keywordLower ||
         resident.name.toLowerCase().includes(keywordLower) ||
@@ -161,7 +123,7 @@ export const ResidentsAdmin = () => {
       const matchesStatus = statusFilter === 'all' || resident.status === statusFilter;
       return matchesKeyword && matchesStatus;
     });
-  }, [dataset, keyword, statusFilter]);
+  }, [keyword, residents, statusFilter]);
 
   return (
     <div className="admin-card">
@@ -179,12 +141,12 @@ export const ResidentsAdmin = () => {
           <input
             placeholder={t('admin.residents.searchPlaceholder')}
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={(event) => setKeyword(event.target.value)}
             className="admin-actions__search"
           />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as BackendResidentStatus | 'all')}
+            onChange={(event) => setStatusFilter(event.target.value as BackendResidentStatus | 'all')}
             className="admin-actions__filter"
             aria-label={t('admin.residents.statusFilterLabel')}
           >

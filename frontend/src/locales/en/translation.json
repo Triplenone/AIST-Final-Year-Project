@@ -1,42 +1,47 @@
-{
+﻿{
   "common": {
     "language": "Language",
-    "switchTo": "Switch to {{label}}",
     "close": "Close",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "unknown": "Unknown"
   },
   "layout": {
     "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
+    "subtitle": "Smart wearable monitoring dashboard for elderly homes",
     "nav": {
       "aria": "Primary navigation",
       "overview": "Overview",
       "residents": "Residents",
       "location": "Location",
       "operations": "Operations",
-      "family": "Family engagement",
+      "family": "Insights",
       "admin": "Admin"
-    },
-    "footer": "© 2024 SmartCare Collaborative — Built for compassionate teams"
+    }
+  },
+  "hero": {
+    "eyebrow": "React + Vite frontend",
+    "title": "A single frontend aligned to the real backend contract",
+    "description": "This dashboard now reads live data from /api/v1/* only. Legacy simulator flows, mock auth, and local demo controls have been removed.",
+    "lastUpdated": "Last updated {{time}}"
   },
   "admin": {
-    "title": "System Admin",
-    "subtitle": "Direct access to TestStage-FYP backend resources",
-    "detailsTitle": "Proactive Guardian Care Details",
-    "detailsSubtitle": "System Admin dashboard for Smart Wearable Safety System for Elderly Homes",
+    "detailsTitle": "Admin console",
+    "detailsSubtitle": "Direct access to backend resources exposed under /api/v1/*.",
     "tabs": {
+      "residents": "Residents",
       "users": "Users",
       "devices": "Devices",
       "locations": "Locations",
       "events": "Events",
-    "logs": "Device logs",
-      "residents": "Residents"
+      "logs": "Device logs",
+      "userStatus": "User status",
+      "kpi": "KPI"
     },
     "residents": {
       "title": "Resident directory",
       "subtitle": "Synced from /api/v1/residents",
-      "searchPlaceholder": "Search by name or room",
-      "statusFilterLabel": "Status",
+      "searchPlaceholder": "Search by resident or room",
+      "statusFilterLabel": "Status filter",
       "allStatuses": "All statuses",
       "refresh": "Refresh",
       "lastUpdated": "Updated {{time}}",
@@ -47,68 +52,27 @@
         "status": "Status",
         "lastSeen": "Last seen",
         "vitals": "Vitals",
-        "device": "Device",
-        "updated": "Updated"
+        "device": "Device"
       },
       "noData": "No residents found.",
       "lastSeenUnknown": "Unknown",
       "deviceUnknown": "Unassigned",
       "vitalsUnknown": "Waiting for vitals",
-      "error": "Unable to fetch residents. Try again."
+      "error": "Unable to load residents"
     }
-  },
-  "auth": {
-    "guestName": "Guest",
-    "signIn": "Sign in",
-    "signOut": "Sign out",
-    "signInTitle": "Sign in to SmartCare",
-    "signUpTitle": "Create an account",
-    "username": "Username",
-    "password": "Password",
-    "role": "Role",
-    "continue": "Continue",
-    "create": "Create account",
-    "noAccount": "Don't have an account?",
-    "haveAccount": "Already have an account?",
-    "toSignUp": "Create one",
-    "toSignIn": "Back to sign in",
-    "roles": {
-      "guest": "Guest",
-      "caregiver": "Caregiver",
-      "admin": "Admin"
-    },
-    "errors": {
-      "invalidCredentials": "We couldn't match that username and password.",
-      "usernameTaken": "That username is already in use.",
-      "usernameFormat": "Use at least 2 characters (letters, numbers, . or _).",
-      "passwordLength": "Use a password with at least 4 characters."
-    },
-    "feedback": {
-      "accountCreated": "Account created! Sign in to continue."
-    }
-  },
-  "actions": {
-    "simulate": "Simulate new data",
-    "exitDemo": "Exit demo mode"
-  },
-  "hero": {
-    "eyebrow": "Progressive web app prototype",
-    "title": "A gentler control room for SmartCare staff",
-    "description": "Preview the upcoming React experience while the classic dashboard stays live in production.",
-    "lastUpdated": "Last updated {{time}}"
   },
   "stats": {
     "wellbeing": {
       "title": "Wellbeing score",
-      "description": "Average resident wellbeing taken from wearable summaries."
+      "description": "Average resident wellbeing inferred from the latest wearable data."
     },
     "alertsResolved": {
       "title": "Alerts resolved",
-      "description": "Escalations closed by the care team in the past shift."
+      "description": "Current stability across active residents."
     },
     "responseTime": {
       "title": "Average response time",
-      "description": "Minutes from alert raised to the first bedside check.",
+      "description": "Minutes since the last known update across active residents.",
       "unit": "min"
     },
     "delta": {
@@ -121,97 +85,49 @@
   },
   "charts": {
     "title": "Care activity snapshots",
-    "subtitle": "Live visual summaries of resident status, zone activity, and alerts.",
+    "subtitle": "Resident status, zone occupancy, and alert trends sourced from backend data.",
     "status": {
       "title": "Resident status mix",
-      "subtitle": "Status distribution for active residents."
+      "subtitle": "Current distribution across active residents."
     },
     "zones": {
       "title": "Zone occupancy",
-      "subtitle": "Residents grouped by last seen location."
+      "subtitle": "Residents grouped by their latest known location."
     },
     "alerts": {
       "title": "Alert activity",
-      "subtitle": "High-priority updates over the last 6 hours.",
+      "subtitle": "High-priority resident conditions across the last six hours.",
       "series": "Alerts"
     },
-    "empty": "No data yet"
-  },
-  "filters": {
-    "all": "All",
-    "high": "High priority",
-    "followUp": "Needs follow-up",
-    "stable": "Stable"
+    "empty": "No data available"
   },
   "residents": {
-    "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
-    "filters": {
-      "aria": "Filter residents by status"
-    },
-    "tableCaption": "Resident vital signs and status",
-    "columns": {
-      "name": "Resident",
-      "room": "Room",
-      "lastCheck": "Last check-in",
-      "vitals": "Vitals",
-      "status": "Status",
-      "actions": "Actions"
-    },
-    "actions": {
-      "edit": "Edit",
-      "delete": "Delete",
-      "confirmDelete": "Remove {{name}} from the simulation dataset?"
-    },
-    "empty": "No residents match this filter right now.",
+    "title": "Residents overview",
+    "subtitle": "Current resident snapshot from the backend.",
     "status": {
       "stable": "Stable",
-      "followUp": "Follow-up needed",
+      "followUp": "Needs follow-up",
       "high": "High priority",
       "checked_out": "Checked out"
     },
-    "hrLabel": "HR {{value}} bpm",
     "vitals": {
-      "bp": "{{systolic}}/{{diastolic}} mmHg",
+      "bp": "BP {{systolic}}/{{diastolic}} mmHg",
       "hr": "HR {{value}} bpm",
-      "spo2": "SpO₂ {{value}}%",
-      "temp": "Temp {{value}}°C",
-      "unknown": "Pending vitals"
-    },
-    "lastSeen": {
-      "label": "{{time}} • {{location}}",
-      "waiting": "Awaiting first round"
-    },
-    "edit": {
-      "title": "Edit resident details",
-      "name": "Resident name",
-      "room": "Room",
-      "status": "Status",
-      "lastSeenAt": "Last seen time",
-      "lastSeenLocation": "Last seen location",
-      "cancel": "Cancel",
-      "save": "Save changes",
-      "delete": "Delete resident",
-      "confirmDelete": "Remove {{name}} from the simulator? This action cannot be undone.",
-      "errors": {
-        "requiredName": "Enter a resident name.",
-        "requiredRoom": "Enter a room number."
-      }
-    },
-    "live": {
-      "badge": "LIVE",
-      "streaming": "Streaming",
-      "paused": "Reconnecting…",
-      "manual": "Manual refresh",
-      "stopped": "Updates paused",
-      "lastEvent": "Last event {{time}} ago",
-      "waiting": "Waiting for stream"
+      "spo2": "SpO2 {{value}}%",
+      "temp": "Temp {{value}} C",
+      "unknown": "Vitals unavailable"
     }
   },
   "location": {
     "title": "Location overview",
-    "subtitle": "Indoor floorplan (classroom demo).",
-    "refresh": "Refresh map data",
+    "subtitle": "Indoor floor plan and outdoor breach visibility backed by real location records.",
+    "refresh": "Refresh locations",
+    "views": {
+      "label": "Location view",
+      "indoor": "Indoor",
+      "outdoor": "Outdoor",
+      "noOutdoor": "No outdoor zones configured."
+    },
     "map": {
       "aria": "Location map",
       "status": "Status",
@@ -221,25 +137,19 @@
       "bedroom1": "Bedroom 1",
       "bedroom2": "Bedroom 2",
       "bathroom": "Bathroom",
-      "commonLounge": "Common lounge",
+      "commonLounge": "Common Lounge",
       "unknown": "Unknown zone"
     },
     "legend": {
-      "title": "Legend",
-      "indoorZones": "Indoor zones",
-      "safeZone": "Safe zones",
-      "alerts": "Active events",
-      "residents": "Residents"
+      "title": "Legend"
     },
     "occupancy": {
       "title": "Zone occupancy",
-      "subtitle": "Residents grouped by last seen location.",
-      "aria": "Zone occupancy list",
+      "subtitle": "Residents grouped by the latest indoor location.",
+      "aria": "Zone occupancy",
       "empty": "No residents currently in this zone."
     },
     "events": {
-      "status": "Status",
-      "time": "Time",
       "types": {
         "fall": "Fall",
         "bed_exit": "Bed exit",
@@ -252,16 +162,14 @@
     "breaches": {
       "title": "Geofence breaches",
       "subtitle": "Updated {{time}}",
-      "empty": "No active geofence breaches.",
-      "aria": "Active geofence breach events",
-      "itemTitle": "Breach event #{{id}}",
+      "empty": "No active breach events.",
+      "aria": "Geofence breach list",
+      "itemTitle": "Breach #{{id}}",
       "zone": "Zone",
       "zoneUnknown": "Unknown zone",
       "time": "Time",
       "coords": "Coordinates",
-      "coordsUnknown": "Unknown",
-      "approx": "approx",
-      "status": "Status"
+      "coordsUnknown": "Unknown"
     },
     "actions": {
       "ack": "Acknowledge",
@@ -270,22 +178,26 @@
     }
   },
   "alerts": {
-    "title": "Recent alerts",
-    "subtitle": "Most urgent updates from the day",
+    "backend": {
+      "title": "Live alerts",
+      "subtitle": "Active backend events",
+      "empty": "No active alerts.",
+      "loading": "Loading alerts...",
+      "item": "{{resident}} at {{location}}"
+    },
     "items": {
-      "fall": "Fall detected in the west wing corridor.",
-      "heartRate": "Mrs. Singh reports elevated heart rate.",
-      "wearable": "Wearable ID #A52 battery is below 10%.",
-      "ota": "New firmware ready for OTA deployment."
+      "heartRate": "A resident shows elevated heart rate.",
+      "wearable": "A wearable device needs attention.",
+      "ota": "A maintenance update is available."
     },
     "generated": {
-      "fall": "Potential fall detected for {{name}} in {{location}}.",
-      "highStatus": "{{name}} requires urgent review in room {{room}}.",
-      "followUp": "Schedule follow-up check for {{name}} in room {{room}}.",
-      "stale": "No new round for {{name}} — last seen {{duration}} ago.",
-      "lowSpo2": "{{name}} SpO₂ dropped to {{spo2}}%.",
+      "fall": "Potential fall detected for {{name}} near {{location}}.",
+      "highStatus": "{{name}} in room {{room}} requires urgent review.",
+      "followUp": "Schedule follow-up for {{name}} in room {{room}}.",
+      "stale": "{{name}} has not been updated for {{duration}}.",
+      "lowSpo2": "{{name}} SpO2 dropped to {{spo2}}%.",
       "highHr": "{{name}} heart rate reached {{hr}} bpm.",
-      "temperatureHigh": "{{name}} temperature is {{temperature}}°C."
+      "temperatureHigh": "{{name}} temperature is {{temperature}} C."
     }
   },
   "alertLevels": {
@@ -293,77 +205,100 @@
     "warning": "Warning",
     "info": "Info"
   },
+  "events": {
+    "status": {
+      "unhandled": "Unhandled",
+      "confirmed": "Confirmed",
+      "false_alarm": "False alarm",
+      "resolved": "Resolved"
+    }
+  },
+  "emergency": {
+    "title": "Emergency alert",
+    "subtitle": "Immediate caregiver attention required.",
+    "badge": {
+      "fall": "Fall detected",
+      "sos": "SOS triggered",
+      "vital_signs_abnormal": "Vitals abnormal",
+      "geofence_breach": "Geofence breach",
+      "default": "Emergency"
+    },
+    "labels": {
+      "resident": "Resident",
+      "location": "Location",
+      "time": "Time",
+      "status": "Status",
+      "type": "Type"
+    },
+    "loading": "Loading event details...",
+    "errors": {
+      "details": "Unable to load event details",
+      "update": "Unable to update event"
+    }
+  },
+  "push": {
+    "title": "Push notifications",
+    "subtitle": "Browser notifications for critical events",
+    "status": {
+      "support": "Support",
+      "permission": "Permission",
+      "subscription": "Subscription",
+      "vapid": "VAPID key"
+    },
+    "supported": "Supported",
+    "unsupported": "Not supported",
+    "permissions": {
+      "default": "Not requested",
+      "granted": "Granted",
+      "denied": "Denied"
+    },
+    "subscription": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "vapid": {
+      "ready": "Ready",
+      "missing": "Missing"
+    },
+    "actions": {
+      "enable": "Enable push",
+      "disable": "Disable",
+      "test": "Send test"
+    },
+    "errors": {
+      "unsupported": "Push is not supported in this browser.",
+      "permission": "Notification permission was not granted.",
+      "vapid": "VAPID public key is missing.",
+      "subscribe": "Unable to subscribe for push.",
+      "unsubscribe": "Unable to unsubscribe.",
+      "test": "Unable to send test notification."
+    },
+    "test": {
+      "title": "SmartCare test notification",
+      "body": "This is a test push notification from the backend."
+    }
+  },
   "insights": {
     "title": "Care insights",
-    "subtitle": "Suggested follow-ups from the care team",
+    "subtitle": "Follow-up suggestions derived from current resident conditions.",
     "items": {
-      "hydration": "Keep hydration reminders active for wing C.",
-      "nightRounds": "Add extra night rounds for Mrs. Chen.",
-      "physiotherapy": "Coordinate PT follow-up for Mr. Lee.",
-      "familyFeedback": "Log family visit feedback for Ms. Lopez."
+      "hydration": "Keep hydration reminders active.",
+      "nightRounds": "Add extra attention during night rounds.",
+      "physiotherapy": "Coordinate physiotherapy follow-up.",
+      "familyFeedback": "Prepare a family update for the next check-in."
     },
     "generated": {
       "focusHigh": "Assign rapid response to {{name}} in room {{room}}.",
-      "followUp": "Plan follow-up visit for {{name}} in room {{room}}.",
-      "hydration": "Queue hydration reminder for {{name}} (last seen {{duration}} ago).",
-      "familyUpdate": "Share stable progress update with {{name}}'s family.",
-      "location": "Check on {{name}} around {{location}} during next rounds."
+      "followUp": "Plan a follow-up visit for {{name}} in room {{room}}.",
+      "hydration": "Queue a hydration reminder for {{name}} after {{duration}} without a new update.",
+      "familyUpdate": "Share a stable progress update with {{name}}'s family.",
+      "location": "Check on {{name}} near {{location}} during the next round."
     }
   },
   "nextSteps": {
     "title": "Next steps",
-    "mapDataGateway": "Wrap DataGateway APIs with type-safe React hooks.",
-    "portTokens": "Port visual tokens from the static dashboard into shared CSS variables.",
-    "addRouting": "Add authenticated routing and progressively migrate real panels."
-  },
-  "simulator": {
-    "live": {
-      "title": "Live data stream",
-      "start": "Start live updates",
-      "stop": "Stop live updates"
-    },
-    "refresh": {
-      "title": "Snapshot refresh",
-      "now": "Refresh now",
-      "pending": "Refreshing…",
-      "success": "Updated at {{time}}",
-      "error": "Refresh failed. Try again.",
-      "lastRun": "Last refresh {{time}}",
-      "never": "No manual refresh yet",
-      "intervalLabel": "Auto-refresh interval (seconds)",
-      "enable": "Enable auto refresh",
-      "disable": "Disable auto refresh"
-    },
-    "dataset": {
-      "title": "Simulator dataset",
-      "addCustom": "Add custom resident",
-      "hideForm": "Hide custom resident form",
-      "submit": "Add resident",
-      "pending": "Adding…",
-      "success": "Resident added to the simulation.",
-      "reset": "Reset form",
-      "errors": {
-        "name": "Enter a resident name.",
-        "room": "Enter a room number.",
-        "generic": "Could not add this resident. Try again."
-      }
-    },
-    "actions": {
-      "clearAll": "Clear all residents",
-      "confirmClearAll": "Clear the entire resident directory? This only affects the demo data."
-    }
-  },
-  "devPanel": {
-    "aria": "Simulator developer controls",
-    "title": "Simulator controls",
-    "refresh": "Single update",
-    "burst": "Burst ×10",
-    "spawn": "Spawn new resident",
-    "clear": "Clear additions",
-    "hide": "Hide",
-    "show": "Show simulator controls",
-    "pending": "Working…",
-    "sent": "Command sent",
-    "error": "Service worker not ready"
+    "mapDataGateway": "Keep backend adapters as the only DTO-to-UI boundary.",
+    "portTokens": "Consolidate remaining visual tokens into shared CSS variables.",
+    "addRouting": "Add real authentication and route protection when backend auth is ready."
   }
 }

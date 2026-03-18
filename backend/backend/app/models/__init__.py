@@ -8,6 +8,7 @@ from app.models.event import Event
 from app.models.kpi_metrics import KPIMetrics
 from app.models.user_status import UserStatus
 from app.models.device_data_log import DeviceDataLog
+from app.models.push_subscription import PushSubscription
 
 __all__ = [
     "User",
@@ -16,6 +17,7 @@ __all__ = [
     "Event",
     "KPIMetrics",
     "UserStatus",
-    "DeviceDataLog"
+    "DeviceDataLog",
+    "PushSubscription"
 ]
 

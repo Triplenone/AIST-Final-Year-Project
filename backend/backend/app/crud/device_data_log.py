@@ -10,6 +10,7 @@ from app.models.device_data_log import DeviceDataLog
 from app.models.device import Device
 from app.models.user import User
 from app.models.event import Event, EventType, EventStatus
+from app.models.location_zone import LocationZone
 from app.schemas.device_data_log import DeviceDataLogCreate, DeviceDataLogUpdate
 from datetime import datetime
 
@@ -124,6 +125,14 @@ def create_device_data_log(db: Session, log_data: DeviceDataLogCreate) -> Device
         # 获取设备关联的用户ID
         elderly_user_id = device.elderly_user_id
         if elderly_user_id:
+            location_zone_id = None
+            if device.deploy_location:
+                location = db.query(LocationZone).filter(
+                    LocationZone.name == device.deploy_location
+                ).first()
+                if location:
+                    location_zone_id = location.location_zone_id
+
             # 构建事件参数
             event_params = {
                 "fall_state": log_data.fall_state,
@@ -132,7 +141,8 @@ def create_device_data_log(db: Session, log_data: DeviceDataLogCreate) -> Device
                 "fall_direction": log_data.fall_direction,
                 "fall_time": log_data.fall_time,
                 "impact_force": float(log_data.impact_force) if log_data.impact_force else None,
-                "log_id": new_log.id
+                "log_id": new_log.id,
+                "location_label": device.deploy_location
             }
             
             # 创建跌倒事件
@@ -140,7 +150,7 @@ def create_device_data_log(db: Session, log_data: DeviceDataLogCreate) -> Device
                 event_type=EventType.FALL,
                 related_user_id=elderly_user_id,
                 trigger_device_id=log_data.device_id,
-                location_zone_id=None,  # 可以从设备或日志中获取
+                location_zone_id=location_zone_id,
                 event_timestamp=datetime.fromtimestamp(log_data.fall_time) if log_data.fall_time else datetime.now(),
                 event_params=event_params,
                 event_status=EventStatus.UNHANDLED,
@@ -151,6 +161,11 @@ def create_device_data_log(db: Session, log_data: DeviceDataLogCreate) -> Device
             db.add(new_event)
             db.commit()
             db.refresh(new_event)
+            try:
+                from app.services.push_notifications import notify_event
+                notify_event(db, new_event)
+            except Exception:
+                pass
     
     return new_log
 

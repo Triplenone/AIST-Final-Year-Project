@@ -1,10 +1,44 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+
 import { deviceApi, eventApi, locationApi, userApi } from '../../services/api';
-import type { BackendDevice, BackendEvent, BackendLocation, BackendUser } from '../../types/backend';
+import type {
+  BackendDevice,
+  BackendEvent,
+  BackendLocation,
+  BackendUser,
+  EventStatus,
+  EventType
+} from '../../types/backend';
 
-type FormState = Partial<BackendEvent>;
+type FormState = {
+  event_type: EventType;
+  related_user_id?: number;
+  trigger_device_id?: number;
+  location_zone_id?: number;
+  event_status: EventStatus;
+  remark: string;
+};
 
-// 事件管理 (Events admin) – 對應 /api/v1/events
+const DEFAULT_FORM: FormState = {
+  event_type: 'fall',
+  related_user_id: undefined,
+  trigger_device_id: undefined,
+  location_zone_id: undefined,
+  event_status: 'unhandled',
+  remark: ''
+};
+
+const EVENT_TYPES: EventType[] = [
+  'fall',
+  'sos',
+  'vital_signs_abnormal',
+  'bed_exit',
+  'bathroom_retention',
+  'geofence_breach'
+];
+
+const EVENT_STATUSES: EventStatus[] = ['unhandled', 'confirmed', 'false_alarm', 'resolved'];
+
 export const EventsAdmin = () => {
   const [events, setEvents] = useState<BackendEvent[]>([]);
   const [users, setUsers] = useState<BackendUser[]>([]);
@@ -15,34 +49,31 @@ export const EventsAdmin = () => {
   const [editing, setEditing] = useState<BackendEvent | null>(null);
   const [handling, setHandling] = useState<BackendEvent | null>(null);
   const [keyword, setKeyword] = useState('');
-  const [handleStatus, setHandleStatus] = useState<string>('resolved');
+  const [handleStatus, setHandleStatus] = useState<EventStatus>('resolved');
   const [handleRemark, setHandleRemark] = useState('');
-  const [form, setForm] = useState<FormState>({
-    event_type: 'fall',
-    related_user_id: undefined,
-    trigger_device_id: undefined,
-    location_zone_id: undefined,
-    event_status: 'unhandled',
-    remark: '',
-  });
+  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+
+  const resetForm = useCallback(() => {
+    setEditing(null);
+    setForm(DEFAULT_FORM);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [ev, usr, dev, loc] = await Promise.all([
+      const [eventRows, userRows, deviceRows, locationRows] = await Promise.all([
         eventApi.list({ limit: 1000 }),
         userApi.list({ limit: 1000 }),
         deviceApi.list({ limit: 1000 }),
-        locationApi.list({ limit: 1000 }),
+        locationApi.list({ limit: 1000 })
       ]);
-      setEvents(ev);
-      setUsers(usr);
-      setDevices(dev);
-      setLocations(loc);
+      setEvents(eventRows);
+      setUsers(userRows);
+      setDevices(deviceRows);
+      setLocations(locationRows);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '無法取得事件 (Failed to fetch events)';
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Failed to fetch events');
     } finally {
       setLoading(false);
     }
@@ -52,124 +83,149 @@ export const EventsAdmin = () => {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    if (!keyword) return events;
-    return events.filter(
-      (e) =>
-        e.event_type?.toLowerCase().includes(keyword.toLowerCase()) ||
-        e.remark?.toLowerCase().includes(keyword.toLowerCase())
-    );
+  const filteredEvents = useMemo(() => {
+    const value = keyword.trim().toLowerCase();
+    if (!value) return events;
+    return events.filter((event) => {
+      return [
+        event.event_type,
+        event.event_status,
+        event.remark ?? '',
+        String(event.related_user_id),
+        String(event.trigger_device_id)
+      ].some((field) => field.toLowerCase().includes(value));
+    });
   }, [events, keyword]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (!form.related_user_id || !form.trigger_device_id) {
-        setError('缺少 related_user_id 或 trigger_device_id');
+  const elderlyUsers = useMemo(() => users.filter((user) => user.role_type === 'elderly'), [users]);
+
+  const handleEdit = useCallback((event: BackendEvent) => {
+    setEditing(event);
+    setForm({
+      event_type: event.event_type,
+      related_user_id: event.related_user_id,
+      trigger_device_id: event.trigger_device_id,
+      location_zone_id: event.location_zone_id ?? undefined,
+      event_status: event.event_status,
+      remark: event.remark ?? ''
+    });
+  }, []);
+
+  const handleDelete = useCallback(
+    async (event: BackendEvent) => {
+      if (!window.confirm(`Delete event #${event.event_id}?`)) {
         return;
       }
-      if (editing) {
-        await eventApi.update(editing.event_id, form);
-      } else {
-        await eventApi.create(form);
+      try {
+        await eventApi.delete(event.event_id);
+        await load();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Delete failed');
       }
-      setEditing(null);
-      setForm({
-        event_type: 'fall',
-        related_user_id: undefined,
-        trigger_device_id: undefined,
-        location_zone_id: undefined,
-        event_status: 'unhandled',
-        remark: '',
-      });
-      await load();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '操作失敗 (Operation failed)';
-      setError(msg);
-    }
-  };
+    },
+    [load]
+  );
 
-  const handleEdit = (ev: BackendEvent) => {
-    setEditing(ev);
-    setForm({
-      event_type: ev.event_type,
-      related_user_id: ev.related_user_id,
-      trigger_device_id: ev.trigger_device_id,
-      location_zone_id: ev.location_zone_id ?? undefined,
-      event_status: ev.event_status,
-      remark: ev.remark ?? '',
-    });
-  };
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setError(null);
 
-  const handleDelete = async (ev: BackendEvent) => {
-    if (!window.confirm(`確認刪除事件 #${ev.event_id}?`)) return;
-    try {
-      await eventApi.delete(ev.event_id);
-      await load();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '刪除失敗 (Delete failed)';
-      setError(msg);
-    }
-  };
+      if (!form.related_user_id) {
+        setError('Please select a resident user.');
+        return;
+      }
+      if (!form.trigger_device_id) {
+        setError('Please select a trigger device.');
+        return;
+      }
 
-  const submitHandle = async () => {
+      const payload: Partial<BackendEvent> = {
+        event_type: form.event_type,
+        related_user_id: form.related_user_id,
+        trigger_device_id: form.trigger_device_id,
+        location_zone_id: form.location_zone_id,
+        event_status: form.event_status,
+        remark: form.remark
+      };
+
+      try {
+        if (editing) {
+          await eventApi.update(editing.event_id, payload);
+        } else {
+          await eventApi.create(payload);
+        }
+        resetForm();
+        await load();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Save failed');
+      }
+    },
+    [editing, form, load, resetForm]
+  );
+
+  const submitHandle = useCallback(async () => {
     if (!handling) return;
     try {
       await eventApi.handle(handling.event_id, handleStatus, undefined, handleRemark);
       setHandling(null);
       setHandleRemark('');
+      setHandleStatus('resolved');
       await load();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '處理失敗 (Handle failed)';
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Handle failed');
     }
-  };
+  }, [handleRemark, handleStatus, handling, load]);
 
   return (
     <div className="admin-card">
       <header className="admin-card__header">
         <div>
-          <h3>事件管理 (Events)</h3>
-          <p className="muted">對應 /api/v1/events</p>
+          <h3>Events</h3>
+          <p className="muted">Manage records from /api/v1/events</p>
         </div>
         <input
-          placeholder="搜尋類型/備註 (search type/remark)"
+          placeholder="Search type, status, user, device, or remark"
           value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          onChange={(event) => setKeyword(event.target.value)}
         />
       </header>
 
-      {error && <div className="admin-error">{error}</div>}
-      {loading ? <div className="admin-loading">載入中 (Loading)...</div> : null}
+      {error ? <div className="admin-error">{error}</div> : null}
+      {loading ? <div className="admin-loading">Loading...</div> : null}
 
       <table className="admin-table">
         <thead>
           <tr>
             <th>ID</th>
-            <th>類型 (Type)</th>
-            <th>狀態 (Status)</th>
-            <th>住民 (User)</th>
-            <th>設備 (Device)</th>
-            <th>時間</th>
-            <th>備註</th>
-            <th>操作</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>User</th>
+            <th>Device</th>
+            <th>Timestamp</th>
+            <th>Remark</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {filtered.map((ev) => (
-            <tr key={ev.event_id}>
-              <td>{ev.event_id}</td>
-              <td>{ev.event_type}</td>
-              <td>{ev.event_status}</td>
-              <td>{ev.related_user_id}</td>
-              <td>{ev.trigger_device_id}</td>
-              <td>{new Date(ev.event_timestamp).toLocaleString()}</td>
-              <td>{ev.remark ?? '-'}</td>
+          {filteredEvents.map((event) => (
+            <tr key={event.event_id}>
+              <td>{event.event_id}</td>
+              <td>{event.event_type}</td>
+              <td>{event.event_status}</td>
+              <td>{event.related_user_id}</td>
+              <td>{event.trigger_device_id}</td>
+              <td>{new Date(event.event_timestamp).toLocaleString()}</td>
+              <td>{event.remark ?? '-'}</td>
               <td>
-                <button onClick={() => handleEdit(ev)}>編輯</button>
-                <button onClick={() => setHandling(ev)}>處理</button>
-                <button className="danger" onClick={() => void handleDelete(ev)}>
-                  刪除
+                <button type="button" onClick={() => handleEdit(event)}>
+                  Edit
+                </button>
+                <button type="button" onClick={() => setHandling(event)}>
+                  Handle
+                </button>
+                <button type="button" className="danger" onClick={() => void handleDelete(event)}>
+                  Delete
                 </button>
               </td>
             </tr>
@@ -177,139 +233,142 @@ export const EventsAdmin = () => {
         </tbody>
       </table>
 
-      {/* 建立/更新事件表單 */}
       <div className="admin-form">
-        <h4>{editing ? '編輯事件 (Edit Event)' : '新增事件 (Add Event)'}</h4>
+        <h4>{editing ? 'Edit event' : 'Create event'}</h4>
         <form onSubmit={handleSubmit}>
           <label>
-            類型 (Type)
+            Type
             <select
-              value={form.event_type ?? 'fall'}
-              onChange={(e) => setForm({ ...form, event_type: e.target.value as BackendEvent['event_type'] })}
+              value={form.event_type}
+              onChange={(event) => setForm((current) => ({ ...current, event_type: event.target.value as EventType }))}
             >
-              <option value="fall">fall</option>
-              <option value="sos">sos</option>
-              <option value="vital_signs_abnormal">vital_signs_abnormal</option>
-              <option value="bed_exit">bed_exit</option>
-              <option value="bathroom_retention">bathroom_retention</option>
-              <option value="geofence_breach">geofence_breach</option>
+              {EVENT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
           </label>
+
           <label>
-            住民 (User)
+            User
             <select
               value={form.related_user_id ?? ''}
-              onChange={(e) =>
-                setForm({ ...form, related_user_id: e.target.value ? Number(e.target.value) : undefined })
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  related_user_id: event.target.value ? Number(event.target.value) : undefined
+                }))
               }
             >
-              <option value="">選擇住民</option>
-              {users
-                .filter((u) => u.role_type === 'elderly')
-                .map((u) => (
-                  <option key={u.user_id} value={u.user_id}>
-                    {u.name} (ID {u.user_id})
-                  </option>
-                ))}
+              <option value="">Select a resident</option>
+              {elderlyUsers.map((user) => (
+                <option key={user.user_id} value={user.user_id}>
+                  {user.name} (ID {user.user_id})
+                </option>
+              ))}
             </select>
           </label>
+
           <label>
-            觸發設備 (Device)
+            Trigger device
             <select
               value={form.trigger_device_id ?? ''}
-              onChange={(e) =>
-                setForm({ ...form, trigger_device_id: e.target.value ? Number(e.target.value) : undefined })
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  trigger_device_id: event.target.value ? Number(event.target.value) : undefined
+                }))
               }
             >
-              <option value="">選擇設備</option>
-              {devices.map((d) => (
-                <option key={d.device_id} value={d.device_id}>
-                  {d.model_desc || d.device_type} (ID {d.device_id})
+              <option value="">Select a device</option>
+              {devices.map((device) => (
+                <option key={device.device_id} value={device.device_id}>
+                  {(device.model_desc || device.device_type || 'Device')} (ID {device.device_id})
                 </option>
               ))}
             </select>
           </label>
+
           <label>
-            位置 (Location)
+            Location
             <select
               value={form.location_zone_id ?? ''}
-              onChange={(e) =>
-                setForm({ ...form, location_zone_id: e.target.value ? Number(e.target.value) : undefined })
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  location_zone_id: event.target.value ? Number(event.target.value) : undefined
+                }))
               }
             >
-              <option value="">未指定</option>
-              {locations.map((l) => (
-                <option key={l.location_zone_id} value={l.location_zone_id}>
-                  {l.name ?? l.location_zone_id}
+              <option value="">No location</option>
+              {locations.map((location) => (
+                <option key={location.location_zone_id} value={location.location_zone_id}>
+                  {location.name ?? location.location_zone_id}
                 </option>
               ))}
             </select>
           </label>
+
           <label>
-            狀態 (Status)
+            Status
             <select
-              value={form.event_status ?? 'unhandled'}
-              onChange={(e) =>
-                setForm({ ...form, event_status: e.target.value as BackendEvent['event_status'] })
+              value={form.event_status}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, event_status: event.target.value as EventStatus }))
               }
             >
-              <option value="unhandled">unhandled</option>
-              <option value="resolved">resolved</option>
-              <option value="confirmed">confirmed</option>
-              <option value="false_alarm">false_alarm</option>
+              {EVENT_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
           </label>
+
           <label>
-            備註 (Remark)
-            <textarea value={form.remark ?? ''} onChange={(e) => setForm({ ...form, remark: e.target.value })} />
+            Remark
+            <textarea
+              value={form.remark}
+              onChange={(event) => setForm((current) => ({ ...current, remark: event.target.value }))}
+            />
           </label>
+
           <div className="admin-form__actions">
-            <button type="submit">{editing ? '更新 (Update)' : '新增 (Create)'}</button>
-            {editing && (
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  setEditing(null);
-                  setForm({
-                    event_type: 'fall',
-                    related_user_id: undefined,
-                    trigger_device_id: undefined,
-                    location_zone_id: undefined,
-                    event_status: 'unhandled',
-                    remark: '',
-                  });
-                }}
-              >
-                取消 (Cancel)
+            <button type="submit">{editing ? 'Update' : 'Create'}</button>
+            {editing ? (
+              <button type="button" className="ghost" onClick={resetForm}>
+                Cancel
               </button>
-            )}
+            ) : null}
           </div>
         </form>
       </div>
 
-      {/* 處理事件彈窗 */}
       {handling ? (
         <div className="admin-modal">
           <div className="admin-modal__content">
-            <h4>處理事件 (Handle Event) #{handling.event_id}</h4>
+            <h4>Handle event #{handling.event_id}</h4>
             <label>
-              狀態 (Status)
-              <select value={handleStatus} onChange={(e) => setHandleStatus(e.target.value)}>
-                <option value="resolved">resolved</option>
-                <option value="confirmed">confirmed</option>
-                <option value="false_alarm">false_alarm</option>
-                <option value="unhandled">unhandled</option>
+              Status
+              <select value={handleStatus} onChange={(event) => setHandleStatus(event.target.value as EventStatus)}>
+                {EVENT_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
-              備註 (Remark)
-              <textarea value={handleRemark} onChange={(e) => setHandleRemark(e.target.value)} />
+              Remark
+              <textarea value={handleRemark} onChange={(event) => setHandleRemark(event.target.value)} />
             </label>
             <div className="admin-form__actions">
-              <button onClick={() => void submitHandle()}>提交 (Submit)</button>
-              <button className="ghost" onClick={() => setHandling(null)}>
-                關閉 (Close)
+              <button type="button" onClick={() => void submitHandle()}>
+                Submit
+              </button>
+              <button type="button" className="ghost" onClick={() => setHandling(null)}>
+                Close
               </button>
             </div>
           </div>

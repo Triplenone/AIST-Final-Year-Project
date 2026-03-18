@@ -6,6 +6,8 @@ import { LocationsAdmin } from './LocationsAdmin';
 import { EventsAdmin } from './EventsAdmin';
 import { DeviceLogsAdmin } from './DeviceLogsAdmin';
 import { ResidentsAdmin } from './ResidentsAdmin';
+import { UserStatusAdmin } from './UserStatusAdmin';
+import { KpiAdmin } from './KpiAdmin';
 
 type AdminTab =
   | 'users'
@@ -13,7 +15,9 @@ type AdminTab =
   | 'locations'
   | 'events'
   | 'logs'
-  | 'residents';
+  | 'residents'
+  | 'userStatus'
+  | 'kpi';
 
 export const AdminSection = () => {
   const { t } = useTranslation();
@@ -25,7 +29,9 @@ export const AdminSection = () => {
     devices: t('admin.tabs.devices'),
     locations: t('admin.tabs.locations'),
     events: t('admin.tabs.events'),
-    logs: t('admin.tabs.logs')
+    logs: t('admin.tabs.logs'),
+    userStatus: t('admin.tabs.userStatus'),
+    kpi: t('admin.tabs.kpi')
   };
 
   return (
@@ -57,6 +63,8 @@ export const AdminSection = () => {
         {activeTab === 'events' && <EventsAdmin />}
         {activeTab === 'logs' && <DeviceLogsAdmin />}
         {activeTab === 'residents' && <ResidentsAdmin />}
+        {activeTab === 'userStatus' && <UserStatusAdmin />}
+        {activeTab === 'kpi' && <KpiAdmin />}
       </div>
     </section>
   );

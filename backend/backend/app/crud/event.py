@@ -42,6 +42,11 @@ def create_event(db: Session, event: EventCreate) -> Event:
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+    try:
+        from app.services.push_notifications import notify_event
+        notify_event(db, db_event)
+    except Exception:
+        pass
     return db_event
 
 

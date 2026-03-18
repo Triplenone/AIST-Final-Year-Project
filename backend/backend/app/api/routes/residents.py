@@ -29,7 +29,7 @@ def calculate_resident_status(db: Session, user_id: int) -> str:
         return 'stable'
     
     if latest_event.event_status == 'unhandled':
-        if latest_event.event_type in ['fall', 'sos', 'vital_signs_abnormal']:
+        if latest_event.event_type in ['fall', 'sos', 'vital_signs_abnormal', 'geofence_breach']:
             return 'high'
         elif latest_event.event_type in ['bed_exit', 'bathroom_retention']:
             return 'followUp'
@@ -245,7 +245,7 @@ def get_residents(
             if not latest_event:
                 status = 'stable'
             elif latest_event.event_status == 'unhandled':
-                if latest_event.event_type in ['fall', 'sos', 'vital_signs_abnormal']:
+                if latest_event.event_type in ['fall', 'sos', 'vital_signs_abnormal', 'geofence_breach']:
                     status = 'high'
                 elif latest_event.event_type in ['bed_exit', 'bathroom_retention']:
                     status = 'followUp'

@@ -1,87 +1,31 @@
-// 儀表板殼層：結合隨機 KPI 與 SSE 推送的即時住民資料。
 import './styles/global.css';
 
-import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-import {
-  initialMetrics,
-  metricOrder,
-  type Metrics
-} from './constants/metrics';
-import { useResidentLiveStore } from './shared/resident-live-store';
-import type { Resident } from './sse/client';
-import {
-  deriveAlertsFromResidents,
-  deriveInsightsFromResidents,
-  deriveResidentMetrics,
-  primaryTimestamp,
-  type RawMetrics
-} from './utils/resident-derived';
+import { BackendAlertsPanel } from './components/BackendAlertsPanel';
+import { EmergencyAlertModal } from './components/EmergencyAlertModal';
+import { LocationDashboard } from './components/LocationDashboard';
+import { PushNotificationPanel } from './components/PushNotificationPanel';
 import { AdminSection } from './components/admin/AdminSection';
 import { DashboardCharts } from './components/charts/DashboardCharts';
-import { LocationDashboard } from './components/LocationDashboard';
-
-type Role = 'guest' | 'caregiver' | 'admin';
-
-type Account = {
-  username: string;
-  password: string;
-  role: Role;
-};
-
-type Session = {
-  username: string;
-  role: Role;
-};
+import { ImuWaveformChart } from './components/charts/ImuWaveformChart';
+import { initialMetrics, metricOrder, type Metrics } from './constants/metrics';
+import { useResidentLiveStore } from './shared/resident-live-store';
+import type { Resident } from './types/resident';
+import { deriveInsightsFromResidents, deriveResidentMetrics, primaryTimestamp, type RawMetrics } from './utils/resident-derived';
 
 type ThemeMode = 'light' | 'dark';
 
-type ResidentPatch = Partial<Resident> & { roleType?: Resident['roleType'] };
-
-
-const DEFAULT_ACCOUNTS: Account[] = [
-  { username: 'guest_demo', password: 'guest123', role: 'guest' },
-  { username: 'care_demo', password: 'care1234', role: 'caregiver' },
-  { username: 'admin_master', password: 'admin888', role: 'admin' }
-];
+type Insights = ReturnType<typeof deriveInsightsFromResidents>;
+type Insight = Insights[number];
 
 const STORAGE_KEYS = {
-  accounts: 'smartcare-react-accounts',
-  session: 'smartcare-react-session',
-  theme: 'smartcare-theme'
+  theme: 'smartcare-theme',
 } as const;
 
 const hasWindow = () => typeof window !== 'undefined';
-
-const INDOOR_ZONES = ['Bedroom 1', 'Bedroom 2', 'Bathroom', 'Common Lounge'];
-const SIM_STATUSES: Resident['status'][] = ['high', 'followUp', 'stable'];
-
-const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const pick = <T,>(values: T[]) => values[randomInt(0, values.length - 1)];
-
-const buildVitals = (status: Resident['status'], forceHighHr: boolean) => {
-  const hr =
-    forceHighHr || status === 'high'
-      ? randomInt(115, 135)
-      : status === 'followUp'
-        ? randomInt(85, 110)
-        : randomInt(60, 95);
-  const spo2 = status === 'high' ? randomInt(90, 95) : status === 'followUp' ? randomInt(93, 97) : randomInt(96, 99);
-  const temperature =
-    status === 'high'
-      ? Number((Math.random() * 0.6 + 37.8).toFixed(1))
-      : Number((Math.random() * 0.6 + 36.4).toFixed(1));
-  return {
-    hr,
-    bpSystolic: randomInt(105, 135),
-    bpDiastolic: randomInt(65, 90),
-    spo2,
-    temperature
-  };
-};
 
 function readStorage<T>(key: string, fallback: T): T {
   if (!hasWindow()) return fallback;
@@ -99,175 +43,46 @@ function writeStorage(key: string, value: unknown) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // ignore storage quota issues
+    // ignore storage failures
   }
 }
-
-function removeStorage(key: string) {
-  if (!hasWindow()) return;
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
-}
-
-type Alerts = ReturnType<typeof deriveAlertsFromResidents>;
-type Alert = Alerts[number];
-type Insights = ReturnType<typeof deriveInsightsFromResidents>;
-type Insight = Insights[number];
 
 export default function App() {
   const { t, i18n } = useTranslation();
   const activeLanguage = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const {
+    residents: residentMap,
+    loading: residentLoading,
+    error: residentError,
+    lastUpdatedAt,
+    refreshResidents,
+  } = useResidentLiveStore();
 
-  const [accounts, setAccounts] = useState<Account[]>(() => {
-    const stored = readStorage<Account[]>(STORAGE_KEYS.accounts, []);
-    return stored.length ? stored : DEFAULT_ACCOUNTS;
-  });
-  const [session, setSession] = useState<Session | null>(() =>
-    readStorage<Session | null>(STORAGE_KEYS.session, null)
-  );
-  const [authMode, setAuthMode] = useState<'signin' | 'signup' | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authInfo, setAuthInfo] = useState<string | null>(null);
-  const authFirstFieldRef = useRef<HTMLInputElement | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(() => readStorage<ThemeMode>(STORAGE_KEYS.theme, 'light'));
+  const [now, setNow] = useState(() => Date.now());
+  const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
+  const previousRawMetricsRef = useRef<RawMetrics | null>(null);
 
-  useEffect(() => {
-    writeStorage(STORAGE_KEYS.accounts, accounts);
-  }, [accounts]);
-
-  useEffect(() => {
-    if (session) {
-      writeStorage(STORAGE_KEYS.session, session);
-    } else {
-      removeStorage(STORAGE_KEYS.session);
-    }
-  }, [session]);
-
-
-  const closeAuth = useCallback(() => {
-    setAuthMode(null);
-    setAuthError(null);
-    setAuthInfo(null);
+  const captureMode = useMemo(() => {
+    if (!hasWindow()) return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('capture');
   }, []);
-
-  const openAuth = useCallback((mode: 'signin' | 'signup') => {
-    setAuthMode(mode);
-    setAuthError(null);
-    setAuthInfo(null);
-  }, []);
-
-  const switchAuthMode = useCallback(
-    (mode: 'signin' | 'signup', options?: { preserveInfo?: boolean }) => {
-      setAuthMode(mode);
-      setAuthError(null);
-      if (!options?.preserveInfo) {
-        setAuthInfo(null);
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (!authMode) return;
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeAuth();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => {
-      window.removeEventListener('keydown', handleKey);
-    };
-  }, [authMode, closeAuth]);
-
-  useEffect(() => {
-    if (authMode && authFirstFieldRef.current) {
-      authFirstFieldRef.current.focus();
-    }
-  }, [authMode]);
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.theme, theme);
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const handleSignOut = useCallback(() => {
-    setSession(null);
+  useEffect(() => {
+    if (!hasWindow()) return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const target = document.querySelector(hash);
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: 'auto', block: 'start' });
+    }
   }, []);
-
-  const handleSignInSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const formData = new FormData(event.currentTarget);
-      const username = String(formData.get('username') ?? '').trim();
-      const password = String(formData.get('password') ?? '');
-
-      setAuthError(null);
-      const matchedAccount = accounts.find(
-        (account) => account.username === username && account.password === password
-      );
-
-      if (!matchedAccount) {
-        setAuthError(t('auth.errors.invalidCredentials'));
-        return;
-      }
-
-      setSession({ username: matchedAccount.username, role: matchedAccount.role });
-      event.currentTarget.reset();
-      closeAuth();
-    },
-    [accounts, closeAuth, t]
-  );
-
-  const handleSignUpSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const formData = new FormData(event.currentTarget);
-      const username = String(formData.get('username') ?? '').trim();
-      const password = String(formData.get('password') ?? '');
-      const roleValue = String(formData.get('role') ?? 'guest') as Role;
-      const nextRole: Role = roleValue === 'caregiver' ? 'caregiver' : 'guest';
-
-      setAuthError(null);
-      if (!/^[\w.-]{2,}$/i.test(username)) {
-        setAuthError(t('auth.errors.usernameFormat'));
-        return;
-      }
-      if (password.length < 4) {
-        setAuthError(t('auth.errors.passwordLength'));
-        return;
-      }
-      const exists = accounts.some((account) => account.username === username);
-      if (exists) {
-        setAuthError(t('auth.errors.usernameTaken'));
-        return;
-      }
-
-      const nextAccount: Account = {
-        username,
-        password,
-        role: nextRole
-      };
-
-      setAccounts((prev) => [...prev, nextAccount]);
-      event.currentTarget.reset();
-      setAuthInfo(t('auth.feedback.accountCreated'));
-      switchAuthMode('signin', { preserveInfo: true });
-      setAuthError(null);
-    },
-    [accounts, switchAuthMode, t]
-  );
-
-  const { residents: residentMap, startStream, stopStream, updateResident, setDemoMode, demoMode } = useResidentLiveStore();
-
-  const [now, setNow] = useState(() => Date.now());
-  const [lastUpdated] = useState<Date>(() => new Date());
-  const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
-  const previousRawMetricsRef = useRef<RawMetrics | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -279,31 +94,17 @@ export default function App() {
   }, []);
 
   const residentList = useMemo<Resident[]>(() => {
-    const values = Object.values(residentMap);
-    return values
+    return Object.values(residentMap)
       .map((resident) => ({
         ...resident,
-        updatedAt: resident.updatedAt ?? resident.createdAt
+        updatedAt: resident.updatedAt ?? resident.createdAt,
       }))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [residentMap]);
 
-  const lastSeenFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(activeLanguage, {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-    [activeLanguage]
-  );
+  const previewResidents = useMemo(() => residentList.slice(0, 8), [residentList]);
 
-  const alerts = useMemo<Alert[]>(() => {
-    return deriveAlertsFromResidents(residentList, now, lastSeenFormatter, t);
-  }, [residentList, now, lastSeenFormatter, t]);
-
-  const insights = useMemo<Insight[]>(() => {
-    return deriveInsightsFromResidents(residentList, now, t);
-  }, [residentList, now, t]);
+  const insights = useMemo<Insight[]>(() => deriveInsightsFromResidents(residentList, now, t), [residentList, now, t]);
 
   const statusChartData = useMemo(() => {
     const statusKeys: Resident['status'][] = ['stable', 'followUp', 'high', 'checked_out'];
@@ -311,7 +112,7 @@ export default function App() {
       stable: 0,
       followUp: 0,
       high: 0,
-      checked_out: 0
+      checked_out: 0,
     };
 
     residentList.forEach((resident) => {
@@ -321,7 +122,7 @@ export default function App() {
     return statusKeys
       .map((status) => ({
         name: t(`residents.status.${status}`),
-        value: tally[status]
+        value: tally[status],
       }))
       .filter((item) => item.value > 0);
   }, [residentList, t]);
@@ -347,7 +148,7 @@ export default function App() {
     const start = now - bucketCount * bucketMs;
     const formatter = new Intl.DateTimeFormat(activeLanguage, {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
     const buckets = Array.from({ length: bucketCount }, (_, index) => {
       const bucketEnd = new Date(start + (index + 1) * bucketMs);
@@ -383,7 +184,7 @@ export default function App() {
       alertsTitle: t('charts.alerts.title'),
       alertsSubtitle: t('charts.alerts.subtitle'),
       alertsSeries: t('charts.alerts.series'),
-      empty: t('charts.empty')
+      empty: t('charts.empty'),
     }),
     [t]
   );
@@ -394,86 +195,52 @@ export default function App() {
     const next: Metrics = {
       wellbeing: {
         value: raw.wellbeing,
-        delta: raw.wellbeing - previous.wellbeing
+        delta: raw.wellbeing - previous.wellbeing,
       },
       alertsResolved: {
         value: raw.alertsResolved,
-        delta: raw.alertsResolved - previous.alertsResolved
+        delta: raw.alertsResolved - previous.alertsResolved,
       },
       responseTime: {
         value: raw.responseTime,
-        delta: raw.responseTime - previous.responseTime
-      }
+        delta: raw.responseTime - previous.responseTime,
+      },
     };
     previousRawMetricsRef.current = raw;
     setMetrics(next);
   }, [residentList, now]);
 
-  useEffect(() => {
-    startStream();
-    return () => {
-      stopStream();
-    };
-  }, [startStream, stopStream]);
-
   const formattedTime = useMemo(() => {
+    if (!lastUpdatedAt) return t('common.unknown');
+    const parsed = new Date(lastUpdatedAt);
+    if (Number.isNaN(parsed.getTime())) return t('common.unknown');
     return new Intl.DateTimeFormat(activeLanguage, {
       hour: '2-digit',
-      minute: '2-digit'
-    }).format(lastUpdated);
-  }, [activeLanguage, lastUpdated]);
+      minute: '2-digit',
+    }).format(parsed);
+  }, [activeLanguage, lastUpdatedAt, t]);
 
-  const isLoggedIn = Boolean(session);
-  const userDisplayName = session?.username ?? t('auth.guestName');
-  const userRoleLabel = t(`auth.roles.${session?.role ?? 'guest'}`);
-  const signButtonLabel = t(isLoggedIn ? 'auth.signOut' : 'auth.signIn');
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setTheme((previous) => (previous === 'light' ? 'dark' : 'light'));
   }, []);
 
-  const handleSimulateNewData = useCallback(() => {
-    const targetResidents = residentList.slice(0, 7);
-    if (targetResidents.length === 0) return;
+  const handleRefresh = useCallback(() => {
+    void refreshResidents().catch(() => {});
+  }, [refreshResidents]);
 
-    setDemoMode(true);
-    const caregiverIndex = randomInt(0, targetResidents.length - 1);
-    const statusAssignments = targetResidents.map(() => pick(SIM_STATUSES));
-
-    if (!statusAssignments.includes('high')) {
-      statusAssignments[randomInt(0, statusAssignments.length - 1)] = 'high';
-    }
-    if (!statusAssignments.includes('followUp') && statusAssignments.length > 1) {
-      statusAssignments[randomInt(0, statusAssignments.length - 1)] = 'followUp';
-    }
-
-    targetResidents.forEach((resident, index) => {
-      const status = statusAssignments[index] ?? 'stable';
-      const roleType = index === caregiverIndex ? 'caregiver' : 'elderly';
-      const forceHighHr = roleType === 'elderly' && status === 'high';
-      const minutesAgo = randomInt(0, 90);
-      const lastSeenAt = new Date(Date.now() - minutesAgo * 60000).toISOString();
-      const lastSeenLocation = pick(INDOOR_ZONES);
-
-      const updates: ResidentPatch = {
-        status,
-        roleType,
-        lastSeenLocation,
-        lastSeenAt,
-        vitals: buildVitals(status, forceHighHr),
-        checkedOut: false
-      };
-
-      updateResident(resident.id, updates);
-    });
-  }, [residentList, setDemoMode, updateResident]);
-
-  const handleExitDemoMode = useCallback(() => {
-    setDemoMode(false);
-  }, [setDemoMode]);
+  if (captureMode === 'location') {
+    return (
+      <div className="app-background">
+        <main className="app-shell">
+          <LocationDashboard />
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="app-background">
-      <main className="app-shell">
+    <div className="app-background app-background--with-header">
+      <main className="app-shell app-shell--with-header">
         <header className="app-header">
           <div className="brand">
             <span className="brand-mark">{t('layout.title')}</span>
@@ -492,19 +259,6 @@ export default function App() {
             <button type="button" className="theme-toggle" onClick={toggleTheme}>
               {theme === 'light' ? 'Dark mode' : 'Light mode'}
             </button>
-            <div className="auth-menu" aria-live="polite">
-              <div className="auth-menu__details">
-                <span className="auth-menu__name">{userDisplayName}</span>
-                <span className="auth-menu__role">{userRoleLabel}</span>
-              </div>
-              <button
-                type="button"
-                className="auth-menu__button"
-                onClick={isLoggedIn ? handleSignOut : () => openAuth('signin')}
-              >
-                {signButtonLabel}
-              </button>
-            </div>
           </div>
         </header>
 
@@ -515,17 +269,43 @@ export default function App() {
             <p>{t('hero.description')}</p>
           </div>
           <div className="hero-actions">
-            <button type="button" className="primary" onClick={handleSimulateNewData}>
-              {t('actions.simulate')}
+            <button type="button" className="primary" onClick={handleRefresh}>
+              {residentLoading ? t('common.loading') : t('admin.residents.refresh')}
             </button>
-            {demoMode ? (
-              <button type="button" className="secondary" onClick={handleExitDemoMode}>
-                {t('actions.exitDemo')}
-              </button>
-            ) : null}
             <span className="timestamp" aria-live="polite">
               {t('hero.lastUpdated', { time: formattedTime })}
             </span>
+            {residentError ? <div className="admin-error">{residentError}</div> : null}
+          </div>
+        </section>
+
+        <section id="residents" className="section">
+          <header className="section-heading">
+            <div>
+              <h2>{t('residents.title')}</h2>
+              <p className="muted">{t('residents.subtitle')}</p>
+            </div>
+          </header>
+          <div className="hero-residents">
+            <ul className="hero-residents__list">
+              {previewResidents.length ? (
+                previewResidents.map((resident) => (
+                  <li key={resident.id} className="hero-residents__item">
+                    <div>
+                      <span className="hero-residents__name">{resident.name}</span>
+                      <span className="hero-residents__room">{resident.room}</span>
+                    </div>
+                    <span className={`status status-${resident.status}`}>
+                      {t(`residents.status.${resident.status}`)}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li className="hero-residents__empty">
+                  {residentLoading ? t('common.loading') : t('admin.residents.noData')}
+                </li>
+              )}
+            </ul>
           </div>
         </section>
 
@@ -546,7 +326,7 @@ export default function App() {
                       className={`metric-delta ${isPositive ? 'delta-up' : 'delta-down'}`}
                       aria-label={t('stats.delta.label', {
                         direction: isPositive ? t('stats.delta.up') : t('stats.delta.down'),
-                        delta: deltaLabel
+                        delta: deltaLabel,
                       })}
                     >
                       {isPositive ? '+' : '-'}
@@ -576,32 +356,13 @@ export default function App() {
             alertTrendData={alertTrendData}
             labels={chartLabels}
           />
+          <ImuWaveformChart />
         </section>
 
         <LocationDashboard />
 
-        <section id="residents" className="residents">
-          <AdminSection />
-        </section>
-
         <section id="operations" className="section split">
-          <article className="panel">
-            <header className="section-heading">
-              <h2>{t('alerts.title')}</h2>
-              <span className="chip chip--quiet">{t('alerts.subtitle')}</span>
-            </header>
-            <ul className="alert-list">
-              {alerts.map((alert) => (
-                <li key={alert.id} className={`alert alert-${alert.level}`}>
-                  <span className="alert-pill">{t(`alertLevels.${alert.level}`)}</span>
-                  <span className="alert-text">{alert.message}</span>
-                  <time className="alert-time" dateTime={alert.timestamp ?? undefined}>
-                    {alert.time}
-                  </time>
-                </li>
-              ))}
-            </ul>
-          </article>
+          <BackendAlertsPanel />
           <article id="family" className="panel">
             <header className="section-heading">
               <h2>{t('insights.title')}</h2>
@@ -613,7 +374,10 @@ export default function App() {
               ))}
             </ul>
           </article>
+          <PushNotificationPanel />
         </section>
+
+        <AdminSection />
 
         <section id="next" className="section next-steps">
           <header className="section-heading">
@@ -627,75 +391,7 @@ export default function App() {
         </section>
       </main>
 
-      {authMode ? (
-        <div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-          <div className="auth-modal__backdrop" onClick={closeAuth} role="presentation" />
-          <div className="auth-modal__dialog" role="document">
-            <button type="button" className="auth-modal__close" onClick={closeAuth} aria-label={t('common.close')}>
-              ×
-            </button>
-            <h2 id="auth-modal-title">{t(authMode === 'signin' ? 'auth.signInTitle' : 'auth.signUpTitle')}</h2>
-            {authError ? (
-              <div className="auth-modal__alert auth-modal__alert--error" role="alert">
-                {authError}
-              </div>
-            ) : null}
-            {authInfo ? (
-              <div className="auth-modal__alert auth-modal__alert--info" role="status">
-                {authInfo}
-              </div>
-            ) : null}
-            <form
-              className="auth-modal__form"
-              onSubmit={authMode === 'signin' ? handleSignInSubmit : handleSignUpSubmit}
-              noValidate
-            >
-              <label>
-                <span>{t('auth.username')}</span>
-                <input ref={authFirstFieldRef} name="username" type="text" autoComplete="username" />
-              </label>
-              <label>
-                <span>{t('auth.password')}</span>
-                {authMode === 'signin' ? (
-                  <input name="password" type="password" autoComplete="current-password" />
-                ) : (
-                  <input name="password" type="password" autoComplete="new-password" />
-                )}
-              </label>
-              {authMode === 'signup' ? (
-                <label>
-                  <span>{t('auth.role')}</span>
-                  <select name="role" defaultValue="guest">
-                    <option value="guest">{t('auth.roles.guest')}</option>
-                    <option value="caregiver">{t('auth.roles.caregiver')}</option>
-                  </select>
-                </label>
-              ) : null}
-              <button type="submit" className="primary auth-modal__submit">
-                {t(authMode === 'signin' ? 'auth.continue' : 'auth.create')}
-              </button>
-            </form>
-            <p className="auth-modal__switch">
-              {authMode === 'signin' ? (
-                <>
-                  {t('auth.noAccount')}{' '}
-                  <button type="button" className="auth-modal__link" onClick={() => switchAuthMode('signup')}>
-                    {t('auth.toSignUp')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  {t('auth.haveAccount')}{' '}
-                  <button type="button" className="auth-modal__link" onClick={() => switchAuthMode('signin')}>
-                    {t('auth.toSignIn')}
-                  </button>
-                </>
-              )}
-            </p>
-          </div>
-        </div>
-      ) : null}
-
+      <EmergencyAlertModal />
     </div>
   );
 }

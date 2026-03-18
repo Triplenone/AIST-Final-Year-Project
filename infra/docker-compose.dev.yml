@@ -1,3 +1,5 @@
+# Legacy scaffold (Postgres/Timescale). Not aligned with current MySQL backend.
+# Use docker-compose.demo.yml for the runnable demo.
 version: "3.9"
 services:
   mqtt:

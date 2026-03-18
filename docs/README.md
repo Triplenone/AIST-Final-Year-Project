@@ -17,3 +17,9 @@ This folder contains runbooks + reference docs for the **Proactive Guardian Care
 - [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md)
 - [`OTA.md`](OTA.md)
 - [`SECURITY.md`](SECURITY.md)
+
+## Updated Records
+
+Major repo updates are logged in:
+
+- [`Updated Records/UPDATE_LOG.md`](<../Updated Records/UPDATE_LOG.md>)

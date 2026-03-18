@@ -1,371 +1,304 @@
-{
+﻿{
   "common": {
     "language": "语言",
-    "switchTo": "切换至{{label}}",
     "close": "关闭",
-    "loading": "载入中..."
+    "loading": "加载中...",
+    "unknown": "未知"
   },
   "layout": {
     "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
+    "subtitle": "养老机构智能穿戴监测仪表板",
     "nav": {
       "aria": "主导航",
       "overview": "总览",
-      "residents": "住民",
+      "residents": "住户",
       "location": "位置",
-      "operations": "运营",
-      "family": "家属互动",
-      "admin": "系统管理"
-    },
-    "footer": "© 2024 SmartCare Collaborative — 为照护团队而生"
+      "operations": "操作",
+      "family": "洞察",
+      "admin": "管理"
+    }
+  },
+  "hero": {
+    "eyebrow": "React + Vite 前端",
+    "title": "单一前端主线，直接对接真实后端",
+    "description": "此仪表板现在只读取 /api/v1/* 的真实数据。旧模拟器、假登录和本地 demo 控制已移除。",
+    "lastUpdated": "最后更新 {{time}}"
   },
   "admin": {
-    "title": "系统管理",
-    "subtitle": "直接连到 TestStage-FYP 后端资源",
-    "detailsTitle": "Proactive Guardian Care 详情",
-    "detailsSubtitle": "System Admin 控制台：长者院舍智慧穿戴安全系统",
+    "detailsTitle": "管理后台",
+    "detailsSubtitle": "直接操作 /api/v1/* 暴露的后端资源。",
     "tabs": {
+      "residents": "住户",
       "users": "用户",
       "devices": "设备",
       "locations": "位置",
       "events": "事件",
       "logs": "设备日志",
-      "status": "用户状态",
-      "residents": "住民",
+      "userStatus": "用户状态",
       "kpi": "KPI"
     },
     "residents": {
-      "title": "住民名册",
+      "title": "住户目录",
       "subtitle": "同步自 /api/v1/residents",
-      "searchPlaceholder": "搜姓名或房号",
-      "statusFilterLabel": "状态",
+      "searchPlaceholder": "按姓名或房间搜索",
+      "statusFilterLabel": "状态筛选",
       "allStatuses": "全部状态",
-      "refresh": "重新整理",
+      "refresh": "刷新",
       "lastUpdated": "更新于 {{time}}",
       "columns": {
         "id": "ID",
-        "name": "住民",
-        "room": "房号",
+        "name": "住户",
+        "room": "房间",
         "status": "状态",
         "lastSeen": "最后出现",
         "vitals": "生命体征",
-        "device": "设备",
-        "updated": "更新时间"
+        "device": "设备"
       },
-      "noData": "目前没有住民资料。",
+      "noData": "未找到住户数据。",
       "lastSeenUnknown": "未知",
-      "deviceUnknown": "未绑定",
-      "vitalsUnknown": "等待生命体征",
-      "error": "无法取得住民资料，请稍后再试。"
+      "deviceUnknown": "未分配",
+      "vitalsUnknown": "等待生命体征数据",
+      "error": "无法加载住户数据"
     }
-  },
-  "auth": {
-    "guestName": "访客",
-    "signIn": "登录",
-    "signOut": "登出",
-    "signInTitle": "登录 SmartCare",
-    "signUpTitle": "建立账号",
-    "username": "账号",
-    "password": "密码",
-    "role": "角色",
-    "continue": "登录",
-    "create": "建立账号",
-    "noAccount": "还没有账号？",
-    "haveAccount": "已有账号？",
-    "toSignUp": "立即注册",
-    "toSignIn": "返回登录",
-    "roles": {
-      "guest": "访客",
-      "caregiver": "看护者",
-      "admin": "管理员"
-    },
-    "errors": {
-      "invalidCredentials": "账号或密码不正确。",
-      "usernameTaken": "此账号已被使用。",
-      "usernameFormat": "账号需至少 2 个字符，只能包含字母、数字、点或下划线。",
-      "passwordLength": "密码至少需要 4 个字符。"
-    },
-    "feedback": {
-      "accountCreated": "账号已建立，请登录继续。"
-    }
-  },
-  "actions": {
-    "simulate": "模拟更新数据",
-    "exitDemo": "退出演示模式"
-  },
-  "hero": {
-    "eyebrow": "渐进式网页应用原型",
-    "title": "为 SmartCare 团队打造的贴心控制室",
-    "description": "当旧版仪表板仍在线上服务时，先预览全新的 React 体验。",
-    "lastUpdated": "最后更新：{{time}}"
   },
   "stats": {
     "wellbeing": {
-      "title": "健康指数",
-      "description": "依据穿戴装置摘要计算的整体健康分数。"
+      "title": "健康分数",
+      "description": "根据最新穿戴数据估算的住户平均健康状态。"
     },
     "alertsResolved": {
-      "title": "已处理警报",
-      "description": "本班次照护团队完成处理的警报数量。"
+      "title": "已稳定警示",
+      "description": "当前活跃住户的整体稳定程度。"
     },
     "responseTime": {
       "title": "平均响应时间",
-      "description": "从警报触发到第一次进房巡查的分钟数。",
+      "description": "活跃住户距离最后一次更新的平均分钟数。",
       "unit": "分钟"
     },
     "delta": {
-      "label": "{{direction}}{{delta}}",
-      "up": "提升",
+      "label": "{{direction}} {{delta}}",
+      "up": "改善",
       "down": "下降",
       "points": "{{count}} 分",
       "minutes": "{{count}} 分钟"
     }
   },
   "charts": {
-    "title": "护理状态概览",
-    "subtitle": "实时可视化呈现住户状态、区域活动与警报。",
+    "title": "照护摘要",
+    "subtitle": "基于后端数据生成的住户状态、区域分布和警示趋势。",
     "status": {
       "title": "住户状态分布",
-      "subtitle": "当前住户状态占比。"
+      "subtitle": "当前活跃住户的状态比例。"
     },
     "zones": {
-      "title": "区域占用",
-      "subtitle": "按最后出现位置统计。"
+      "title": "区域人数",
+      "subtitle": "按最近位置分组的住户数量。"
     },
     "alerts": {
-      "title": "警报活动",
-      "subtitle": "过去 6 小时的高优先事件。",
-      "series": "警报"
+      "title": "警示活动",
+      "subtitle": "最近六小时的高优先级情况。",
+      "series": "警示"
     },
-    "empty": "暂无数据"
-  },
-  "filters": {
-    "all": "全部",
-    "high": "高优先",
-    "followUp": "需跟进",
-    "stable": "稳定"
+    "empty": "当前没有数据"
   },
   "residents": {
-    "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
-    "filters": {
-      "aria": "按状态筛选住民"
-    },
-    "tableCaption": "住民生命体征与状态表",
-    "columns": {
-      "name": "住民",
-      "room": "房号",
-      "lastCheck": "最后巡房",
-      "vitals": "生命体征",
-      "status": "状态",
-      "actions": "操作"
-    },
-    "actions": {
-      "edit": "编辑",
-      "delete": "删除",
-      "confirmDelete": "确定从模拟资料中移除 {{name}} 吗？"
-    },
-    "empty": "目前没有符合此筛选条件的住民。",
+    "title": "住户总览",
+    "subtitle": "来自后端的实时住户快照。",
     "status": {
       "stable": "稳定",
       "followUp": "需跟进",
-      "high": "高优先",
-      "checked_out": "已退房"
+      "high": "高优先级",
+      "checked_out": "已离院"
     },
-    "hrLabel": "心率 {{value}} 次",
     "vitals": {
-      "bp": "{{systolic}}/{{diastolic}} mmHg",
-      "hr": "心率 {{value}} 次/分",
+      "bp": "血压 {{systolic}}/{{diastolic}} mmHg",
+      "hr": "心率 {{value}} bpm",
       "spo2": "血氧 {{value}}%",
-      "temp": "体温 {{value}}°C",
-      "unknown": "等待生命体征"
-    },
-    "lastSeen": {
-      "label": "{{time}} • {{location}}",
-      "waiting": "等待首次巡房"
-    },
-    "edit": {
-      "title": "编辑住民资料",
-      "name": "住民姓名",
-      "room": "房号",
-      "status": "状态",
-      "lastSeenAt": "最近巡房时间",
-      "lastSeenLocation": "最近巡房地点",
-      "cancel": "取消",
-      "save": "储存变更",
-      "delete": "删除住民",
-      "confirmDelete": "确定要从模拟器中移除 {{name}} 吗？此操作无法复原。",
-      "errors": {
-        "requiredName": "请输入住民姓名。",
-        "requiredRoom": "请输入房号。"
-      }
-    },
-    "live": {
-      "badge": "LIVE",
-      "streaming": "直播中",
-      "paused": "重新连接中…",
-      "manual": "手动刷新",
-      "stopped": "已暂停",
-      "lastEvent": "上次事件 {{time}} 前",
-      "waiting": "等待串流"
+      "temp": "体温 {{value}} C",
+      "unknown": "没有生命体征数据"
     }
   },
   "location": {
     "title": "位置总览",
-    "subtitle": "室内平面图（课堂演示）。",
-    "refresh": "更新地图数据",
+    "subtitle": "由真实位置数据驱动的室内平面图与室外越界视图。",
+    "refresh": "刷新位置",
+    "views": {
+      "label": "位置视图",
+      "indoor": "室内",
+      "outdoor": "室外",
+      "noOutdoor": "未配置室外区域。"
+    },
     "map": {
       "aria": "位置地图",
       "status": "状态",
       "zone": "区域"
     },
     "zones": {
-      "bedroom1": "卧室 1",
-      "bedroom2": "卧室 2",
-      "bathroom": "浴室",
+      "bedroom1": "房间 1",
+      "bedroom2": "房间 2",
+      "bathroom": "卫生间",
       "commonLounge": "公共休息区",
       "unknown": "未知区域"
     },
     "legend": {
-      "title": "图例",
-      "indoorZones": "室内区域",
-      "safeZone": "安全区",
-      "alerts": "活跃事件",
-      "residents": "住民"
+      "title": "图例"
     },
     "occupancy": {
-      "title": "区域入住情况",
-      "subtitle": "按最近位置分组的住民。",
-      "aria": "区域入住列表",
-      "empty": "该区域暂无住民。"
+      "title": "区域人数",
+      "subtitle": "按最新室内位置分组的住户。",
+      "aria": "区域人数",
+      "empty": "该区域当前没有住户。"
     },
     "events": {
-      "status": "状态",
-      "time": "时间",
       "types": {
         "fall": "跌倒",
         "bed_exit": "离床",
-        "bathroom_retention": "浴室逗留",
-        "geofence_breach": "围栏越界",
+        "bathroom_retention": "卫生间滞留",
+        "geofence_breach": "越界",
         "sos": "SOS",
         "vital_signs_abnormal": "生命体征异常"
       }
     },
     "breaches": {
-      "title": "围栏越界",
+      "title": "越界事件",
       "subtitle": "更新于 {{time}}",
-      "empty": "目前没有活跃的围栏越界事件。",
-      "aria": "活跃的围栏越界事件",
-      "itemTitle": "越界事件 #{{id}}",
+      "empty": "当前没有越界事件。",
+      "aria": "越界事件列表",
+      "itemTitle": "越界 #{{id}}",
       "zone": "区域",
       "zoneUnknown": "未知区域",
       "time": "时间",
       "coords": "坐标",
-      "coordsUnknown": "未知",
-      "approx": "估算",
-      "status": "状态"
+      "coordsUnknown": "未知"
     },
     "actions": {
       "ack": "确认",
-      "resolve": "解决",
+      "resolve": "处理完成",
       "falseAlarm": "误报"
     }
   },
   "alerts": {
-    "title": "最新警报",
-    "subtitle": "今日最需要注意的讯息",
+    "backend": {
+      "title": "实时警示",
+      "subtitle": "后端事件同步",
+      "empty": "当前没有警示。",
+      "loading": "加载警示中...",
+      "item": "{{resident}} 于 {{location}}"
+    },
     "items": {
-      "fall": "西侧走廊侦测到跌倒事件。",
-      "heartRate": "辛格女士心率偏高。",
-      "wearable": "穿戴装置 A52 电量低于 10%。",
-      "ota": "新的固件可供 OTA 更新。"
+      "heartRate": "有住户出现心率偏高。",
+      "wearable": "有穿戴设备需要关注。",
+      "ota": "有维护更新可部署。"
     },
     "generated": {
-      "fall": "侦测到 {{name}} 可能在 {{location}} 跌倒。",
-      "highStatus": "{{name}}（{{room}}）需要紧急巡查。",
-      "followUp": "安排对 {{name}}（{{room}}）的随访检查。",
-      "stale": "{{name}} 已 {{duration}} 未巡房，请安排查访。",
-      "lowSpo2": "{{name}} 的血氧降至 {{spo2}}%。",
-      "highHr": "{{name}} 的心率升至 {{hr}} 次/分。",
-      "temperatureHigh": "{{name}} 的体温达到 {{temperature}}°C。"
+      "fall": "在 {{location}} 附近检测到 {{name}} 可能跌倒。",
+      "highStatus": "房间 {{room}} 的 {{name}} 需要立即检查。",
+      "followUp": "请安排跟进 {{name}}（房间 {{room}}）。",
+      "stale": "{{name}} 已有 {{duration}} 没有新数据。",
+      "lowSpo2": "{{name}} 的血氧下降到 {{spo2}}%。",
+      "highHr": "{{name}} 的心率升至 {{hr}} bpm。",
+      "temperatureHigh": "{{name}} 的体温为 {{temperature}} C。"
     }
   },
   "alertLevels": {
-    "critical": "紧急",
-    "warning": "警示",
+    "critical": "严重",
+    "warning": "警告",
     "info": "信息"
+  },
+  "events": {
+    "status": {
+      "unhandled": "未处理",
+      "confirmed": "已确认",
+      "false_alarm": "误报",
+      "resolved": "已解决"
+    }
+  },
+  "emergency": {
+    "title": "紧急警示",
+    "subtitle": "需要照护人员立即关注。",
+    "badge": {
+      "fall": "检测到跌倒",
+      "sos": "SOS 已触发",
+      "vital_signs_abnormal": "生命体征异常",
+      "geofence_breach": "越界事件",
+      "default": "紧急事件"
+    },
+    "labels": {
+      "resident": "住户",
+      "location": "位置",
+      "time": "时间",
+      "status": "状态",
+      "type": "类型"
+    },
+    "loading": "加载事件详情中...",
+    "errors": {
+      "details": "无法加载事件详情",
+      "update": "无法更新事件"
+    }
+  },
+  "push": {
+    "title": "推送通知",
+    "subtitle": "浏览器接收高优先级事件通知",
+    "status": {
+      "support": "支持",
+      "permission": "权限",
+      "subscription": "订阅",
+      "vapid": "VAPID 密钥"
+    },
+    "supported": "支持",
+    "unsupported": "不支持",
+    "permissions": {
+      "default": "未请求",
+      "granted": "已允许",
+      "denied": "已拒绝"
+    },
+    "subscription": {
+      "active": "已启用",
+      "inactive": "未启用"
+    },
+    "vapid": {
+      "ready": "已配置",
+      "missing": "缺失"
+    },
+    "actions": {
+      "enable": "启用推送",
+      "disable": "停用",
+      "test": "发送测试"
+    },
+    "errors": {
+      "unsupported": "当前浏览器不支持推送通知。",
+      "permission": "未获取通知权限。",
+      "vapid": "缺少 VAPID 公钥。",
+      "subscribe": "无法订阅推送通知。",
+      "unsubscribe": "无法取消推送通知。",
+      "test": "无法发送测试通知。"
+    },
+    "test": {
+      "title": "SmartCare 测试通知",
+      "body": "这是由后端发送的测试推送通知。"
+    }
   },
   "insights": {
     "title": "照护洞察",
-    "subtitle": "照护团队建议的后续动作",
+    "subtitle": "根据当前住户状态生成的跟进建议。",
     "items": {
-      "hydration": "保持 C 区域的补水提醒。",
-      "nightRounds": "为陈女士增加夜间巡房。",
-      "physiotherapy": "协调李先生的物理治疗回诊。",
-      "familyFeedback": "记录洛佩斯女士家访回馈。"
+      "hydration": "保持补水提醒。",
+      "nightRounds": "夜间巡查时加强关注。",
+      "physiotherapy": "安排物理治疗跟进。",
+      "familyFeedback": "下次沟通时准备家属更新。"
     },
     "generated": {
-      "focusHigh": "指派应急团队前往 {{room}} 关注 {{name}}。",
-      "followUp": "规划对 {{name}}（{{room}}）的随访轮班。",
-      "hydration": "为 {{name}} 安排补水提醒（已 {{duration}} 未见）。",
-      "familyUpdate": "把 {{name}} 的稳定进展告知家属。",
-      "location": "下一轮巡查时留意 {{name}} 所在的 {{location}}。"
+      "focusHigh": "优先处理房间 {{room}} 的 {{name}}。",
+      "followUp": "安排跟进探访 {{name}}（房间 {{room}}）。",
+      "hydration": "{{name}} 已有 {{duration}} 没有新数据，建议补水提醒。",
+      "familyUpdate": "可向 {{name}} 家属提供稳定进度更新。",
+      "location": "下一轮巡查时留意 {{location}} 附近的 {{name}}。"
     }
   },
   "nextSteps": {
     "title": "下一步",
-    "mapDataGateway": "用类型安全的 React Hook 包装 DataGateway API。",
-    "portTokens": "把静态仪表板的设计 Token 汇入共享 CSS 变量。",
-    "addRouting": "加入验证路由并逐步迁移真实面板。"
-  },
-  "simulator": {
-    "live": {
-      "title": "即时串流",
-      "start": "启动直播更新",
-      "stop": "停止直播更新"
-    },
-    "refresh": {
-      "title": "快照刷新",
-      "now": "立即刷新",
-      "pending": "刷新中…",
-      "success": "{{time}} 已更新",
-      "error": "刷新失败，请再试一次。",
-      "lastRun": "上次刷新 {{time}}",
-      "never": "尚未手动刷新",
-      "intervalLabel": "自动刷新间隔（秒）",
-      "enable": "开启自动刷新",
-      "disable": "关闭自动刷新"
-    },
-    "dataset": {
-      "title": "模拟资料集",
-      "addCustom": "新增自订住民",
-      "hideForm": "收合自订住民表单",
-      "submit": "新增住民",
-      "pending": "新增中…",
-      "success": "已加入模拟资料。",
-      "reset": "清除表单",
-      "errors": {
-        "name": "请输入住民姓名。",
-        "room": "请输入房号。",
-        "generic": "无法新增此住民，请稍后再试。"
-      }
-    },
-    "actions": {
-      "clearAll": "清空所有住民",
-      "confirmClearAll": "确定要清空住民目录？只会影响示范资料。"
-    }
-  },
-  "devPanel": {
-    "aria": "模拟数据控制",
-    "title": "模拟器控制",
-    "refresh": "刷新一次",
-    "burst": "连发 10 条",
-    "spawn": "生成新住民",
-    "clear": "清除新增住民",
-    "hide": "隐藏",
-    "show": "显示模拟器控制",
-    "pending": "处理中…",
-    "sent": "已发送",
-    "error": "Service Worker 未就绪"
+    "mapDataGateway": "继续保持 adapter 作为后端 DTO 到 UI 的唯一边界。",
+    "portTokens": "把剩余视觉样式收敛到共享 CSS 变量。",
+    "addRouting": "等后端 auth 完成后，再加入真实登录和路由保护。"
   }
 }
