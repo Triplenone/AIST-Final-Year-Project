@@ -53,6 +53,13 @@ const tooltipStyle = {
 } as const;
 
 const axisTick = { fill: 'var(--text-muted)', fontSize: 12 };
+const responsiveFrameProps = {
+  width: '100%',
+  height: '100%',
+  minWidth: 240,
+  minHeight: 220,
+  debounce: 120
+} as const;
 
 export const DashboardCharts = ({
   statusData,
@@ -73,17 +80,20 @@ export const DashboardCharts = ({
         </header>
         <div className="chart-card__body">
           {statusTotal > 0 ? (
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={72} paddingAngle={2}>
-                  {statusData.map((entry, index) => (
-                    <Cell key={`${entry.name}-${index}`} fill={chartPalette[index % chartPalette.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend verticalAlign="bottom" height={32} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="chart-card__viewport">
+              {/* 给 Recharts 一个稳定的测量盒，避免 route transition 时出现 width/height 抖动警告。 */}
+              <ResponsiveContainer {...responsiveFrameProps}>
+                <PieChart>
+                  <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={72} paddingAngle={2}>
+                    {statusData.map((entry, index) => (
+                      <Cell key={`${entry.name}-${index}`} fill={chartPalette[index % chartPalette.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend verticalAlign="bottom" height={32} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="chart-empty">{labels.empty}</div>
           )}
@@ -97,15 +107,17 @@ export const DashboardCharts = ({
         </header>
         <div className="chart-card__body">
           {zoneTotal > 0 ? (
-            <ResponsiveContainer>
-              <BarChart data={zoneData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                <CartesianGrid stroke="var(--border-soft)" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} interval={0} />
-                <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="value" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="chart-card__viewport">
+              <ResponsiveContainer {...responsiveFrameProps}>
+                <BarChart data={zoneData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--border-soft)" strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} interval={0} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="value" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="chart-empty">{labels.empty}</div>
           )}
@@ -119,23 +131,25 @@ export const DashboardCharts = ({
         </header>
         <div className="chart-card__body">
           {hasTrend ? (
-            <ResponsiveContainer>
-              <LineChart data={alertTrendData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                <CartesianGrid stroke="var(--border-soft)" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
-                <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Line
-                  type="monotone"
-                  dataKey="alerts"
-                  name={labels.alertsSeries}
-                  stroke="var(--chart-3)"
-                  strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="chart-card__viewport">
+              <ResponsiveContainer {...responsiveFrameProps}>
+                <LineChart data={alertTrendData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--border-soft)" strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Line
+                    type="monotone"
+                    dataKey="alerts"
+                    name={labels.alertsSeries}
+                    stroke="var(--chart-3)"
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="chart-empty">{labels.empty}</div>
           )}

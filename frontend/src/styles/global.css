@@ -370,6 +370,11 @@ body,
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   outline: none;
 }
+.app-background--position .header-nav a.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
 /* FlyCare 页：隐藏导航并将品牌居中 */
 .app-background--position .app-header.app-header--flycare {
   grid-template-columns: 1fr;
@@ -473,6 +478,33 @@ body,
 .app-background--position .actions-drawer .auth-menu__name,
 .app-background--position .actions-drawer .auth-menu__role {
   font-size: 0.8rem;
+}
+
+.tab-page-stack {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tab-page-stack--narrow {
+  width: min(1040px, 100%);
+}
+
+.tab-page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tab-page-panel {
+  height: 100%;
+}
+
+.tab-page-section .admin-card,
+.tab-page-section .panel {
+  margin-bottom: 0;
 }
 
 .app-loading {
