@@ -2,15 +2,14 @@
 数据接收API路由
 接收智能设备上传的传感器数据并存储到数据库
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
-import time
-import json
 from app.database import get_db
 from app.schemas.device_data_log import DeviceDataLogCreate
 from app import crud
+import json
 
 router = APIRouter()
 
@@ -27,9 +26,7 @@ def convert_imu_data_to_device_data_log(data: Dict[str, Any]) -> DeviceDataLogCr
     """
     将IMU设备上传的JSON数据转换为DeviceDataLogCreate格式
     
-    输入数据格式（支持完整格式和简化格式）:
-    
-    完整格式:
+    输入数据格式（来自IMU_wifi.py）:
     {
         "device_id": int,
         "timestamp": int (Unix时间戳),
@@ -37,38 +34,27 @@ def convert_imu_data_to_device_data_log(data: Dict[str, Any]) -> DeviceDataLogCr
         "accelerometer": {"x": float, "y": float, "z": float},
         "gyroscope": {"x": float, "y": float, "z": float},
         "location": {"x": float, "y": float, "z": float, "accuracy": float, "position_quality": str},
-        "fall_detection": {...},
-        "system_status": {...}
-    }
-    
-    简化格式（仅包含必需字段）:
-    {
-        "device_id": int,
-        "relative_time": int,
-        "accelerometer": {"x": float, "y": float, "z": float},
-        "gyroscope": {"x": float, "y": float, "z": float}
+        "fall_detection": {
+            "state": int,
+            "state_description": str,
+            "confidence": float (0-1),
+            "is_fall_confirmed": bool,
+            "impact_force": float,
+            "direction": str,
+            "fall_time": int
+        },
+        "system_status": {
+            "wifi_connected": bool,
+            "server_connected": bool,
+            "battery_level": int (0-100)
+        },
+        "server_receive_time": str (datetime格式)
     }
     """
     try:
-        # 提取数据，提供默认值以支持简化格式
+        # 提取数据
         accel = data.get('accelerometer', {})
-        if not accel and 'accel_x' in data:
-            # 支持扁平格式
-            accel = {
-                'x': data.get('accel_x', 0.0),
-                'y': data.get('accel_y', 0.0),
-                'z': data.get('accel_z', 0.0)
-            }
-        
         gyro = data.get('gyroscope', {})
-        if not gyro and 'gyro_x' in data:
-            # 支持扁平格式
-            gyro = {
-                'x': data.get('gyro_x', 0.0),
-                'y': data.get('gyro_y', 0.0),
-                'z': data.get('gyro_z', 0.0)
-            }
-        
         location = data.get('location', {})
         fall_detection = data.get('fall_detection', {})
         system_status = data.get('system_status', {})
@@ -87,20 +73,11 @@ def convert_imu_data_to_device_data_log(data: Dict[str, Any]) -> DeviceDataLogCr
         else:
             server_receive_time = datetime.now()
         
-        # 使用服务器当前时间作为 timestamp，保证排序与显示一致（不采用设备端时间，避免设备时钟不准导致乱序）
-        timestamp = int(time.time())
-        
-        relative_time = data.get('relative_time')
-        if relative_time is None:
-            relative_time = timestamp
-        else:
-            relative_time = int(relative_time)
-        
         # 构建DeviceDataLogCreate对象
         return DeviceDataLogCreate(
             device_id=int(data.get('device_id', 0)),
-            timestamp=timestamp,
-            relative_time=relative_time,
+            timestamp=int(data.get('timestamp', 0)),
+            relative_time=int(data.get('relative_time', 0)),
             # 加速度计数据
             accel_x=float(accel.get('x', 0.0)),
             accel_y=float(accel.get('y', 0.0)),
@@ -180,7 +157,7 @@ def display_data_info(data: Dict[str, Any]):
 
 
 @router.post("/receive", status_code=200)
-async def receive_imu_data(
+def receive_imu_data(
     data: Dict[str, Any],
     db: Session = Depends(get_db)
 ):
@@ -228,43 +205,34 @@ async def receive_imu_data(
         # 在控制台显示数据（类似IMU_wifi.py）
         display_data_info(data)
         
-        # 上行原始 JSON 写入 MongoDB 缓存（与 MySQL 并行，失败不影响主流程）
-        try:
-            from app.services.mongo_raw_upstream import save_raw_upstream
-            await save_raw_upstream(data)
-        except Exception as e:
-            print(f"⚠️ MongoDB 写入上行缓存失败: {e}")
-        
         # 转换数据格式
         log_data = convert_imu_data_to_device_data_log(data)
         
-        # 保存到数据库（确认跌倒时在 1 分钟内同一设备只创建一次事件，避免 ESP 重复上报）
-        new_log, event_created = crud.device_data_log.create_device_data_log(db, log_data)
+        # 保存到数据库（会自动创建事件如果is_fall_confirmed=True）
+        new_log = crud.device_data_log.create_device_data_log(db, log_data)
         
         # 更新接收统计
         _reception_stats["total_received"] += 1
         _reception_stats["last_receive_time"] = datetime.now().isoformat()
         _reception_stats["last_log_id"] = new_log.id
         
-        # 构建返回信息（event_created 表示本次是否新建了跌倒事件）
+        # 构建返回信息
         result = {
             "status": "success",
             "message": "数据接收成功",
             "log_id": new_log.id,
             "server_time": data.get('server_receive_time', ''),
             "is_fall_confirmed": log_data.is_fall_confirmed,
-            "event_created": event_created
+            "event_created": False
         }
         
-        if event_created:
+        # 如果确认跌倒，提示事件已创建
+        if log_data.is_fall_confirmed:
+            result["event_created"] = True
             result["message"] = "数据接收成功，已自动创建待处理事件"
             print("💾 数据保存:")
             print(f"   ✅ 已保存到数据库 (日志ID: {new_log.id})")
             print(f"   🚨 跌倒警报: 已自动创建待处理事件")
-        elif log_data.is_fall_confirmed:
-            print("💾 数据保存:")
-            print(f"   ✅ 已保存到数据库 (日志ID: {new_log.id})")
-            print(f"   ⏭️ 跌倒已确认，1 分钟内已存在该设备跌倒事件，未重复创建")
         else:
             print("💾 数据保存:")
             print(f"   ✅ 已保存到数据库 (日志ID: {new_log.id})")
@@ -293,111 +261,17 @@ def get_reception_status():
     """
     获取数据接收服务状态和统计信息
     """
-    from app.services.tcp_server import get_tcp_server
-    
-    tcp_server = get_tcp_server()
-    tcp_status = tcp_server.get_status()
-    is_tcp_running = tcp_status["is_running"]
-
-    # 參考 Python 程式：TCP 運行時接收數來自 TCP 服務（TCP 路徑不寫入 _reception_stats），
-    # 前端與下方「接收總數/錯誤」統一使用 stats，故在此合併
-    if is_tcp_running:
-        stats_total = tcp_status["total_samples"]
-        stats_errors = tcp_status["errors"]
-        stats_last = tcp_status["last_receive_time"] or _reception_stats["last_receive_time"]
-    else:
-        stats_total = _reception_stats["total_received"]
-        stats_errors = _reception_stats["errors"]
-        stats_last = _reception_stats["last_receive_time"]
-
     return {
         "status": "running",
         "service": "data_reception",
         "description": "数据接收服务正在运行",
         "endpoint": "/api/v1/data-reception/receive",
         "method": "POST",
-        "tcp_server": {
-            "is_running": is_tcp_running,
-            "host": tcp_status["host"],
-            "port": tcp_status["port"],
-            "total_samples": tcp_status["total_samples"],
-            "errors": tcp_status["errors"],
-            "last_receive_time": tcp_status["last_receive_time"],
-            "active_client_count": tcp_status.get("active_client_count", 0),
-        },
         "stats": {
-            "total_received": stats_total,
-            "last_receive_time": stats_last,
-            "errors": stats_errors,
+            "total_received": _reception_stats["total_received"],
+            "last_receive_time": _reception_stats["last_receive_time"],
+            "errors": _reception_stats["errors"],
             "last_log_id": _reception_stats["last_log_id"]
         }
     }
-
-
-@router.get("/mqtt/status")
-def get_mqtt_status():
-    """
-    获取 MQTT 订阅状态（与 MQTT-topic.txt 上行主题一致）。
-    用于确认是否已连接 Broker、当前订阅的 8 个上行主题。
-    """
-    try:
-        from app.services.mqtt_subscriber import get_mqtt_status as _get
-        return _get()
-    except Exception as e:
-        return {"enabled": False, "connected": False, "error": str(e), "subscribed_topics": []}
-
-
-@router.post("/tcp/start")
-def start_tcp_server(
-    host: Optional[str] = Query("0.0.0.0", description="服务器监听地址"),
-    port: Optional[int] = Query(8080, description="服务器监听端口")
-):
-    """
-    启动TCP服务器接收ESP32数据
-    
-    Args:
-        host: 服务器监听地址，默认 0.0.0.0
-        port: 服务器监听端口，默认 8080
-    """
-    from app.services.tcp_server import get_tcp_server
-    
-    try:
-        tcp_server = get_tcp_server(host=host or "0.0.0.0", port=port or 8080)
-        result = tcp_server.start()
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"启动TCP服务器失败: {str(e)}")
-
-
-@router.post("/tcp/stop")
-def stop_tcp_server():
-    """
-    停止TCP服务器
-    """
-    from app.services.tcp_server import get_tcp_server
-    
-    try:
-        tcp_server = get_tcp_server()
-        result = tcp_server.stop()
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"停止TCP服务器失败: {str(e)}")
-
-
-@router.get("/tcp/status")
-def get_tcp_server_status():
-    """
-    获取TCP服务器状态
-    """
-    from app.services.tcp_server import get_tcp_server
-    
-    try:
-        tcp_server = get_tcp_server()
-        status = tcp_server.get_status()
-        return {
-            "status": "success",
-            "data": status
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取TCP服务器状态失败: {str(e)}")
 

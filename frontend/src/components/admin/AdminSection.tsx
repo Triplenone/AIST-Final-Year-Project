@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UsersAdmin } from './UsersAdmin';
 import { DevicesAdmin } from './DevicesAdmin';
@@ -7,7 +7,7 @@ import { EventsAdmin } from './EventsAdmin';
 import { DeviceLogsAdmin } from './DeviceLogsAdmin';
 import { ResidentsAdmin } from './ResidentsAdmin';
 
-export type AdminTab =
+type AdminTab =
   | 'users'
   | 'devices'
   | 'locations'
@@ -15,22 +15,9 @@ export type AdminTab =
   | 'logs'
   | 'residents';
 
-type AdminSectionProps = {
-  activeTab?: AdminTab;
-  onTabChange?: (tab: AdminTab) => void;
-};
-
-export const AdminSection = ({ activeTab: controlledTab, onTabChange }: AdminSectionProps) => {
+export const AdminSection = () => {
   const { t } = useTranslation();
-  const [internalTab, setInternalTab] = useState<AdminTab>('residents');
-  const activeTab = controlledTab ?? internalTab;
-  const setActiveTab = onTabChange ?? setInternalTab;
-
-  useEffect(() => {
-    if (controlledTab != null) {
-      setInternalTab(controlledTab);
-    }
-  }, [controlledTab]);
+  const [activeTab, setActiveTab] = useState<AdminTab>('residents');
 
   const tabLabels: Record<AdminTab, string> = {
     residents: t('admin.tabs.residents'),
@@ -56,7 +43,7 @@ export const AdminSection = ({ activeTab: controlledTab, onTabChange }: AdminSec
             key={tab}
             type="button"
             className={`admin-tab ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab as AdminTab)}
+            onClick={() => setActiveTab(tab)}
           >
             {tabLabels[tab]}
           </button>

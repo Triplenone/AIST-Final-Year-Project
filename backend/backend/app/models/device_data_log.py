@@ -14,7 +14,7 @@ class DeviceDataLog(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     device_id = Column(Integer, ForeignKey("device.device_id", ondelete="CASCADE"), nullable=False, index=True, comment="关联device表的自增主键")
-    timestamp = Column(BigInteger, nullable=False, comment="用于排序与显示的服务器接收时间戳")
+    timestamp = Column(BigInteger, nullable=False, comment="设备端时间戳")
     relative_time = Column(BigInteger, nullable=False, comment="设备相对时间")
     
     # 加速度计数据

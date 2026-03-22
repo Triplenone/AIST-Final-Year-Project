@@ -9,7 +9,7 @@ from datetime import datetime
 class DeviceDataLogBase(BaseModel):
     """设备数据日志基础模型"""
     device_id: int = Field(..., description="设备ID")
-    timestamp: int = Field(..., description="用于排序与显示的服务器接收时间戳")
+    timestamp: int = Field(..., description="设备端时间戳")
     relative_time: int = Field(..., description="设备相对时间")
     
     # 加速度计数据
@@ -53,7 +53,7 @@ class DeviceDataLogResponse(BaseModel):
     device_id: int = Field(..., description="设备ID")
     device_name: Optional[str] = Field(None, description="设备名称")
     device_type: Optional[str] = Field(None, description="设备类型")
-    timestamp: int = Field(..., description="用于排序与显示的服务器接收时间戳")
+    timestamp: int = Field(..., description="设备端时间戳")
     relative_time: int = Field(..., description="设备相对时间")
     
     # 加速度计数据
@@ -134,7 +134,7 @@ class ElderDetailResponse(BaseModel):
     # 数据日志基本信息
     id: int = Field(..., description="日志ID")
     device_id: int = Field(..., description="设备ID")
-    timestamp: int = Field(..., description="用于排序与显示的服务器接收时间戳")
+    timestamp: int = Field(..., description="设备端时间戳")
     relative_time: int = Field(..., description="设备相对时间")
     
     # 设备信息

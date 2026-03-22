@@ -1,46 +1,41 @@
-## OS / editor
-.DS_Store
-Thumbs.db
+# --- Node ---
+node_modules/
+dist/
 
-## Environment files
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+
+# virtual envs
+.venv/
+venv/
+env/
+.env/
+
+# dotenv files (keep .env.example committed)
 .env
 .env.*
 !.env.example
 
-## Python
-**/__pycache__/
-*.py[cod]
+# Python tooling caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.venv/
-venv/
-backend/.venv/
-backend/backend/.venv/
-backend/backend/venv/
+.coverage
+htmlcov/
 
-## Node / frontend
-node_modules/
-frontend/node_modules/
-frontend/dist/
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
 
-## Generated release output
-release/
+# --- Logs ---
+*.log
 
-## Generated backend static bundle
-backend/backend/static/assets/
-backend/backend/static/index.html
-backend/backend/static/sse-sw.js
+# --- Project-specific (local/legacy) ---
+# (typo'd legacy dashboard; main frontend is in /frontend)
+backend/forntend/
 
-## Test artifacts / reports
-coverage/
-playwright-report/
-test-results/
-trace.zip
-*.webm
-
-## Local bundles / installers
-*.zip
-*.msi
-*.exe
-
+# Office docs (often local notes/screenshots)
+*.docx

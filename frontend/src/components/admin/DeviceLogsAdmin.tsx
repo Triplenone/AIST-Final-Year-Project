@@ -18,9 +18,6 @@ export const DeviceLogsAdmin = () => {
     last: null,
     errors: 0,
   });
-  const [tcpRunning, setTcpRunning] = useState(false);
-  const [deviceConnected, setDeviceConnected] = useState(false);
-  const [tcpActionLoading, setTcpActionLoading] = useState(false);
   const [form, setForm] = useState<FormState>({
     device_id: undefined,
     timestamp: Math.floor(Date.now() / 1000),
@@ -70,31 +67,12 @@ export const DeviceLogsAdmin = () => {
   const loadStatus = useCallback(async () => {
     try {
       const res = await dataReceptionApi.getStatus();
-      if (res) {
-        const tcp = res.tcp_server;
-        const running = Boolean(tcp?.is_running);
-        setTcpRunning(running);
-
-        // 後端在 TCP 運行時已將 tcp 統計合併進 stats，此處統一用 stats 顯示
-        if (res.stats) {
-          setStatus({
-            total: res.stats.total_received ?? 0,
-            last: res.stats.last_receive_time ?? null,
-            errors: res.stats.errors ?? 0,
-          });
-        }
-        // 「設備已連接」= 當前有 TCP 連接 或 近期有收到數據（參考 Python：ESP32 常發完即斷，用近期接收判斷）
-        if (running && tcp) {
-          const hasActiveClient = (tcp.active_client_count ?? 0) > 0;
-          const lastTime = tcp.last_receive_time ?? res.stats?.last_receive_time;
-          const recentSeconds = 45;
-          const recentReceive =
-            lastTime &&
-            (Date.now() - new Date(lastTime).getTime()) / 1000 <= recentSeconds;
-          setDeviceConnected(hasActiveClient || Boolean(recentReceive));
-        } else {
-          setDeviceConnected(false);
-        }
+      if (res && res.stats) {
+        setStatus({
+          total: res.stats.total_received ?? 0,
+          last: res.stats.last_receive_time ?? null,
+          errors: res.stats.errors ?? 0,
+        });
       }
     } catch {
       /* ignore */
@@ -111,16 +89,9 @@ export const DeviceLogsAdmin = () => {
     const id = window.setInterval(() => {
       void load();
       void loadStatus();
-    }, 1000);
+    }, 5000);
     return () => window.clearInterval(id);
   }, [autoRefresh, load, loadStatus]);
-
-  // 參考 Python 程式：TCP 運行時每 1.5 秒刷新狀態，使「系統狀態」與接收數即時更新
-  useEffect(() => {
-    if (!tcpRunning) return;
-    const id = window.setInterval(() => void loadStatus(), 1500);
-    return () => window.clearInterval(id);
-  }, [tcpRunning, loadStatus]);
 
   const filtered = useMemo(() => {
     if (!keyword) return logs;
@@ -194,30 +165,6 @@ export const DeviceLogsAdmin = () => {
     }
   };
 
-  const handleToggleReceive = useCallback(async () => {
-    setTcpActionLoading(true);
-    setError(null);
-    try {
-      if (tcpRunning) {
-        await dataReceptionApi.tcpStop();
-      } else {
-        await dataReceptionApi.tcpStart({ host: '0.0.0.0', port: 8080 });
-        setAutoRefresh(true);
-      }
-      await loadStatus();
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : tcpRunning
-            ? '停止接收失敗 (Stop receive failed)'
-            : '啟動接收失敗 (Start receive failed)';
-      setError(msg);
-    } finally {
-      setTcpActionLoading(false);
-    }
-  }, [loadStatus, tcpRunning]);
-
   const toggleFallConfirmed = (checked: boolean) => {
     setForm((prev) => {
       const now = Math.floor(Date.now() / 1000);
@@ -260,37 +207,10 @@ export const DeviceLogsAdmin = () => {
         </div>
       </header>
 
-      {/* 系統狀態：僅展示連接狀態 */}
-      <div className="admin-system-status">
-        <div className="admin-system-status__title">系統狀態 (System Status)</div>
-        <div
-          className={`admin-system-status__connection ${tcpRunning && deviceConnected ? 'connected' : 'disconnected'}`}
-          aria-label={tcpRunning && deviceConnected ? '設備已連接' : '設備未連接'}
-        >
-          <span className="admin-system-status__dot" />
-          {tcpRunning && deviceConnected
-            ? '設備已連接 - 數據接收中 (Device connected - Receiving)'
-            : '設備未連接 (Device not connected)'}
-        </div>
-      </div>
-
       <div className="admin-stats">
-        <div>TCP 接收服務: {tcpRunning ? '運行中 (Running)' : '已停止 (Stopped)'}</div>
-      </div>
-
-      <div className="admin-actions admin-actions--receive">
-        <button
-          type="button"
-          className={tcpRunning ? 'secondary' : 'primary'}
-          disabled={tcpActionLoading}
-          onClick={() => void handleToggleReceive()}
-        >
-          {tcpActionLoading
-            ? '處理中…'
-            : tcpRunning
-              ? '停止接收 (Stop receive)'
-              : '啟動接收 (Start receive)'}
-        </button>
+        <div>接收總數 (total_received): {status.total}</div>
+        <div>最後接收時間 (last_receive_time): {status.last ?? '-'}</div>
+        <div>錯誤 (errors): {status.errors}</div>
       </div>
 
       {error && <div className="admin-error">{error}</div>}

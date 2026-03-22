@@ -8,9 +8,6 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 from app.config import settings
 from app.api.routes import api_router
-import app.api.routes.mongo_upstream as mongo_upstream
-
-api_router.include_router(mongo_upstream.router, prefix="/mongo-upstream", tags=["mongo-upstream"])
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -33,41 +30,30 @@ app.add_middleware(
 # 注册API路由（必须在静态文件之前）
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
-
-@app.on_event("startup")
-async def startup_mongo():
-    """启动时建立 MongoDB 连接并创建索引"""
-    try:
-        from app.db.mongo import get_mongo_client, ensure_indexes
-        get_mongo_client()
-        await ensure_indexes()
-    except Exception as e:
-        print(f"⚠️ MongoDB 启动/索引初始化失败（可继续运行，上行缓存不可用）: {e}")
-    # MQTT 订阅 ESP32 上行主题并写入 Mongo（与 MQTT-topic.txt 一致）
-    try:
-        from app.services.mqtt_subscriber import start_mqtt
-        start_mqtt()
-    except Exception as e:
-        print(f"⚠️ MQTT 订阅启动失败（可继续运行）: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_mongo():
-    """关闭时断开 MongoDB 与 MQTT 连接"""
-    try:
-        from app.services.mqtt_subscriber import stop_mqtt
-        stop_mqtt()
-    except Exception:
-        pass
-    try:
-        from app.db.mongo import close_mongo_client
-        await close_mongo_client()
-    except Exception:
-        pass
-
-
 # 静态文件目录
 static_dir = Path(__file__).parent.parent / "static"
+
+
+@app.get("/")
+def root():
+    """根路径 - 返回前端应用"""
+    index_path = static_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return {
+        "message": "智能养老系统API",
+        "version": settings.APP_VERSION,
+        "docs": "/docs",
+        "redoc": "/redoc",
+        "note": "前端未构建，请运行: cd frontend && npm run build"
+    }
+
+
+@app.get("/health")
+def health_check():
+    """健康检查"""
+    return {"status": "healthy"}
+
 
 # 挂载静态文件（API路径之后，避免冲突）
 if static_dir.exists():
@@ -93,7 +79,9 @@ if static_dir.exists():
         if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("redoc") or full_path == "openapi.json":
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Not found")
-        
+        if full_path.rstrip("/") == "health":
+            return {"status": "healthy"}
+
         # 检查请求的文件是否存在（如favicon.ico等）
         file_path = static_dir / full_path
         if file_path.exists() and file_path.is_file():
@@ -106,27 +94,6 @@ if static_dir.exists():
         
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Not found")
-
-
-@app.get("/")
-def root():
-    """根路径 - 返回前端应用"""
-    index_path = static_dir / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    return {
-        "message": "智能养老系统API",
-        "version": settings.APP_VERSION,
-        "docs": "/docs",
-        "redoc": "/redoc",
-        "note": "前端未构建，请运行: cd frontend && npm run build"
-    }
-
-
-@app.get("/health")
-def health_check():
-    """健康检查"""
-    return {"status": "healthy"}
 
 
 if __name__ == "__main__":

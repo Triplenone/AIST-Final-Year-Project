@@ -2,17 +2,7 @@
 API路由
 """
 from fastapi import APIRouter
-from app.api.routes import (
-    users,
-    devices,
-    locations,
-    events,
-    kpi,
-    residents,
-    user_status,
-    device_data_log,
-    data_reception,
-)
+from app.api.routes import users, devices, locations, events, kpi, residents, user_status, device_data_log, data_reception
 
 # 创建API路由器
 api_router = APIRouter()
@@ -27,5 +17,4 @@ api_router.include_router(residents.router, prefix="/residents", tags=["resident
 api_router.include_router(user_status.router, prefix="/user-status", tags=["user-status"])
 api_router.include_router(device_data_log.router, prefix="/device-data-log", tags=["device-data-log"])
 api_router.include_router(data_reception.router, prefix="/data-reception", tags=["data-reception"])
-# mongo_upstream 在 main.py 中注册，避免与 routes 包内其它模块的循环导入
 

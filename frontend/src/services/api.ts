@@ -103,9 +103,22 @@ export const dataReceptionApi = {
   receive: (data: unknown) => api.post('/data-reception/receive', data),
   getStatus: () => api.get<DataReceptionStatus>('/data-reception/status'),
   tcpStart: (params?: { host?: string; port?: number }) =>
-    api.post<{ status: string; message: string; host?: string; port?: number }>('/data-reception/tcp/start', null, { params }),
+    api.post<{ status: string; message: string; host?: string; port?: number }>('/data-reception/tcp/start', null, {
+      params,
+    }),
   tcpStop: () => api.post<{ status: string; message: string }>('/data-reception/tcp/stop'),
-  tcpStatus: () => api.get<{ status: string; data: { is_running: boolean; host: string; port: number; total_samples: number; errors: number; last_receive_time: string | null } }>('/data-reception/tcp/status'),
+  tcpStatus: () =>
+    api.get<{
+      status: string;
+      data: {
+        is_running: boolean;
+        host: string;
+        port: number;
+        total_samples: number;
+        errors: number;
+        last_receive_time: string | null;
+      };
+    }>('/data-reception/tcp/status'),
 };
 
 export type DataReceptionStatus = {
@@ -137,7 +150,7 @@ export const kpiApi = {
   delete: (id: number) => api.delete(`/kpi/${id}`),
 };
 
-// MongoDB 上行数据 API（Position 页面右面板等）
+// MongoDB 上行数据 API，供 Position / FlyCare 右侧信息面板读取最新设备状态。
 export type MongoUpstreamLatest = {
   _id?: string;
   device_id?: string | number;
@@ -148,11 +161,9 @@ export type MongoUpstreamLatest = {
   sos?: Record<string, unknown>;
   sensors?: Record<string, unknown>;
   system?: Record<string, unknown>;
-  /** 部分后端可能直接返回完整 payload，前端会从此处回退读取 location 等 */
   payload?: Record<string, unknown>;
 };
 
-/** 最新航班信息（与 FlyCare 右侧面板一致） */
 export type FlightLatestResponse = {
   found: boolean;
   _id?: string;
@@ -168,10 +179,8 @@ export type FlightLatestResponse = {
 };
 
 export const mongoUpstreamApi = {
-  /** 最新一条上行；data_type 只返回该类型（如 status_update）；exclude_data_type 排除该类型（如 flight） */
   getLatest: (params?: { device_id?: string; data_type?: string; exclude_data_type?: string }) =>
     api.get<MongoUpstreamLatest>('/mongo-upstream/latest', { params }),
-  /** 最新航班，传入 device_id 时只返回该设备（用户）的航班 */
   getLatestFlight: (deviceId?: string) =>
     api.get<FlightLatestResponse>('/mongo-upstream/flight/latest', {
       params: deviceId ? { device_id: deviceId } : undefined,

@@ -4,16 +4,14 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from sqlalchemy.orm import joinedload
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from app.models.device_data_log import DeviceDataLog
 from app.models.device import Device
 from app.models.user import User
 from app.models.event import Event, EventType, EventStatus
 from app.schemas.device_data_log import DeviceDataLogCreate, DeviceDataLogUpdate
-
-# 同一设备在此时长内（秒）只根据跌倒确认的 device_data_log 生成一次跌倒事件，避免 ESP 重复上报产生重复事件（1 分钟内只触发一次）
-FALL_EVENT_DEBOUNCE_SECONDS = 60
+from datetime import datetime
 
 
 def get_device_data_log(db: Session, log_id: int) -> Optional[DeviceDataLog]:
@@ -80,14 +78,13 @@ def get_device_falls(
     ).order_by(DeviceDataLog.fall_time.desc()).offset(skip).limit(limit).all()
 
 
-def create_device_data_log(db: Session, log_data: DeviceDataLogCreate) -> Tuple[DeviceDataLog, bool]:
-    """创建设备数据日志。返回 (日志对象, 是否因本次日志创建了跌倒事件)。"""
+def create_device_data_log(db: Session, log_data: DeviceDataLogCreate) -> DeviceDataLog:
+    """创建设备数据日志"""
     # 验证设备是否存在
     device = db.query(Device).filter(Device.device_id == log_data.device_id).first()
     if not device:
         raise ValueError("设备不存在")
     
-    event_created = False
     # 创建新记录
     new_log = DeviceDataLog(
         device_id=log_data.device_id,
@@ -122,50 +119,40 @@ def create_device_data_log(db: Session, log_data: DeviceDataLogCreate) -> Tuple[
     db.refresh(new_log)
     db.refresh(new_log, ["device"])
     
-    # 如果确认跌倒，在防抖时间窗内同一设备只生成一次跌倒事件（避免 ESP 重复上报产生重复事件）
-    # 使用服务器时间作为 event_timestamp，否则设备传 fall_time=0 会得到 1970 年，防抖查询会漏掉刚创建的事件导致重复
+    # 如果确认跌倒，自动创建事件
     if log_data.is_fall_confirmed:
+        # 获取设备关联的用户ID
         elderly_user_id = device.elderly_user_id
         if elderly_user_id:
-            now = datetime.now()
-            cutoff = now - timedelta(seconds=FALL_EVENT_DEBOUNCE_SECONDS)
-            recent_fall = (
-                db.query(Event)
-                .filter(
-                    Event.event_type == EventType.FALL,
-                    Event.trigger_device_id == log_data.device_id,
-                    Event.event_timestamp >= cutoff,
-                )
-                .first()
+            # 构建事件参数
+            event_params = {
+                "fall_state": log_data.fall_state,
+                "fall_state_description": log_data.fall_state_description,
+                "fall_confidence": float(log_data.fall_confidence) if log_data.fall_confidence else None,
+                "fall_direction": log_data.fall_direction,
+                "fall_time": log_data.fall_time,
+                "impact_force": float(log_data.impact_force) if log_data.impact_force else None,
+                "log_id": new_log.id
+            }
+            
+            # 创建跌倒事件
+            new_event = Event(
+                event_type=EventType.FALL,
+                related_user_id=elderly_user_id,
+                trigger_device_id=log_data.device_id,
+                location_zone_id=None,  # 可以从设备或日志中获取
+                event_timestamp=datetime.fromtimestamp(log_data.fall_time) if log_data.fall_time else datetime.now(),
+                event_params=event_params,
+                event_status=EventStatus.UNHANDLED,
+                handled_by=None,
+                handled_at=None,
+                remark=None
             )
-            if not recent_fall:
-                event_params = {
-                    "fall_state": log_data.fall_state,
-                    "fall_state_description": log_data.fall_state_description,
-                    "fall_confidence": float(log_data.fall_confidence) if log_data.fall_confidence else None,
-                    "fall_direction": log_data.fall_direction,
-                    "fall_time": log_data.fall_time,
-                    "impact_force": float(log_data.impact_force) if log_data.impact_force else None,
-                    "log_id": new_log.id
-                }
-                new_event = Event(
-                    event_type=EventType.FALL,
-                    related_user_id=elderly_user_id,
-                    trigger_device_id=log_data.device_id,
-                    location_zone_id=None,
-                    event_timestamp=now,
-                    event_params=event_params,
-                    event_status=EventStatus.UNHANDLED,
-                    handled_by=None,
-                    handled_at=None,
-                    remark=None
-                )
-                db.add(new_event)
-                db.commit()
-                db.refresh(new_event)
-                event_created = True
+            db.add(new_event)
+            db.commit()
+            db.refresh(new_event)
     
-    return new_log, event_created
+    return new_log
 
 
 def update_device_data_log(

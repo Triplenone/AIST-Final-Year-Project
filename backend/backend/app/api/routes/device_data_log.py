@@ -271,7 +271,7 @@ def create_device_data_log(log_data: DeviceDataLogCreate, db: Session = Depends(
     创建新的设备数据日志记录
     """
     try:
-        new_log, _ = crud.device_data_log.create_device_data_log(db, log_data)
+        new_log = crud.device_data_log.create_device_data_log(db, log_data)
         return log_to_response(new_log)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
