@@ -1,0 +1,79 @@
+{
+    "device_id": "ESP32_A1B2C3D4E5F6",
+    "timestamp": 1701234567,
+    "data_type": "status_update",
+    "location": {
+        "current": {
+            "x": 12.34,
+            "y": 5.67,
+            "accuracy": 1.25,
+            "quality": "high",
+            "beacon_count": 3,
+            "beacons_used": [
+                {"mac": "20:A7:16:60:F7:C4", "rssi": -65, "distance": 2.3},
+                {"mac": "20:A7:16:60:F7:CA", "rssi": -72, "distance": 3.1}
+            ]
+        },
+        "target": {
+            "x": 30.0,
+            "y": 15.0,
+            "name": "Gate A12",
+            "distance": 18.5,
+            "direction": "northeast",
+            "bearing": 45,
+            "eta": 450
+        }
+    },
+    "motion": {
+        "accelerometer": {"x": 0.123, "y": -0.046, "z": 1.023},
+        "gyroscope": {"x": 1.254, "y": -0.754, "z": 0.325},
+        "magnitude": 1.034,
+        "step_count": 1234,
+        "movement_status": "walking"
+    },
+    "fall_detection": {
+        "state": 0,
+        "state_description": "normal",
+        "confidence": 0.0,
+        "is_fall_confirmed": false,
+        "impact_force": 0.0,
+        "direction": "unknown",
+        "fall_time": 0
+    },
+    "sos": {
+        "active": false,
+        "trigger_method": "none",
+        "trigger_time": 0,
+        "trigger_count": 0,
+        "duration": 0
+    },
+    "door_events": [
+        {
+            "door_id": "main_entrance",
+            "beacon_mac": "20:A7:16:60:F7:C4",
+            "distance": 1.2,
+            "trigger_time": 1701234567,
+            "action": "unlock"
+        }
+    ],
+    "night_mode": {
+        "active": false,
+        "light_triggered": false,
+        "movement_detected": false,
+        "last_movement": 0
+    },
+    "sensors": {
+        "heart_rate": {"bpm": 75, "confidence": 0.95, "timestamp": 1701234567, "valid": true},
+        "spo2": {"percentage": 98, "confidence": 0.9, "timestamp": 1701234567, "valid": true}
+    },
+    "system": {
+        "battery": {"level": 85, "voltage": 3.95, "charging": false},
+        "wifi": {"connected": true, "ssid": "VOX", "rssi": -45, "ip": "192.168.1.100"},
+        "memory": {"free_heap": 8663492, "min_free_heap": 8562341, "psram_free": 4194304},
+        "uptime": 12345678,
+        "temperature": 42.5
+    },
+    "log": [
+        {"level": "info", "message": "Door triggered", "timestamp": 1701234567}
+    ]
+}

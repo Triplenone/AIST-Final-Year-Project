@@ -72,14 +72,17 @@ export const deriveResidentMetrics = (residents: Resident[], now: number): RawMe
         return null;
       }
       const diffMinutes = Math.round((now - parsed) / 60000);
-      return Math.max(0, diffMinutes);
+      return clamp(diffMinutes, 0, 120);
     })
     .filter((value): value is number => value !== null);
 
   const responseTime =
     responseMinutes.length === 0
       ? initialMetrics.responseTime.value
-      : Math.max(1, Math.round(responseMinutes.reduce((sum, minutes) => sum + minutes, 0) / responseMinutes.length));
+      : Math.max(
+          1,
+          Math.round(responseMinutes.reduce((sum, minutes) => sum + minutes, 0) / responseMinutes.length)
+        );
 
   return {
     wellbeing,
@@ -143,7 +146,6 @@ const formatDurationLabel = (minutes: number, t: TFunction<'translation'>): stri
 
 const fallbackAlertTemplates: Array<{ id: string; level: 'critical' | 'warning' | 'info'; key: string; time: string }> =
   [
-    { id: 'a1', level: 'critical', key: 'alerts.items.fall', time: '09:32' },
     { id: 'a2', level: 'warning', key: 'alerts.items.heartRate', time: '09:05' },
     { id: 'a3', level: 'info', key: 'alerts.items.wearable', time: '08:58' },
     { id: 'a4', level: 'info', key: 'alerts.items.ota', time: '08:41' }
@@ -164,10 +166,14 @@ export const deriveAlertsFromResidents = (
 ) => {
   type AlertLevel = 'critical' | 'warning' | 'info';
 
-  const limit = fallbackAlertTemplates.length;
+  const hasElderly = residents.some((resident) => resident.roleType !== 'caregiver');
+  const alertTemplates = hasElderly
+    ? fallbackAlertTemplates
+    : fallbackAlertTemplates.filter((template) => template.key !== 'alerts.items.fall');
+  const limit = alertTemplates.length;
   const activeResidents = residents.filter((resident) => !resident.checkedOut);
   if (activeResidents.length === 0) {
-    return fallbackAlertTemplates.map((template) => ({
+    return alertTemplates.map((template) => ({
       id: template.id,
       level: template.level as AlertLevel,
       message: t(template.key),
@@ -211,6 +217,20 @@ export const deriveAlertsFromResidents = (
     .filter((resident) => resident.status === 'high')
     .forEach((resident) => {
       const { label: timeLabel, iso } = formatAlertTime(resident, formatter);
+      const vitals = resident.vitals;
+      const isElderly = resident.roleType !== 'caregiver';
+      const location = resident.lastSeenLocation ?? resident.room;
+
+      if (isElderly && vitals && vitals.hr >= 115 && results.length < limit) {
+        pushAlert(
+          `fall-${resident.id}`,
+          'critical',
+          t('alerts.generated.fall', { name: resident.name, location }),
+          timeLabel,
+          iso
+        );
+        return;
+      }
       pushAlert(
         `high-${resident.id}`,
         'critical',
@@ -218,7 +238,6 @@ export const deriveAlertsFromResidents = (
         timeLabel,
         iso
       );
-      const vitals = resident.vitals;
       if (vitals && results.length < limit) {
         if (vitals.spo2 <= 92) {
           pushAlert(
@@ -279,7 +298,7 @@ export const deriveAlertsFromResidents = (
   });
 
   if (results.length < limit) {
-    fallbackAlertTemplates.forEach((template) => {
+    alertTemplates.forEach((template) => {
       if (results.length >= limit) return;
       pushAlert(
         `fallback-${template.id}`,

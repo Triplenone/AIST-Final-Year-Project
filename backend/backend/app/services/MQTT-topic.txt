@@ -1,0 +1,21 @@
+// MQTT 主题定义
+#define MQTT_TOPIC_PREFIX "smartwatch"
+#define MQTT_TOPIC_STATUS "smartwatch/%s/status"        // 上行 - 状态更新
+#define MQTT_TOPIC_LOCATION "smartwatch/%s/location"    // 上行 - 位置更新
+#define MQTT_TOPIC_SOS "smartwatch/%s/sos"              // 上行 - SOS
+#define MQTT_TOPIC_FALL "smartwatch/%s/fall"            // 上行 - 跌倒
+#define MQTT_TOPIC_DOOR "smartwatch/%s/door"            // 上行 - 门禁
+#define MQTT_TOPIC_LIGHT "smartwatch/%s/light"          // 上行 - 灯光
+#define MQTT_TOPIC_LOG "smartwatch/%s/log"              // 上行 - 日志
+#define MQTT_TOPIC_HEARTBEAT "smartwatch/%s/heartbeat"  // 上行 - 心跳
+
+#define MQTT_TOPIC_NAVIGATION "smartwatch/%s/navigation"    // 下行 - 导航
+#define MQTT_TOPIC_FLIGHT "smartwatch/%s/flight"            // 下行 - 航班
+#define MQTT_TOPIC_ALERT "smartwatch/%s/alert"              // 下行 - 警报
+#define MQTT_TOPIC_VOICE "smartwatch/%s/voice"              // 下行 - 语音
+#define MQTT_TOPIC_DOOR_CTRL "smartwatch/%s/door_control"   // 下行 - 门禁控制
+#define MQTT_TOPIC_LIGHT_CTRL "smartwatch/%s/light_control" // 下行 - 灯光控制
+#define MQTT_TOPIC_SYSTEM "smartwatch/%s/system_command"    // 下行 - 系统命令
+#define MQTT_TOPIC_CONFIG "smartwatch/%s/config"             // 下行 - 配置更新
+#define MQTT_TOPIC_HEARTBEAT_RESP "smartwatch/%s/heartbeat"  // 下行 - 心跳响应
+#define MQTT_TOPIC_TEXT "smartwatch/%s/text"                 // 下行 - 文本消息

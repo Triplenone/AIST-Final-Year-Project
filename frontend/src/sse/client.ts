@@ -21,6 +21,7 @@ export type Resident = {
   createdAt: string;
   updatedAt: string;
   origin?: 'seed' | 'dynamic' | 'manual';
+  roleType?: 'elderly' | 'caregiver';
 };
 
 export type ResidentEventType = 'resident.new' | 'resident.update' | 'resident.checkout';
@@ -91,7 +92,8 @@ type EventSourceWrapper = {
 };
 
 // 建立 EventSource、提供型別安全的監聽註冊並處理重連訊息。
-export const openResidentSSE = (url = '/sim/sse', eventSourceInit?: EventSourceInit): EventSourceWrapper => {
+// 預設會使用後端 adapter 的 SSE_URL（由呼叫端傳入）。
+export const openResidentSSE = (url: string, eventSourceInit?: EventSourceInit): EventSourceWrapper => {
   const listeners: ListenerMap = new Map();
   const es = new EventSource(url, eventSourceInit);
 

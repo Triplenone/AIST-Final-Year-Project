@@ -1,5 +1,6 @@
 // 開發模式下與 SSE 模擬器 Service Worker 溝通的工具。
 import type { Resident, ResidentStatus } from '../sse/client';
+import { SNAPSHOT_URL } from '../constants/backend';
 
 export type CustomResidentPayload = {
   id: string;
@@ -50,7 +51,9 @@ export const simulatorActions = {
 
 export const fetchResidentSnapshot = async (): Promise<Resident[]> => {
   try {
-    const response = await fetch('/sim/snapshot', {
+    // Use the adapter backend snapshot endpoint instead of the local SW mock.
+    // SNAPSHOT_URL is configured in src/constants/backend.ts.
+    const response = await fetch(SNAPSHOT_URL, {
       headers: {
         'Cache-Control': 'no-store',
         Accept: 'application/json'

@@ -2,18 +2,153 @@
   "common": {
     "language": "Language",
     "switchTo": "Switch to {{label}}",
-    "close": "Close"
+    "close": "Close",
+    "loading": "Loading..."
   },
   "layout": {
-    "subtitle": "Faster handover hub for frontline carers",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "nav": {
       "aria": "Primary navigation",
       "overview": "Overview",
       "residents": "Residents",
+      "userManagement": "User management",
+      "location": "Location",
+      "position": "Position",
+      "flycare": "FlyCare",
       "operations": "Operations",
-      "family": "Family engagement"
+      "family": "Family engagement",
+      "admin": "Admin"
     },
-    "footer": "© 2024 SmartCare Collaborative — Built for compassionate teams"
+    "footer": "© 2024 SmartCare Collaborative — Built for compassionate teams",
+    "flycareBrand": "Smart FlyCare System"
+  },
+  "position": {
+    "userList": "User List",
+    "usersOnline": "{{count}} user(s) online",
+    "noUsersOnline": "No users online",
+    "currentLocation": "Current location",
+    "rightPanelTitle": "Information",
+    "zoneListHint": "Click map or list to highlight",
+    "noDeviceData": "No device upstream data yet",
+    "noDataShort": "No data",
+    "apiUnavailable": "Upstream API unavailable (ensure backend has MongoDB enabled and was restarted)",
+    "userName": "User name",
+    "deviceId": "Device ID",
+    "currentX": "Current X",
+    "currentY": "Current Y",
+    "targetX": "Target X",
+    "targetY": "Target Y",
+    "fallStateDescription": "Fall state",
+    "sosStatus": "SOS status",
+    "heartRateBpm": "Heart rate (bpm)",
+    "spo2Percentage": "SpO₂ (%)",
+    "batteryLevel": "Battery level",
+    "timestamp": "Timestamp",
+    "location": "Location",
+    "fallDetection": "Fall detection",
+    "sos": "SOS",
+    "sensors": "Sensors",
+    "system": "System",
+    "refresh": "Refresh",
+    "zone": {
+      "door1": "Door 1",
+      "door2": "Door 2",
+      "nurse_station": "Nurse station",
+      "activity_room": "Activity room",
+      "rehabilitation_room": "Rehabilitation room",
+      "central_common_area": "Central common area",
+      "toilet": "Toilet",
+      "bedroom": "Bedroom"
+    }
+  },
+  "flyCare": {
+    "userList": "User list",
+    "usersOnline": "{{count}} user(s) online",
+    "noUsersOnline": "No users online",
+    "currentLocation": "Current location",
+    "rightPanelTitle": "Information",
+    "noDeviceData": "No device upstream data yet",
+    "apiUnavailable": "Upstream API unavailable",
+    "userName": "User name",
+    "deviceId": "Device ID",
+    "currentX": "Current X",
+    "currentY": "Current Y",
+    "targetX": "Target X",
+    "targetY": "Target Y",
+    "navigationTitle": "Navigation",
+    "navigationPlaceholder": "Straight 10m, then turn right 20m",
+    "navigationStepForward": "Go forward {{meters}}m",
+    "navigationStepBackward": "Go backward {{meters}}m",
+    "navigationStepLeft": "turn left {{meters}}m",
+    "navigationStepRight": "turn right {{meters}}m",
+    "navigationTwoSteps": "{{first}}, then {{second}}",
+    "navigationArrived": "You have reached the target location",
+    "fallStateDescription": "Fall state",
+    "sosStatus": "SOS status",
+    "heartRateBpm": "Heart rate (bpm)",
+    "spo2Percentage": "SpO₂ (%)",
+    "batteryLevel": "Battery level",
+    "refresh": "Refresh",
+    "mapAlt": "Airport map",
+    "flightTitle": "Flight information",
+    "flightPassengerName": "Passenger name",
+    "flightNumber": "Flight number",
+    "flightGate": "Gate",
+    "flightTime": "Flight time",
+    "flightDeparture": "Departure airport",
+    "flightArrival": "Arrival airport",
+    "flightSeat": "Seat number",
+    "flightUpdateTitle": "Flight update",
+    "flightUpdateConfirm": "Confirm",
+    "simulateFlightUpdate": "Simulate flight update",
+    "zone": {
+      "boarding_gate_1": "Boarding Gate 1",
+      "boarding_gate_2": "Boarding Gate 2",
+      "restricted_area": "Restricted Area",
+      "toilet": "Toilet",
+      "security_check": "Security Check",
+      "non_restricted_area": "Non-Restricted Area",
+      "check_in_counter": "Check-in Counter"
+    }
+  },
+  "admin": {
+    "title": "System Admin",
+    "subtitle": "Direct access to TestStage-FYP backend resources",
+    "detailsTitle": "Proactive Guardian Care Details",
+    "detailsSubtitle": "System Admin dashboard for Smart Wearable Safety System for Elderly Homes",
+    "tabs": {
+      "users": "Users",
+      "devices": "Devices",
+      "locations": "Locations",
+      "events": "Events",
+    "logs": "Device logs",
+      "residents": "Residents"
+    },
+    "residents": {
+      "title": "Resident directory",
+      "subtitle": "Synced from /api/v1/residents",
+      "searchPlaceholder": "Search by name or room",
+      "statusFilterLabel": "Status",
+      "allStatuses": "All statuses",
+      "refresh": "Refresh",
+      "lastUpdated": "Updated {{time}}",
+      "columns": {
+        "id": "ID",
+        "name": "Resident",
+        "room": "Room",
+        "status": "Status",
+        "lastSeen": "Last seen",
+        "vitals": "Vitals",
+        "device": "Device",
+        "updated": "Updated"
+      },
+      "noData": "No residents found.",
+      "lastSeenUnknown": "Unknown",
+      "deviceUnknown": "Unassigned",
+      "vitalsUnknown": "Waiting for vitals",
+      "error": "Unable to fetch residents. Try again."
+    }
   },
   "auth": {
     "guestName": "Guest",
@@ -46,7 +181,12 @@
     }
   },
   "actions": {
-    "simulate": "Simulate new data"
+    "simulate": "Simulate new data",
+    "exitDemo": "Exit demo mode"
+  },
+  "fallAlert": {
+    "message": "Fall event detected! Please handle it.",
+    "goToEvents": "Go to events"
   },
   "hero": {
     "eyebrow": "Progressive web app prototype",
@@ -76,6 +216,24 @@
       "minutes": "{{count}} min"
     }
   },
+  "charts": {
+    "title": "Care activity snapshots",
+    "subtitle": "Live visual summaries of resident status, zone activity, and alerts.",
+    "status": {
+      "title": "Resident status mix",
+      "subtitle": "Status distribution for active residents."
+    },
+    "zones": {
+      "title": "Zone occupancy",
+      "subtitle": "Residents grouped by last seen location."
+    },
+    "alerts": {
+      "title": "Alert activity",
+      "subtitle": "High-priority updates over the last 6 hours.",
+      "series": "Alerts"
+    },
+    "empty": "No data yet"
+  },
   "filters": {
     "all": "All",
     "high": "High priority",
@@ -83,8 +241,8 @@
     "stable": "Stable"
   },
   "residents": {
-    "title": "Resident directory",
-    "subtitle": "Live vitals and most recent room rounds.",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "filters": {
       "aria": "Filter residents by status"
     },
@@ -147,6 +305,67 @@
       "waiting": "Waiting for stream"
     }
   },
+  "location": {
+    "title": "Location overview",
+    "subtitle": "Indoor floorplan (classroom demo).",
+    "refresh": "Refresh map data",
+    "map": {
+      "aria": "Location map",
+      "status": "Status",
+      "zone": "Zone"
+    },
+    "zones": {
+      "bedroom1": "Bedroom 1",
+      "bedroom2": "Bedroom 2",
+      "bathroom": "Bathroom",
+      "commonLounge": "Common lounge",
+      "unknown": "Unknown zone"
+    },
+    "legend": {
+      "title": "Legend",
+      "indoorZones": "Indoor zones",
+      "safeZone": "Safe zones",
+      "alerts": "Active events",
+      "residents": "Residents"
+    },
+    "occupancy": {
+      "title": "Zone occupancy",
+      "subtitle": "Residents grouped by last seen location.",
+      "aria": "Zone occupancy list",
+      "empty": "No residents currently in this zone."
+    },
+    "events": {
+      "status": "Status",
+      "time": "Time",
+      "types": {
+        "fall": "Fall",
+        "bed_exit": "Bed exit",
+        "bathroom_retention": "Bathroom retention",
+        "geofence_breach": "Geofence breach",
+        "sos": "SOS",
+        "vital_signs_abnormal": "Vitals abnormal"
+      }
+    },
+    "breaches": {
+      "title": "Geofence breaches",
+      "subtitle": "Updated {{time}}",
+      "empty": "No active geofence breaches.",
+      "aria": "Active geofence breach events",
+      "itemTitle": "Breach event #{{id}}",
+      "zone": "Zone",
+      "zoneUnknown": "Unknown zone",
+      "time": "Time",
+      "coords": "Coordinates",
+      "coordsUnknown": "Unknown",
+      "approx": "approx",
+      "status": "Status"
+    },
+    "actions": {
+      "ack": "Acknowledge",
+      "resolve": "Resolve",
+      "falseAlarm": "False alarm"
+    }
+  },
   "alerts": {
     "title": "Recent alerts",
     "subtitle": "Most urgent updates from the day",
@@ -157,6 +376,7 @@
       "ota": "New firmware ready for OTA deployment."
     },
     "generated": {
+      "fall": "Potential fall detected for {{name}} in {{location}}.",
       "highStatus": "{{name}} requires urgent review in room {{room}}.",
       "followUp": "Schedule follow-up check for {{name}} in room {{room}}.",
       "stale": "No new round for {{name}} — last seen {{duration}} ago.",

@@ -1,0 +1,56 @@
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 280px;
+}
+
+.chart-card__header h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.chart-card__header p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.chart-card__body {
+  flex: 1;
+  min-height: 220px;
+  height: 220px;
+}
+
+.chart-empty {
+  height: 100%;
+  border-radius: 12px;
+  border: 1px dashed var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.charts-grid .recharts-legend-item-text {
+  color: var(--text-muted) !important;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
