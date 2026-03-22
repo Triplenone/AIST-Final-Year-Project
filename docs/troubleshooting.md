@@ -1,57 +1,63 @@
-# 故障排查
+# Troubleshooting
 
-## `No Python at '...\\python.exe'`
-原因通常是舊機器留下來的虛擬環境路徑已失效。
+## Backend
 
-處理方式：
+### `GET /health` fails (404)
 
-```powershell
-cd backend\backend
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r ..\requirements.txt
-```
+- This repo implements **`/health`**, not `/healthz`.
+- Entry: `backend/backend/app/main.py`
 
-## `ModuleNotFoundError` 或 `No module named 'pymongo'`
-通常代表啟動 `uvicorn` 的 Python，和你安裝依賴時使用的 Python 不是同一個虛擬環境。
+### Backend crashes on startup (DB connection error)
 
-建議做法：
+- Check `backend/backend/.env` (or copy from `backend/backend/.env.example`).
+- Env vars are loaded by `backend/backend/app/config.py`.
 
-```powershell
-cd backend\backend
-.\venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+### `/api/v1/residents` returns empty list
 
-若仍有問題，重建 `venv` 再安裝依賴。
+- The residents endpoint filters for `User.role_type == 'elderly'` (`backend/backend/app/api/routes/residents.py`).
+- Ensure your DB has elderly users.
 
-## Mongo 狀態檢查
-檢查 Mongo 連線與資料：
+### `POST /api/v1/data-reception/receive` returns “设备不存在”
 
-- `GET /api/v1/mongo-upstream/status`
-- `GET /api/v1/mongo-upstream/latest`
+- The `device_id` must exist in the `device` table (`backend/backend/app/crud/device_data_log.py`).
+- Use seed data from `backend/Dump20251120.sql` (import method: Not found in repo).
 
-若 `connected=false`，請先確認：
+### Fall event not auto-created after sending a fall payload
 
-- MongoDB 服務已啟動
-- `.env` 或預設值中的 `MONGO_URI` 正確
-- `MONGO_DB_NAME` 與你匯入資料時使用的資料庫一致
+- Auto-event creation only happens if the device row has a non-NULL `elderly_user_id`.
+- Logic: `backend/backend/app/crud/device_data_log.py`
 
-## MQTT / TCP 狀態檢查
-可直接檢查：
+## Frontend (`frontend/`)
 
-- `GET /api/v1/data-reception/mqtt/status`
-- `GET /api/v1/data-reception/tcp/status`
+### UI shows errors fetching `/api/v1/*`
 
-若裝置有送資料但看不到結果，先確認：
+- Check the backend base URL in `frontend/src/constants/backend.ts` (no `import.meta.env` support in this repo).
+- Backend default: `http://localhost:8000`
 
-- MQTT broker / port 是否與設定一致
-- 裝置送出的 JSON 結構是否合法
-- Mongo 是否已連上且 collection 中有資料
+### “Nothing updates” after triggering events
 
-## 前端連不到後端
-請依序檢查：
+The UI uses polling (not SSE):
 
-- 後端是否已在 `localhost:8000` 啟動
-- `frontend/src/constants/backend.ts` 是否仍是預設值
-- 瀏覽器 console 與 Network 面板是否有 404 / CORS / 連線失敗
+- Residents: every **10s** (`frontend/src/shared/resident-live-store.tsx`)
+- Events hook: every **5s** (`frontend/src/hooks/useBackendEvents.ts`)
+- Locations: every **15s** (`frontend/src/components/LocationDashboard.tsx`)
 
+Wait one poll interval or use the Admin refresh actions.
+
+### Indoor map is blank
+
+- The floorplan image must load: `frontend/public/indoor-nursing-home-map.png`
+- Locations API must return polygons:
+  - `GET /api/v1/locations/` (frontend: `frontend/src/components/LocationDashboard.tsx`)
+  - `geofence_coordinates` is parsed by `frontend/src/utils/geo.ts`
+
+## Infra (`infra/`)
+
+### `docker compose ... up --build` fails
+
+This is expected today:
+
+- Backend Dockerfile: **Not found** in repo (compose uses `build: ../backend`)
+- DB mismatch: compose uses Postgres/Timescale, backend uses MySQL
+
+See: `infra/README.md`.

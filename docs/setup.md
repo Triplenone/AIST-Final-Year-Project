@@ -1,53 +1,78 @@
-# 啟動與開發流程
+# Setup
 
-## 後端
-後端正式路徑是 `backend/backend`，啟動方式保持與原交付一致：
+This runbook describes how to run the **implemented prototype**:
 
-```powershell
-cd backend\backend
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r ..\requirements.txt
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+- **Backend**: `backend/backend/` (FastAPI, port 8000)
+- **Primary UI**: `frontend/` (React/Vite, port 5173)
+
+## Prereqs (repo evidence)
+
+- Node.js (CI uses Node 20: `.github/workflows/ci-frontend.yml`)
+- Python (CI uses Python 3.11: `.github/workflows/ci-backend.yml`)
+- MySQL database (schema file: `backend/Dump20251120.sql`)
+
+## Backend (FastAPI)
+
+### Configure env vars
+
+Backend loads `.env` via `backend/backend/app/config.py`.
+
+- Template: `backend/backend/.env.example`
+- Active file: `backend/backend/.env`
+
+### Install + run
+
+```bash
+cd backend/backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-補充：
+Verify:
 
-- 若已經有 `venv`，可以省略重建步驟
-- 也可以直接使用 `backend/backend/run_backend.ps1`
-- `backend/backend/.env.example` 只是樣板；若你不建立 `.env`，程式仍會用目前預設值啟動
+- `GET http://localhost:8000/health`
+- `GET http://localhost:8000/docs`
 
-後端啟動後可檢查：
+## Frontend (primary UI)
 
-- `http://localhost:8000/docs`
-- `http://localhost:8000/api/v1/mongo-upstream/status`
-- `http://localhost:8000/api/v1/data-reception/mqtt/status`
-- `http://localhost:8000/api/v1/data-reception/tcp/status`
+### Configure backend base URL
 
-## 前端
-前端正式路徑是 `frontend`：
+Frontend backend URL is hard-coded (no `import.meta.env` in this repo):
 
-```powershell
+- `frontend/src/constants/backend.ts`
+
+### Install + run
+
+```bash
 cd frontend
 npm install
-npm run dev -- --host
+npm run dev
 ```
 
-預設開發位址：
+Open `http://localhost:5173`.
 
-- `http://localhost:5173`
+### Optional: frontend scripts (verified in `frontend/package.json`)
 
-目前前端仍預設連到：
+- `npm run build`
+- `npm run preview`
+- `npm run lint`
+- `npm run test`
 
-- `http://localhost:8000`
+## Optional (recommended for a full demo): Initialize the MySQL DB
 
-如果你要改後端位址，請調整 `frontend/src/constants/backend.ts`，但預設值已刻意維持現有習慣。
+DB name: `smart_elderly_care_system` (created in `backend/Dump20251120.sql`).
 
-## 目錄約定
-- `backend/backend`：正式 FastAPI runtime
-- `frontend`：正式 React/Vite UI
-- `database/mysql`：MySQL dump
-- `database/mongo`：Mongo JSON 與樣例資料
-- `docs`：單一文件入口
+- **DB import command**: Not found in repo.
+- Use your preferred MySQL client/tooling (e.g., GUI import) to load `backend/Dump20251120.sql`.
 
+## Optional: Admin CRUD UI (legacy / not primary)
+
+This UI is separate from the primary `frontend/` app:
+
+```bash
+cd backend/forntend
+npm install
+npm run dev
+```
+
+Default dev port is `http://localhost:3000` (see `backend/forntend/vite.config.js`).

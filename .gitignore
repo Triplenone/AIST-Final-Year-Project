@@ -39,3 +39,10 @@ backend/forntend/
 
 # Office docs (often local notes/screenshots)
 *.docx
+
+# Local API tooling / delivery artifacts
+.postman/
+postman/
+release/
+!scripts/release/
+!scripts/release/*.md
