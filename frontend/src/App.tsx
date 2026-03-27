@@ -201,6 +201,7 @@ export default function App() {
   const fallEventsInitializedRef = useRef(false);
 
   const activePage = resolveDashboardPage(location.pathname);
+  const isPositionPage = activePage === 'position';
   const isFlyCarePage = activePage === 'flycare';
 
   useEffect(() => {
@@ -671,7 +672,7 @@ export default function App() {
       };
 
   return (
-    <div className="app-background app-background--position">
+    <div className={`app-background${isPositionPage ? ' app-background--position' : ''}`}>
       <main className={`app-shell app-shell--ambient${isFlyCarePage ? ' app-shell--flycare' : ''}`}>
         <AppHeader
           isFlyCarePage={isFlyCarePage}

@@ -1,20 +1,20 @@
 # Position Command Center Handoff
 
-## 1. ?﹝?桃?
+## 1. 欢迎接手者
 
-?祆?獢?鈭?蝏?handoff??
+这份文档是 Position Command Center rebuild 的最终 handoff 文档。
 
-霂餉??穿?
+适用对象:
 - future Codex
 - future frontend maintainer
 - backend engineer
 - reviewer with no prior chat context
 
-?格?嚗?
-1. 敹恍秩??Position rebuild ??隞銋?
-2. 敹恍秩?鈭器?◤靽
-3. 敹恍秩??repo 敶?摨砲隞?誧蝏?
-4. 敹恍秩?歇?仿??拐??賒撱箄悅
+你应该用它来:
+1. 快速理解 Position rebuild 的目标和边界
+2. 快速理解后续维护应该遵守的实现原则
+3. 快速理解 repo 内哪些文件是当前维护主面
+4. 快速理解未来修改前应该先检查哪些约束
 
 ---
 
