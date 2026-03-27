@@ -1,0 +1,8 @@
+V.mem.ts=2026-03-23T00:19:54+08:00
+V.git.push_prep.start=2026-03-23T00:19:54+08:00
+R.git.push_prep.goal=commit-frontend-redesign-and-push-branch-for-main-pr
+R.git.push_prep.base=origin/Lin-saved-cleanup-release
+R.git.push_prep.scope=[frontend,docs/frontend-redesign]
+R.git.push_prep.exclude=[.postman,postman,run-logs,backend,FlyCarePage.tsx]
+R.git.push_prep.msg=feat(frontend): introduce Ambient Care shell and overview redesign
+B.git.pr_cli=gh-missing;push-only+manual-pr-body

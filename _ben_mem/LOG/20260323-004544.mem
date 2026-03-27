@@ -1,0 +1,7 @@
+V.mem.ts=2026-03-23T00:45:44+08:00
+V.git.cleanup_followup.end=2026-03-23T00:45:44+08:00
+V.git.cleanup_followup.commit=be6248cafe3ee816d795f4135f4dae4cb712e2fb
+V.git.cleanup_followup.target=origin/main
+V.git.cleanup_followup.result=ok
+I.git.cleanup_followup.note=runbooks+quickstart-template-pushed;local-artifacts-now-ignored
+I.git.worktree.ignored=[.postman,postman,release,run-logs,frontend/dist,frontend/node_modules,backend/backend/venv,backend/backend/.env,__pycache__]

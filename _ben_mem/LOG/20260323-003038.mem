@@ -1,0 +1,9 @@
+V.mem.ts=2026-03-23T00:30:38+08:00
+V.git.push_main.end=2026-03-23T00:30:38+08:00
+V.git.push_main.commit=d525fd697f1ee54f4155741d04424f01e82cc8c2
+V.git.push_main.target=origin/main
+V.git.push_main.branch=origin/Lin-saved-cleanup-release
+V.git.push_main.build=ok
+V.git.push_main.result=ok
+I.git.push_main.note=merged-origin-main-backend-line+kept-ambient-care-frontend-line
+I.git.worktree.remaining=[docs/setup.md,docs/troubleshooting.md,.postman,postman,release,scripts/release]
