@@ -5,6 +5,7 @@ import {
   buildPositionCommandCenterViewModel,
   buildPositionResidentActivity,
   getZoneCommandState,
+  resolvePositionSelection,
   sortPositionResidents,
   type PositionResidentViewModel
 } from './position-command-center';
@@ -16,6 +17,7 @@ function makeResident(
     residentId: overrides.residentId ?? 'resident',
     displayName: overrides.displayName ?? 'Resident',
     deviceId: overrides.deviceId ?? 'device',
+    recordError: overrides.recordError ?? null,
     isOnline: overrides.isOnline ?? true,
     truthState: overrides.truthState ?? 'online',
     freshnessLevel: overrides.freshnessLevel ?? 'live',
@@ -235,5 +237,104 @@ describe('position-command-center adapter', () => {
 
     expect(viewModel.selectedResident?.activityBlockedReason).toBe('backend blocked');
     expect(viewModel.selectedResident?.recentActivity).toEqual([]);
+  });
+
+  it('marks the initial snapshot as loading instead of fake offline ready state', () => {
+    const viewModel = buildPositionCommandCenterViewModel(null, {
+      selectedResidentId: POSITION_RESIDENT_REGISTRY[0]?.residentId,
+      snapshotLoading: true
+    });
+
+    expect(viewModel.surfaceStates.rail).toBe('loading');
+    expect(viewModel.surfaceStates.summary).toBe('loading');
+    expect(viewModel.surfaceStates.map).toBe('loading');
+    expect(viewModel.surfaceStates.decision).toBe('loading');
+  });
+
+  it('supports an explicit empty registry snapshot', () => {
+    const viewModel = buildPositionCommandCenterViewModel({
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: null,
+      records: []
+    });
+
+    expect(viewModel.residents).toEqual([]);
+    expect(viewModel.selectedResident).toBeNull();
+    expect(viewModel.surfaceStates.rail).toBe('empty');
+    expect(viewModel.surfaceStates.summary).toBe('empty');
+    expect(viewModel.surfaceStates.map).toBe('empty');
+    expect(viewModel.surfaceStates.decision).toBe('empty');
+  });
+
+  it('distinguishes selected-record failure from partial resident failures', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel({
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: 'Request failed',
+      records: [
+        {
+          resident,
+          error: 'Not found',
+          latestStatus: null
+        }
+      ]
+    }, {
+      selectedResidentId: resident.residentId
+    });
+
+    expect(viewModel.selectedResidentRecordError).toBe('Not found');
+    expect(viewModel.partialFailureCount).toBe(1);
+    expect(viewModel.surfaceStates.rail).toBe('error');
+    expect(viewModel.surfaceStates.summary).toBe('error');
+    expect(viewModel.surfaceStates.decision).toBe('error');
+  });
+
+  it('marks map state empty when the selected resident has data but no zone resolution', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel({
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: null,
+      records: [
+        {
+          resident,
+          error: null,
+          latestStatus: {
+            device_id: resident.deviceId,
+            server_received_at: '2026-03-28T00:00:00.000Z',
+            sensors: {
+              heart_rate: { valid: true, bpm: 82 },
+              spo2: { valid: true, percentage: 97 }
+            }
+          } as never
+        }
+      ]
+    }, {
+      selectedResidentId: resident.residentId,
+      now: Date.parse('2026-03-28T00:00:20.000Z')
+    });
+
+    expect(viewModel.selectedResident?.hasData).toBe(true);
+    expect(viewModel.surfaceStates.map).toBe('empty');
+  });
+
+  it('resolves selection from the sorted resident list', () => {
+    const residents = sortPositionResidents([
+      makeResident({
+        residentId: 'warning',
+        priorityBand: 'warning',
+        riskLevel: 'warning',
+        priorityReasonCode: 'warning-vitals'
+      }),
+      makeResident({
+        residentId: 'stable',
+        priorityBand: 'stable',
+        riskLevel: 'stable'
+      })
+    ]);
+
+    const selection = resolvePositionSelection(residents, null);
+
+    expect(selection.selectedResidentId).toBe('warning');
+    expect(selection.selectedResident?.residentId).toBe('warning');
   });
 });

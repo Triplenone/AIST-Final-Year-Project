@@ -6,13 +6,15 @@ import type {
   PositionPriorityReasonCode,
   PositionRiskLevel,
   PositionResidentViewModel,
+  PositionSurfaceState,
   PositionTruthState
 } from '../../adapters/position-command-center';
 
 type PositionSummaryBarProps = {
   resident: PositionResidentViewModel | null;
   fetchedAt: string | null;
-  loading: boolean;
+  surfaceState: PositionSurfaceState;
+  recordError: string | null;
   variant?: 'standalone' | 'sidebar';
 };
 
@@ -101,10 +103,23 @@ function getZoneLabel(
   return resident.currentZoneName ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
 }
 
+function getOperatorError(
+  error: string | null,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  if (!error || error.toLowerCase().includes('not found')) {
+    return t('position.selectedResidentUnavailable', {
+      defaultValue: 'Selected resident snapshot unavailable.'
+    });
+  }
+  return error;
+}
+
 export function PositionSummaryBar({
   resident,
   fetchedAt,
-  loading,
+  surfaceState,
+  recordError,
   variant = 'standalone'
 }: PositionSummaryBarProps) {
   const { t, i18n } = useTranslation();
@@ -179,12 +194,21 @@ export function PositionSummaryBar({
         })
       : null;
 
+  const surfaceToneClass =
+    surfaceState === 'error'
+      ? ' position-summary-bar--error'
+      : resident?.riskLevel === 'critical'
+        ? ' position-summary-bar--critical'
+        : resident?.truthState === 'offline' || resident?.freshnessLevel === 'stale' || resident?.riskLevel === 'warning'
+          ? ' position-summary-bar--attention'
+          : '';
+
   return (
     <section
       className={
         variant === 'sidebar'
-          ? 'position-command-center__surface position-summary-bar position-summary-bar--sidebar'
-          : 'position-command-center__surface position-summary-bar'
+          ? `position-command-center__surface position-summary-bar position-summary-bar--sidebar${surfaceToneClass}`
+          : `position-command-center__surface position-summary-bar${surfaceToneClass}`
       }
     >
       <div className="position-summary-bar__identity">
@@ -193,25 +217,56 @@ export function PositionSummaryBar({
         </p>
         <h1>{resident?.displayName ?? t('position.noSelection', { defaultValue: 'No resident selected' })}</h1>
         <p className="position-command-center__muted">
-          {loading
-            ? t('common.loading', { defaultValue: 'Loading...' })
+          {surfaceState === 'loading'
+            ? t('position.loadingResidentContext', { defaultValue: 'Loading resident context...' })
             : t('position.snapshotFetchedAt', {
                 defaultValue: `Snapshot fetched ${formatTimestamp(fetchedAt, locale)}`
               })}
         </p>
       </div>
 
-      <dl className="position-summary-bar__grid">
-        {items.map((item) => (
-          <div key={item.key} className="position-summary-bar__item">
-            <dt>{item.label}</dt>
-            <dd className={item.toneClass}>{item.value}</dd>
-            {item.key === 'risk' && riskSupportText ? (
-              <p className="position-summary-bar__support">{riskSupportText}</p>
-            ) : null}
-          </div>
-        ))}
-      </dl>
+      {surfaceState === 'partial-error' ? (
+        <p className="position-command-center__notice position-command-center__notice--warning">
+          {t('position.partialResidentFailure', {
+            defaultValue: 'Some resident snapshots did not refresh.'
+          })}
+        </p>
+      ) : null}
+
+      {surfaceState === 'error' ? (
+        <div className="position-command-center__state-card position-command-center__state-card--error">
+          <strong>{t('position.selectedResidentUnavailable', { defaultValue: 'Selected resident snapshot unavailable.' })}</strong>
+          <p>{getOperatorError(recordError, t)}</p>
+        </div>
+      ) : null}
+
+      {surfaceState === 'loading' ? (
+        <div className="position-command-center__state-card position-command-center__state-card--loading">
+          <strong>{t('position.loadingResidentContext', { defaultValue: 'Loading resident context...' })}</strong>
+          <p>{t('position.loadingResidentContextHint', { defaultValue: 'Status, risk, and freshness are pending from upstream.' })}</p>
+        </div>
+      ) : null}
+
+      {surfaceState === 'empty' ? (
+        <div className="position-command-center__state-card">
+          <strong>{t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
+          <p>{t('position.noSelectionHint', { defaultValue: 'Choose a resident from the rail to inspect Position context.' })}</p>
+        </div>
+      ) : null}
+
+      {surfaceState !== 'loading' && surfaceState !== 'empty' && surfaceState !== 'error' ? (
+        <dl className="position-summary-bar__grid">
+          {items.map((item) => (
+            <div key={item.key} className="position-summary-bar__item">
+              <dt>{item.label}</dt>
+              <dd className={item.toneClass}>{item.value}</dd>
+              {item.key === 'risk' && riskSupportText ? (
+                <p className="position-summary-bar__support">{riskSupportText}</p>
+              ) : null}
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </section>
   );
 }

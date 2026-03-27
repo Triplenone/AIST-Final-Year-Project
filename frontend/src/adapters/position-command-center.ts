@@ -12,6 +12,8 @@ export type PositionPriorityReasonCode =
   | 'stale-data'
   | 'stable-monitoring';
 export type PositionZoneCommandState = 'holding' | 'target-pending' | 'target-reached' | 'zone-unknown';
+export type PositionSurfaceState = 'loading' | 'ready' | 'empty' | 'error' | 'partial-error';
+export type PositionActivityState = 'loading' | 'ready' | 'empty' | 'blocked';
 export type PositionZoneId =
   | 'door1'
   | 'door2'
@@ -87,6 +89,7 @@ export type PositionResidentViewModel = {
   residentId: string;
   displayName: string;
   deviceId: string;
+  recordError: string | null;
   isOnline: boolean;
   truthState: PositionTruthState;
   freshnessLevel: PositionFreshnessLevel;
@@ -122,12 +125,22 @@ export type PositionCommandCenterViewModel = {
   residents: PositionResidentViewModel[];
   selectedResidentId: string | null;
   selectedResident: PositionResidentViewModel | null;
+  selectedResidentRecordError: string | null;
   counts: {
     total: number;
     online: number;
     stale: number;
     offline: number;
   };
+  surfaceStates: {
+    rail: PositionSurfaceState;
+    summary: PositionSurfaceState;
+    map: PositionSurfaceState;
+    decision: PositionSurfaceState;
+  };
+  activityState: PositionActivityState;
+  hasPartialFailures: boolean;
+  partialFailureCount: number;
   fetchedAt: string | null;
   loadError: string | null;
 };
@@ -143,6 +156,11 @@ type PositionHistoryRecord = {
   spo2: number | null;
   sosState: boolean;
   fallConfirmed: boolean;
+};
+
+type PositionResolvedSelection = {
+  selectedResidentId: string | null;
+  selectedResident: PositionResidentViewModel | null;
 };
 
 type MongoUpstreamHistoryDocument = Partial<MongoUpstreamLatest> & {
@@ -563,6 +581,99 @@ export function sortPositionResidents(
   return [...residents].sort(comparePositionResidents);
 }
 
+function hasZoneResolution(resident: PositionResidentViewModel | null): boolean {
+  if (!resident) return false;
+  return Boolean(
+    resident.currentCoords ||
+      resident.targetCoords ||
+      resident.currentZoneId ||
+      resident.targetZoneId ||
+      resident.currentZoneName ||
+      resident.targetZoneName
+  );
+}
+
+export function resolvePositionSelection(
+  residents: PositionResidentViewModel[],
+  selectedResidentId?: string | null
+): PositionResolvedSelection {
+  const selectedResident =
+    residents.find((resident) => resident.residentId === selectedResidentId) ?? residents[0] ?? null;
+
+  return {
+    selectedResidentId: selectedResident?.residentId ?? null,
+    selectedResident
+  };
+}
+
+function getRailSurfaceState(input: {
+  isInitialLoading: boolean;
+  hasResidentsConfigured: boolean;
+  hasPartialFailures: boolean;
+  allRecordsFailed: boolean;
+}): PositionSurfaceState {
+  if (!input.hasResidentsConfigured) return 'empty';
+  if (input.isInitialLoading) return 'loading';
+  if (input.allRecordsFailed) return 'error';
+  if (input.hasPartialFailures) return 'partial-error';
+  return 'ready';
+}
+
+function getSummarySurfaceState(input: {
+  isInitialLoading: boolean;
+  selectedResident: PositionResidentViewModel | null;
+}): PositionSurfaceState {
+  if (input.isInitialLoading) return 'loading';
+  if (!input.selectedResident) return 'empty';
+  if (input.selectedResident.recordError && !input.selectedResident.hasData) return 'error';
+  if (!input.selectedResident.hasData) return 'empty';
+  return 'ready';
+}
+
+function getMapSurfaceState(input: {
+  isInitialLoading: boolean;
+  selectedResident: PositionResidentViewModel | null;
+}): PositionSurfaceState {
+  if (input.isInitialLoading) return 'loading';
+  if (!input.selectedResident) return 'empty';
+  if (input.selectedResident.recordError && !input.selectedResident.hasData) return 'error';
+  if (!input.selectedResident.hasData) return 'empty';
+  if (!hasZoneResolution(input.selectedResident)) return 'empty';
+  return 'ready';
+}
+
+function getDecisionSurfaceState(input: {
+  isInitialLoading: boolean;
+  selectedResident: PositionResidentViewModel | null;
+  hasPartialFailures: boolean;
+  allRecordsFailed: boolean;
+}): PositionSurfaceState {
+  if (input.isInitialLoading) return 'loading';
+  if (!input.selectedResident) return 'empty';
+  if (
+    (input.selectedResident.recordError && !input.selectedResident.hasData) ||
+    (input.allRecordsFailed && !input.selectedResident.hasData)
+  ) {
+    return 'error';
+  }
+  if (!input.selectedResident.hasData) return 'empty';
+  if (input.hasPartialFailures) return 'partial-error';
+  return 'ready';
+}
+
+function getActivityState(input: {
+  selectedResident: PositionResidentViewModel | null;
+  activityLoading: boolean;
+  selectedResidentActivity?: PositionResidentActivitySnapshot | null;
+}): PositionActivityState {
+  if (!input.selectedResident) return 'empty';
+  if (input.selectedResidentActivity?.loadError) return 'blocked';
+  if (input.selectedResidentActivity && input.selectedResidentActivity.recentActivity.length > 0) return 'ready';
+  if (input.activityLoading && !input.selectedResidentActivity) return 'loading';
+  if (!input.selectedResident.hasData || input.selectedResident.recordError) return 'blocked';
+  return 'empty';
+}
+
 export async function loadPositionCommandCenterSnapshot(): Promise<PositionCommandCenterSnapshot> {
   const records = await Promise.all(
     POSITION_RESIDENT_REGISTRY.map(async (resident): Promise<PositionSnapshotRecord> => {
@@ -865,6 +976,7 @@ function buildResidentViewModel(record: PositionSnapshotRecord, now: number): Po
     residentId: record.resident.residentId,
     displayName: record.resident.displayName,
     deviceId: record.resident.deviceId,
+    recordError: record.error,
     isOnline: truthState === 'online',
     truthState,
     freshnessLevel,
@@ -926,6 +1038,8 @@ export function buildPositionCommandCenterViewModel(
     selectedResidentId?: string | null;
     now?: number;
     selectedResidentActivity?: PositionResidentActivitySnapshot | null;
+    snapshotLoading?: boolean;
+    activityLoading?: boolean;
   } = {}
 ): PositionCommandCenterViewModel {
   const now = options.now ?? Date.now();
@@ -934,27 +1048,62 @@ export function buildPositionCommandCenterViewModel(
     POSITION_RESIDENT_REGISTRY.map((resident) => ({
       resident,
       latestStatus: null,
-      error: null
-    }));
+        error: null
+      }));
   const baseResidents = records.map((record) => buildResidentViewModel(record, now));
   const residents = sortPositionResidents(
     applySelectedResidentActivity(baseResidents, options.selectedResidentActivity)
   );
-  const selectedResident =
-    residents.find((resident) => resident.residentId === options.selectedResidentId) ??
-    residents[0] ??
-    null;
+  const { selectedResidentId, selectedResident } = resolvePositionSelection(
+    residents,
+    options.selectedResidentId
+  );
+  const partialFailureCount = records.filter((record) => Boolean(record.error)).length;
+  const hasPartialFailures = partialFailureCount > 0;
+  const isInitialLoading = Boolean(options.snapshotLoading && snapshot == null);
+  const allRecordsFailed = records.length > 0 && partialFailureCount === records.length;
+  const activityState = getActivityState({
+    selectedResident,
+    activityLoading: Boolean(options.activityLoading),
+    selectedResidentActivity: options.selectedResidentActivity
+  });
 
   return {
     residents,
-    selectedResidentId: selectedResident?.residentId ?? null,
+    selectedResidentId,
     selectedResident,
+    selectedResidentRecordError: selectedResident?.recordError ?? null,
     counts: {
       total: residents.length,
       online: residents.filter((resident) => resident.truthState === 'online').length,
       stale: residents.filter((resident) => resident.truthState === 'stale').length,
       offline: residents.filter((resident) => resident.truthState === 'offline').length
     },
+    surfaceStates: {
+      rail: getRailSurfaceState({
+        isInitialLoading,
+        hasResidentsConfigured: records.length > 0,
+        hasPartialFailures,
+        allRecordsFailed
+      }),
+      summary: getSummarySurfaceState({
+        isInitialLoading,
+        selectedResident
+      }),
+      map: getMapSurfaceState({
+        isInitialLoading,
+        selectedResident
+      }),
+      decision: getDecisionSurfaceState({
+        isInitialLoading,
+        selectedResident,
+        hasPartialFailures,
+        allRecordsFailed
+      })
+    },
+    activityState,
+    hasPartialFailures,
+    partialFailureCount,
     fetchedAt: snapshot?.fetchedAt ?? null,
     loadError: snapshot?.loadError ?? null
   };

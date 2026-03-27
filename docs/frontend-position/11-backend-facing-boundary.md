@@ -2,143 +2,141 @@
 
 ## 1. Purpose
 
-这份文档定义 Position frontend rebuild 对 backend 的实际依赖边界。
+这份文档定义 Position frontend rebuild 的 backend boundary。
 
-读者:
+读者：
 - backend engineer
 - frontend maintainer
 - API reviewer
 - future Codex
 
+目标：
+- 明确 frontend 当前依赖哪些 API
+- 明确哪些 derivation 仍在 frontend
+- 明确哪些 backend 改动不是当前 Phase 3 的工作
+
 ---
 
 ## 2. Current Frontend Inputs
 
-Position Phase 2 当前安全使用的 frontend API 只有两类:
+Position 目前只使用现有 frontend API layer。
 
 ### 2.1 Latest resident state
 - `mongoUpstreamApi.getLatest({ device_id, data_type: 'status_update' })`
 
-用途:
-- current upstream snapshot
-- truthState
-- freshnessLevel
-- riskLevel
-- currentZone / targetZone
+当前用途：
+- latest upstream snapshot
+- current health state
+- zone derivation source
+- selected resident summary
 
-### 2.2 Selected-resident recent activity
+### 2.2 Selected resident recent activity
 - `mongoUpstreamApi.list({ device_id, data_type: 'status_update', page, page_size })`
 
-用途:
-- recent activity synthesis
-- latest sync context
+当前用途：
+- selected-resident recent activity
+- activity blocked state
 - zone/vitals transition hints
 
 ---
 
 ## 3. What Frontend Derives Locally
 
-当前 frontend 负责 derivation:
+Frontend 继续负责：
 - timestamp normalization
 - truth classification
 - freshness classification
 - risk classification
-- priorityBand
-- priorityReasonCode
-- zoneCommandState
+- priority ordering
+- zone command derivation
 - recent activity synthesis
-- resident ordering
+- surface-state derivation
 
-当前 backend 仍然是 raw data provider。
+Backend 仍然只是 raw data provider。
 
 ---
 
 ## 4. What Frontend Must Not Change
 
-Position frontend 不得改动:
+Position frontend 不得修改：
 - backend route path
-- response payload shape
+- backend response payload shape
 - backend validation logic
 - Mongo upstream route behavior
 - MySQL schema
-- event creation logic
-- data reception flow
+- event creation flow
 - FastAPI app structure
 
-如果未来需要变 backend contract:
-- 必须开新 workstream
-- 不要伪装成 Position frontend cleanup
+这些都不是当前 Position production-hardening 的工作。
 
 ---
 
 ## 5. Payload Reality
 
-当前已验证的 payload reality:
+Current payload reality:
 - `server_received_at` 可能是 ISO string
-- seed Mongo data 里 `server_received_at` 可能是 `{ "$date": "..." }`
+- seed Mongo data 里的 `server_received_at` 也可能是 `{ "$date": "..." }`
 - `location`, `fall_detection`, `sos`, `sensors`, `system` 可能出现在 top-level
-- 也可能出现在 `payload.*`
+- 也可能在 `payload.*`
 
-所以 frontend 必须继续做 defensive parsing。
+Rule:
+- frontend 必须继续使用 defensive parsing
+- component layer 不允许直接复制 raw payload parsing
 
 ---
 
-## 6. Why SQL Event/DataLog APIs Are Not Phase 2 Sources
+## 6. Why SQL Event/DataLog APIs Stay Out
 
-以下 API 在 repo 中存在:
+Repo 里有：
 - `eventApi.list`
 - `deviceDataLogApi.list`
 - `deviceDataLogApi.searchElderDetail`
 
-但当前 Phase 2 不把它们作为 Position command logic source。
+Phase 3 继续不把它们接入 Position command logic。
 
-原因:
-- frontend registry 目前仍是 frontend-owned
+原因：
+- 当前 resident registry 仍然是 frontend-owned
 - repo 里没有 authoritative resident-device-event normalized mapping
-- 这些 SQL APIs 不能稳定映射到当前 Position resident rail
+- 现在不能在 JSX 或 component layer 做 fuzzy join
 
-允许:
-- backend 团队单独推进 authoritative mapping
-
-不允许:
-- 在 Position component 里做 ad hoc join
-- 在 JSX 里写 fuzzy resident/device/event matching
+Rule:
+- Position frontend 不做 ad hoc resident/device/event matching
+- backend 若未来提供 authoritative mapping，再开新 workstream
 
 ---
 
-## 7. Future Backend Asks, Not Required Now
+## 7. Backend Runtime Blocker
 
-未来如果 backend 要减少 frontend orchestration，最有价值的增强是:
+当前 live backend validation 仍然 blocked：
+- `backend/backend/.env` 含 extra keys
+- 当前 `Settings` validation 会阻塞 app boot
+
+这个 blocker 必须：
+- 在 docs 里保留
+- 在 handoff 里保留
+- 不得被伪装成 frontend success
+
+---
+
+## 8. Future Backend Asks, Not Required Now
+
+未来如果要继续缩小 frontend orchestration，可以考虑：
 - authoritative resident-device mapping
 - aggregated Position summary DTO
-- latest active event summary endpoint
 - normalized zone metadata endpoint
-- typed Position command payload
+- typed Position activity summary endpoint
 
-这些 enhancement 不是 Phase 2 前置条件。
-
----
-
-## 8. Review Rule
-
-审查 Position frontend PR 时要确认:
-- 没有 backend file diff
-- 没有 route path diff
-- 没有 payload shape drift
-- 没有把 raw backend parsing 扔回 component layer
-- recent activity 仍然只依赖当前允许的数据源
-
-如果答案不是全部 yes，就不算安全的 Position frontend work。
+这些都不是 Phase 3 requirement。
 
 ---
 
-## 9. Runtime Blocker Note
+## 9. Review Rule
 
-当前 live backend validation 仍然被已知问题阻塞:
-- `backend/backend/.env` 包含 extra keys
-- 当前 `Settings` validation 在 app boot 前直接失败
+审 Position frontend PR 时，必须检查：
+- no backend file diff
+- no route path diff
+- no payload shape drift
+- no raw backend parsing leaked into component layer
+- no frontend-only workaround pretending to be backend contract
 
-这个 blocker:
-- 已知
-- 已记录
-- 不属于当前 frontend-only workstream
+只要以上仍然成立，这个 PR 仍属于 Position frontend work。

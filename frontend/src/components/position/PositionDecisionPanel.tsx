@@ -1,18 +1,22 @@
 import { useTranslation } from 'react-i18next';
 
 import type {
+  PositionActivityState,
   PositionActivityItem,
   PositionNextActionCode,
   PositionPriorityReasonCode,
   PositionResidentViewModel,
+  PositionSurfaceState,
   PositionZoneCommandState
 } from '../../adapters/position-command-center';
 
 type PositionDecisionPanelProps = {
   resident: PositionResidentViewModel | null;
+  surfaceState: PositionSurfaceState;
+  activityState: PositionActivityState;
   loadError: string | null;
-  loading: boolean;
-  activityLoading: boolean;
+  recordError: string | null;
+  partialFailureCount: number;
   onRefresh: () => void;
 };
 
@@ -115,6 +119,22 @@ function formatActivityTimestamp(timestamp: string | null, locale: string): stri
   }).format(new Date(parsed));
 }
 
+function getOperatorError(
+  error: string | null,
+  fallback: string,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  if (!error || error.toLowerCase().includes('not found')) {
+    return fallback;
+  }
+
+  if (error.toLowerCase().includes('network')) {
+    return t('position.networkErrorShort', { defaultValue: 'Network error.' });
+  }
+
+  return error;
+}
+
 function renderActivityList(
   activity: PositionActivityItem[],
   locale: string
@@ -136,9 +156,11 @@ function renderActivityList(
 
 export function PositionDecisionPanel({
   resident,
+  surfaceState,
+  activityState,
   loadError,
-  loading,
-  activityLoading,
+  recordError,
+  partialFailureCount,
   onRefresh
 }: PositionDecisionPanelProps) {
   const { t, i18n } = useTranslation();
@@ -147,6 +169,17 @@ export function PositionDecisionPanel({
   const formattedLastUpdate = resident?.lastSeenAt
     ? formatActivityTimestamp(resident.lastSeenAt, locale)
     : t('position.lastUpdateUnknown', { defaultValue: 'Unknown' });
+  const pageErrorCopy = getOperatorError(
+    loadError ?? recordError,
+    t('position.snapshotUnavailable', { defaultValue: 'Position snapshot unavailable.' }),
+    t
+  );
+  const heroToneClass =
+    resident?.riskLevel === 'critical'
+      ? ' position-decision-panel__hero--critical'
+      : resident?.truthState === 'offline' || resident?.freshnessLevel === 'stale' || resident?.riskLevel === 'warning'
+        ? ' position-decision-panel__hero--attention'
+        : ' position-decision-panel__hero--stable';
 
   return (
     <section className="position-command-center__surface position-decision-panel">
@@ -162,19 +195,46 @@ export function PositionDecisionPanel({
         </button>
       </header>
 
-      {loadError ? <p className="position-command-center__error">{loadError}</p> : null}
-
-      {loading && resident == null ? (
-        <p className="position-command-center__muted">{t('common.loading', { defaultValue: 'Loading...' })}</p>
+      {surfaceState === 'partial-error' ? (
+        <p className="position-command-center__notice position-command-center__notice--warning">
+          {t('position.partialResidentFailure', {
+            defaultValue: `${partialFailureCount} resident snapshot(s) failed to refresh.`
+          })}
+        </p>
       ) : null}
 
-      {!resident ? (
-        <p className="position-command-center__muted">{t('position.noDeviceData', { defaultValue: 'No device upstream data yet' })}</p>
+      {surfaceState === 'loading' ? (
+        <div className="position-command-center__state-card position-command-center__state-card--loading">
+          <strong>{t('position.loadingDecisionPanel', { defaultValue: 'Loading decision panel...' })}</strong>
+          <p>{t('position.loadingDecisionPanelHint', { defaultValue: 'Selected resident context, actions, and activity are pending from upstream.' })}</p>
+        </div>
       ) : null}
 
-      {resident ? (
+      {surfaceState === 'error' ? (
+        <div className="position-command-center__state-card position-command-center__state-card--error">
+          <strong>{t('position.snapshotUnavailable', { defaultValue: 'Position snapshot unavailable.' })}</strong>
+          <p>{pageErrorCopy}</p>
+        </div>
+      ) : null}
+
+      {surfaceState === 'empty' ? (
+        <div className="position-command-center__state-card">
+          <strong>
+            {resident
+              ? t('position.noDeviceData', { defaultValue: 'No device upstream data yet' })
+              : t('position.noSelection', { defaultValue: 'No resident selected' })}
+          </strong>
+          <p>
+            {resident
+              ? t('position.noDeviceDataHint', { defaultValue: 'Decision details will appear after the device reports Position data.' })
+              : t('position.noSelectionHint', { defaultValue: 'Choose a resident from the rail to inspect command context.' })}
+          </p>
+        </div>
+      ) : null}
+
+      {resident && surfaceState !== 'loading' && surfaceState !== 'empty' && surfaceState !== 'error' ? (
         <>
-          <div className="position-decision-panel__hero">
+          <div className={`position-decision-panel__hero${heroToneClass}`}>
             <div>
               <h3>{resident.displayName}</h3>
               <p className="position-command-center__muted">
@@ -258,20 +318,31 @@ export function PositionDecisionPanel({
 
           <section className="position-decision-panel__section">
             <h4>{t('position.recentActivity', { defaultValue: 'Recent activity' })}</h4>
-            {activityLoading ? (
-              <p className="position-command-center__muted">{t('common.loading', { defaultValue: 'Loading...' })}</p>
-            ) : resident.activityBlockedReason ? (
-              <p className="position-command-center__error">
-                {t('position.activityBlocked', {
-                  defaultValue: `Recent activity blocked: ${resident.activityBlockedReason}`
-                })}
-              </p>
-            ) : resident.recentActivity.length > 0 ? (
+            {activityState === 'loading' ? (
+              <div className="position-command-center__state-card position-command-center__state-card--loading">
+                <strong>{t('position.loadingRecentActivity', { defaultValue: 'Loading recent activity...' })}</strong>
+                <p>{t('position.loadingRecentActivityHint', { defaultValue: 'Activity history is pending from upstream.' })}</p>
+              </div>
+            ) : activityState === 'blocked' ? (
+              <div className="position-command-center__state-card position-command-center__state-card--error">
+                <strong>{t('position.activityUnavailable', { defaultValue: 'Recent activity unavailable.' })}</strong>
+                <p>
+                  {getOperatorError(
+                    resident.activityBlockedReason,
+                    t('position.activityUnavailableHint', {
+                      defaultValue: 'Activity history could not be loaded for the selected resident.'
+                    }),
+                    t
+                  )}
+                </p>
+              </div>
+            ) : activityState === 'ready' ? (
               renderActivityList(resident.recentActivity, locale)
             ) : (
-              <p className="position-command-center__muted">
-                {t('position.activityEmpty', { defaultValue: 'No recent activity yet.' })}
-              </p>
+              <div className="position-command-center__state-card">
+                <strong>{t('position.activityEmptyTitle', { defaultValue: 'No recent activity yet.' })}</strong>
+                <p>{t('position.activityEmpty', { defaultValue: 'No recent activity has been derived from the current upstream history.' })}</p>
+              </div>
             )}
           </section>
 

@@ -2,156 +2,167 @@
 
 ## 1. Purpose
 
-这份文档是 Position Command Center rebuild 的当前 handoff 基线。
-
-适用对象:
+这份 handoff 给：
 - future Codex
 - future frontend maintainer
 - backend engineer
 - reviewer with no prior chat context
 
-你应该用它来:
-1. 快速理解 Phase 1 和 Phase 2 已交付什么
-2. 快速理解哪些边界不能被破坏
-3. 快速理解下一次 Position work 应该从哪里继续
+它要回答三件事：
+1. Position rebuild 现在做到哪一层
+2. 哪些 contract 已经锁定
+3. 下一次进入 repo 时什么能做，什么不能做
 
 ---
 
-## 2. Rebuild Status
+## 2. Current Rebuild Status
 
-当前已完成:
+已完成：
 - Phase 1, Foundation
 - Phase 2, Command
+- Phase 3, Production hardening
 
-当前未完成:
-- Phase 3, Production
+当前 Position 不是原始 monolithic page。
 
-这意味着 Position 现在已经具备:
+当前交付包含：
 - adapter-led truth model
-- summary-first hierarchy
 - command-oriented resident ordering
-- zone command context
 - recent activity context
+- explicit loading / empty / error / partial-error states
+- stronger stale presentation
+- map-first responsive behavior
+- keyboard/focus hardening
+- reduced-motion-safe behavior
 
 ---
 
 ## 3. Current Architecture
 
-当前主结构:
+Current structure:
 - page orchestrator: `frontend/src/pages/PositionPage.tsx`
 - adapter: `frontend/src/adapters/position-command-center.ts`
 - left rail: `PositionResidentRail`
+- selected resident summary: `PositionSummaryBar`
 - center stage: `PositionMapStage`
-- top strip: `PositionSummaryBar`
 - right panel: `PositionDecisionPanel`
 - stylesheet: `frontend/src/styles/position-page.css`
 
 Rule:
-- Position logic 优先进入 adapter
-- Position growth 不要回流到 `global.css`
+- Position derivation stays in adapter
+- Position growth stays out of `global.css`
 
 ---
 
 ## 4. Locked Frontend Contracts
 
-Current state contracts:
+Resident-state contract:
 - `truthState = online | stale | offline`
 - `freshnessLevel = live | delayed | stale`
 - `riskLevel = stable | warning | critical`
 - `priorityBand = critical | warning | stale-only | stable`
 - `zoneCommandState = holding | target-pending | target-reached | zone-unknown`
 
-Current selected-resident activity contract:
-- `recentActivity`
-- `activityBlockedReason`
+Surface-state contract:
+- `PositionSurfaceState = loading | ready | empty | error | partial-error`
+- `PositionActivityState = loading | ready | empty | blocked`
 
-Current activity source:
-- `mongoUpstreamApi.list({ device_id, data_type: 'status_update' })`
+Rule:
+- resident state 和 surface state 不能混成一套
 
 ---
 
 ## 5. Protected Boundaries
 
-Protected throughout the rebuild:
+Throughout the rebuild, the following remained protected:
 - backend files
 - backend API contract
 - backend schema
-- FlyCare core workflow
+- `frontend/src/pages/FlyCarePage.tsx`
 - route paths
 - auth persistence
 - theme persistence
 
-Practical meaning:
-- do not modify `backend/backend/**`
-- do not modify `frontend/src/pages/FlyCarePage.tsx`
-- do not change route paths
+Still true now:
+- no backend workaround belongs inside Position component render paths
+- no Position-specific CSS belongs in `global.css`
 
 ---
 
-## 6. Current Validation Reality
+## 6. Current Data Reality
+
+Current safe frontend sources:
+- `mongoUpstreamApi.getLatest(...)`
+- `mongoUpstreamApi.list(...)`
+
+Current limitation:
+- resident registry is still frontend-owned
+- repo still lacks authoritative resident-device-event mapping
+
+Implication:
+- recent activity is still selected-resident-only
+- SQL `eventApi` and `deviceDataLogApi` are still out of scope for Position command logic
+
+---
+
+## 7. Runtime Validation Reality
 
 Verified:
-- frontend build passes
-- adapter tests pass
-- Position code remains frontend-only
+- `npm run build`
+- `npm run test`
+- `/position` preview renders
+- `/flycare` preview renders
 
-Known blocked runtime area:
-- live backend validation
+Still blocked:
+- healthy live backend validation
 
 Blocker:
-- `backend/backend/.env` contains extra keys rejected by current `Settings` validation
+- `backend/backend/.env` contains extra keys
+- current `Settings` validation rejects them
 
-Rule:
-- future runs must report this blocker honestly until it is separately fixed
-- do not claim live backend success while this blocker remains
-
----
-
-## 7. Current Risks
-
-### Risk 1
-Resident registry still contains one resident only.
-
-Impact:
-- runtime proof of multi-resident prioritization remains limited
-
-### Risk 2
-Resident-device mapping is still frontend-owned.
-
-Impact:
-- Position cannot safely absorb SQL event/device history as authoritative resident activity
-
-### Risk 3
-Future contributors may bypass the adapter and rebuild local logic in JSX.
-
-Impact:
-- left-center-right coherence will regress
+Do not claim live backend success until that blocker is gone.
 
 ---
 
-## 8. Required Read Order for Future Work
+## 8. Current Layout Rule
 
-Recommended read order:
-1. `_ben_mem/PROTO.md`
-2. `_ben_mem/CURR.mem`
-3. `docs/frontend-position/00-master-plan.md`
-4. `docs/frontend-position/00-governance.md`
-5. current phase doc
-6. `docs/frontend-position/10-maintainer-notes.md`
-7. `docs/frontend-position/11-backend-facing-boundary.md`
-8. target code files
+Locked layout rule:
+- wide desktop: left rail + selected resident summary, center map stage, right decision panel
+- medium laptop: map-first layout
+- narrow viewport: stacked `center -> left -> panel`
+
+Hard rule:
+- map stage stays primary
+- do not demote map below the fold again
 
 ---
 
-## 9. Recommended Next Step
+## 9. Current UX Rule
 
-Next safe workstream:
-- Phase 3, Production
+Position is now a command workspace, not a style exercise.
 
-But only after:
-- current Phase 2 behavior stays stable
-- `/position` and `/flycare` keep rendering cleanly
-- backend blocker remains documented or is separately resolved
+Keep:
+- operator-readable labels
+- visible stale/error states
+- explicit empty states
+- explicit blocked activity state
+- visible focus on key controls
 
-Do not reopen Phase 1.
-Do not mix backend repair into Position frontend maintenance.
+Do not:
+- make stale/offline look calm just to look cleaner
+- merge surface-state back into implicit `null` handling
+- reopen Phase 1 / 2 structure for taste-only reasons
+
+---
+
+## 10. Recommended Next Step
+
+Safe next work only after this handoff:
+- backend blocker fix, then real live runtime validation
+- or a new Position-only product layer with clear scope
+
+Unsafe next work:
+- backend contract rewrite hidden inside frontend PR
+- fuzzy SQL/Mongo resident join in component layer
+- FlyCare changes piggybacked onto Position work
+
+If a future maintainer starts from this file plus `_ben_mem/CURR.mem`, they should not need prior chat history.

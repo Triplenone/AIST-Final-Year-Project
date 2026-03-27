@@ -2,373 +2,197 @@
 
 ## 1. Phase Goal
 
-Make Position production-grade and maintainable.
+在不改 backend 的前提下，把 Position Command Center 收口到 production-grade。
 
-This phase is about:
-- complete page states
+本阶段只做 frontend hardening：
+- page-state coverage
 - responsive finishing
-- motion safety
-- accessibility finishing
-- performance cleanup
-- documentation closure
-- handoff readiness
-
-This phase is not about:
-- backend redesign
-- new backend endpoints
-- FlyCare feature expansion
-- unrelated app-wide redesign
-
----
-
-## 2. Why This Phase Exists
-
-Phase 1 makes Position trustworthy.  
-Phase 2 makes Position decision-capable.  
-Phase 3 must make Position stable enough for long-term maintenance.
-
-A command center is not complete if it only works in the happy path.
-
-It must also handle:
-- loading
-- empty
-- error
-- stale
-- reduced motion
-- small screens
-- keyboard focus
-- safe handoff
-
-Without this phase, Position remains a strong prototype, not a finished primary page.
-
----
-
-## 3. Phase Scope
-
-### 3.1 In Scope
-- loading state finishing
-- empty state finishing
-- error state finishing
-- stale state finishing
-- responsive finishing
-- reduced motion finishing
-- keyboard and focus finishing
-- performance cleanup
+- reduced motion safety
+- keyboard and focus safety
+- render-path cleanup
 - docs closure
-- handoff packaging
-- regression validation
+- handoff closure
 
-### 3.2 Out of Scope
-- backend changes
-- new backend contracts
-- FlyCare redesign
-- Admin redesign
-- Overview redesign
-- brand-new product modules unrelated to Position
+不做：
+- backend fix
+- backend contract change
+- FlyCare rewrite
+- Phase 1 / Phase 2 rollback
 
 ---
 
-## 4. Protected Surfaces
+## 2. Repo Reality
 
-Protected:
-- backend
-- FlyCare
-- route paths
-- app shell stability
-- auth persistence
-- theme persistence
+进入 Phase 3 时，repo 已经有：
+- Phase 1 foundation
+- Phase 2 command layer
+- adapter-led truth model
+- dedicated Position CSS boundary
+- wide desktop layout with centered map stage
 
-Do not modify:
-- backend files
-- backend response contract
-- `frontend/src/pages/FlyCarePage.tsx`
-- unrelated non-Position pages unless strictly required for safe integration
+当前已知 blocker：
+- `backend/backend/.env` 有 extra keys
+- 当前 `Settings` validation 会阻塞 backend boot
+- frontend 只能做 blocked-state validation
 
 ---
 
-## 5. Required Inputs
+## 3. Locked Contracts
 
-This phase assumes:
-- Phase 1 is complete
-- Phase 2 is complete
-- Position already has dedicated components
-- Position already has dedicated CSS boundary
-- Position already has command-layer view model
-- Position already has risk and freshness states
+以下语义在 Phase 3 不改：
+- `truthState = online | stale | offline`
+- `freshnessLevel = live | delayed | stale`
+- `riskLevel = stable | warning | critical`
+- `priorityBand = critical | warning | stale-only | stable`
+- `zoneCommandState = holding | target-pending | target-reached | zone-unknown`
 
-If these are not done, Phase 3 should not start.
-
----
-
-## 6. Production Objectives
-
-## 6.1 Complete Page-State Coverage
-Position must cover all primary UI states:
-- loading
-- empty
-- error
-- stale
-- normal
-- warning
-- critical
+Phase 3 新增的是 surface-state layer，不是第二套 truth model：
+- `PositionSurfaceState = loading | ready | empty | error | partial-error`
+- `PositionActivityState = loading | ready | empty | blocked`
 
 Rule:
-No major state should fall back to broken layout or silent failure.
-
-## 6.2 Responsive Finishing
-Position must remain readable across common desktop and smaller viewport widths.
-
-Minimum requirements:
-- first screen remains understandable
-- resident rail does not collapse into unusable clutter
-- map stage does not break proportions
-- decision panel does not become unreadable
-- no major overflow on standard widths
-
-## 6.3 Reduced Motion Support
-If reduced motion is requested, Position must remain fully usable.
-
-Requirements:
-- no delayed content reveal that hides critical data
-- no animation-dependent meaning
-- no motion that blocks reading
-- no flicker on state updates
-
-## 6.4 Keyboard and Focus Safety
-Core Position interactions must remain navigable and readable via keyboard.
-
-Minimum targets:
-- resident selection
-- refresh actions
-- key action buttons
-- meaningful focus visibility
-- no focus trap in normal page usage
-
-## 6.5 Performance Cleanup
-Position should reduce avoidable computation and rendering overhead.
-
-Typical cleanup targets:
-- repeated parsing in render
-- repeated derived-state computation
-- noisy polling side effects
-- heavy component rerenders
-- scattered utility duplication
-
-## 6.6 Documentation Closure
-At the end of this phase, docs must be enough for:
-- future Codex
-- future maintainer
-- reviewer with no chat history
-- backend engineer checking boundaries
+- truth/risk/freshness 继续表达 resident state
+- surface-state 只表达 page/surface availability
 
 ---
 
-## 7. File-Level Plan
+## 4. Delivered Work
 
-### 7.1 Main files expected to change
+### 4.1 Page-state coverage
+
+以下 surface 都有显式 state：
+- resident rail
+- selected resident summary
+- map-stage command surface
+- decision panel
+- recent activity block
+
+规则：
+- loading 不再伪装成 offline
+- empty 不再伪装成 calm healthy state
+- error 不再静默塌成 normal UI
+- stale 会继续保留高可见度
+
+### 4.2 Adapter cleanup
+
+`frontend/src/adapters/position-command-center.ts` 现在负责：
+- resident selection resolution
+- surface-state derivation
+- activity-state derivation
+- selected-record error exposure
+- partial failure counting
+
+`frontend/src/pages/PositionPage.tsx` 保持 thin orchestration：
+- snapshot polling
+- selected resident state
+- activity loading
+- highlighted zone state
+- component composition
+
+不再为了选中 resident 和 activity effect 重复 build full view model。
+
+### 4.3 Responsive finishing
+
+Layout rule:
+- wide desktop: 保持现有 `left / center / panel`
+- medium laptop: 改为 map-first，先 `center + panel`，再 `left + panel`
+- narrow width: stacked order 为 `center -> left -> panel`
+
+Rule:
+- map stage 始终是 primary visual surface
+- 不允许把 map 再次压到次屏
+
+### 4.4 Keyboard and motion safety
+
+完成项：
+- stronger focus-visible ring
+- resident selection 保持 keyboard-safe
+- refresh button 保持 keyboard-safe
+- map blank cells 不再成为 tab stop
+- map zone inspection 只保留有意义的 keyboard stop
+- local reduced-motion fallback 不依赖 global CSS 才成立
+
+---
+
+## 5. Files Changed In This Phase
+
+Primary frontend files:
 - `frontend/src/pages/PositionPage.tsx`
 - `frontend/src/adapters/position-command-center.ts`
+- `frontend/src/adapters/position-command-center.test.ts`
 - `frontend/src/components/position/PositionResidentRail.tsx`
 - `frontend/src/components/position/PositionMapStage.tsx`
 - `frontend/src/components/position/PositionDecisionPanel.tsx`
 - `frontend/src/components/position/PositionSummaryBar.tsx`
 - `frontend/src/styles/position-page.css`
 
-### 7.2 Docs expected to change
+Docs:
 - `docs/frontend-position/03-phase-production.md`
 - `docs/frontend-position/10-maintainer-notes.md`
 - `docs/frontend-position/11-backend-facing-boundary.md`
 - `docs/frontend-position/99-handoff.md`
-- `docs/README.md`
 
-### 7.3 Files that may receive minimal integration edits
-- `frontend/src/App.tsx`
+Memory:
 - `_ben_mem/CURR.mem`
 - `_ben_mem/LOG/*`
 
-Rule:
-Keep non-Position changes minimal and justified.
+---
+
+## 6. Validation
+
+Verified in this phase:
+- `npm run build`
+- `npm run test`
+- `/position` preview renders
+- `/flycare` preview renders
+- no backend file touched
+- no `frontend/src/pages/FlyCarePage.tsx` touched
+
+Validated UI concerns:
+- loading state visible
+- empty state visible
+- error state visible
+- stale state stronger than Phase 2
+- wide / medium / narrow layout rules updated
+- focus visibility strengthened on key controls
+- reduced motion no longer depends on motion for meaning
+
+Blocked validation:
+- healthy live backend validation
+
+Blocker:
+- `backend/backend/.env` extra keys rejected by current `Settings`
 
 ---
 
-## 8. Work Packages
+## 7. Maintainer Rules After Phase 3
 
-## WP1. Loading and Empty States
-Add explicit loading and empty handling for:
-- resident rail
-- summary bar
-- map stage context
-- decision panel
-- recent activity block
-
-Rules:
-- loading must not look like broken UI
-- empty must explain why data is absent
-- empty must not pretend normal state
-
-## WP2. Error and Stale States
-Add clear fallback handling for:
-- API failure
-- partial data failure
-- stale upstream status
-- missing zone resolution
-- missing resident metadata
-
-Rules:
-- error must be visible
-- stale must be visible
-- stale must not be styled as live healthy state
-
-## WP3. Responsive Finishing
-Finish layout behavior for:
-- standard desktop
-- medium width laptop
-- narrower viewport
-- single-column fallback where needed
-
-Rules:
-- map remains central
-- priority information remains first
-- no layout collapse that hides command meaning
-
-## WP4. Motion and Accessibility Finishing
-Add or verify:
-- reduced motion compatibility
-- visible focus states
-- meaningful aria labeling where needed
-- keyboard-safe interaction path
-
-Rules:
-- critical information must not depend on animation
-- keyboard users must still reach primary controls
-- focus order must stay understandable
-
-## WP5. Performance Cleanup
-Review and reduce:
-- duplicated parsing
-- repeated derived calculations
-- render-time heavy logic
-- unnecessary state churn
-- duplicated zone or risk logic
-
-Preferred direction:
-- adapter first
-- util second
-- thin component render
-
-## WP6. Documentation and Handoff
-Close the rebuild with:
-- updated phase doc
-- updated maintainer notes
-- updated backend boundary doc
-- final `99-handoff.md`
-- updated `_ben_mem`
+- Do not move Position growth back into `global.css`.
+- Do not reintroduce raw backend parsing into component render branches.
+- Do not replace surface-state with implicit `null` checks.
+- Do not make stale/offline UI look calm just to look cleaner.
+- Do not demote map stage below the fold on laptop widths.
+- Do not reopen backend scope inside Position frontend work.
 
 ---
 
-## 9. UX Rules for This Phase
+## 8. Remaining Risks
 
-### 9.1 Never hide command meaning
-Even in loading, stale, or error states, the operator must still understand:
-- current health of the page
-- whether data is fresh
-- whether action is needed
-
-### 9.2 Never fake completeness
-If data is missing, say it is missing.  
-Do not fill gaps with misleading calm-looking UI.
-
-### 9.3 Never let polish override clarity
-Visual finishing must not reduce state legibility.
-
-### 9.4 Never let motion become a dependency
-Motion may support hierarchy.  
-Motion must not become the only way to understand hierarchy.
+- Frontend-owned resident registry 仍然只有 1 个 resident。
+- 多 resident runtime 排序仍主要靠 adapter test，而不是 live scenario。
+- backend blocker 未解除前，recent activity 只能验证 blocked path。
+- bundle 仍有 large chunk warning，但这不是 Position-only blocker。
 
 ---
 
-## 10. Acceptance Criteria
+## 9. Phase Completion Status
 
-Phase 3 is complete only if all are true:
+Phase 3 在 frontend-only 范围内已定义为：
+- explicit safe states
+- clearer stale/error hierarchy
+- stronger responsive behavior
+- safer keyboard/focus handling
+- reduced-motion-safe behavior
+- maintainable docs and handoff
 
-1. loading state exists and is readable
-2. empty state exists and is readable
-3. error state exists and is readable
-4. stale state exists and is readable
-5. Position remains usable on common viewport widths
-6. reduced motion mode does not break meaning
-7. keyboard focus is visible on key interactions
-8. build passes
-9. backend remains untouched
-10. FlyCare remains unaffected
-11. docs are complete
-12. `_ben_mem` logs are complete
-13. final handoff doc exists
-
----
-
-## 11. Validation Checklist
-
-- build passes
-- Position route renders
-- loading state is visible and safe
-- empty state is visible and safe
-- error state is visible and safe
-- stale state is visible and safe
-- no major overflow on standard viewport widths
-- focus is visible on resident selection and action controls
-- reduced motion does not delay critical content
-- no backend diff
-- FlyCare route still renders
-- docs updated
-- handoff updated
-
----
-
-## 12. Risks
-
-### Risk 1
-Too much polish work hides unresolved structural issues
-
-Mitigation:
-only start Phase 3 after Phase 1 and Phase 2 are truly complete
-
-### Risk 2
-Responsive fixes turn into layout hacks
-
-Mitigation:
-keep map, rail, and decision panel hierarchy stable
-
-### Risk 3
-Accessibility becomes checkbox work only
-
-Mitigation:
-focus on real interaction paths, not surface labels only
-
-### Risk 4
-Performance cleanup causes logic regressions
-
-Mitigation:
-clean up only after state model is stable
-
-### Risk 5
-Docs are left behind at the finish line
-
-Mitigation:
-Phase 3 is not complete until handoff docs are done
-
----
-
-## 13. Done Output
-
-At phase end, the repo should clearly contain:
-- production-grade Position page states
-- responsive-safe Position layout
-- reduced-motion-safe Position behavior
-- keyboard-safe core interactions
-- cleaned command-center rendering path
-- updated docs
-- updated `_ben_mem`
-- final handoff package
-
-This phase is a success when Position becomes stable enough to serve as the maintained primary command center of the project.
+下一阶段如果继续，只能是 backend blocker 解除后的 runtime verification 或更高层 product iteration。

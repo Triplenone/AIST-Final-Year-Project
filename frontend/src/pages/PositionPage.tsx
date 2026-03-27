@@ -62,22 +62,31 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
     return () => window.clearInterval(intervalId);
   }, [refreshSnapshot]);
 
-  const baseViewModel = useMemo(
+  useEffect(() => {
+    if (!selectedResidentId && residentActivity) {
+      setResidentActivity(null);
+    }
+  }, [residentActivity, selectedResidentId]);
+
+  const viewModel = useMemo(
     () =>
       buildPositionCommandCenterViewModel(snapshot, {
-        selectedResidentId
+        selectedResidentId,
+        selectedResidentActivity: residentActivity,
+        snapshotLoading: loading,
+        activityLoading
       }),
-    [selectedResidentId, snapshot]
+    [activityLoading, loading, residentActivity, selectedResidentId, snapshot]
   );
 
   useEffect(() => {
-    if (baseViewModel.selectedResidentId !== selectedResidentId) {
-      setSelectedResidentId(baseViewModel.selectedResidentId);
+    if (viewModel.selectedResidentId !== selectedResidentId) {
+      setSelectedResidentId(viewModel.selectedResidentId);
     }
-  }, [baseViewModel.selectedResidentId, selectedResidentId]);
+  }, [selectedResidentId, viewModel.selectedResidentId]);
 
   useEffect(() => {
-    const deviceId = baseViewModel.selectedResident?.deviceId ?? null;
+    const deviceId = viewModel.selectedResident?.deviceId ?? null;
 
     if (!deviceId) {
       setResidentActivity(null);
@@ -99,16 +108,7 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
         if (activityRequestSequenceRef.current !== requestId) return;
         setActivityLoading(false);
       });
-  }, [baseViewModel.selectedResident?.deviceId, snapshot?.fetchedAt]);
-
-  const viewModel = useMemo(
-    () =>
-      buildPositionCommandCenterViewModel(snapshot, {
-        selectedResidentId,
-        selectedResidentActivity: residentActivity
-      }),
-    [residentActivity, selectedResidentId, snapshot]
-  );
+  }, [snapshot?.fetchedAt, viewModel.selectedResident?.deviceId]);
 
   useEffect(() => {
     if (!onSosOrFallDetected) return;
@@ -142,13 +142,16 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
           residents={viewModel.residents}
           selectedResidentId={viewModel.selectedResidentId}
           counts={viewModel.counts}
-          loading={loading}
+          surfaceState={viewModel.surfaceStates.rail}
+          loadError={viewModel.loadError}
+          partialFailureCount={viewModel.partialFailureCount}
           onSelectResident={handleSelectResident}
         />
         <PositionSummaryBar
           resident={viewModel.selectedResident}
           fetchedAt={viewModel.fetchedAt}
-          loading={loading}
+          surfaceState={viewModel.surfaceStates.summary}
+          recordError={viewModel.selectedResidentRecordError}
           variant="sidebar"
         />
       </div>
@@ -156,6 +159,8 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
       <div className="position-command-center__column position-command-center__column--center">
         <PositionMapStage
           resident={viewModel.selectedResident}
+          surfaceState={viewModel.surfaceStates.map}
+          recordError={viewModel.selectedResidentRecordError}
           highlightedZoneId={effectiveHighlightedZoneId}
           onHighlightZone={handleHighlightZone}
         />
@@ -164,9 +169,11 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
       <aside className="position-command-center__column position-command-center__column--panel position-command-center__column--sticky">
         <PositionDecisionPanel
           resident={viewModel.selectedResident}
+          surfaceState={viewModel.surfaceStates.decision}
+          activityState={viewModel.activityState}
           loadError={viewModel.loadError}
-          loading={loading}
-          activityLoading={activityLoading}
+          recordError={viewModel.selectedResidentRecordError}
+          partialFailureCount={viewModel.partialFailureCount}
           onRefresh={() => {
             void refreshSnapshot();
           }}
