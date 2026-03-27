@@ -1,8 +1,8 @@
 # Position Command Center Handoff
 
-## 1. 欢迎接手者
+## 1. Purpose
 
-这份文档是 Position Command Center rebuild 的最终 handoff 文档。
+这份文档是 Position Command Center rebuild 的当前 handoff 基线。
 
 适用对象:
 - future Codex
@@ -11,282 +11,147 @@
 - reviewer with no prior chat context
 
 你应该用它来:
-1. 快速理解 Position rebuild 的目标和边界
-2. 快速理解后续维护应该遵守的实现原则
-3. 快速理解 repo 内哪些文件是当前维护主面
-4. 快速理解未来修改前应该先检查哪些约束
+1. 快速理解 Phase 1 和 Phase 2 已交付什么
+2. 快速理解哪些边界不能被破坏
+3. 快速理解下一次 Position work 应该从哪里继续
 
 ---
 
-## 2. Project Summary
+## 2. Rebuild Status
 
-Position Command Center rebuild is a frontend-led rebuild of:
-- `frontend/src/pages/PositionPage.tsx`
+当前已完成:
+- Phase 1, Foundation
+- Phase 2, Command
 
-Primary intent:
-- make Position the primary indoor monitoring page
-- make Position decision-capable
-- make Position maintainable
-- keep backend frozen
-- keep FlyCare protected
+当前未完成:
+- Phase 3, Production
 
-This rebuild is not a backend change program.  
-This rebuild is not a full-app redesign.
-
----
-
-## 3. Repo Baseline
-
-Primary repo:
-- `Triplenone/AIST-Final-Year-Project`
-
-Primary frontend:
-- `frontend/`
-
-Main relevant files:
-- `frontend/src/App.tsx`
-- `frontend/src/pages/PositionPage.tsx`
-- `frontend/src/services/api.ts`
-- `frontend/src/styles/global.css`
-- `frontend/src/styles/position-page.css`
-- `frontend/src/adapters/position-command-center.ts`
-- `frontend/src/components/position/*`
-
-Main docs:
-- `docs/frontend-position/00-master-plan.md`
-- `docs/frontend-position/00-governance.md`
-- `docs/frontend-position/01-phase-foundation.md`
-- `docs/frontend-position/02-phase-command.md`
-- `docs/frontend-position/03-phase-production.md`
-- `docs/frontend-position/10-maintainer-notes.md`
-- `docs/frontend-position/11-backend-facing-boundary.md`
+这意味着 Position 现在已经具备:
+- adapter-led truth model
+- summary-first hierarchy
+- command-oriented resident ordering
+- zone command context
+- recent activity context
 
 ---
 
-## 4. What Was Rebuilt
+## 3. Current Architecture
 
-The Position rebuild is organized into three phases:
+当前主结构:
+- page orchestrator: `frontend/src/pages/PositionPage.tsx`
+- adapter: `frontend/src/adapters/position-command-center.ts`
+- left rail: `PositionResidentRail`
+- center stage: `PositionMapStage`
+- top strip: `PositionSummaryBar`
+- right panel: `PositionDecisionPanel`
+- stylesheet: `frontend/src/styles/position-page.css`
 
-### Phase 1, Foundation
-Focus:
-- trust
-- structure
-- CSS boundary
-- summary-first layout
-- coherent online state
+Rule:
+- Position logic 优先进入 adapter
+- Position growth 不要回流到 `global.css`
 
-### Phase 2, Command
-Focus:
-- risk
-- freshness
-- zone intelligence
-- resident prioritization
-- recent activity
-- decision panel behavior
+---
 
-### Phase 3, Production
-Focus:
-- loading
-- empty
-- error
-- stale
-- responsive finishing
-- motion safety
-- accessibility finishing
-- performance cleanup
-- docs closure
+## 4. Locked Frontend Contracts
+
+Current state contracts:
+- `truthState = online | stale | offline`
+- `freshnessLevel = live | delayed | stale`
+- `riskLevel = stable | warning | critical`
+- `priorityBand = critical | warning | stale-only | stable`
+- `zoneCommandState = holding | target-pending | target-reached | zone-unknown`
+
+Current selected-resident activity contract:
+- `recentActivity`
+- `activityBlockedReason`
+
+Current activity source:
+- `mongoUpstreamApi.list({ device_id, data_type: 'status_update' })`
 
 ---
 
 ## 5. Protected Boundaries
 
 Protected throughout the rebuild:
-- backend
+- backend files
 - backend API contract
 - backend schema
 - FlyCare core workflow
 - route paths
-- session persistence
+- auth persistence
 - theme persistence
 
 Practical meaning:
-- no backend files should be changed by this rebuild
-- no FlyCare logic should be changed by this rebuild
-- no silent contract drift should be introduced
+- do not modify `backend/backend/**`
+- do not modify `frontend/src/pages/FlyCarePage.tsx`
+- do not change route paths
 
 ---
 
-## 6. Data Strategy
+## 6. Current Validation Reality
 
-Position rebuild uses frontend orchestration.
+Verified:
+- frontend build passes
+- adapter tests pass
+- Position code remains frontend-only
 
-Meaning:
-- backend remains raw data provider
-- frontend aggregates current data sources
-- frontend derives:
-  - online state
-  - freshness
-  - risk
-  - zone intelligence
-  - information priority
+Known blocked runtime area:
+- live backend validation
 
-Main frontend data sources:
-- `mongoUpstreamApi`
-- `eventApi`
-- `deviceDataLogApi`
-- `residentApi`
-- `deviceApi`
-- `locationApi`
+Blocker:
+- `backend/backend/.env` contains extra keys rejected by current `Settings` validation
 
-Reference:
-- `frontend/src/services/api.ts`
+Rule:
+- future runs must report this blocker honestly until it is separately fixed
+- do not claim live backend success while this blocker remains
 
 ---
 
-## 7. Architecture Strategy
-
-Target architecture:
-- thin page
-- strong adapter
-- dedicated Position components
-- dedicated Position CSS boundary
-- docs-first maintenance
-- mem-first machine continuity
-
-Target main structure:
-- `PositionResidentRail`
-- `PositionMapStage`
-- `PositionDecisionPanel`
-- `PositionSummaryBar`
-- `position-command-center.ts`
-- `position-page.css`
-
----
-
-## 8. What Was Explicitly Not Done
-
-The rebuild does not include:
-- backend endpoint redesign
-- backend schema redesign
-- FlyCare redesign
-- full app shell redesign
-- unrelated page refactors
-- broad full-stack architecture rewrite
-
-If future work needs those, start a new workstream.  
-Do not hide them inside Position maintenance.
-
----
-
-## 9. Current Maintenance Rules
-
-When touching Position in the future:
-1. read `_ben_mem/PROTO.md`
-2. read `_ben_mem/CURR.mem`
-3. read the relevant phase doc
-4. read `10-maintainer-notes.md`
-5. keep scope file-based
-6. keep backend frozen unless a separate approved backend task exists
-7. update docs
-8. update `_ben_mem`
-9. keep memory work repo-local at `E:\FYP\AIST-Final-Year-Project-main\_ben_mem`
-
-Do not:
-- patch blindly in JSX
-- grow Position rules back into `global.css`
-- rebuild scattered truth models
-- let raw backend shape leak across all UI components
-- use deprecated outer path `E:\FYP\_codex_mem`
-
----
-
-## 10. Validation Rules for Future Changes
-
-Any new Position change should still validate:
-- build passes
-- Position route renders
-- command-center hierarchy remains intact
-- stale data is not shown as healthy live state
-- backend remains untouched unless separately approved
-- FlyCare remains unaffected
-- docs remain synchronized
-- `_ben_mem` remains synchronized
-
----
-
-## 11. Known Risks
+## 7. Current Risks
 
 ### Risk 1
-Future contributors may reintroduce logic into `PositionPage.tsx`
+Resident registry still contains one resident only.
 
-Control:
-keep page thin and adapter-driven
+Impact:
+- runtime proof of multi-resident prioritization remains limited
 
 ### Risk 2
-Future CSS may leak back into `global.css`
+Resident-device mapping is still frontend-owned.
 
-Control:
-keep Position-specific growth inside `position-page.css`
+Impact:
+- Position cannot safely absorb SQL event/device history as authoritative resident activity
 
 ### Risk 3
-Future changes may mix command logic and display logic again
+Future contributors may bypass the adapter and rebuild local logic in JSX.
 
-Control:
-keep derivation inside adapter or utility layer
-
-### Risk 4
-Future backend changes may silently break adapter assumptions
-
-Control:
-check backend-facing boundary doc before consuming changed payloads
-
-### Risk 5
-Notion or external planning notes may drift from repo truth
-
-Control:
-repo docs remain final source of truth once implementation starts
+Impact:
+- left-center-right coherence will regress
 
 ---
 
-## 12. Recommended Next Steps
-
-If the rebuild is incomplete:
-1. continue the next unfinished phase only
-2. do not reopen already completed phase scope without reason
-3. keep future prompts single-objective and file-scoped
-
-If the rebuild is complete:
-1. keep Position as the primary maintained indoor command page
-2. evaluate whether Location should remain visible in nav
-3. evaluate whether backend should later expose dedicated Position DTOs
-4. keep FlyCare as a protected separate workflow
-
----
-
-## 13. Read Order for Future Maintainers
+## 8. Required Read Order for Future Work
 
 Recommended read order:
-1. `docs/frontend-position/00-master-plan.md`
-2. `docs/frontend-position/00-governance.md`
-3. current phase doc
-4. `docs/frontend-position/10-maintainer-notes.md`
-5. `docs/frontend-position/11-backend-facing-boundary.md`
-6. `_ben_mem/PROTO.md`
-7. `_ben_mem/CURR.mem`
+1. `_ben_mem/PROTO.md`
+2. `_ben_mem/CURR.mem`
+3. `docs/frontend-position/00-master-plan.md`
+4. `docs/frontend-position/00-governance.md`
+5. current phase doc
+6. `docs/frontend-position/10-maintainer-notes.md`
+7. `docs/frontend-position/11-backend-facing-boundary.md`
 8. target code files
 
 ---
 
-## 14. Final Handoff Summary
+## 9. Recommended Next Step
 
-Position Command Center rebuild is successful only if:
-- Position is the primary indoor monitoring page
-- Position is command-capable
-- Position is maintainable
-- backend remains frozen
-- FlyCare remains protected
-- docs remain complete
-- `_ben_mem` remains usable
-- future maintainers can continue without chat history
+Next safe workstream:
+- Phase 3, Production
 
-This document closes the rebuild package and defines the baseline for all future Position maintenance.
+But only after:
+- current Phase 2 behavior stays stable
+- `/position` and `/flycare` keep rendering cleanly
+- backend blocker remains documented or is separately resolved
+
+Do not reopen Phase 1.
+Do not mix backend repair into Position frontend maintenance.

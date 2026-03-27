@@ -5,7 +5,9 @@ import {
   POSITION_RESIDENT_REGISTRY,
   buildPositionCommandCenterViewModel,
   loadPositionCommandCenterSnapshot,
+  loadPositionResidentActivity,
   type PositionCommandCenterSnapshot,
+  type PositionResidentActivitySnapshot,
   type PositionZoneId
 } from '../adapters/position-command-center';
 import { PositionDecisionPanel } from '../components/position/PositionDecisionPanel';
@@ -24,7 +26,10 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
   const [loading, setLoading] = useState(true);
   const [selectedResidentId, setSelectedResidentId] = useState<string | null>(INITIAL_SELECTED_RESIDENT_ID);
   const [manualHighlightedZoneId, setManualHighlightedZoneId] = useState<PositionZoneId | null>(null);
+  const [residentActivity, setResidentActivity] = useState<PositionResidentActivitySnapshot | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
   const previousAlertRef = useRef(false);
+  const activityRequestSequenceRef = useRef(0);
 
   const refreshSnapshot = useCallback(async () => {
     setLoading(true);
@@ -57,7 +62,7 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
     return () => window.clearInterval(intervalId);
   }, [refreshSnapshot]);
 
-  const viewModel = useMemo(
+  const baseViewModel = useMemo(
     () =>
       buildPositionCommandCenterViewModel(snapshot, {
         selectedResidentId
@@ -66,16 +71,49 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
   );
 
   useEffect(() => {
-    if (viewModel.selectedResidentId !== selectedResidentId) {
-      setSelectedResidentId(viewModel.selectedResidentId);
+    if (baseViewModel.selectedResidentId !== selectedResidentId) {
+      setSelectedResidentId(baseViewModel.selectedResidentId);
     }
-  }, [selectedResidentId, viewModel.selectedResidentId]);
+  }, [baseViewModel.selectedResidentId, selectedResidentId]);
 
-  // 只在 false -> true 边沿时触发 modal，避免 polling 重复弹窗。
+  useEffect(() => {
+    const deviceId = baseViewModel.selectedResident?.deviceId ?? null;
+
+    if (!deviceId) {
+      setResidentActivity(null);
+      setActivityLoading(false);
+      return;
+    }
+
+    const requestId = activityRequestSequenceRef.current + 1;
+    activityRequestSequenceRef.current = requestId;
+    setActivityLoading(true);
+    setResidentActivity((current) => (current?.deviceId === deviceId ? current : null));
+
+    void loadPositionResidentActivity(deviceId)
+      .then((nextActivity) => {
+        if (activityRequestSequenceRef.current !== requestId) return;
+        setResidentActivity(nextActivity);
+      })
+      .finally(() => {
+        if (activityRequestSequenceRef.current !== requestId) return;
+        setActivityLoading(false);
+      });
+  }, [baseViewModel.selectedResident?.deviceId, snapshot?.fetchedAt]);
+
+  const viewModel = useMemo(
+    () =>
+      buildPositionCommandCenterViewModel(snapshot, {
+        selectedResidentId,
+        selectedResidentActivity: residentActivity
+      }),
+    [residentActivity, selectedResidentId, snapshot]
+  );
+
   useEffect(() => {
     if (!onSosOrFallDetected) return;
-    const alertNow = viewModel.residents.some((resident) => resident.sosState || resident.fallConfirmed);
 
+    const alertNow = viewModel.residents.some((resident) => resident.sosState || resident.fallConfirmed);
     if (alertNow && !previousAlertRef.current) {
       previousAlertRef.current = true;
       onSosOrFallDetected();
@@ -99,7 +137,7 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
 
   return (
     <section className="position-command-center">
-      <aside className="position-command-center__column position-command-center__column--rail position-command-center__column--sticky">
+      <div className="position-command-center__column position-command-center__column--left">
         <PositionResidentRail
           residents={viewModel.residents}
           selectedResidentId={viewModel.selectedResidentId}
@@ -107,14 +145,15 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
           loading={loading}
           onSelectResident={handleSelectResident}
         />
-      </aside>
-
-      <div className="position-command-center__column position-command-center__column--center">
         <PositionSummaryBar
           resident={viewModel.selectedResident}
           fetchedAt={viewModel.fetchedAt}
           loading={loading}
+          variant="sidebar"
         />
+      </div>
+
+      <div className="position-command-center__column position-command-center__column--center">
         <PositionMapStage
           resident={viewModel.selectedResident}
           highlightedZoneId={effectiveHighlightedZoneId}
@@ -127,6 +166,7 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
           resident={viewModel.selectedResident}
           loadError={viewModel.loadError}
           loading={loading}
+          activityLoading={activityLoading}
           onRefresh={() => {
             void refreshSnapshot();
           }}

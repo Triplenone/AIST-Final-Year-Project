@@ -1,0 +1,10 @@
+V.ts=2026-03-28T01:45:06+08:00
+V.branch=ben/frontend-only-improve
+R.scope=position-wide-layout-priority-shift
+R.phase=command-post-fix
+R.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+R.files.target=[frontend/src/pages/PositionPage.tsx,frontend/src/components/position/PositionMapStage.tsx,frontend/src/components/position/PositionSummaryBar.tsx,frontend/src/styles/position-page.css]
+R.reason=move-selected-resident-into-map-stage-and-make-position-primary
+V.layout.wide.target=resident-rail-top-map-stage-below-decision-panel-right
+V.layout.selected_resident.target=embedded-in-map-stage
+V.backend_touch=0

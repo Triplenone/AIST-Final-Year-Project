@@ -1,12 +1,19 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { PositionFreshnessLevel, PositionResidentViewModel, PositionTruthState } from '../../adapters/position-command-center';
+import type {
+  PositionFreshnessLevel,
+  PositionPriorityReasonCode,
+  PositionRiskLevel,
+  PositionResidentViewModel,
+  PositionTruthState
+} from '../../adapters/position-command-center';
 
 type PositionSummaryBarProps = {
   resident: PositionResidentViewModel | null;
   fetchedAt: string | null;
   loading: boolean;
+  variant?: 'standalone' | 'sidebar';
 };
 
 const truthLabelKey: Record<PositionTruthState, string> = {
@@ -33,6 +40,36 @@ const freshnessDefaultLabel: Record<PositionFreshnessLevel, string> = {
   stale: 'Stale'
 };
 
+const riskLabelKey: Record<PositionRiskLevel, string> = {
+  stable: 'position.risk.stable',
+  warning: 'position.risk.warning',
+  critical: 'position.risk.critical'
+};
+
+const riskDefaultLabel: Record<PositionRiskLevel, string> = {
+  stable: 'Stable',
+  warning: 'Warning',
+  critical: 'Critical'
+};
+
+const priorityReasonLabelKey: Record<PositionPriorityReasonCode, string> = {
+  'critical-sos': 'position.priorityReason.criticalSos',
+  'critical-fall': 'position.priorityReason.criticalFall',
+  'warning-vitals': 'position.priorityReason.warningVitals',
+  'warning-offline': 'position.priorityReason.warningOffline',
+  'stale-data': 'position.priorityReason.staleData',
+  'stable-monitoring': 'position.priorityReason.stableMonitoring'
+};
+
+const priorityReasonDefaultLabel: Record<PositionPriorityReasonCode, string> = {
+  'critical-sos': 'SOS needs response',
+  'critical-fall': 'Confirmed fall needs response',
+  'warning-vitals': 'Vitals need review',
+  'warning-offline': 'Device link needs review',
+  'stale-data': 'Data is stale',
+  'stable-monitoring': 'Stable monitoring'
+};
+
 function formatTimestamp(timestamp: string | null, locale: string): string {
   if (!timestamp) return 'Unknown';
   const parsed = Date.parse(timestamp);
@@ -44,6 +81,11 @@ function formatTimestamp(timestamp: string | null, locale: string): string {
     month: 'short',
     day: 'numeric'
   }).format(new Date(parsed));
+}
+
+function formatMetric(value: number | null, suffix: string): string {
+  if (value == null) return 'No data';
+  return `${value}${suffix}`;
 }
 
 function getZoneLabel(
@@ -59,13 +101,19 @@ function getZoneLabel(
   return resident.currentZoneName ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
 }
 
-export function PositionSummaryBar({ resident, fetchedAt, loading }: PositionSummaryBarProps) {
+export function PositionSummaryBar({
+  resident,
+  fetchedAt,
+  loading,
+  variant = 'standalone'
+}: PositionSummaryBarProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
 
   const items = useMemo(
     () => [
       {
+        key: 'truth',
         label: t('position.liveStatus', { defaultValue: 'Live status' }),
         value: resident
           ? t(truthLabelKey[resident.truthState], { defaultValue: truthDefaultLabel[resident.truthState] })
@@ -73,11 +121,15 @@ export function PositionSummaryBar({ resident, fetchedAt, loading }: PositionSum
         toneClass: resident ? `position-state-pill position-state-pill--${resident.truthState}` : 'position-state-pill position-state-pill--offline'
       },
       {
-        label: t('position.currentLocation', { defaultValue: 'Current zone' }),
-        value: getZoneLabel(resident, t),
-        toneClass: 'position-summary-bar__text'
+        key: 'risk',
+        label: t('position.riskLabel', { defaultValue: 'Risk' }),
+        value: resident
+          ? t(riskLabelKey[resident.riskLevel], { defaultValue: riskDefaultLabel[resident.riskLevel] })
+          : t('position.noDataShort', { defaultValue: 'No data' }),
+        toneClass: resident ? `position-risk-pill position-risk-pill--${resident.riskLevel}` : 'position-risk-pill position-risk-pill--stable'
       },
       {
+        key: 'freshness',
         label: t('position.freshness', { defaultValue: 'Freshness' }),
         value: resident
           ? t(freshnessLabelKey[resident.freshnessLevel], { defaultValue: freshnessDefaultLabel[resident.freshnessLevel] })
@@ -87,6 +139,31 @@ export function PositionSummaryBar({ resident, fetchedAt, loading }: PositionSum
           : 'position-freshness-pill position-freshness-pill--stale'
       },
       {
+        key: 'current-zone',
+        label: t('position.currentLocation', { defaultValue: 'Current zone' }),
+        value: getZoneLabel(resident, t),
+        toneClass: 'position-summary-bar__text'
+      },
+      {
+        key: 'battery',
+        label: t('position.batteryLevel', { defaultValue: 'Battery' }),
+        value: resident ? formatMetric(resident.battery, '%') : t('position.noDataShort', { defaultValue: 'No data' }),
+        toneClass: 'position-summary-bar__text'
+      },
+      {
+        key: 'heart-rate',
+        label: t('position.heartRateBpm', { defaultValue: 'Heart rate' }),
+        value: resident ? formatMetric(resident.heartRate, ' bpm') : t('position.noDataShort', { defaultValue: 'No data' }),
+        toneClass: 'position-summary-bar__text'
+      },
+      {
+        key: 'spo2',
+        label: t('position.spo2Percentage', { defaultValue: 'SpO2' }),
+        value: resident ? formatMetric(resident.spo2, '%') : t('position.noDataShort', { defaultValue: 'No data' }),
+        toneClass: 'position-summary-bar__text'
+      },
+      {
+        key: 'last-update',
         label: t('position.lastUpdate', { defaultValue: 'Last update' }),
         value: resident ? formatTimestamp(resident.lastSeenAt, locale) : formatTimestamp(fetchedAt, locale),
         toneClass: 'position-summary-bar__text'
@@ -95,8 +172,21 @@ export function PositionSummaryBar({ resident, fetchedAt, loading }: PositionSum
     [fetchedAt, locale, resident, t]
   );
 
+  const riskSupportText =
+    resident != null
+      ? t(priorityReasonLabelKey[resident.priorityReasonCode], {
+          defaultValue: priorityReasonDefaultLabel[resident.priorityReasonCode]
+        })
+      : null;
+
   return (
-    <section className="position-command-center__surface position-summary-bar">
+    <section
+      className={
+        variant === 'sidebar'
+          ? 'position-command-center__surface position-summary-bar position-summary-bar--sidebar'
+          : 'position-command-center__surface position-summary-bar'
+      }
+    >
       <div className="position-summary-bar__identity">
         <p className="position-command-center__eyebrow">
           {t('position.summaryEyebrow', { defaultValue: 'Selected resident' })}
@@ -113,9 +203,12 @@ export function PositionSummaryBar({ resident, fetchedAt, loading }: PositionSum
 
       <dl className="position-summary-bar__grid">
         {items.map((item) => (
-          <div key={item.label} className="position-summary-bar__item">
+          <div key={item.key} className="position-summary-bar__item">
             <dt>{item.label}</dt>
             <dd className={item.toneClass}>{item.value}</dd>
+            {item.key === 'risk' && riskSupportText ? (
+              <p className="position-summary-bar__support">{riskSupportText}</p>
+            ) : null}
           </div>
         ))}
       </dl>

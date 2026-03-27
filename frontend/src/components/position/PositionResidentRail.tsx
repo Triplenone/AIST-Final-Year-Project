@@ -1,7 +1,11 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { PositionResidentViewModel } from '../../adapters/position-command-center';
+import type {
+  PositionFreshnessLevel,
+  PositionPriorityReasonCode,
+  PositionResidentViewModel
+} from '../../adapters/position-command-center';
 
 type PositionResidentRailProps = {
   residents: PositionResidentViewModel[];
@@ -38,6 +42,36 @@ const riskDefaultLabel: Record<PositionResidentViewModel['riskLevel'], string> =
   stable: 'Stable',
   warning: 'Warning',
   critical: 'Critical'
+};
+
+const freshnessLabelKey: Record<PositionFreshnessLevel, string> = {
+  live: 'position.freshness.live',
+  delayed: 'position.freshness.delayed',
+  stale: 'position.freshness.stale'
+};
+
+const freshnessDefaultLabel: Record<PositionFreshnessLevel, string> = {
+  live: 'Live',
+  delayed: 'Delayed',
+  stale: 'Stale'
+};
+
+const priorityReasonLabelKey: Record<PositionPriorityReasonCode, string> = {
+  'critical-sos': 'position.priorityReason.criticalSos',
+  'critical-fall': 'position.priorityReason.criticalFall',
+  'warning-vitals': 'position.priorityReason.warningVitals',
+  'warning-offline': 'position.priorityReason.warningOffline',
+  'stale-data': 'position.priorityReason.staleData',
+  'stable-monitoring': 'position.priorityReason.stableMonitoring'
+};
+
+const priorityReasonDefaultLabel: Record<PositionPriorityReasonCode, string> = {
+  'critical-sos': 'SOS needs response',
+  'critical-fall': 'Confirmed fall needs response',
+  'warning-vitals': 'Vitals need review',
+  'warning-offline': 'Device link needs review',
+  'stale-data': 'Data is stale',
+  'stable-monitoring': 'Stable monitoring'
 };
 
 function formatAgeLabel(ageMs: number | null, t: (key: string, options?: Record<string, unknown>) => string): string {
@@ -148,12 +182,26 @@ export function PositionResidentRail({
 
                 <p className="position-resident-rail__zone">{getZoneLabel(resident, t)}</p>
 
-                <div className="position-resident-rail__item-bottom">
+                <div className="position-resident-rail__signals">
                   <span className={`position-risk-pill position-risk-pill--${resident.riskLevel}`}>
                     {t(riskLabelKey[resident.riskLevel], {
                       defaultValue: riskDefaultLabel[resident.riskLevel]
                     })}
                   </span>
+                  <span className={`position-freshness-pill position-freshness-pill--${resident.freshnessLevel}`}>
+                    {t(freshnessLabelKey[resident.freshnessLevel], {
+                      defaultValue: freshnessDefaultLabel[resident.freshnessLevel]
+                    })}
+                  </span>
+                </div>
+
+                <p className="position-resident-rail__reason">
+                  {t(priorityReasonLabelKey[resident.priorityReasonCode], {
+                    defaultValue: priorityReasonDefaultLabel[resident.priorityReasonCode]
+                  })}
+                </p>
+
+                <div className="position-resident-rail__item-bottom">
                   <span className="position-resident-rail__meta">
                     {formatAgeLabel(resident.lastSeenAgeMs, t)}
                   </span>
