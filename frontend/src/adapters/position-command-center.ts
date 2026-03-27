@@ -338,6 +338,17 @@ function normalizeText(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
+function isConfirmedFallDescription(description: string | null): boolean {
+  if (!description) return false;
+
+  const normalized = description.toLowerCase();
+  return (
+    normalized.includes('confirmed') ||
+    description.includes('确认跌倒') ||
+    description.includes('確認跌倒')
+  );
+}
+
 function getCurrentZoneName(data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null): string | null {
   const location = getSectionData(data, 'location');
   return normalizeText(getNestedValue(location, 'current.name'));
@@ -373,16 +384,16 @@ function normalizeFallState(
   data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null
 ): { label: string | null; confirmed: boolean } {
   const fall = getSectionData(data, 'fall_detection');
+  const description = normalizeText(getNestedValue(fall, 'state_description'));
   const confirmed =
     toBoolean(getNestedValue(fall, 'is_fall_confirmed')) ||
     toBoolean(getNestedValue(fall, 'confirmed')) ||
-    normalizeText(getNestedValue(fall, 'state_description'))?.toLowerCase().includes('confirmed') === true;
+    isConfirmedFallDescription(description);
   if (confirmed) {
     return { label: 'Confirmed fall', confirmed: true };
   }
 
   const state = toFiniteNumber(getNestedValue(fall, 'state'));
-  const description = normalizeText(getNestedValue(fall, 'state_description'));
   if (state === 0) {
     return { label: 'Normal', confirmed: false };
   }
@@ -667,9 +678,12 @@ function getActivityState(input: {
   selectedResidentActivity?: PositionResidentActivitySnapshot | null;
 }): PositionActivityState {
   if (!input.selectedResident) return 'empty';
-  if (input.selectedResidentActivity?.loadError) return 'blocked';
-  if (input.selectedResidentActivity && input.selectedResidentActivity.recentActivity.length > 0) return 'ready';
-  if (input.activityLoading && !input.selectedResidentActivity) return 'loading';
+  const activityMatchesSelectedResident =
+    input.selectedResidentActivity?.deviceId === input.selectedResident.deviceId;
+
+  if (activityMatchesSelectedResident && input.selectedResidentActivity?.loadError) return 'blocked';
+  if (activityMatchesSelectedResident && input.selectedResidentActivity.recentActivity.length > 0) return 'ready';
+  if (input.activityLoading && !activityMatchesSelectedResident) return 'loading';
   if (!input.selectedResident.hasData || input.selectedResident.recordError) return 'blocked';
   return 'empty';
 }

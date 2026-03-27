@@ -85,6 +85,95 @@ describe('position-command-center adapter', () => {
     expect(viewModel.selectedResident?.priorityBand).toBe('stable');
   });
 
+  it('recognizes confirmed fall from English and localized state descriptions', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const now = Date.parse('2026-03-28T00:00:20.000Z');
+
+    const englishViewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:00:20.000Z',
+        loadError: null,
+        records: [
+          {
+            resident,
+            error: null,
+            latestStatus: {
+              device_id: resident.deviceId,
+              server_received_at: '2026-03-28T00:00:00.000Z',
+              fall_detection: {
+                state_description: 'Confirmed fall'
+              }
+            } as never
+          }
+        ]
+      },
+      {
+        selectedResidentId: resident.residentId,
+        now
+      }
+    );
+
+    const localizedViewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:00:20.000Z',
+        loadError: null,
+        records: [
+          {
+            resident,
+            error: null,
+            latestStatus: {
+              device_id: resident.deviceId,
+              server_received_at: '2026-03-28T00:00:00.000Z',
+              fall_detection: {
+                state_description: '確認跌倒'
+              }
+            } as never
+          }
+        ]
+      },
+      {
+        selectedResidentId: resident.residentId,
+        now
+      }
+    );
+
+    expect(englishViewModel.selectedResident?.fallConfirmed).toBe(true);
+    expect(englishViewModel.selectedResident?.riskLevel).toBe('critical');
+    expect(localizedViewModel.selectedResident?.fallConfirmed).toBe(true);
+    expect(localizedViewModel.selectedResident?.priorityBand).toBe('critical');
+  });
+
+  it('recognizes explicit boolean fall confirmation', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:00:20.000Z',
+        loadError: null,
+        records: [
+          {
+            resident,
+            error: null,
+            latestStatus: {
+              device_id: resident.deviceId,
+              server_received_at: '2026-03-28T00:00:00.000Z',
+              fall_detection: {
+                confirmed: true,
+                state_description: 'monitoring'
+              }
+            } as never
+          }
+        ]
+      },
+      {
+        selectedResidentId: resident.residentId,
+        now: Date.parse('2026-03-28T00:00:20.000Z')
+      }
+    );
+
+    expect(viewModel.selectedResident?.fallConfirmed).toBe(true);
+    expect(viewModel.selectedResident?.fallState).toBe('Confirmed fall');
+  });
+
   it('sorts residents by critical, warning, stale-only, then stable', () => {
     const residents = [
       makeResident({
@@ -237,6 +326,58 @@ describe('position-command-center adapter', () => {
 
     expect(viewModel.selectedResident?.activityBlockedReason).toBe('backend blocked');
     expect(viewModel.selectedResident?.recentActivity).toEqual([]);
+  });
+
+  it('ignores stale activity from another device when deriving activity state', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const snapshot = {
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: null,
+      records: [
+        {
+          resident,
+          error: null,
+          latestStatus: {
+            device_id: resident.deviceId,
+            server_received_at: '2026-03-28T00:00:00.000Z'
+          } as never
+        }
+      ]
+    };
+
+    const blockedMismatch = buildPositionCommandCenterViewModel(snapshot, {
+      selectedResidentId: resident.residentId,
+      selectedResidentActivity: {
+        deviceId: 'other-device',
+        fetchedAt: '2026-03-28T00:00:30.000Z',
+        recentActivity: [],
+        loadError: 'stale other device'
+      }
+    });
+
+    const readyMatch = buildPositionCommandCenterViewModel(snapshot, {
+      selectedResidentId: resident.residentId,
+      selectedResidentActivity: {
+        deviceId: resident.deviceId,
+        fetchedAt: '2026-03-28T00:00:30.000Z',
+        recentActivity: [
+          {
+            id: 'activity-1',
+            timestamp: '2026-03-28T00:00:25.000Z',
+            tone: 'info',
+            title: 'Latest sync',
+            detail: 'Status update received from device.',
+            source: 'mongo-upstream'
+          }
+        ],
+        loadError: null
+      }
+    });
+
+    expect(blockedMismatch.activityState).toBe('empty');
+    expect(blockedMismatch.selectedResident?.recentActivity).toEqual([]);
+    expect(readyMatch.activityState).toBe('ready');
+    expect(readyMatch.selectedResident?.recentActivity).toHaveLength(1);
   });
 
   it('marks the initial snapshot as loading instead of fake offline ready state', () => {

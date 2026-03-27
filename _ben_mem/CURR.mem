@@ -1,5 +1,5 @@
 V.mem.ver=1
-V.mem.ts=2026-03-28T04:06:49+08:00
+V.mem.ts=2026-03-28T06:06:10+08:00
 V.ctx.root=E:\FYP
 V.ctx.repo=E:\FYP\AIST-Final-Year-Project-main
 V.ctx.branch=ben/frontend-only-improve
@@ -49,7 +49,9 @@ V.frontend.shell.header.routes_checked=[overview,position]
 V.frontend.build=ok
 V.frontend.build.ts=2026-03-28T04:06:00+08:00
 V.frontend.test=ok
-V.frontend.test.ts=2026-03-28T03:36:00+08:00
+V.frontend.test.ts=2026-03-28T06:05:27+08:00
+V.frontend.pr15.review.blockers.fixed=[localized-fall-confirmed-parsing,activity-state-device-gating]
+V.frontend.pr15.review.blockers.files=[frontend/src/adapters/position-command-center.ts,frontend/src/adapters/position-command-center.test.ts]
 V.frontend.runtime.position=ok
 V.frontend.runtime.position.url=http://127.0.0.1:4176/position
 V.frontend.runtime.position.error_state=visible
