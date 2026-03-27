@@ -1,0 +1,13 @@
+V.mem.ts.old=2026-03-23T00:03:48+08:00
+V.mem.ts.new=2026-03-23T00:05:03+08:00
+V.frontend.exec.end=2026-03-23T00:05:03+08:00
+V.frontend.exec.shell=done
+V.frontend.exec.overview=done
+V.frontend.exec.docs=done
+V.frontend.exec.build.ambient=ok
+V.frontend.exec.preview.url=http://127.0.0.1:4173
+V.frontend.exec.playwright.routes=[/,/location,/position]
+V.frontend.exec.playwright.quick_actions=ok
+V.frontend.exec.docs.files=[E:\FYP\AIST-Final-Year-Project-main\docs\frontend-redesign\README.md,E:\FYP\AIST-Final-Year-Project-main\docs\frontend-redesign\01-preflight-and-memory.md,E:\FYP\AIST-Final-Year-Project-main\docs\frontend-redesign\02-shell-overview-and-route-harmonization.md,E:\FYP\AIST-Final-Year-Project-main\docs\frontend-redesign\03-validation.md]
+V.frontend.exec.code.files=[E:\FYP\AIST-Final-Year-Project-main\frontend\src\App.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\components\shell\AppHeader.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\components\shell\QuickActionsDock.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\components\shell\AuthModal.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\components\overview\OverviewExperience.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\styles\tokens.css,E:\FYP\AIST-Final-Year-Project-main\frontend\src\styles\app-shell.css,E:\FYP\AIST-Final-Year-Project-main\frontend\src\styles\overview.css,E:\FYP\AIST-Final-Year-Project-main\frontend\package.json,E:\FYP\AIST-Final-Year-Project-main\frontend\package-lock.json]
+I.frontend.exec.remaining=[locale-encoding-review,recharts-width-warning-review]

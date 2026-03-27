@@ -1,0 +1,7 @@
+V.mem.ts=2026-03-22T22:48:40+08:00
+V.ctx.repo=E:\FYP\AIST-Final-Year-Project-main
+V.frontend.nav.routes=[/,/residents,/location,/position,/flycare,/operations,/family,/admin]
+V.frontend.nav.mode=route-tabs-for-overview+residents+location+operations+family+admin
+V.frontend.flycare.page.unchanged=1
+V.frontend.files.tab-routing=[E:\FYP\AIST-Final-Year-Project-main\frontend\src\App.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\styles\global.css]
+V.run.frontend.build.after_tab_routing=ok

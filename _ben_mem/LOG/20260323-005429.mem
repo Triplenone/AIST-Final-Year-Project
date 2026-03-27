@@ -1,0 +1,11 @@
+V.mem.ts=2026-03-23T00:54:29+08:00
+V.frontend.phase.header_nav.start=2026-03-23T00:45:45+08:00
+R.frontend.phase.header_nav.goal=fix-position-route-header-to-fixed-full-width-topbar-and-refine-nav-visual-hierarchy
+R.frontend.phase.header_nav.skill=frontend-skill
+V.frontend.phase.header_nav.branch=Lin-saved-cleanup-release
+V.frontend.phase.header_nav.files=[E:\FYP\AIST-Final-Year-Project-main\frontend\src\components\shell\AppHeader.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\styles\app-shell.css,E:\FYP\AIST-Final-Year-Project-main\frontend\src\styles\global.css]
+V.frontend.phase.header_nav.layout=fixed-top-full-width-header+inner-constrained-content+body-offset
+V.frontend.phase.header_nav.visual=brand-compressed+nav-tab-strip+lighter-status-badge+active-tab-highlight
+V.frontend.phase.header_nav.build=ok
+V.frontend.phase.header_nav.end=2026-03-23T00:54:29+08:00
+V.git.worktree.modified.frontend_header=[frontend/src/components/shell/AppHeader.tsx,frontend/src/styles/app-shell.css,frontend/src/styles/global.css]

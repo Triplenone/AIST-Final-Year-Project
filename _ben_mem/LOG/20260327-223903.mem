@@ -1,0 +1,11 @@
+V.mem.ts=2026-03-27T22:39:03+08:00
+R.scope=position-phase1
+R.protect=[backend,flycare,route-contract,auth-persistence,theme-persistence]
+R.phase=foundation
+R.repo=E:\FYP\AIST-Final-Year-Project-main
+R.branch=Lin-saved-cleanup-release
+R.files=[docs\README.md,docs\frontend-position\01-phase-foundation.md,docs\frontend-position\10-maintainer-notes.md,docs\frontend-position\11-backend-facing-boundary.md,frontend\src\App.tsx,frontend\src\pages\PositionPage.tsx,frontend\src\styles\global.css,frontend\src\adapters\position-command-center.ts,frontend\src\components\position\PositionResidentRail.tsx,frontend\src\components\position\PositionMapStage.tsx,frontend\src\components\position\PositionDecisionPanel.tsx,frontend\src\components\position\PositionSummaryBar.tsx,frontend\src\styles\position-page.css]
+R.docs=[docs\README.md,docs\frontend-position\01-phase-foundation.md,docs\frontend-position\10-maintainer-notes.md,docs\frontend-position\11-backend-facing-boundary.md]
+R.backend_touch=0
+R.flycare_regress=0
+R.next=docs-hygiene-then-position-phase1-code

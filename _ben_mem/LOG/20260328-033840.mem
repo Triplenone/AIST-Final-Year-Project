@@ -1,0 +1,15 @@
+scope=position-phase3-production
+phase=production
+branch=ben/frontend-only-improve
+files.primary=frontend/src/pages/PositionPage.tsx|frontend/src/adapters/position-command-center.ts|frontend/src/adapters/position-command-center.test.ts|frontend/src/components/position/PositionResidentRail.tsx|frontend/src/components/position/PositionMapStage.tsx|frontend/src/components/position/PositionDecisionPanel.tsx|frontend/src/components/position/PositionSummaryBar.tsx|frontend/src/styles/position-page.css
+files.docs=docs/frontend-position/03-phase-production.md|docs/frontend-position/10-maintainer-notes.md|docs/frontend-position/11-backend-facing-boundary.md|docs/frontend-position/99-handoff.md
+files.mem=_ben_mem/CURR.mem|_ben_mem/LOG/20260328-032128.mem|_ben_mem/LOG/20260328-033840.mem
+build=ok
+test=ok
+runtime.position=ok
+runtime.flycare=ok
+docs=updated
+backend_touch=0
+flycare_regress=0
+blocker=backend/backend/.env-extra-keys-settings-validation
+next=wait-for-backend-fix-before-live-validation

@@ -1,0 +1,14 @@
+scope=pr15-review-blocker-fix
+phase=production-followup
+branch=ben/frontend-only-improve
+files=frontend/src/adapters/position-command-center.ts|frontend/src/adapters/position-command-center.test.ts|_ben_mem/CURR.mem
+fix.localized_fall_confirmed=done
+fix.activity_state_device_gate=done
+test=ok
+test.ts=2026-03-28T06:05:27+08:00
+build=ok
+build.ts=2026-03-28T06:05:27+08:00
+backend_touch=0
+flycare_regress=0
+blocker=backend/backend/.env extra keys rejected by current Settings model
+next=reply-pr-review-and-merge-when-approved

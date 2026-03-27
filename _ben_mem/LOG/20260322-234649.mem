@@ -1,0 +1,9 @@
+V.mem.ts.old=2026-03-22T22:48:40+08:00
+V.mem.ts.new=2026-03-22T23:46:49+08:00
+V.frontend.exec.start=2026-03-22T23:46:49+08:00
+R.frontend.exec.request=execute-ambient-care-plan
+R.frontend.exec.constraints=[no-backend-change,no-flycare-change,docs-zh-CN+technical-terms,code-comments-required,memory-before-and-after]
+R.frontend.exec.skills=[frontend-skill,playwright-interactive,playwright,screenshot,imagegen-if-needed]
+R.frontend.exec.design_source=repo-baseline
+R.frontend.exec.hero_asset=imagegen-allowed
+I.frontend.exec.phase.order=[preflight-memory,docs-skeleton,shell-tokens,overview,non-flycare-harmonization,validation]

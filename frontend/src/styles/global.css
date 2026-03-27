@@ -305,180 +305,10 @@ body,
 }
 
 /* Position 页：顶栏贴顶 + 全宽 */
-.app-background--position {
-  padding-top: 0;
-  overflow-x: hidden;
-}
-.app-background--position .app-header {
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  padding: 0.65rem 1.25rem;
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  box-sizing: border-box;
-}
-.app-background--position .app-shell {
-  gap: 1rem;
-}
 
 /* Position 页顶栏：brand 更小且靠左上、nav 单行；actions 已移至页面右下角 */
-.app-background--position .app-header {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 0.75rem 1.25rem;
-}
-.app-background--position .brand {
-  min-width: 0;
-  flex: none;
-  align-self: center;
-  justify-self: start;
-}
-.app-background--position .brand-mark {
-  font-size: 1rem;
-  line-height: 1.2;
-}
-.app-background--position .brand-tagline {
-  font-size: 0.65rem;
-  max-width: none;
-  margin-top: 0.1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.app-background--position .header-nav {
-  flex-wrap: nowrap;
-  justify-self: center;
-  gap: 0.4rem 0.75rem;
-  font-size: 0.92rem;
-  margin-left: 2rem;
-}
-.app-background--position .header-nav a {
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  background: var(--bg-card, #fff);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-}
-.app-background--position .header-nav a:hover,
-.app-background--position .header-nav a:focus-visible {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  outline: none;
-}
-.app-background--position .header-nav a.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-}
 /* FlyCare 页：隐藏导航并将品牌居中 */
-.app-background--position .app-header.app-header--flycare {
-  grid-template-columns: 1fr;
-  justify-items: center;
-}
-.app-background--position .app-header.app-header--flycare .brand {
-  justify-self: center;
-  align-items: center;
-  text-align: center;
-}
-.app-background--position .app-header.app-header--flycare .brand-tagline {
-  max-width: none;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
 /* Position 页：actions 弹窗与展开/收起按钮固定于页面右下角 */
-.app-background--position .actions-drawer {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 1000;
-  display: flex;
-  flex-direction: row-reverse;
-  align-items: flex-end;
-  justify-content: flex-end;
-  overflow: visible;
-}
-.app-background--position .actions-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  min-width: 2.25rem;
-  height: 3.5rem;
-  padding: 0 0.35rem;
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  background: var(--bg-soft, #f0f2f5);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-  flex-shrink: 0;
-  box-sizing: border-box;
-}
-.app-background--position .actions-toggle:hover,
-.app-background--position .actions-toggle:focus-visible {
-  background: var(--accent-soft);
-  outline: none;
-}
-.app-background--position .actions-toggle__arrow {
-  font-size: 0.75rem;
-  line-height: 1;
-}
-.app-background--position .actions-panel {
-  position: absolute;
-  right: calc(2.25rem + 1rem);
-  bottom: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  width: 0;
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-width 0.28s ease, opacity 0.2s ease;
-  border-radius: 8px;
-  border: 1px solid var(--border-soft);
-  border-right: none;
-  /* border-top-right-radius: 0;
-  border-bottom-right-radius: 0; */
-  background: var(--bg-panel);
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.12);
-  white-space: nowrap;
-}
-.app-background--position .actions-panel--open {
-  width: auto;
-  max-width: 600px;
-  height: 3.5rem;
-  opacity: 1;
-  overflow: visible;
-}
-.app-background--position .actions-drawer .actions {
-  flex-wrap: nowrap;
-  gap: 0.65rem;
-  padding: 0 0.85rem 0 0.75rem;
-  height: 100%;
-  min-height: 3.5rem;
-  flex: none;
-  min-width: 0;
-  align-items: center;
-  box-sizing: border-box;
-}
-.app-background--position .actions-drawer .theme-toggle {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-}
-.app-background--position .actions-drawer .auth-menu {
-  padding: 0.35rem 0.6rem;
-}
-.app-background--position .actions-drawer .auth-menu__name,
-.app-background--position .actions-drawer .auth-menu__role {
-  font-size: 0.8rem;
-}
 
 .tab-page-stack {
   width: min(1280px, 100%);
@@ -518,6 +348,8 @@ body,
 }
 
 /* POSITION 页面：左中右三列布局，中间固定 600px，左右弹性；列间距固定，页面宽度变化只改变左右两列 */
+/* Legacy .position-page__* stays here for FlyCare compatibility.
+   New Position Command Center styles live in position-page.css. */
 .position-page {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) 600px minmax(300px, 1fr);
@@ -533,7 +365,7 @@ body,
 .position-page__left,
 .position-page__right {
   position: sticky;
-  top: 1rem;
+  top: calc(var(--ambient-header-offset, 7rem) + 1rem);
 }
 .position-page__panel {
   background: var(--bg-panel);
@@ -2267,16 +2099,8 @@ tbody tr:focus-within {
     align-items: stretch;
   }
 
-  .app-background--position .app-header {
-    grid-template-columns: auto 1fr;
-  }
-
   .header-nav {
     justify-content: flex-start;
-  }
-
-  .app-background--position .header-nav {
-    flex-wrap: wrap;
   }
 
   .actions {

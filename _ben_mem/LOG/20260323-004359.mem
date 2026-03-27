@@ -1,0 +1,5 @@
+V.mem.ts=2026-03-23T00:43:59+08:00
+V.git.cleanup_followup.start=2026-03-23T00:43:59+08:00
+R.git.cleanup_followup.goal=commit-runbooks+release-template-and-ignore-generated-local-dirs
+R.git.cleanup_followup.include=[docs/setup.md,docs/troubleshooting.md,scripts/release/quickstart.template.md,.gitignore]
+R.git.cleanup_followup.exclude=[release,.postman,postman]

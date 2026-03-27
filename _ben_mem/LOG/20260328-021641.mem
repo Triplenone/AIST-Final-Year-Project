@@ -1,0 +1,11 @@
+V.ts=2026-03-28T02:16:41+08:00
+V.branch=ben/frontend-only-improve
+R.scope=position-wide-layout-correction
+R.phase=command-post-fix
+R.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+R.files.target=[frontend/src/pages/PositionPage.tsx,frontend/src/components/position/PositionMapStage.tsx,frontend/src/components/position/PositionSummaryBar.tsx,frontend/src/styles/position-page.css]
+R.reason=restore-separate-selected-resident-block-and-center-map-stage
+V.layout.wide.target=left-stack-center-map-right-panel
+V.layout.selected_resident.target=below-user-list-and-separate-from-map-stage
+V.layout.map.target=centered-and-dominant
+V.backend_touch=0
