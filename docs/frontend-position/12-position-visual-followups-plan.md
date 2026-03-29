@@ -6,6 +6,15 @@
 - improve readability, hierarchy, and route identity without reopening Position architecture work
 - keep backend contracts, route behavior, and Position adapter logic untouched
 
+## Execution status
+
+- Run 0 complete: [13-position-presentation-recovery-workstream.md](E:/FYP/AIST-Final-Year-Project-main/docs/frontend-position/13-position-presentation-recovery-workstream.md)
+- Run A complete: [14-position-header-shell-readability-workstream.md](E:/FYP/AIST-Final-Year-Project-main/docs/frontend-position/14-position-header-shell-readability-workstream.md)
+- Run B complete: [15-position-resident-rail-summary-hierarchy-workstream.md](E:/FYP/AIST-Final-Year-Project-main/docs/frontend-position/15-position-resident-rail-summary-hierarchy-workstream.md)
+- Run C complete: [16-position-map-stage-emphasis-workstream.md](E:/FYP/AIST-Final-Year-Project-main/docs/frontend-position/16-position-map-stage-emphasis-workstream.md)
+- Run D complete: [17-position-decision-panel-readability-workstream.md](E:/FYP/AIST-Final-Year-Project-main/docs/frontend-position/17-position-decision-panel-readability-workstream.md)
+- Run E complete in this closeout
+
 ## Visual thesis
 
 - build Position as a calm clinical command desk: dark shell frame, warm porcelain work surfaces, strong black text, and a single map-first focal plane
@@ -66,6 +75,7 @@
 
 ### Run 0: Position presentation recovery only
 
+- status: complete
 - target: remove dark-mode readability failures on `/position` and wire the eldercare exact SVG into the Position background layer
 - target files:
   - `frontend/src/styles/position-page.css`
@@ -80,6 +90,7 @@
 
 ### Run A: Position header and shell readability only
 
+- status: complete
 - target: make the Proactive Guardian Care route identity readable and intentional in the shared shell
 - target files:
   - `frontend/src/styles/app-shell.css`
@@ -90,6 +101,7 @@
 
 ### Run B: Resident rail and summary hierarchy only
 
+- status: complete
 - target: reduce card-wall feeling on the left side and improve urgency scanning
 - target files:
   - `frontend/src/styles/position-page.css`
@@ -102,6 +114,7 @@
 
 ### Run C: Map stage emphasis and surface unification only
 
+- status: complete
 - target: make the center stage visually dominant and better integrated with the two side columns
 - target files:
   - `frontend/src/styles/position-page.css`
@@ -113,6 +126,7 @@
 
 ### Run D: Decision panel readability and sticky balance only
 
+- status: complete
 - target: improve the right panel's hierarchy, contrast, and sticky behavior
 - target files:
   - `frontend/src/styles/position-page.css`
@@ -124,6 +138,7 @@
 
 ### Run E: Position closeout only
 
+- status: complete
 - target: validate, document, and hand off the Position visual follow-up runs
 - target files:
   - `docs/frontend-position/12-position-visual-followups-plan.md`
@@ -147,3 +162,10 @@
 - Run C: map stage emphasis and surface unification
 - Run D: decision panel readability and sticky balance
 - Run E: closeout
+
+## Closeout summary
+
+- Position visual follow-up runs are closed on `ben/frontend-only-improve`
+- active Position background asset remains `frontend/src/assets/brand/texture-eldercare-exact-full.svg`
+- PNG fallback was not used in source
+- remaining runtime limitation is unchanged: local `status_update` upstream requests still return 404s, so some ready-state views remain only partially exercised

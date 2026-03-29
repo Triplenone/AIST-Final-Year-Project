@@ -1,168 +1,114 @@
-# Position Command Center Handoff
+# Position Visual Follow-up Handoff
 
-## 1. Purpose
+## Purpose
 
-这份 handoff 给：
-- future Codex
-- future frontend maintainer
-- backend engineer
-- reviewer with no prior chat context
+This handoff is the repo-level closeout for the Proactive Guardian Care visual follow-up runs on `/position`.
 
-它要回答三件事：
-1. Position rebuild 现在做到哪一层
-2. 哪些 contract 已经锁定
-3. 下一次进入 repo 时什么能做，什么不能做
+It is meant for:
+- future Codex runs
+- frontend maintainers
+- reviewers who were not present in the original chat
 
----
+## Current status
 
-## 2. Current Rebuild Status
+Position visual follow-ups are closed on branch `ben/frontend-only-improve`.
 
-已完成：
-- Phase 1, Foundation
-- Phase 2, Command
-- Phase 3, Production hardening
+Completed runs:
+- Run 0: presentation recovery
+- Run A: header and shell readability
+- Run B: resident rail and summary hierarchy
+- Run C: map stage emphasis and surface unification
+- Run D: decision panel readability and sticky balance
+- Run E: closeout
 
-当前 Position 不是原始 monolithic page。
+The route now reads as a calm clinical command desk:
+- dark shell and route identity are readable
+- left rail scans faster and selected resident context is clearer
+- center map stage is the primary focal plane
+- right decision panel behaves like a briefing column instead of another generic card block
 
-当前交付包含：
-- adapter-led truth model
-- command-oriented resident ordering
-- recent activity context
-- explicit loading / empty / error / partial-error states
-- stronger stale presentation
-- map-first responsive behavior
-- keyboard/focus hardening
-- reduced-motion-safe behavior
+## Current implementation boundaries
 
----
+Locked file ownership:
+- page orchestration: `frontend/src/pages/PositionPage.tsx`
+- adapter truth model: `frontend/src/adapters/position-command-center.ts`
+- Position styling: `frontend/src/styles/position-page.css`
 
-## 3. Current Architecture
-
-Current structure:
-- page orchestrator: `frontend/src/pages/PositionPage.tsx`
-- adapter: `frontend/src/adapters/position-command-center.ts`
-- left rail: `PositionResidentRail`
-- selected resident summary: `PositionSummaryBar`
-- center stage: `PositionMapStage`
-- right panel: `PositionDecisionPanel`
-- stylesheet: `frontend/src/styles/position-page.css`
-
-Rule:
-- Position derivation stays in adapter
-- Position growth stays out of `global.css`
-
----
-
-## 4. Locked Frontend Contracts
-
-Resident-state contract:
-- `truthState = online | stale | offline`
-- `freshnessLevel = live | delayed | stale`
-- `riskLevel = stable | warning | critical`
-- `priorityBand = critical | warning | stale-only | stable`
-- `zoneCommandState = holding | target-pending | target-reached | zone-unknown`
-
-Surface-state contract:
-- `PositionSurfaceState = loading | ready | empty | error | partial-error`
-- `PositionActivityState = loading | ready | empty | blocked`
-
-Rule:
-- resident state 和 surface state 不能混成一套
-
----
-
-## 5. Protected Boundaries
-
-Throughout the rebuild, the following remained protected:
-- backend files
-- backend API contract
-- backend schema
-- `frontend/src/pages/FlyCarePage.tsx`
-- route paths
+Still protected:
+- `backend/backend/`
+- backend routes and payload contracts
+- database schema
+- route contract
 - auth persistence
 - theme persistence
+- `frontend/src/pages/FlyCarePage.tsx`
 
-Still true now:
-- no backend workaround belongs inside Position component render paths
-- no Position-specific CSS belongs in `global.css`
+Rules that still apply:
+- keep Position derivation in the adapter
+- keep Position-specific visual growth out of `global.css`
+- keep map-first layout priority on wide, medium, and narrow breakpoints
+- keep explicit loading, empty, error, and partial-error states
 
----
+## Active assets and visual rules
 
-## 6. Current Data Reality
+Active Position background asset:
+- `frontend/src/assets/brand/texture-eldercare-exact-full.svg`
 
-Current safe frontend sources:
-- `mongoUpstreamApi.getLatest(...)`
-- `mongoUpstreamApi.list(...)`
+Asset rule:
+- SVG is the active source
+- PNG fallback was not used in source
+- `frontend/src/assets/brand/texture-eldercare.png` remains backup-only
 
-Current limitation:
-- resident registry is still frontend-owned
-- repo still lacks authoritative resident-device-event mapping
+Current layout rule:
+- wide: `left -> center -> panel`
+- medium: map-first with panel paired on the right
+- narrow: stacked `center -> left -> panel`
 
-Implication:
-- recent activity is still selected-resident-only
-- SQL `eventApi` and `deviceDataLogApi` are still out of scope for Position command logic
+Current UI rule:
+- map stage remains the strongest visual surface
+- resident rail stays readable and urgency-led
+- decision panel supports the map and must not overpower it
 
----
+## Validation reality
 
-## 7. Runtime Validation Reality
-
-Verified:
+Validated during the visual follow-up sequence:
 - `npm run build`
-- `npm run test`
-- `/position` preview renders
-- `/flycare` preview renders
+- `npm run lint`
+- Playwright smoke on `/position` in light, dark, and mobile
 
-Still blocked:
-- healthy live backend validation
+Verified outcomes:
+- no horizontal overflow detected on `/position`
+- shell/header readability is stable in both themes
+- exact SVG eldercare background is active
+- resident rail, map stage, and decision panel all stay readable in dark mode
 
-Blocker:
-- `backend/backend/.env` contains extra keys
-- current `Settings` validation rejects them
+Still not fully validated:
+- full ready-state operator content driven by upstream activity and status data
 
-Do not claim live backend success until that blocker is gone.
+Current runtime limitation:
+- local `status_update` upstream requests still return 404s in the current repo/runtime state
+- React Router future-flag warnings are still present
 
----
+Do not describe Position as fully live-data-validated until the upstream data path is healthy.
 
-## 8. Current Layout Rule
+## Safe next work
 
-Locked layout rule:
-- wide desktop: left rail + selected resident summary, center map stage, right decision panel
-- medium laptop: map-first layout
-- narrow viewport: stacked `center -> left -> panel`
+Safe next steps:
+- a new issue-sized Position workstream with explicit scope
+- backend or upstream data fixes in their own bounded workstream
+- ready-state validation after upstream data becomes available
 
-Hard rule:
-- map stage stays primary
-- do not demote map below the fold again
+Unsafe next steps:
+- mixing FlyCare changes into Position follow-up work
+- moving adapter logic into component render paths
+- broad shell cleanup hidden inside a Position PR
+- backend contract changes disguised as visual work
 
----
+## Start point for future maintainers
 
-## 9. Current UX Rule
-
-Position is now a command workspace, not a style exercise.
-
-Keep:
-- operator-readable labels
-- visible stale/error states
-- explicit empty states
-- explicit blocked activity state
-- visible focus on key controls
-
-Do not:
-- make stale/offline look calm just to look cleaner
-- merge surface-state back into implicit `null` handling
-- reopen Phase 1 / 2 structure for taste-only reasons
-
----
-
-## 10. Recommended Next Step
-
-Safe next work only after this handoff:
-- backend blocker fix, then real live runtime validation
-- or a new Position-only product layer with clear scope
-
-Unsafe next work:
-- backend contract rewrite hidden inside frontend PR
-- fuzzy SQL/Mongo resident join in component layer
-- FlyCare changes piggybacked onto Position work
-
-If a future maintainer starts from this file plus `_ben_mem/CURR.mem`, they should not need prior chat history.
+If a future maintainer needs current Position state, read in this order:
+1. `_ben_mem/CURR.mem`
+2. `docs/frontend-position/12-position-visual-followups-plan.md`
+3. this file
+4. `frontend/src/styles/position-page.css`
+5. `frontend/src/adapters/position-command-center.ts`
