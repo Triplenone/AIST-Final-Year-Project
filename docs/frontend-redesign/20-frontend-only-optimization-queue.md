@@ -136,6 +136,8 @@
 
 ### Run 5: Operations and Family consistency only
 
+- status: completed, see `docs/frontend-redesign/25-operations-family-consistency-workstream.md`
+
 - objective: bring `/operations` and `/family` to the same utility quality bar as the improved shell and route surfaces
 - target files:
   - `frontend/src/App.tsx` only where these routes are composed

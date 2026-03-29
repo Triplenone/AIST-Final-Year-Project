@@ -52,6 +52,7 @@ type Alerts = ReturnType<typeof deriveAlertsFromResidents>;
 type Alert = Alerts[number];
 type Insights = ReturnType<typeof deriveInsightsFromResidents>;
 type Insight = Insights[number];
+type LanguageVariant = 'en' | 'zh-CN' | 'zh-HK';
 
 type DashboardPageKey =
   | 'overview'
@@ -134,6 +135,128 @@ const resolveStageTone = (page: DashboardPageKey): 'overview' | 'workspace' | 'u
   }
 };
 
+const resolveLanguageVariant = (language: string): LanguageVariant => {
+  const normalized = language.toLowerCase();
+  if (normalized.startsWith('zh-hk') || normalized.startsWith('zh-tw')) {
+    return 'zh-HK';
+  }
+  if (normalized.startsWith('zh')) {
+    return 'zh-CN';
+  }
+  return 'en';
+};
+
+const ROUTE_BRIEF_COPY = {
+  en: {
+    operations: {
+      chip: 'Shift brief',
+      summaryQueue: 'Open queue',
+      summaryEscalations: 'Escalations',
+      summaryFalls: 'Fall watch',
+      summarySync: 'Last brief',
+      mainTitle: 'Alert queue',
+      mainNote: 'Signal-ranked issues requiring operator follow-up.',
+      asideTitle: 'Shift focus',
+      asideNote: 'Residents most likely to need escalation in the next round.',
+      coverageTitle: 'Coverage snapshot',
+      coverageNote: 'Keep the queue short and verify the next handoff before notifying family.',
+      coverageResidents: 'Active residents',
+      coveragePriority: 'Priority watch',
+      coverageSync: 'Briefed at',
+      emptyResidents: 'No residents need escalation right now.'
+    },
+    family: {
+      chip: 'Communication brief',
+      summaryUpdates: 'Share-ready updates',
+      summaryStable: 'Stable residents',
+      summaryFollowUps: 'Priority follow-ups',
+      summarySync: 'Updated at',
+      mainTitle: 'Family-ready updates',
+      mainNote: 'Short notes that can be relayed without opening the full chart.',
+      asideTitle: 'Outreach queue',
+      asideNote: 'Residents whose families may need proactive context.',
+      coverageTitle: 'Communication pulse',
+      coverageNote: 'Reassure first, escalate only when the resident signal changes.',
+      coverageResidents: 'Stable now',
+      coveragePriority: 'Needs context',
+      coverageSync: 'Updated at',
+      emptyResidents: 'No proactive outreach queue right now.'
+    }
+  },
+  'zh-CN': {
+    operations: {
+      chip: '\u503c\u73ed\u7b80\u62a5',
+      summaryQueue: '\u5f85\u5904\u7406',
+      summaryEscalations: '\u9700\u5347\u7ea7',
+      summaryFalls: '\u8dcc\u5012\u76d1\u63a7',
+      summarySync: '\u6700\u540e\u7b80\u62a5',
+      mainTitle: '\u8b66\u62a5\u961f\u5217',
+      mainNote: '\u6309\u4fe1\u53f7\u4f18\u5148\u7ea7\u6392\u5217\uff0c\u7528\u4e8e\u5feb\u901f\u8ddf\u8fdb\u3002',
+      asideTitle: '\u73ed\u6b21\u5173\u6ce8',
+      asideNote: '\u4e0b\u4e00\u8f6e\u6700\u53ef\u80fd\u9700\u8981\u5347\u7ea7\u5904\u7406\u7684\u5bf9\u8c61\u3002',
+      coverageTitle: '\u8986\u76d6\u5feb\u7167',
+      coverageNote: '\u4fdd\u6301\u961f\u5217\u7b80\u77ed\uff0c\u5e76\u5728\u901a\u77e5\u5bb6\u5c5e\u524d\u5148\u5b8c\u6210\u4ea4\u63a5\u786e\u8ba4\u3002',
+      coverageResidents: '\u5728\u7ebf\u5c45\u6c11',
+      coveragePriority: '\u91cd\u70b9\u76d1\u770b',
+      coverageSync: '\u7b80\u62a5\u65f6\u95f4',
+      emptyResidents: '\u5f53\u524d\u6ca1\u6709\u9700\u8981\u5347\u7ea7\u7684\u5bf9\u8c61\u3002'
+    },
+    family: {
+      chip: '\u6c9f\u901a\u7b80\u62a5',
+      summaryUpdates: '\u53ef\u5bf9\u5916\u66f4\u65b0',
+      summaryStable: '\u7a33\u5b9a\u5c45\u6c11',
+      summaryFollowUps: '\u91cd\u70b9\u8ddf\u8fdb',
+      summarySync: '\u66f4\u65b0\u65f6\u95f4',
+      mainTitle: '\u5bb6\u5c5e\u66f4\u65b0',
+      mainNote: '\u4e0d\u7528\u6253\u5f00\u5b8c\u6574\u6863\u6848\u4e5f\u80fd\u76f4\u63a5\u4f20\u8fbe\u7684\u77ed\u8981\u8bf4\u660e\u3002',
+      asideTitle: '\u6c9f\u901a\u961f\u5217',
+      asideNote: '\u5bb6\u5c5e\u53ef\u80fd\u9700\u8981\u63d0\u524d\u83b7\u5f97\u80cc\u666f\u8bf4\u660e\u7684\u5bf9\u8c61\u3002',
+      coverageTitle: '\u6c9f\u901a\u8109\u640f',
+      coverageNote: '\u5148\u505a\u5b89\u629a\uff0c\u53ea\u5728\u4fe1\u53f7\u53d8\u5316\u65f6\u518d\u5347\u7ea7\u6c9f\u901a\u3002',
+      coverageResidents: '\u7a33\u5b9a\u4e2d',
+      coveragePriority: '\u9700\u80cc\u666f\u8bf4\u660e',
+      coverageSync: '\u66f4\u65b0\u65f6\u95f4',
+      emptyResidents: '\u5f53\u524d\u6ca1\u6709\u9700\u8981\u4e3b\u52a8\u6c9f\u901a\u7684\u5bf9\u8c61\u3002'
+    }
+  },
+  'zh-HK': {
+    operations: {
+      chip: '\u503c\u73ed\u7c21\u5831',
+      summaryQueue: '\u5f85\u8655\u7406',
+      summaryEscalations: '\u9700\u5347\u7d1a',
+      summaryFalls: '\u8dcc\u5012\u76e3\u63a7',
+      summarySync: '\u6700\u5f8c\u7c21\u5831',
+      mainTitle: '\u8b66\u793a\u4f47\u5217',
+      mainNote: '\u6309\u4fe1\u865f\u512a\u5148\u7d1a\u6392\u5217\uff0c\u4f9b\u7576\u73ed\u5feb\u901f\u8ddf\u9032\u3002',
+      asideTitle: '\u73ed\u6b21\u95dc\u6ce8',
+      asideNote: '\u4e0b\u4e00\u8f2a\u6700\u53ef\u80fd\u9700\u8981\u5347\u7d1a\u8655\u7406\u7684\u5c0d\u8c61\u3002',
+      coverageTitle: '\u8986\u84cb\u5feb\u7167',
+      coverageNote: '\u4fdd\u6301\u4f47\u5217\u7c21\u77ed\uff0c\u4e26\u5728\u901a\u77e5\u5bb6\u5c6c\u524d\u5148\u5b8c\u6210\u4ea4\u63a5\u78ba\u8a8d\u3002',
+      coverageResidents: '\u5728\u7dda\u4f4f\u6236',
+      coveragePriority: '\u91cd\u9ede\u76e3\u770b',
+      coverageSync: '\u7c21\u5831\u6642\u9593',
+      emptyResidents: '\u76ee\u524d\u6c92\u6709\u9700\u8981\u5347\u7d1a\u7684\u5c0d\u8c61\u3002'
+    },
+    family: {
+      chip: '\u6e9d\u901a\u7c21\u5831',
+      summaryUpdates: '\u53ef\u5c0d\u5916\u66f4\u65b0',
+      summaryStable: '\u7a69\u5b9a\u4f4f\u6236',
+      summaryFollowUps: '\u91cd\u9ede\u8ddf\u9032',
+      summarySync: '\u66f4\u65b0\u6642\u9593',
+      mainTitle: '\u5bb6\u5c6c\u66f4\u65b0',
+      mainNote: '\u7121\u9808\u6253\u958b\u5b8c\u6574\u6a94\u6848\uff0c\u4ea6\u80fd\u76f4\u63a5\u50b3\u9054\u7684\u77ed\u8981\u8aaa\u660e\u3002',
+      asideTitle: '\u6e9d\u901a\u4f47\u5217',
+      asideNote: '\u5bb6\u5c6c\u53ef\u80fd\u9700\u8981\u9810\u5148\u7372\u5f97\u80cc\u666f\u8aaa\u660e\u7684\u5c0d\u8c61\u3002',
+      coverageTitle: '\u6e9d\u901a\u8108\u640f',
+      coverageNote: '\u5148\u505a\u5b89\u64ab\uff0c\u53ea\u5728\u4fe1\u865f\u8b8a\u5316\u6642\u624d\u5347\u7d1a\u6e9d\u901a\u3002',
+      coverageResidents: '\u7a69\u5b9a\u4e2d',
+      coveragePriority: '\u9700\u80cc\u666f\u8aaa\u660e',
+      coverageSync: '\u66f4\u65b0\u6642\u9593',
+      emptyResidents: '\u76ee\u524d\u6c92\u6709\u9700\u8981\u4e3b\u52d5\u6e9d\u901a\u7684\u5c0d\u8c61\u3002'
+    }
+  }
+} as const;
+
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pick = <T,>(values: T[]) => values[randomInt(0, values.length - 1)];
 
@@ -192,6 +315,8 @@ export default function App() {
   const { t, i18n } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
   const activeLanguage = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const languageVariant = resolveLanguageVariant(activeLanguage);
+  const routeBriefCopy = ROUTE_BRIEF_COPY[languageVariant];
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -537,6 +662,44 @@ export default function App() {
     () => residentList.filter((resident) => resident.status === 'high' || resident.status === 'followUp').length,
     [residentList]
   );
+  const stableResidentCount = useMemo(
+    () => residentList.filter((resident) => !resident.checkedOut && resident.status === 'stable').length,
+    [residentList]
+  );
+
+  const operationFocusResidents = useMemo(() => {
+    const activeResidents = residentList.filter((resident) => !resident.checkedOut);
+    const escalatedResidents = activeResidents.filter(
+      (resident) => resident.status === 'high' || resident.status === 'followUp'
+    );
+    return (escalatedResidents.length > 0 ? escalatedResidents : activeResidents).slice(0, 3);
+  }, [residentList]);
+
+  const familyOutreachResidents = useMemo(() => {
+    const activeResidents = residentList.filter((resident) => !resident.checkedOut);
+    const contextResidents = activeResidents.filter(
+      (resident) => resident.status === 'high' || resident.status === 'followUp'
+    );
+    const steadyResidents = activeResidents.filter((resident) => resident.status === 'stable');
+    const nextResidents =
+      contextResidents.length > 0 ? contextResidents : steadyResidents.length > 0 ? steadyResidents : activeResidents;
+    return nextResidents.slice(0, 3);
+  }, [residentList]);
+
+  const formatResidentBriefTime = useCallback(
+    (resident: Resident) => {
+      const timestamp = primaryTimestamp(resident);
+      if (!timestamp) {
+        return '--';
+      }
+      const parsed = new Date(timestamp);
+      if (Number.isNaN(parsed.getTime())) {
+        return '--';
+      }
+      return lastSeenFormatter.format(parsed);
+    },
+    [lastSeenFormatter]
+  );
 
   const handleSimulateNewData = useCallback(() => {
     const targetResidents = residentList.slice(0, 7);
@@ -579,45 +742,285 @@ export default function App() {
     setTheme((previous) => (previous === 'light' ? 'dark' : 'light'));
   }, []);
 
-  const renderAlertsPanel = () => (
-    <section className="route-surface route-surface--narrow">
-      <div className="route-surface__header">
-        <div>
-          <p className="route-surface__eyebrow">Operations</p>
-          <h2>{t('alerts.title')}</h2>
-        </div>
-        <span className="route-surface__chip">{t('alerts.subtitle')}</span>
-      </div>
-      <ul className="alert-list">
-        {alerts.map((alert) => (
-          <li key={alert.id} className={`alert alert-${alert.level}`}>
-            <span className="alert-pill">{t(`alertLevels.${alert.level}`)}</span>
-            <span className="alert-text">{alert.message}</span>
-            <time className="alert-time" dateTime={alert.timestamp ?? undefined}>
-              {alert.time}
-            </time>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+  const renderAlertsPanel = () => {
+    const copy = routeBriefCopy.operations;
+    const summaryItems = [
+      {
+        key: 'queue',
+        label: copy.summaryQueue,
+        value: alerts.length,
+        tone: 'critical' as const
+      },
+      {
+        key: 'priority',
+        label: copy.summaryEscalations,
+        value: priorityResidentCount,
+        tone: 'warning' as const
+      },
+      {
+        key: 'falls',
+        label: copy.summaryFalls,
+        value: fallEvents.length,
+        tone: 'info' as const
+      },
+      {
+        key: 'sync',
+        label: copy.summarySync,
+        value: formattedTime,
+        tone: 'neutral' as const
+      }
+    ];
 
-  const renderInsightsPanel = () => (
-    <section className="route-surface route-surface--narrow">
-      <div className="route-surface__header">
-        <div>
-          <p className="route-surface__eyebrow">Family</p>
-          <h2>{t('insights.title')}</h2>
+    return (
+      <section className="route-surface route-surface--narrow route-surface--brief route-surface--operations">
+        <div className="route-surface__header route-surface__header--brief">
+          <div>
+            <p className="route-surface__eyebrow">Operations</p>
+            <h2>{t('alerts.title')}</h2>
+            <p className="route-surface__note">{copy.mainNote}</p>
+          </div>
+          <span className="route-surface__chip">{copy.chip}</span>
         </div>
-        <span className="route-surface__chip">{t('insights.subtitle')}</span>
-      </div>
-      <ul className="insight-list">
-        {insights.map((insight) => (
-          <li key={insight.id}>{insight.text}</li>
-        ))}
-      </ul>
-    </section>
-  );
+
+        <div className="route-brief__summary" role="list">
+          {summaryItems.map((item) => (
+            <article
+              key={item.key}
+              className={`route-brief__metric route-brief__metric--${item.tone}`}
+              role="listitem"
+            >
+              <span className="route-brief__metric-label">{item.label}</span>
+              <strong className="route-brief__metric-value">{item.value}</strong>
+            </article>
+          ))}
+        </div>
+
+        <div className="route-brief__layout">
+          <section className="route-brief__panel route-brief__panel--primary">
+            <div className="route-brief__panel-header">
+              <div>
+                <p className="route-brief__panel-eyebrow">Operations</p>
+                <h3>{copy.mainTitle}</h3>
+              </div>
+              <span className="route-brief__panel-tag">{t('alerts.subtitle')}</span>
+            </div>
+
+            <ol className="route-brief__list route-brief__list--alerts">
+              {alerts.map((alert, index) => (
+                <li key={alert.id} className={`route-brief__list-item route-brief__list-item--${alert.level}`}>
+                  <span className="route-brief__list-index">{String(index + 1).padStart(2, '0')}</span>
+                  <div className="route-brief__list-copy">
+                    <div className="route-brief__list-meta">
+                      <span className={`route-brief__tone route-brief__tone--${alert.level}`}>
+                        {t(`alertLevels.${alert.level}`)}
+                      </span>
+                      <time dateTime={alert.timestamp ?? undefined}>{alert.time}</time>
+                    </div>
+                    <p>{alert.message}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <aside className="route-brief__sidebar">
+            <section className="route-brief__panel route-brief__panel--secondary">
+              <div className="route-brief__panel-header">
+                <div>
+                  <p className="route-brief__panel-eyebrow">Operations</p>
+                  <h3>{copy.asideTitle}</h3>
+                </div>
+              </div>
+              <p className="route-brief__panel-note">{copy.asideNote}</p>
+              {operationFocusResidents.length > 0 ? (
+                <ul className="route-brief__resident-list">
+                  {operationFocusResidents.map((resident) => (
+                    <li key={resident.id} className="route-brief__resident-item">
+                      <div className="route-brief__resident-top">
+                        <strong>{resident.name}</strong>
+                        <span className={`route-brief__resident-status route-brief__resident-status--${resident.status}`}>
+                          {t(`residents.status.${resident.status}`)}
+                        </span>
+                      </div>
+                      <div className="route-brief__resident-meta">
+                        <span>{resident.lastSeenLocation?.trim() || resident.room?.trim() || t('location.zones.unknown')}</span>
+                        <span>{formatResidentBriefTime(resident)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="route-brief__empty">{copy.emptyResidents}</p>
+              )}
+            </section>
+
+            <section className="route-brief__panel route-brief__panel--compact">
+              <div className="route-brief__panel-header">
+                <div>
+                  <p className="route-brief__panel-eyebrow">Operations</p>
+                  <h3>{copy.coverageTitle}</h3>
+                </div>
+              </div>
+              <div className="route-brief__coverage-grid">
+                <article className="route-brief__coverage-card">
+                  <span className="route-brief__coverage-label">{copy.coverageResidents}</span>
+                  <strong className="route-brief__coverage-value">{activeResidentCount}</strong>
+                </article>
+                <article className="route-brief__coverage-card">
+                  <span className="route-brief__coverage-label">{copy.coveragePriority}</span>
+                  <strong className="route-brief__coverage-value">{priorityResidentCount}</strong>
+                </article>
+                <article className="route-brief__coverage-card">
+                  <span className="route-brief__coverage-label">{copy.coverageSync}</span>
+                  <strong className="route-brief__coverage-value">{formattedTime}</strong>
+                </article>
+              </div>
+              <p className="route-brief__note">{copy.coverageNote}</p>
+            </section>
+          </aside>
+        </div>
+      </section>
+    );
+  };
+
+  const renderInsightsPanel = () => {
+    const copy = routeBriefCopy.family;
+    const summaryItems = [
+      {
+        key: 'updates',
+        label: copy.summaryUpdates,
+        value: insights.length,
+        tone: 'info' as const
+      },
+      {
+        key: 'stable',
+        label: copy.summaryStable,
+        value: stableResidentCount,
+        tone: 'neutral' as const
+      },
+      {
+        key: 'followups',
+        label: copy.summaryFollowUps,
+        value: priorityResidentCount,
+        tone: 'warning' as const
+      },
+      {
+        key: 'sync',
+        label: copy.summarySync,
+        value: formattedTime,
+        tone: 'neutral' as const
+      }
+    ];
+
+    return (
+      <section className="route-surface route-surface--narrow route-surface--brief route-surface--family">
+        <div className="route-surface__header route-surface__header--brief">
+          <div>
+            <p className="route-surface__eyebrow">Family</p>
+            <h2>{t('insights.title')}</h2>
+            <p className="route-surface__note">{copy.mainNote}</p>
+          </div>
+          <span className="route-surface__chip">{copy.chip}</span>
+        </div>
+
+        <div className="route-brief__summary" role="list">
+          {summaryItems.map((item) => (
+            <article
+              key={item.key}
+              className={`route-brief__metric route-brief__metric--${item.tone}`}
+              role="listitem"
+            >
+              <span className="route-brief__metric-label">{item.label}</span>
+              <strong className="route-brief__metric-value">{item.value}</strong>
+            </article>
+          ))}
+        </div>
+
+        <div className="route-brief__layout">
+          <section className="route-brief__panel route-brief__panel--primary">
+            <div className="route-brief__panel-header">
+              <div>
+                <p className="route-brief__panel-eyebrow">Family</p>
+                <h3>{copy.mainTitle}</h3>
+              </div>
+              <span className="route-brief__panel-tag">{t('insights.subtitle')}</span>
+            </div>
+
+            <ol className="route-brief__list route-brief__list--insights">
+              {insights.map((insight, index) => (
+                <li key={insight.id} className="route-brief__list-item route-brief__list-item--insight">
+                  <span className="route-brief__list-index">{String(index + 1).padStart(2, '0')}</span>
+                  <div className="route-brief__list-copy">
+                    <div className="route-brief__list-meta">
+                      <span className="route-brief__tone route-brief__tone--info">{copy.summaryUpdates}</span>
+                      <span>{formattedTime}</span>
+                    </div>
+                    <p>{insight.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <aside className="route-brief__sidebar">
+            <section className="route-brief__panel route-brief__panel--secondary">
+              <div className="route-brief__panel-header">
+                <div>
+                  <p className="route-brief__panel-eyebrow">Family</p>
+                  <h3>{copy.asideTitle}</h3>
+                </div>
+              </div>
+              <p className="route-brief__panel-note">{copy.asideNote}</p>
+              {familyOutreachResidents.length > 0 ? (
+                <ul className="route-brief__resident-list">
+                  {familyOutreachResidents.map((resident) => (
+                    <li key={resident.id} className="route-brief__resident-item">
+                      <div className="route-brief__resident-top">
+                        <strong>{resident.name}</strong>
+                        <span className={`route-brief__resident-status route-brief__resident-status--${resident.status}`}>
+                          {t(`residents.status.${resident.status}`)}
+                        </span>
+                      </div>
+                      <div className="route-brief__resident-meta">
+                        <span>{resident.lastSeenLocation?.trim() || resident.room?.trim() || t('location.zones.unknown')}</span>
+                        <span>{formatResidentBriefTime(resident)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="route-brief__empty">{copy.emptyResidents}</p>
+              )}
+            </section>
+
+            <section className="route-brief__panel route-brief__panel--compact">
+              <div className="route-brief__panel-header">
+                <div>
+                  <p className="route-brief__panel-eyebrow">Family</p>
+                  <h3>{copy.coverageTitle}</h3>
+                </div>
+              </div>
+              <div className="route-brief__coverage-grid">
+                <article className="route-brief__coverage-card">
+                  <span className="route-brief__coverage-label">{copy.coverageResidents}</span>
+                  <strong className="route-brief__coverage-value">{stableResidentCount}</strong>
+                </article>
+                <article className="route-brief__coverage-card">
+                  <span className="route-brief__coverage-label">{copy.coveragePriority}</span>
+                  <strong className="route-brief__coverage-value">{priorityResidentCount}</strong>
+                </article>
+                <article className="route-brief__coverage-card">
+                  <span className="route-brief__coverage-label">{copy.coverageSync}</span>
+                  <strong className="route-brief__coverage-value">{formattedTime}</strong>
+                </article>
+              </div>
+              <p className="route-brief__note">{copy.coverageNote}</p>
+            </section>
+          </aside>
+        </div>
+      </section>
+    );
+  };
 
   // 用 route key 驱动页面切换，避免旧版多重 return 再次回流。
   const renderDashboardPage = () => {
