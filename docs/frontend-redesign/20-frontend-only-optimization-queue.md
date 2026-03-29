@@ -75,6 +75,8 @@
 
 ### Run 2: Overview narrative tightening only
 
+- status: completed, see `docs/frontend-redesign/22-overview-narrative-tightening-workstream.md`
+
 - objective: make Overview read as the canonical brand-led front door instead of a dashboard collage
 - target files:
   - `frontend/src/components/overview/OverviewExperience.tsx`

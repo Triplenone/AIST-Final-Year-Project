@@ -99,6 +99,24 @@ export function OverviewExperience({
     t('nextSteps.addRouting')
   ];
 
+  const supportMetrics = metricOrder.map((metricKey) => {
+    const metric: MetricPoint = metrics[metricKey];
+    const isPositive = metric.delta >= 0;
+    const deltaLabel =
+      metricKey === 'responseTime'
+        ? t('stats.delta.minutes', { count: Math.abs(metric.delta) })
+        : t('stats.delta.points', { count: Math.abs(metric.delta) });
+
+    return {
+      key: metricKey,
+      title: t(`stats.${metricKey}.title`),
+      value: metricKey === 'responseTime' ? `${metric.value} ${t('stats.responseTime.unit')}` : String(metric.value),
+      detail: t(`stats.${metricKey}.description`),
+      deltaLabel,
+      isPositive
+    };
+  });
+
   return (
     <div className="overview-scene">
       <motion.section
@@ -151,34 +169,46 @@ export function OverviewExperience({
         </div>
       </motion.section>
 
-      <section className="metrics-rail">
-        {metricOrder.map((metricKey) => {
-          const metric: MetricPoint = metrics[metricKey];
-          const isPositive = metric.delta >= 0;
-          const deltaLabel =
-            metricKey === 'responseTime'
-              ? t('stats.delta.minutes', { count: Math.abs(metric.delta) })
-              : t('stats.delta.points', { count: Math.abs(metric.delta) });
+      <motion.section
+        className="overview-support"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ ...heroTransition, delay: 0.04 }}
+      >
+        <div className="overview-support__intro">
+          <p className="overview-panel__eyebrow">Shift pulse</p>
+          <h2>Three signals that frame the next handoff</h2>
+          <p>
+            Keep the first readout tight: wellbeing, resolution cadence, and response speed before operators dive into
+            deeper panels.
+          </p>
+        </div>
 
-          return (
-            <article key={metricKey} className="metrics-rail__card">
+        <div className="metrics-rail metrics-rail--support">
+          {supportMetrics.map((metric) => (
+            <article key={metric.key} className="metrics-rail__card">
               <div className="metrics-rail__topline">
-                <h2>{t(`stats.${metricKey}.title`)}</h2>
-                <span className={`metrics-rail__delta ${isPositive ? 'is-positive' : 'is-negative'}`}>
-                  {isPositive ? '+' : '-'}
-                  {deltaLabel}
+                <h2>{metric.title}</h2>
+                <span className={`metrics-rail__delta ${metric.isPositive ? 'is-positive' : 'is-negative'}`}>
+                  {metric.isPositive ? '+' : '-'}
+                  {metric.deltaLabel}
                 </span>
               </div>
-              <p className="metrics-rail__value">
-                {metricKey === 'responseTime' ? `${metric.value} ${t('stats.responseTime.unit')}` : metric.value}
-              </p>
-              <p className="metrics-rail__detail">{t(`stats.${metricKey}.description`)}</p>
+              <p className="metrics-rail__value">{metric.value}</p>
+              <p className="metrics-rail__detail">{metric.detail}</p>
             </article>
-          );
-        })}
-      </section>
+          ))}
+        </div>
+      </motion.section>
 
-      <section className="overview-grid">
+      <motion.section
+        className="overview-detail-grid"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ ...heroTransition, delay: 0.06 }}
+      >
         <article className="overview-panel overview-panel--charts">
           <div className="overview-panel__header">
             <div>
@@ -219,7 +249,7 @@ export function OverviewExperience({
         <article className="overview-panel overview-panel--focus">
           <div className="overview-panel__header">
             <div>
-              <p className="overview-panel__eyebrow">Human layer</p>
+              <p className="overview-panel__eyebrow">Care focus</p>
               <h2>{t('insights.title')}</h2>
             </div>
             <span className="overview-panel__chip">{t('insights.subtitle')}</span>
@@ -241,29 +271,52 @@ export function OverviewExperience({
             )}
           </ul>
 
+          <div className="overview-panel__divider" />
+
           <ul className="insight-list">
             {insights.slice(0, 4).map((insight) => (
               <li key={insight.id}>{insight.text}</li>
             ))}
           </ul>
         </article>
+      </motion.section>
 
-        <article className="overview-panel overview-panel--next">
-          <div className="overview-panel__header">
-            <div>
-              <p className="overview-panel__eyebrow">Delivery focus</p>
-              <h2>{t('nextSteps.title')}</h2>
-            </div>
-            <span className="overview-panel__chip">Non-FlyCare roadmap</span>
+      <motion.section
+        className="overview-roadmap"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ ...heroTransition, delay: 0.08 }}
+      >
+        <div className="overview-roadmap__intro">
+          <p className="overview-panel__eyebrow">Delivery focus</p>
+          <h2>{t('nextSteps.title')}</h2>
+          <p>
+            Keep the prototype grounded in one migration path: stable data hooks, shared tokens, and authenticated
+            route rollout instead of more dashboard sprawl.
+          </p>
+          <div className="overview-roadmap__actions">
+            <button type="button" className="primary" onClick={onSimulate}>
+              {t('actions.simulate')}
+            </button>
+            {demoMode ? (
+              <button type="button" className="secondary" onClick={onExitDemo}>
+                {t('actions.exitDemo')}
+              </button>
+            ) : null}
+            <span className="overview-roadmap__timestamp">{t('hero.lastUpdated', { time: formattedTime })}</span>
           </div>
+        </div>
 
+        <div className="overview-roadmap__content">
+          <span className="overview-panel__chip">Non-FlyCare roadmap</span>
           <ol className="overview-next-list">
             {nextSteps.map((step) => (
               <li key={step}>{step}</li>
             ))}
           </ol>
-        </article>
-      </section>
+        </div>
+      </motion.section>
     </div>
   );
 }
