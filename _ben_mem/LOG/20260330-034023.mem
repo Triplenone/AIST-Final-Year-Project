@@ -1,0 +1,17 @@
+V.mem.ver=1
+V.mem.ts=2026-03-30T03:40:23+08:00
+R.scope=frontend-position-map-stage-emphasis
+R.phase=issue-sized-position-map-stage-emphasis
+R.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+R.files=[frontend/src/styles/position-page.css,docs/frontend-position/16-position-map-stage-emphasis-workstream.md,_ben_mem/CURR.mem,_ben_mem/LOG/20260330-034023.mem]
+V.commit.code=1e7022f
+V.docs.position.map_stage_emphasis_workstream=docs/frontend-position/16-position-map-stage-emphasis-workstream.md
+V.frontend.position.map_stage.emphasis=ok
+V.frontend.position.map_stage.surface_unification=ok
+V.frontend.build=ok
+V.frontend.lint=ok
+V.frontend.runtime.position.map_stage.light=[root:1585.83,left:386.99,center:772.25,panel:386.99,frame:719.17,canvas:684.07x912.10,command:719.17x169.12,cards:218.30x83.84|218.32x83.84|218.32x83.84,title:57.24px,overflowX:false]
+V.frontend.runtime.position.map_stage.dark=[title:57.24px,titleColor:rgb(247,239,227),commandBg:rgba(18,30,41,0.92),frameBg:linear-gradient-dark,canvas:684.07x912.10,legend:53.07,overflowX:false]
+V.frontend.runtime.position.map_stage.mobile=[root:602.92,stage:602.92,frame:549.83,canvas:514.74x686.31,command:549.83x361.28,title:41.4px,nav:662/910,overflowX:false]
+B.blocker=[react-router-warnings-unchanged,status_update-404s-unchanged]
+I.next=frontend-position-runs[decision-panel-readability]
