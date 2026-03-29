@@ -378,9 +378,10 @@
 
 .ambient-header--route-position {
   padding: 0.82rem 0 0.74rem;
-  background: linear-gradient(180deg, rgba(8, 15, 24, 0.97), rgba(10, 18, 27, 0.91));
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 247, 0.97), rgba(243, 237, 229, 0.9));
+  border-bottom-color: rgba(16, 23, 34, 0.08);
+  box-shadow: 0 18px 42px rgba(16, 23, 34, 0.08);
 }
 
 .ambient-header--route-position::after {
@@ -409,11 +410,11 @@
 .ambient-header--route-position .ambient-header__brand-mark-wrap {
   padding: 0.28rem 0.44rem;
   border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 155, 106, 0.08));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(245, 235, 226, 0.76));
+  border: 1px solid rgba(16, 23, 34, 0.08);
   box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 14px 30px rgba(16, 23, 34, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .ambient-header--route-position .ambient-header__brand-mark {
@@ -422,16 +423,16 @@
 }
 
 .ambient-header--route-position .ambient-header__mark {
-  color: rgba(248, 241, 229, 0.98);
+  color: rgba(16, 23, 34, 0.98);
   font-size: clamp(1.42rem, 0.92vw + 1.05rem, 2.02rem);
   font-weight: 650;
   line-height: 1.02;
   letter-spacing: -0.045em;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.58);
 }
 
 .ambient-header--route-position .ambient-header__tagline {
-  color: rgba(215, 225, 235, 0.9);
+  color: rgba(67, 83, 99, 0.9);
   font-size: clamp(0.84rem, 0.16vw + 0.78rem, 1rem);
   line-height: 1.24;
   max-width: 33ch;
@@ -442,43 +443,45 @@
 }
 
 .ambient-header--route-position .ambient-header__status {
-  background: linear-gradient(135deg, rgba(255, 155, 106, 0.17), rgba(255, 155, 106, 0.08));
+  background: linear-gradient(135deg, rgba(255, 240, 230, 0.96), rgba(252, 244, 238, 0.88));
   border-color: rgba(255, 155, 106, 0.18);
-  color: rgba(255, 219, 196, 0.98);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #9a4d2f;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    0 10px 22px rgba(208, 106, 63, 0.08);
 }
 
 .ambient-header--route-position .ambient-header__status::before {
-  box-shadow: 0 0 0 0.2rem rgba(255, 155, 106, 0.1);
+  box-shadow: 0 0 0 0.2rem rgba(255, 155, 106, 0.14);
 }
 
 .ambient-header--route-position .ambient-header__context-pill {
-  background: rgba(143, 214, 239, 0.08);
-  border-color: rgba(143, 214, 239, 0.16);
-  color: rgba(235, 241, 247, 0.96);
+  background: linear-gradient(135deg, rgba(232, 242, 245, 0.88), rgba(246, 249, 248, 0.78));
+  border-color: rgba(143, 214, 239, 0.18);
+  color: rgba(56, 75, 91, 0.96);
 }
 
 .ambient-header--route-position .ambient-header__nav {
   padding: 0.42rem 0.5rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
-  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(245, 239, 232, 0.68));
+  border-color: rgba(16, 23, 34, 0.08);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 28px rgba(0, 0, 0, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 12px 28px rgba(16, 23, 34, 0.06);
 }
 
 .ambient-header--route-position .ambient-header__nav a {
   min-height: 2.7rem;
   padding: 0.64rem clamp(0.82rem, 0.92vw, 1.04rem);
-  color: rgba(229, 236, 244, 0.86);
+  color: rgba(63, 79, 95, 0.94);
   font-size: 0.9rem;
 }
 
 .ambient-header--route-position .ambient-header__nav a:hover,
 .ambient-header--route-position .ambient-header__nav a:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(248, 241, 229, 0.98);
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(16, 23, 34, 0.08);
+  color: rgba(16, 23, 34, 0.98);
 }
 
 .ambient-header--route-position .ambient-header__nav a.is-active {
@@ -486,7 +489,7 @@
   border-color: rgba(255, 155, 106, 0.26);
   color: #82432a;
   box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.22),
+    0 12px 26px rgba(157, 56, 31, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.44);
 }
 
@@ -497,6 +500,28 @@
 :root[data-theme='dark'] .ambient-header--route-position .ambient-header__brand-mark-wrap {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 155, 106, 0.08));
   border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__mark {
+  color: rgba(248, 241, 229, 0.98);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__tagline {
+  color: rgba(215, 225, 235, 0.9);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__status {
+  background: linear-gradient(135deg, rgba(255, 155, 106, 0.17), rgba(255, 155, 106, 0.08));
+  border-color: rgba(255, 155, 106, 0.18);
+  color: rgba(255, 219, 196, 0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__context-pill {
+  background: rgba(143, 214, 239, 0.08);
+  border-color: rgba(143, 214, 239, 0.16);
+  color: rgba(235, 241, 247, 0.96);
 }
 
 :root[data-theme='dark'] .ambient-header--route-position .ambient-header__nav {
@@ -532,9 +557,9 @@
   padding: clamp(1.05rem, 1.75vw, 1.45rem);
   overflow: hidden;
   border-radius: calc(var(--radius-xl) + 8px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(10, 17, 25, 0.82), rgba(12, 20, 30, 0.74));
-  box-shadow: 0 26px 56px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  background: linear-gradient(180deg, rgba(238, 242, 238, 0.94), rgba(226, 232, 228, 0.84));
+  box-shadow: 0 26px 56px rgba(16, 23, 34, 0.08);
 }
 
 .app-stage--position.app-stage--route-position::before,
@@ -547,15 +572,15 @@
 .app-stage--position.app-stage--route-position::before {
   inset: 0;
   background:
-    radial-gradient(circle at 12% 12%, rgba(255, 185, 145, 0.09), transparent 28%),
-    radial-gradient(circle at 88% 8%, rgba(143, 214, 239, 0.1), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 22%);
+    radial-gradient(circle at 12% 12%, rgba(255, 185, 145, 0.12), transparent 28%),
+    radial-gradient(circle at 88% 8%, rgba(143, 214, 239, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.36), transparent 24%);
 }
 
 .app-stage--position.app-stage--route-position::after {
   inset: 0.9rem;
   border-radius: calc(var(--radius-xl) + 1px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.46);
 }
 
 .app-stage--position.app-stage--route-position > * {
