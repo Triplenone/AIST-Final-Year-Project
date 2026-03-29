@@ -403,17 +403,27 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
       </div>
 
       <aside className="position-page__right">
-        <div className="position-page__panel position-page__info-panel">
-          <div className="position-page__info-panel-header">
+        <div className="position-page__panel position-page__info-panel flycare-page__info-panel">
+          <div className="position-page__info-panel-header flycare-page__info-panel-header">
             <h3>{t('flyCare.rightPanelTitle')}</h3>
             <button type="button" className="position-page__refresh-btn" onClick={fetchLatest}>
               {t('flyCare.refresh')}
             </button>
           </div>
-          {panelLoading && <p className="muted">{t('common.loading')}</p>}
-          {panelError && <p className="position-page__error">{panelError}</p>}
+          {panelLoading && (
+            <div className="flycare-page__info-panel-state">
+              <p className="muted">{t('common.loading')}</p>
+            </div>
+          )}
+          {panelError && (
+            <div className="flycare-page__info-panel-state flycare-page__info-panel-state--error">
+              <p className="position-page__error">{panelError}</p>
+            </div>
+          )}
           {!panelLoading && !panelError && !panelData && (
-            <p className="muted">{t('flyCare.noDeviceData')}</p>
+            <div className="flycare-page__info-panel-state">
+              <p className="muted">{t('flyCare.noDeviceData')}</p>
+            </div>
           )}
           {!panelLoading && !panelError && panelData && (() => {
             const data = displayData ?? panelData;
@@ -440,9 +450,9 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
             const spo2Pct = getNested(sensors ?? undefined, 'spo2.percentage');
             const batteryLevel = getNested(system ?? undefined, 'battery.level');
             return (
-              <>
+              <div className="flycare-page__info-panel-body">
                 {/* 航班信息置于最上 */}
-                <div className="position-page__info-block flycare-page__flight-block">
+                <div className="position-page__info-block flycare-page__flight-block flycare-page__info-card flycare-page__info-card--primary">
                   <h4>{t('flyCare.flightTitle')}</h4>
                   <p className="position-page__value position-page__value--muted">{t('flyCare.flightPassengerName')}: {formatVal(flightInfo?.passengerName)}</p>
                   <p className="position-page__value position-page__value--muted">{t('flyCare.flightNumber')}: {formatVal(flightInfo?.flightNumber)}</p>
@@ -455,60 +465,62 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
                     {t('flyCare.simulateFlightUpdate')}
                   </button> */}
                 </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.userName')}</h4>
-                  <p className="position-page__value">{displayUser?.name ?? '—'}</p>
+                <div className="flycare-page__info-grid">
+                  <div className="position-page__info-block flycare-page__info-card">
+                    <h4>{t('flyCare.userName')}</h4>
+                    <p className="position-page__value">{displayUser?.name ?? '—'}</p>
+                  </div>
+                  <div className="position-page__info-block flycare-page__info-card">
+                    <h4>{t('flyCare.deviceId')}</h4>
+                    <p className="position-page__value">{formatVal(panelData.device_id)}</p>
+                  </div>
+                  <div className="position-page__info-block flycare-page__info-card flycare-page__info-card--wide">
+                    <h4>{t('flyCare.currentLocation')}</h4>
+                    <p className="position-page__value">{zone ? t(zone.labelKey) : '—'}</p>
+                    <p className="position-page__value position-page__value--muted">
+                      {t('flyCare.currentX')}: {currentX != null ? String(currentX) : '—'}
+                    </p>
+                    <p className="position-page__value position-page__value--muted">
+                      {t('flyCare.currentY')}: {currentY != null ? String(currentY) : '—'}
+                    </p>
+                    <p className="position-page__value position-page__value--muted">
+                      {t('flyCare.targetX')}: {targetX != null ? String(targetX) : '—'}
+                    </p>
+                    <p className="position-page__value position-page__value--muted">
+                      {t('flyCare.targetY')}: {targetY != null ? String(targetY) : '—'}
+                    </p>
+                  </div>
+                  <div className="position-page__info-block flycare-page__info-card flycare-page__info-card--wide">
+                    <h4>{t('flyCare.navigationTitle')}</h4>
+                    <p className="position-page__value position-page__value--muted">
+                      {buildNavigationText(t, data)}
+                    </p>
+                  </div>
+                  <div className="position-page__info-block flycare-page__info-card">
+                    <h4>{t('flyCare.fallStateDescription')}</h4>
+                    <p className="position-page__value">{formatVal(fallStateDesc)}</p>
+                  </div>
+                  <div className="position-page__info-block flycare-page__info-card">
+                    <h4>{t('flyCare.sosStatus')}</h4>
+                    <p className="position-page__value">
+                      active: {sosActive !== undefined && sosActive !== null ? String(sosActive) : '—'}
+                    </p>
+                    <p className="position-page__value position-page__value--muted">
+                      trigger_time: {sosTriggerTime !== undefined && sosTriggerTime !== null ? String(sosTriggerTime) : '—'}
+                    </p>
+                  </div>
+                  <div className="position-page__info-block flycare-page__info-card">
+                    <h4>{t('flyCare.heartRateBpm')} / {t('flyCare.spo2Percentage')}</h4>
+                    <p className="position-page__value">
+                      {formatVal(heartRateBpm)} · {formatVal(spo2Pct)}
+                    </p>
+                  </div>
+                  <div className="position-page__info-block flycare-page__info-card">
+                    <h4>{t('flyCare.batteryLevel')}</h4>
+                    <p className="position-page__value">{formatVal(batteryLevel)}</p>
+                  </div>
                 </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.deviceId')}</h4>
-                  <p className="position-page__value">{formatVal(panelData.device_id)}</p>
-                </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.currentLocation')}</h4>
-                  <p className="position-page__value">{zone ? t(zone.labelKey) : '—'}</p>
-                  <p className="position-page__value position-page__value--muted">
-                    {t('flyCare.currentX')}: {currentX != null ? String(currentX) : '—'}
-                  </p>
-                  <p className="position-page__value position-page__value--muted">
-                    {t('flyCare.currentY')}: {currentY != null ? String(currentY) : '—'}
-                  </p>
-                  <p className="position-page__value position-page__value--muted">
-                    {t('flyCare.targetX')}: {targetX != null ? String(targetX) : '—'}
-                  </p>
-                  <p className="position-page__value position-page__value--muted">
-                    {t('flyCare.targetY')}: {targetY != null ? String(targetY) : '—'}
-                  </p>
-                </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.navigationTitle')}</h4>
-                  <p className="position-page__value position-page__value--muted">
-                    {buildNavigationText(t, data)}
-                  </p>
-                </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.fallStateDescription')}</h4>
-                  <p className="position-page__value">{formatVal(fallStateDesc)}</p>
-                </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.sosStatus')}</h4>
-                  <p className="position-page__value">
-                    active: {sosActive !== undefined && sosActive !== null ? String(sosActive) : '—'}
-                  </p>
-                  <p className="position-page__value position-page__value--muted">
-                    trigger_time: {sosTriggerTime !== undefined && sosTriggerTime !== null ? String(sosTriggerTime) : '—'}
-                  </p>
-                </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.heartRateBpm')} / {t('flyCare.spo2Percentage')}</h4>
-                  <p className="position-page__value">
-                    {formatVal(heartRateBpm)} · {formatVal(spo2Pct)}
-                  </p>
-                </div>
-                <div className="position-page__info-block">
-                  <h4>{t('flyCare.batteryLevel')}</h4>
-                  <p className="position-page__value">{formatVal(batteryLevel)}</p>
-                </div>
-              </>
+              </div>
             );
           })()}
         </div>
