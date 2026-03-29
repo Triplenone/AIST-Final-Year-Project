@@ -376,6 +376,140 @@
   transform: none;
 }
 
+.ambient-header--route-position {
+  padding: 0.82rem 0 0.74rem;
+  background: linear-gradient(180deg, rgba(8, 15, 24, 0.97), rgba(10, 18, 27, 0.91));
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
+}
+
+.ambient-header--route-position::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 185, 145, 0.24) 22%,
+    rgba(143, 214, 239, 0.18) 78%,
+    transparent
+  );
+}
+
+.ambient-header--route-position .ambient-header__inner {
+  width: min(1660px, calc(100% - 1.5rem));
+  gap: 1rem clamp(1rem, 1.6vw, 1.55rem);
+}
+
+.ambient-header--route-position .ambient-header__brand {
+  gap: clamp(0.9rem, 1.2vw, 1.28rem);
+}
+
+.ambient-header--route-position .ambient-header__brand-lockup {
+  gap: clamp(0.76rem, 1vw, 1.05rem);
+}
+
+.ambient-header--route-position .ambient-header__brand-mark-wrap {
+  padding: 0.28rem 0.44rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 155, 106, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ambient-header--route-position .ambient-header__brand-mark {
+  height: clamp(1.74rem, 1.8vw, 2.04rem);
+  max-width: min(3.8rem, 15vw);
+}
+
+.ambient-header--route-position .ambient-header__mark {
+  color: rgba(248, 241, 229, 0.98);
+  font-size: clamp(1.42rem, 0.92vw + 1.05rem, 2.02rem);
+  font-weight: 650;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.18);
+}
+
+.ambient-header--route-position .ambient-header__tagline {
+  color: rgba(215, 225, 235, 0.9);
+  font-size: clamp(0.84rem, 0.16vw + 0.78rem, 1rem);
+  line-height: 1.24;
+  max-width: 33ch;
+}
+
+.ambient-header--route-position .ambient-header__context {
+  gap: 0.55rem;
+}
+
+.ambient-header--route-position .ambient-header__status {
+  background: linear-gradient(135deg, rgba(255, 155, 106, 0.17), rgba(255, 155, 106, 0.08));
+  border-color: rgba(255, 155, 106, 0.18);
+  color: rgba(255, 219, 196, 0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ambient-header--route-position .ambient-header__status::before {
+  box-shadow: 0 0 0 0.2rem rgba(255, 155, 106, 0.1);
+}
+
+.ambient-header--route-position .ambient-header__context-pill {
+  background: rgba(143, 214, 239, 0.08);
+  border-color: rgba(143, 214, 239, 0.16);
+  color: rgba(235, 241, 247, 0.96);
+}
+
+.ambient-header--route-position .ambient-header__nav {
+  padding: 0.42rem 0.5rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.ambient-header--route-position .ambient-header__nav a {
+  min-height: 2.7rem;
+  padding: 0.64rem clamp(0.82rem, 0.92vw, 1.04rem);
+  color: rgba(229, 236, 244, 0.86);
+  font-size: 0.9rem;
+}
+
+.ambient-header--route-position .ambient-header__nav a:hover,
+.ambient-header--route-position .ambient-header__nav a:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(248, 241, 229, 0.98);
+}
+
+.ambient-header--route-position .ambient-header__nav a.is-active {
+  background: linear-gradient(135deg, rgba(255, 234, 220, 0.96), rgba(250, 240, 233, 0.92));
+  border-color: rgba(255, 155, 106, 0.26);
+  color: #82432a;
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.44);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position {
+  background: linear-gradient(180deg, rgba(7, 14, 22, 0.98), rgba(8, 16, 25, 0.94));
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__brand-mark-wrap {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 155, 106, 0.08));
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__nav {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03));
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__nav a.is-active {
+  background: linear-gradient(135deg, rgba(255, 228, 213, 0.98), rgba(249, 238, 229, 0.94));
+  border-color: rgba(255, 155, 106, 0.3);
+  color: #7f4028;
+}
+
 .app-stage {
   display: flex;
   flex-direction: column;
@@ -385,6 +519,54 @@
 
 .app-stage--overview {
   gap: 1.35rem;
+}
+
+.app-shell--ambient.app-shell--route-position {
+  position: relative;
+  gap: 0.92rem;
+}
+
+.app-stage--position.app-stage--route-position {
+  position: relative;
+  gap: 0.95rem;
+  padding: clamp(1.05rem, 1.75vw, 1.45rem);
+  overflow: hidden;
+  border-radius: calc(var(--radius-xl) + 8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(10, 17, 25, 0.82), rgba(12, 20, 30, 0.74));
+  box-shadow: 0 26px 56px rgba(0, 0, 0, 0.22);
+}
+
+.app-stage--position.app-stage--route-position::before,
+.app-stage--position.app-stage--route-position::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.app-stage--position.app-stage--route-position::before {
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 185, 145, 0.09), transparent 28%),
+    radial-gradient(circle at 88% 8%, rgba(143, 214, 239, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 22%);
+}
+
+.app-stage--position.app-stage--route-position::after {
+  inset: 0.9rem;
+  border-radius: calc(var(--radius-xl) + 1px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-stage--position.app-stage--route-position > * {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-theme='dark'] .app-stage--position.app-stage--route-position {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(8, 14, 22, 0.88), rgba(10, 17, 26, 0.82));
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.3);
 }
 
 .app-stage--workspace,
@@ -810,6 +992,32 @@
   .ambient-header--flycare .ambient-header__tagline {
     font-size: 0.84rem;
     line-height: 1.22;
+  }
+
+  .ambient-header--route-position {
+    padding: 0.62rem 0 0.54rem;
+  }
+
+  .ambient-header--route-position .ambient-header__inner {
+    width: min(100%, calc(100% - 0.9rem));
+  }
+
+  .ambient-header--route-position .ambient-header__mark {
+    font-size: clamp(1.18rem, 0.9rem + 1.2vw, 1.46rem);
+  }
+
+  .ambient-header--route-position .ambient-header__tagline {
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+
+  .ambient-header--route-position .ambient-header__nav {
+    padding: 0.34rem 0.38rem;
+  }
+
+  .ambient-header--route-position .ambient-header__nav a {
+    min-height: 2.42rem;
+    padding-inline: 0.8rem;
   }
 
   .ambient-header__status {
