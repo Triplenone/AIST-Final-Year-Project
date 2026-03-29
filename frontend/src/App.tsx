@@ -688,7 +688,9 @@ export default function App() {
       };
 
   return (
-    <div className={`app-background${isPositionPage ? ' app-background--position' : ''}`}>
+    <div
+      className={`app-background${isPositionPage ? ' app-background--position' : ''}${isFlyCarePage ? ' app-background--flycare' : ''}`}
+    >
       <main
         className={`app-shell app-shell--ambient app-shell--route-${activePage}${isFlyCarePage ? ' app-shell--flycare' : ''}`}
       >
