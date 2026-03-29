@@ -44,6 +44,14 @@
   justify-items: center;
 }
 
+.ambient-header--flycare .ambient-header__brand {
+  justify-content: center;
+}
+
+.ambient-header--flycare .ambient-header__brand-lockup {
+  justify-content: center;
+}
+
 .ambient-header__brand {
   min-width: 0;
   display: flex;
@@ -51,10 +59,36 @@
   gap: clamp(0.8rem, 1vw, 1.15rem);
 }
 
+.ambient-header__brand-lockup {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(0.68rem, 0.9vw, 0.94rem);
+}
+
+.ambient-header__brand-mark-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.ambient-header__brand-mark {
+  display: block;
+  width: auto;
+  height: clamp(1.5rem, 1.7vw, 1.78rem);
+  max-width: min(3.15rem, 13vw);
+  object-fit: contain;
+}
+
 .ambient-header__copy {
   display: flex;
   flex-direction: column;
   gap: 0.18rem;
+  min-width: 0;
+}
+
+.ambient-header__brand-copy {
   min-width: 0;
 }
 
@@ -328,7 +362,6 @@
   }
 
   .ambient-header__brand {
-    flex-direction: column;
     align-items: flex-start;
   }
 
@@ -343,6 +376,14 @@
 
   .ambient-header__brand {
     gap: 0.65rem;
+  }
+
+  .ambient-header__brand-lockup {
+    gap: 0.6rem;
+  }
+
+  .ambient-header__brand-mark {
+    height: 1.55rem;
   }
 
   .ambient-header__status {

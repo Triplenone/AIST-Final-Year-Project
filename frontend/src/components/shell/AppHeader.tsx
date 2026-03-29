@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom';
 
+import smartCareMarkUrl from '../../assets/brand/smartcare-mark-exact-full.svg';
+
 type AppHeaderNavItem = {
   key: string;
   to: string;
@@ -19,9 +21,14 @@ export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle,
     <header className={`ambient-header${isFlyCarePage ? ' ambient-header--flycare' : ''}`}>
       <div className="ambient-header__inner">
         <div className="ambient-header__brand">
-          <div className="ambient-header__copy">
-            <span className="ambient-header__mark">{brandTitle}</span>
-            <p className="ambient-header__tagline">{brandSubtitle}</p>
+          <div className="ambient-header__brand-lockup">
+            <span className="ambient-header__brand-mark-wrap" aria-hidden="true">
+              <img className="ambient-header__brand-mark" src={smartCareMarkUrl} alt="" />
+            </span>
+            <div className="ambient-header__copy ambient-header__brand-copy">
+              <span className="ambient-header__mark">{brandTitle}</span>
+              <p className="ambient-header__tagline">{brandSubtitle}</p>
+            </div>
           </div>
           {!isFlyCarePage ? <span className="ambient-header__status">Live Care Workspace</span> : null}
         </div>
