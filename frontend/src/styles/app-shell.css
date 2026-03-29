@@ -499,31 +499,6 @@
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
 }
 
-.app-shell--flycare .flycare-page .position-page__info-panel-header {
-  justify-content: flex-start;
-  gap: 0.65rem;
-  padding-right: 0.15rem;
-}
-
-.app-shell--flycare .flycare-page .position-page__info-panel-header h3 {
-  margin-right: auto;
-}
-
-.app-shell--flycare .flycare-page .position-page__info-panel-header::before {
-  content: '';
-  order: 1;
-  flex: 0 0 clamp(2.7rem, 4vw, 3.2rem);
-  width: clamp(2.7rem, 4vw, 3.2rem);
-  height: clamp(1.6rem, 2.4vw, 1.95rem);
-  background: url('../assets/brand/flycare-badge-exact-crop.svg') center / contain no-repeat;
-  filter: drop-shadow(0 10px 18px rgba(16, 23, 34, 0.08));
-  opacity: 0.96;
-}
-
-.app-shell--flycare .flycare-page .position-page__info-panel-header .position-page__refresh-btn {
-  order: 2;
-}
-
 .ambient-actions {
   right: 1.2rem;
   bottom: 1.2rem;
@@ -640,12 +615,6 @@
 
   .route-surface__header {
     flex-direction: column;
-  }
-
-  .app-shell--flycare .flycare-page .position-page__info-panel-header::before {
-    flex-basis: 2.45rem;
-    width: 2.45rem;
-    height: 1.45rem;
   }
 
   .ambient-header__brand {
