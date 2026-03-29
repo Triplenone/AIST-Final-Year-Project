@@ -1,12 +1,21 @@
 .app-background {
   --ambient-header-offset: clamp(6.25rem, 10vw, 7.75rem);
   --ambient-header-width: min(1640px, calc(100% - 2rem));
+  --ambient-stage-width: min(1240px, 100%);
 }
 
 .app-shell--ambient {
-  width: min(1400px, calc(100% - 2rem));
-  gap: 1.5rem;
+  width: min(1440px, calc(100% - 2rem));
+  gap: clamp(1.2rem, 1.8vw, 1.65rem);
   padding-top: var(--ambient-header-offset);
+}
+
+.app-shell--ambient.app-shell--route-overview {
+  gap: 1.35rem;
+}
+
+.app-shell--ambient.app-shell--route-position {
+  gap: 1rem;
 }
 
 .app-shell--ambient.app-shell--flycare {
@@ -46,6 +55,24 @@
   border-bottom: 1px solid rgba(16, 23, 34, 0.08);
   box-shadow: 0 14px 40px rgba(16, 23, 34, 0.08);
   backdrop-filter: blur(22px);
+  isolation: isolate;
+}
+
+.ambient-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(208, 106, 63, 0.22) 18%,
+    rgba(29, 95, 116, 0.18) 82%,
+    transparent
+  );
+  pointer-events: none;
 }
 
 :root[data-theme='dark'] .ambient-header {
@@ -80,6 +107,8 @@
   min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: clamp(0.8rem, 1vw, 1.15rem);
 }
 
@@ -145,6 +174,27 @@
   white-space: nowrap;
 }
 
+.ambient-header__context {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.ambient-header__context-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: 0.38rem 0.7rem;
+  background: rgba(16, 23, 34, 0.06);
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .ambient-header__status::before {
   content: '';
   width: 0.42rem;
@@ -160,19 +210,27 @@
   border-color: rgba(255, 155, 106, 0.16);
 }
 
+:root[data-theme='dark'] .ambient-header__context-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
 .ambient-header__nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: clamp(0.18rem, 0.45vw, 0.32rem);
+  justify-content: flex-end;
+  gap: clamp(0.2rem, 0.45vw, 0.38rem);
   min-width: 0;
+  margin-left: auto;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 0.28rem 0.42rem;
+  padding: 0.36rem 0.46rem;
   border-radius: var(--radius-pill);
-  background: rgba(16, 23, 34, 0.045);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 245, 236, 0.38));
   border: 1px solid rgba(16, 23, 34, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 10px 28px rgba(16, 23, 34, 0.06);
 }
 
 .ambient-header__nav::-webkit-scrollbar {
@@ -190,16 +248,16 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-height: 2.65rem;
-  padding: 0.62rem clamp(0.72rem, 0.92vw, 1.04rem);
+  min-height: 2.5rem;
+  padding: 0.58rem clamp(0.74rem, 0.92vw, 1.02rem);
   border-radius: var(--radius-pill);
   background: transparent;
   border: 1px solid transparent;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   text-decoration: none;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   white-space: nowrap;
   transition:
     background 180ms ease,
@@ -221,7 +279,9 @@
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 238, 0.98));
   border-color: rgba(208, 106, 63, 0.18);
   color: var(--accent-strong);
-  box-shadow: 0 8px 18px rgba(157, 56, 31, 0.12);
+  box-shadow:
+    0 10px 22px rgba(157, 56, 31, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
   outline: none;
 }
 
@@ -252,12 +312,84 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+}
+
+.app-stage--overview {
+  gap: 1.35rem;
+}
+
+.app-stage--workspace,
+.app-stage--utility {
+  position: relative;
+  gap: 1.1rem;
+  padding: clamp(1rem, 1.5vw, 1.35rem);
+  overflow: hidden;
+  border-radius: calc(var(--radius-xl) + 6px);
+  border: 1px solid var(--shell-stage-border);
+  background: var(--shell-stage-bg);
+  box-shadow: var(--shell-stage-shadow);
+}
+
+.app-stage--workspace::before,
+.app-stage--utility::before,
+.app-stage--workspace::after,
+.app-stage--utility::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.app-stage--workspace::before,
+.app-stage--utility::before {
+  inset: 0;
+}
+
+.app-stage--workspace::after,
+.app-stage--utility::after {
+  inset: 0.8rem;
+  border-radius: calc(var(--radius-xl) - 2px);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  opacity: 0.56;
+}
+
+.app-stage--workspace::before {
+  background:
+    radial-gradient(circle at 12% 16%, var(--shell-stage-wash), transparent 36%),
+    radial-gradient(circle at 86% 8%, var(--shell-stage-wash-secondary), transparent 32%),
+    linear-gradient(180deg, var(--shell-stage-highlight), transparent 40%);
+}
+
+.app-stage--utility::before {
+  background:
+    radial-gradient(circle at 10% 14%, rgba(208, 106, 63, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.34), transparent 56%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 78px,
+      var(--shell-stage-line) 78px,
+      var(--shell-stage-line) 79px
+    );
+}
+
+.app-stage--workspace > *,
+.app-stage--utility > * {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-theme='dark'] .app-stage--workspace::after,
+:root[data-theme='dark'] .app-stage--utility::after {
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .route-stack {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  width: var(--ambient-stage-width);
+  margin: 0 auto;
 }
 
 .route-stack--narrow {
@@ -266,15 +398,32 @@
 }
 
 .route-surface {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   padding: clamp(1.25rem, 2vw, 1.8rem);
   border-radius: var(--radius-xl);
-  background: var(--bg-panel);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-panel);
+  background: linear-gradient(160deg, rgba(255, 252, 247, 0.9), rgba(248, 240, 232, 0.74));
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  box-shadow: 0 18px 44px rgba(16, 23, 34, 0.1);
   backdrop-filter: blur(16px);
+}
+
+.route-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  pointer-events: none;
+}
+
+:root[data-theme='dark'] .route-surface {
+  background: linear-gradient(165deg, rgba(13, 23, 33, 0.9), rgba(16, 28, 39, 0.76));
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.24);
 }
 
 .route-surface--narrow {
@@ -307,9 +456,28 @@
   align-items: center;
   border-radius: var(--radius-pill);
   padding: 0.5rem 0.8rem;
-  background: var(--bg-muted);
+  background: rgba(16, 23, 34, 0.05);
+  border: 1px solid rgba(16, 23, 34, 0.08);
   color: var(--text-secondary);
   font-size: 0.8rem;
+}
+
+.app-stage--utility .section,
+.app-stage--utility .admin-card,
+.app-stage--workspace .section,
+.app-stage--workspace .location-dashboard {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.76), rgba(249, 242, 234, 0.62));
+  border-color: rgba(16, 23, 34, 0.08);
+  box-shadow: 0 16px 36px rgba(16, 23, 34, 0.08);
+}
+
+:root[data-theme='dark'] .app-stage--utility .section,
+:root[data-theme='dark'] .app-stage--utility .admin-card,
+:root[data-theme='dark'] .app-stage--workspace .section,
+:root[data-theme='dark'] .app-stage--workspace .location-dashboard {
+  background: linear-gradient(165deg, rgba(15, 27, 37, 0.82), rgba(17, 31, 43, 0.72));
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
 }
 
 .app-shell--flycare .flycare-page .position-page__info-panel-header {
@@ -338,8 +506,12 @@
 }
 
 .ambient-actions {
-  right: 1.1rem;
-  bottom: 1.1rem;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.8rem;
+  z-index: 45;
 }
 
 .ambient-actions__toggle {
@@ -347,20 +519,38 @@
   height: 3rem;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.24);
   color: #fff;
-  box-shadow: var(--shadow-panel);
+  box-shadow:
+    0 18px 36px rgba(16, 23, 34, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
 .ambient-actions__panel {
-  right: calc(3rem + 1rem);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  border-right: 1px solid var(--border-soft);
+  width: min(560px, calc(100vw - 6rem));
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(0.75rem) scale(0.98);
+  transform-origin: right bottom;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 251, 245, 0.88);
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  box-shadow: 0 24px 56px rgba(16, 23, 34, 0.18);
+  backdrop-filter: blur(22px);
+  transition:
+    max-width 220ms ease,
+    opacity 180ms ease,
+    transform 220ms ease,
+    padding 220ms ease;
 }
 
 .ambient-actions__content {
   gap: 0.8rem;
+  justify-content: flex-end;
+  padding: 0.5rem;
 }
 
 .ambient-actions__theme {
@@ -368,8 +558,20 @@
 }
 
 .ambient-actions__account {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.42);
   border-radius: var(--radius-pill);
+}
+
+.ambient-actions__icon {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+:root[data-theme='dark'] .ambient-actions__panel {
+  background: rgba(9, 17, 24, 0.88);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.35);
 }
 
 .auth-modal__dialog {
@@ -403,6 +605,7 @@
   .ambient-header__nav {
     justify-content: flex-start;
     width: 100%;
+    margin-left: 0;
   }
 }
 
@@ -455,8 +658,21 @@
     display: none;
   }
 
+  .ambient-header__context-pill {
+    padding-inline: 0.58rem;
+    font-size: 0.68rem;
+  }
+
   .ambient-header__nav a {
     min-height: 2.45rem;
     padding: 0.58rem 0.82rem;
   }
+}
+
+.ambient-actions__panel.actions-panel--open {
+  max-width: min(76vw, 560px);
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
+  padding: 0.3rem;
 }

@@ -119,6 +119,21 @@ const resolveDashboardPage = (pathname: string): DashboardPageKey => {
   }
 };
 
+const resolveStageTone = (page: DashboardPageKey): 'overview' | 'workspace' | 'utility' | 'position' | 'flycare' => {
+  switch (page) {
+    case 'position':
+      return 'position';
+    case 'flycare':
+      return 'flycare';
+    case 'location':
+      return 'workspace';
+    case 'overview':
+      return 'overview';
+    default:
+      return 'utility';
+  }
+};
+
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pick = <T,>(values: T[]) => values[randomInt(0, values.length - 1)];
 
@@ -203,6 +218,7 @@ export default function App() {
   const activePage = resolveDashboardPage(location.pathname);
   const isPositionPage = activePage === 'position';
   const isFlyCarePage = activePage === 'flycare';
+  const stageTone = resolveStageTone(activePage);
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.accounts, accounts);
@@ -673,7 +689,9 @@ export default function App() {
 
   return (
     <div className={`app-background${isPositionPage ? ' app-background--position' : ''}`}>
-      <main className={`app-shell app-shell--ambient${isFlyCarePage ? ' app-shell--flycare' : ''}`}>
+      <main
+        className={`app-shell app-shell--ambient app-shell--route-${activePage}${isFlyCarePage ? ' app-shell--flycare' : ''}`}
+      >
         <AppHeader
           isFlyCarePage={isFlyCarePage}
           activeKey={activePage}
@@ -685,7 +703,7 @@ export default function App() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activePage}
-            className={`app-stage${activePage === 'position' ? ' app-stage--position' : ''}`}
+            className={`app-stage app-stage--${stageTone} app-stage--route-${activePage}`}
             transition={{ duration: shouldReduceMotion ? 0 : 0.38, ease: [0.22, 1, 0.36, 1] }}
             {...pageTransition}
           >

@@ -21,6 +21,13 @@
   --border-strong: rgba(16, 23, 34, 0.25);
   --shadow-soft: 0 30px 70px rgba(16, 23, 34, 0.12);
   --shadow-panel: 0 22px 50px rgba(16, 23, 34, 0.14);
+  --shell-stage-bg: linear-gradient(160deg, rgba(255, 252, 247, 0.84), rgba(246, 238, 228, 0.64));
+  --shell-stage-wash: rgba(208, 106, 63, 0.14);
+  --shell-stage-wash-secondary: rgba(29, 95, 116, 0.11);
+  --shell-stage-border: rgba(16, 23, 34, 0.1);
+  --shell-stage-shadow: 0 28px 68px rgba(16, 23, 34, 0.12);
+  --shell-stage-highlight: rgba(255, 255, 255, 0.5);
+  --shell-stage-line: rgba(16, 23, 34, 0.05);
   --radius-xl: 32px;
   --radius-lg: 24px;
   --radius-md: 18px;
@@ -45,6 +52,13 @@
   --border-strong: rgba(255, 255, 255, 0.22);
   --shadow-soft: 0 35px 80px rgba(0, 0, 0, 0.4);
   --shadow-panel: 0 26px 60px rgba(0, 0, 0, 0.42);
+  --shell-stage-bg: linear-gradient(165deg, rgba(11, 19, 28, 0.9), rgba(16, 28, 39, 0.72));
+  --shell-stage-wash: rgba(255, 155, 106, 0.14);
+  --shell-stage-wash-secondary: rgba(143, 214, 239, 0.1);
+  --shell-stage-border: rgba(255, 255, 255, 0.12);
+  --shell-stage-shadow: 0 32px 76px rgba(0, 0, 0, 0.4);
+  --shell-stage-highlight: rgba(255, 255, 255, 0.06);
+  --shell-stage-line: rgba(255, 255, 255, 0.05);
 }
 
 body {

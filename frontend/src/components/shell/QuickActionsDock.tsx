@@ -32,7 +32,7 @@ export function QuickActionsDock({
         title={open ? 'Hide controls' : 'Show controls'}
       >
         <span className="ambient-actions__icon" aria-hidden>
-          {open ? '−' : '+'}
+          {open ? 'x' : '+'}
         </span>
       </button>
 

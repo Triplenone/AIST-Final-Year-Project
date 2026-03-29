@@ -17,8 +17,10 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle, navItems }: AppHeaderProps) {
+  const activeItem = navItems.find((item) => item.key === activeKey);
+
   return (
-    <header className={`ambient-header${isFlyCarePage ? ' ambient-header--flycare' : ''}`}>
+    <header className={`ambient-header ambient-header--route-${activeKey}${isFlyCarePage ? ' ambient-header--flycare' : ''}`}>
       <div className="ambient-header__inner">
         <div className="ambient-header__brand">
           <div className="ambient-header__brand-lockup">
@@ -30,7 +32,12 @@ export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle,
               <p className="ambient-header__tagline">{brandSubtitle}</p>
             </div>
           </div>
-          {!isFlyCarePage ? <span className="ambient-header__status">Live Care Workspace</span> : null}
+          {!isFlyCarePage ? (
+            <div className="ambient-header__context">
+              <span className="ambient-header__status">Live Care Workspace</span>
+              {activeItem ? <span className="ambient-header__context-pill">{activeItem.label}</span> : null}
+            </div>
+          ) : null}
         </div>
 
         {!isFlyCarePage ? (
