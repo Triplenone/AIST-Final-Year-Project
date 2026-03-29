@@ -1,0 +1,17 @@
+scope=frontend-position-resident-rail-summary-hierarchy
+phase=issue-sized-position-resident-rail-summary-hierarchy
+branch=ben/frontend-only-improve
+commit=35b845c
+files=frontend/src/styles/position-page.css|docs/frontend-position/15-position-resident-rail-summary-hierarchy-workstream.md|_ben_mem/CURR.mem|_ben_mem/LOG/20260330-033151.mem
+protect=backend|backend-routes|backend-payload|db-schema|route-contract|auth-persistence|theme-persistence|frontend/src/adapters/position-command-center.ts|frontend/src/pages/FlyCarePage.tsx
+change.position.resident_rail=queue-like-selection-accent-and-lighter-summary-strip
+change.position.summary=selected-resident-context-demoted-from-generic-card-block
+validate.build.cmd=npm run build
+validate.build.result=pass
+validate.lint.cmd=npm run lint
+validate.lint.result=pass
+validate.playwright.position.light=summaryItem:172.99x96.08|residentItem:370.63x218.46|accent:warning|stateCard:372.42x120.76|overflowX:false
+validate.playwright.position.dark=summaryItem:172.99x96.08|residentItem:370.63x218.46|stateCard:372.42x120.76|overflowX:false
+validate.playwright.position.mobile=summary:416.96x216.81|summaryItem:196.16x96.08|residentItem:416.96x259.49|summaryBar:460.32x266.2|nav:910/516|overflowX:false
+note.console.errors=react-router-warnings-and-status_update-404s-unchanged
+note.user_request=continue-position-run-b
