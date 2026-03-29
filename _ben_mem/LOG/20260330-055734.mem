@@ -1,0 +1,16 @@
+V.mem.ts=2026-03-30T05:57:34+08:00
+V.ctx.branch=ben/frontend-only-improve
+V.mem.log.coverage.through_commit=1af9556
+V.run.scope=frontend-only-optimization-queue-run3-residents-workspace-utility
+V.run.objective=make-/residents-read-like-operator-workspace
+V.run.files=[frontend/src/components/admin/ResidentsAdmin.tsx,frontend/src/styles/residents-admin.css,docs/frontend-redesign/20-frontend-only-optimization-queue.md,docs/frontend-redesign/23-residents-workspace-utility-workstream.md]
+V.run.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+V.run.accept=[faster-table-scanning,filters-prioritized,explicit-empty-error-loading,table-overflow-contained]
+V.run.validate.build=ok
+V.run.validate.lint=ok
+V.run.validate.playwright.residents.light=[root:1322.69x1020.02,summary:4-cols,tableMin:1116px,overflowX:false]
+V.run.validate.playwright.residents.dark=[titleColor:rgba(247,239,227,0.98),noteColor:rgba(203,213,225,0.92),overflowX:false]
+V.run.validate.playwright.residents.mobile=[root:383.75x1956.42,summary:1-col,tableMin:936px,overflowX:false]
+V.run.validate.playwright.admin.residents_tab=[workspace:present,overflowX:false]
+B.run.blocker=[react-router-future-warnings]
+I.next=frontend-only-optimization-queue[run-4-location-workspace-emphasis]
