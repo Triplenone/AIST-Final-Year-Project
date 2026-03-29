@@ -217,14 +217,133 @@ const resolveResidentZoneName = (resident: Resident): string | null => {
   return name ? name : null;
 };
 
+type LocationWorkspaceCopy = {
+  eyebrow: string;
+  note: string;
+  syncPending: string;
+  syncedLabel: string;
+  summaryResidents: string;
+  summaryMapped: string;
+  summaryZones: string;
+  summarySync: string;
+  stageEyebrow: string;
+  stageNote: string;
+  stageZones: string;
+  stageMarkers: string;
+  panelEyebrow: string;
+  panelLegendNote: string;
+  occupancyEyebrow: string;
+  occupancyNote: string;
+  loadingTitle: string;
+  loadingBody: string;
+  errorTitle: string;
+};
+
+const getLocationWorkspaceCopy = (locale: string): LocationWorkspaceCopy => {
+  const language = locale.toLowerCase();
+
+  if (language.startsWith('zh-cn')) {
+    return {
+      eyebrow: '空间工作台',
+      note: '把室内地图放回第一视点，图层与占用情况只保留决策所需信息。',
+      syncPending: '等待首次同步',
+      syncedLabel: '最近同步',
+      summaryResidents: '在线住户',
+      summaryMapped: '地图标记',
+      summaryZones: '占用分区',
+      summarySync: '数据新鲜度',
+      stageEyebrow: '地图主舞台',
+      stageNote: '安全区、房间和住户标记在同一张平面图上对齐展示。',
+      stageZones: '监测分区',
+      stageMarkers: '可见标记',
+      panelEyebrow: '空间图例',
+      panelLegendNote: '用最少的颜色和数量提示解释地图上的空间分层。',
+      occupancyEyebrow: '占用简报',
+      occupancyNote: '按分区查看当前住户分布，方便快速确认巡视重点。',
+      loadingTitle: '正在同步室内地图',
+      loadingBody: '正在刷新房间边界和最新住户分布。',
+      errorTitle: '室内地图暂不可用',
+    };
+  }
+
+  if (language.startsWith('zh-hk') || language.startsWith('zh-tw')) {
+    return {
+      eyebrow: '空間工作台',
+      note: '把室內地圖放回第一視點，圖層與佔用情況只保留決策所需資訊。',
+      syncPending: '等待首次同步',
+      syncedLabel: '最近同步',
+      summaryResidents: '在線住戶',
+      summaryMapped: '地圖標記',
+      summaryZones: '佔用分區',
+      summarySync: '資料新鮮度',
+      stageEyebrow: '地圖主舞台',
+      stageNote: '安全區、房間和住戶標記在同一張平面圖上對齊展示。',
+      stageZones: '監測分區',
+      stageMarkers: '可見標記',
+      panelEyebrow: '空間圖例',
+      panelLegendNote: '用最少的顏色和數量提示解釋地圖上的空間分層。',
+      occupancyEyebrow: '佔用簡報',
+      occupancyNote: '按分區查看目前住戶分布，方便快速確認巡視重點。',
+      loadingTitle: '正在同步室內地圖',
+      loadingBody: '正在刷新房間邊界和最新住戶分布。',
+      errorTitle: '室內地圖暫時不可用',
+    };
+  }
+
+  return {
+    eyebrow: 'Location workspace',
+    note: 'The indoor map returns to the first visual plane, with only the context needed for quick routing decisions.',
+    syncPending: 'Waiting for first sync',
+    syncedLabel: 'Last synced',
+    summaryResidents: 'Active residents',
+    summaryMapped: 'Visible markers',
+    summaryZones: 'Occupied zones',
+    summarySync: 'Data freshness',
+    stageEyebrow: 'Map stage',
+    stageNote: 'Safe zones, rooms, and resident markers align on one operational floorplan.',
+    stageZones: 'Monitored zones',
+    stageMarkers: 'Visible markers',
+    panelEyebrow: 'Spatial legend',
+    panelLegendNote: 'Use a restrained legend to decode the floorplan without competing with the map.',
+    occupancyEyebrow: 'Occupancy briefing',
+    occupancyNote: 'Review resident distribution by zone before deciding where the next walk-through should start.',
+    loadingTitle: 'Syncing indoor floorplan',
+    loadingBody: 'Refreshing room bounds and the latest resident distribution.',
+    errorTitle: 'Indoor floorplan unavailable',
+  };
+};
+
 export const LocationDashboard = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { residents: residentMap } = useResidentLiveStore();
 
   const [locations, setLocations] = useState<BackendLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapSize, setMapSize] = useState<{ width: number; height: number } | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const workspaceCopy = useMemo(() => getLocationWorkspaceCopy(locale), [locale]);
+
+  const formatDateTime = useCallback(
+    (input?: string | null) => {
+      if (!input) return workspaceCopy.syncPending;
+      const date = new Date(input);
+      if (Number.isNaN(date.getTime())) return input;
+      try {
+        return date.toLocaleString(locale, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      } catch {
+        return date.toISOString();
+      }
+    },
+    [locale, workspaceCopy.syncPending]
+  );
 
   const loadLocations = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -235,6 +354,7 @@ export const LocationDashboard = () => {
     try {
       const data = await locationApi.list({ limit: 1000 });
       setLocations(data);
+      setLastUpdated(new Date().toISOString());
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unable to fetch locations';
       setError(msg);
@@ -372,132 +492,221 @@ export const LocationDashboard = () => {
     });
   }, [residentList, orderedZoneShapes, zoneLabel]);
 
+  const activeResidentsCount = useMemo(
+    () => residentList.filter((resident) => !resident.checkedOut).length,
+    [residentList]
+  );
+
+  const occupiedZonesCount = useMemo(
+    () => occupancy.filter((item) => item.residents.length > 0).length,
+    [occupancy]
+  );
+
+  const summaryMetrics = useMemo(
+    () => [
+      { label: workspaceCopy.summaryResidents, value: String(activeResidentsCount), tone: 'accent' },
+      { label: workspaceCopy.summaryMapped, value: String(residentMarkers.length), tone: 'neutral' },
+      { label: workspaceCopy.summaryZones, value: String(occupiedZonesCount), tone: occupiedZonesCount > 0 ? 'success' : 'neutral' },
+      { label: workspaceCopy.summarySync, value: formatDateTime(lastUpdated), tone: lastUpdated ? 'neutral' : 'warning' },
+    ],
+    [activeResidentsCount, formatDateTime, lastUpdated, occupiedZonesCount, residentMarkers.length, workspaceCopy]
+  );
+
   return (
     <section id="location" className="section">
       <div className="location-dashboard">
-        <div className="location-dashboard__header">
-          <div>
-            <h2>{t('location.title')}</h2>
-            <p className="muted">{t('location.subtitle')}</p>
+        <header className="location-dashboard__header">
+          <div className="location-dashboard__intro">
+            <p className="location-dashboard__eyebrow">{workspaceCopy.eyebrow}</p>
+            <div className="location-dashboard__title-row">
+              <div>
+                <h2>{t('location.title')}</h2>
+                <p className="location-dashboard__note">{workspaceCopy.note}</p>
+              </div>
+              <div className="location-dashboard__status-group">
+                <span className="location-dashboard__status-pill">{workspaceCopy.syncedLabel}</span>
+                <span className="location-dashboard__status-text">{formatDateTime(lastUpdated)}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <button type="button" className="auth-menu__button" onClick={() => void loadLocations()} disabled={loading}>
+          <div className="location-dashboard__actions">
+            <button
+              type="button"
+              className="auth-menu__button location-dashboard__refresh"
+              onClick={() => void loadLocations()}
+              disabled={loading}
+            >
               {loading ? t('common.loading') : t('location.refresh')}
             </button>
           </div>
-        </div>
+        </header>
 
-        {error ? <div className="admin-error">{error}</div> : null}
-        <div className="location-dashboard__grid">
-          <div className="location-dashboard__map" aria-label={t('location.map.aria')}>
-            <MapContainer
-              center={mapCenter}
-              zoom={0}
-              minZoom={-1}
-              crs={CRS.Simple}
-              scrollWheelZoom={false}
-              doubleClickZoom={false}
-              touchZoom={false}
-              dragging={false}
-              boxZoom={false}
-              keyboard={false}
-              zoomControl={false}
-              maxBounds={mapBounds ?? undefined}
+        <dl className="location-dashboard__summary" aria-label={workspaceCopy.occupancyEyebrow}>
+          {summaryMetrics.map((metric) => (
+            <div
+              key={metric.label}
+              className={`location-dashboard__metric location-dashboard__metric--${metric.tone}`}
             >
-              {mapBounds ? <ImageOverlay url={FLOORPLAN_URL} bounds={mapBounds} /> : null}
-              {fitBounds ? <AutoFit bounds={fitBounds} /> : null}
+              <dt>{metric.label}</dt>
+              <dd>{metric.value}</dd>
+            </div>
+          ))}
+        </dl>
 
-              {orderedZoneShapes.map((shape) => {
-                const style = zoneColor(shape.location);
-                return (
-                  <Polygon
-                    key={shape.location.location_zone_id}
-                    positions={shape.polygon.map(toLatLngTuple)}
-                    pathOptions={{
-                      color: style.stroke,
-                      weight: 2,
-                      fillColor: style.fill,
-                      fillOpacity: style.opacity
-                    }}
-                  >
-                    <Tooltip sticky>
-                      {zoneLabel(shape.location.name ?? `#${shape.location.location_zone_id}`)}
-                    </Tooltip>
-                  </Polygon>
-                );
-              })}
-
-              {residentMarkers.map(({ resident, position }) => (
-                <CircleMarker
-                  key={`resident-${resident.id}`}
-                  center={position}
-                  radius={6}
-                  pathOptions={{
-                    color: roleStrokeColor(resident.roleType),
-                    weight: 2,
-                    fillColor: statusColor(resident.status),
-                    fillOpacity: 0.8
-                  }}
-                >
-                  <Tooltip direction="top" offset={[0, -6]} opacity={0.98}>
-                    <strong>{resident.name}</strong>
-                    <div>
-                      {t('location.map.status')}: {t(`residents.status.${resident.status}`)}
-                    </div>
-                    <div>
-                      {t('location.map.zone')}: {zoneLabel(resolveResidentZoneName(resident))}
-                    </div>
-                  </Tooltip>
-                </CircleMarker>
-              ))}
-            </MapContainer>
+        {error ? (
+          <div className="location-dashboard__banner location-dashboard__banner--error" role="alert">
+            <strong>{workspaceCopy.errorTitle}</strong>
+            <p>{error}</p>
           </div>
+        ) : null}
 
-          <aside className="location-dashboard__panel">
-            <h4>{t('location.legend.title')}</h4>
-            <div className="location-legend">
-              {orderedZoneShapes.map((shape) => {
-                const name = shape.location.name ?? `#${shape.location.location_zone_id}`;
-                const swatchClass = ZONE_SWATCH_CLASSES[name] ?? 'location-legend__swatch--default';
-                return (
-                  <div key={shape.location.location_zone_id} className="location-legend__row">
-                    <span className="location-legend__pill">
-                      <span className={`location-legend__swatch ${swatchClass}`} />
-                      {zoneLabel(name)}
-                    </span>
-                    <span>
-                      {occupancy.find((item) => item.name === name)?.residents.length ?? 0}
-                    </span>
-                  </div>
-                );
-              })}
+        {loading ? (
+          <div className="location-dashboard__banner location-dashboard__banner--loading" aria-live="polite">
+            <strong>{workspaceCopy.loadingTitle}</strong>
+            <p>{workspaceCopy.loadingBody}</p>
+          </div>
+        ) : null}
+
+        <div className="location-dashboard__grid">
+          <section className="location-dashboard__stage">
+            <div className="location-dashboard__stage-header">
+              <div>
+                <p className="location-dashboard__stage-eyebrow">{workspaceCopy.stageEyebrow}</p>
+                <h3>{t('location.title')}</h3>
+                <p className="location-dashboard__stage-note">{workspaceCopy.stageNote}</p>
+              </div>
+              <div className="location-dashboard__stage-chips">
+                <span className="location-dashboard__stage-chip">
+                  {workspaceCopy.stageZones}: {orderedZoneShapes.length}
+                </span>
+                <span className="location-dashboard__stage-chip">
+                  {workspaceCopy.stageMarkers}: {residentMarkers.length}
+                </span>
+              </div>
             </div>
 
-            <hr className="location-divider" />
+            <div className="location-dashboard__map" aria-label={t('location.map.aria')}>
+              <MapContainer
+                center={mapCenter}
+                zoom={0}
+                minZoom={-1}
+                crs={CRS.Simple}
+                scrollWheelZoom={false}
+                doubleClickZoom={false}
+                touchZoom={false}
+                dragging={false}
+                boxZoom={false}
+                keyboard={false}
+                zoomControl={false}
+                maxBounds={mapBounds ?? undefined}
+              >
+                {mapBounds ? <ImageOverlay url={FLOORPLAN_URL} bounds={mapBounds} /> : null}
+                {fitBounds ? <AutoFit bounds={fitBounds} /> : null}
 
-            <h4>{t('location.occupancy.title')}</h4>
-            <p className="muted">{t('location.occupancy.subtitle')}</p>
-            <div className="location-occupancy" aria-label={t('location.occupancy.aria')}>
+                {orderedZoneShapes.map((shape) => {
+                  const style = zoneColor(shape.location);
+                  return (
+                    <Polygon
+                      key={shape.location.location_zone_id}
+                      positions={shape.polygon.map(toLatLngTuple)}
+                      pathOptions={{
+                        color: style.stroke,
+                        weight: 2,
+                        fillColor: style.fill,
+                        fillOpacity: style.opacity
+                      }}
+                    >
+                      <Tooltip sticky>
+                        {zoneLabel(shape.location.name ?? `#${shape.location.location_zone_id}`)}
+                      </Tooltip>
+                    </Polygon>
+                  );
+                })}
+
+                {residentMarkers.map(({ resident, position }) => (
+                  <CircleMarker
+                    key={`resident-${resident.id}`}
+                    center={position}
+                    radius={6}
+                    pathOptions={{
+                      color: roleStrokeColor(resident.roleType),
+                      weight: 2,
+                      fillColor: statusColor(resident.status),
+                      fillOpacity: 0.8
+                    }}
+                  >
+                    <Tooltip direction="top" offset={[0, -6]} opacity={0.98}>
+                      <strong>{resident.name}</strong>
+                      <div>
+                        {t('location.map.status')}: {t(`residents.status.${resident.status}`)}
+                      </div>
+                      <div>
+                        {t('location.map.zone')}: {zoneLabel(resolveResidentZoneName(resident))}
+                      </div>
+                    </Tooltip>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
+            </div>
+
+            <div className="location-dashboard__zone-strip">
               {occupancy.map((item) => (
-                <div key={item.name} className="location-occupancy__item">
-                  <div className="location-occupancy__header">
-                    <span>{item.label}</span>
-                    <span className="location-occupancy__count">{item.residents.length}</span>
-                  </div>
-                  {item.residents.length === 0 ? (
-                    <p className="muted">{t('location.occupancy.empty')}</p>
-                  ) : (
-                    <div className="location-occupancy__names">
-                      {item.residents.map((resident) => (
-                        <span key={resident.id} className="location-occupancy__pill">
-                          {resident.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                <div key={item.name} className="location-dashboard__zone-card">
+                  <span className="location-dashboard__zone-name">{item.label}</span>
+                  <span className="location-dashboard__zone-count">{item.residents.length}</span>
                 </div>
               ))}
             </div>
+          </section>
+
+          <aside className="location-dashboard__panel">
+            <section className="location-dashboard__panel-section">
+              <p className="location-dashboard__panel-eyebrow">{workspaceCopy.panelEyebrow}</p>
+              <p className="location-dashboard__panel-note">{workspaceCopy.panelLegendNote}</p>
+              <div className="location-legend">
+                {orderedZoneShapes.map((shape) => {
+                  const name = shape.location.name ?? `#${shape.location.location_zone_id}`;
+                  const swatchClass = ZONE_SWATCH_CLASSES[name] ?? 'location-legend__swatch--default';
+                  return (
+                    <div key={shape.location.location_zone_id} className="location-legend__row">
+                      <span className="location-legend__pill">
+                        <span className={`location-legend__swatch ${swatchClass}`} />
+                        {zoneLabel(name)}
+                      </span>
+                      <span className="location-legend__count">
+                        {occupancy.find((item) => item.name === name)?.residents.length ?? 0}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="location-dashboard__panel-section">
+              <p className="location-dashboard__panel-eyebrow">{workspaceCopy.occupancyEyebrow}</p>
+              <p className="location-dashboard__panel-note">{workspaceCopy.occupancyNote}</p>
+              <div className="location-occupancy" aria-label={t('location.occupancy.aria')}>
+                {occupancy.map((item) => (
+                  <div key={item.name} className="location-occupancy__item">
+                    <div className="location-occupancy__header">
+                      <span>{item.label}</span>
+                      <span className="location-occupancy__count">{item.residents.length}</span>
+                    </div>
+                    {item.residents.length === 0 ? (
+                      <p className="muted">{t('location.occupancy.empty')}</p>
+                    ) : (
+                      <div className="location-occupancy__names">
+                        {item.residents.map((resident) => (
+                          <span key={resident.id} className="location-occupancy__pill">
+                            {resident.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           </aside>
         </div>
       </div>

@@ -116,6 +116,8 @@
 
 ### Run 4: Location workspace emphasis only
 
+- status: completed, see `docs/frontend-redesign/24-location-workspace-emphasis-workstream.md`
+
 - objective: make `/location` read as a map-first operational surface rather than a leftover utility page
 - target files:
   - `frontend/src/components/LocationDashboard.tsx`
