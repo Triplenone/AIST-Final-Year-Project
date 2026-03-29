@@ -1,0 +1,16 @@
+R.scope=frontend-only-optimization-queue-run6-admin-information-architecture
+R.phase=issue-sized-workstream
+R.parent=frontend-only-optimization-queue
+R.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+R.files=[frontend/src/components/admin/AdminSection.tsx,frontend/src/styles/global.css,docs/frontend-redesign/20-frontend-only-optimization-queue.md,docs/frontend-redesign/26-admin-information-architecture-workstream.md]
+V.build=ok
+V.lint=ok
+V.verify.admin.light=[root:1237x1870,summary:3-cols,workspace:772.5|383.59,tabs:1171/1171,overflowX:false]
+V.verify.admin.dark=[bg:linear-gradient-dark,title:rgb(247,239,227),activeTab:rgb(127,64,40),hintBg:linear-gradient-dark,overflowX:false]
+V.verify.admin.narrow=[inner:720,summary:1-col,tabs:561/561,overflowX:false]
+V.verify.admin.tabs=[users:ok,events:ok]
+V.docs=ok
+V.svg_fallback=none
+V.commit.code=571a0ef
+I.next=frontend-only-optimization-queue[run-7-performance-asset-hygiene]
+B.blocker=[react-router-warnings,vite-cjs-deprecation,bundle-size-warning]
