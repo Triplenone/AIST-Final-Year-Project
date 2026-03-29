@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { metricOrder, type Metrics } from '../../constants/metrics';
 import type { Resident } from '../../sse/client';
+import eldercareTextureUrl from '../../assets/brand/texture-eldercare-exact-full.svg';
 import eldercareImg from '../../img/ElderlyCare.png';
 import { DashboardCharts } from '../charts/DashboardCharts';
 
@@ -124,7 +125,13 @@ export function OverviewExperience({
           </div>
         </div>
 
-        <div className="overview-hero__visual" style={{ backgroundImage: `url(${eldercareImg})` }}>
+        <div className="overview-hero__visual">
+          <div className="overview-hero__visual-base" aria-hidden="true">
+            <img className="overview-hero__visual-layer" src={eldercareImg} alt="" />
+          </div>
+          <div className="overview-hero__brand-texture" aria-hidden="true">
+            <img className="overview-hero__brand-texture-image" src={eldercareTextureUrl} alt="" />
+          </div>
           <div className="overview-hero__veil" />
           <div className="overview-signal-grid">
             {signalPanels.map((panel, index) => (

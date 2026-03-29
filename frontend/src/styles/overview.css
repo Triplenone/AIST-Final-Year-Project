@@ -74,23 +74,75 @@
   overflow: hidden;
   border-radius: var(--radius-xl);
   min-height: 100%;
-  background-size: cover;
-  background-position: center;
+  background: linear-gradient(155deg, rgba(247, 238, 226, 0.86), rgba(229, 214, 199, 0.28));
   isolation: isolate;
 }
 
+.overview-hero__visual-base,
+.overview-hero__brand-texture,
 .overview-hero__veil {
   position: absolute;
   inset: 0;
+}
+
+.overview-hero__visual-base {
+  z-index: 0;
+}
+
+.overview-hero__visual-layer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 46%;
+  transform: scale(1.02);
+}
+
+.overview-hero__brand-texture {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.overview-hero__brand-texture-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.15;
+  mix-blend-mode: soft-light;
+  transform: scale(1.04);
+}
+
+.overview-hero__veil {
+  z-index: 2;
   background:
-    linear-gradient(180deg, rgba(12, 17, 24, 0.04), rgba(12, 17, 24, 0.56)),
-    radial-gradient(circle at 18% 18%, rgba(208, 106, 63, 0.26), transparent 34%),
-    radial-gradient(circle at 86% 26%, rgba(29, 95, 116, 0.24), transparent 24%);
+    linear-gradient(180deg, rgba(12, 17, 24, 0.08), rgba(12, 17, 24, 0.58)),
+    linear-gradient(90deg, rgba(18, 24, 33, 0.18), transparent 42%),
+    radial-gradient(circle at 18% 18%, rgba(208, 106, 63, 0.2), transparent 34%),
+    radial-gradient(circle at 86% 26%, rgba(29, 95, 116, 0.18), transparent 24%);
+}
+
+:root[data-theme='dark'] .overview-hero__visual {
+  background: linear-gradient(155deg, rgba(18, 28, 39, 0.92), rgba(10, 16, 24, 0.58));
+}
+
+:root[data-theme='dark'] .overview-hero__brand-texture-image {
+  opacity: 0.12;
+  mix-blend-mode: screen;
+}
+
+:root[data-theme='dark'] .overview-hero__veil {
+  background:
+    linear-gradient(180deg, rgba(4, 9, 14, 0.1), rgba(4, 9, 14, 0.66)),
+    linear-gradient(90deg, rgba(6, 13, 20, 0.34), transparent 46%),
+    radial-gradient(circle at 18% 18%, rgba(208, 106, 63, 0.16), transparent 34%),
+    radial-gradient(circle at 86% 26%, rgba(29, 95, 116, 0.18), transparent 24%);
 }
 
 .overview-signal-grid {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   align-content: end;
   gap: 0.9rem;
