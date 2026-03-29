@@ -97,12 +97,40 @@
   - badge presence does not distort header layout
   - content blocks scan clearly
 
-### Run E: FlyCare closeout only
+### Run E: FlyCare layout recovery only
+
+- target: recover the workspace after the drawer regression pushed hidden UI back into normal layout flow
+- target files:
+  - `frontend/src/styles/global.css`
+  - `docs/frontend-redesign/12-flycare-layout-recovery-workstream.md`
+- forbidden:
+  - no workflow logic changes
+  - no map-source changes
+- acceptance:
+  - hidden drawer no longer stretches the page
+  - empty/error side rails no longer occupy false full-height columns
+  - mobile drawer returns to overlay presentation
+
+### Run F: FlyCare header readability only
+
+- target: correct the FlyCare header lockup readability after the dark rail typography regressed
+- target files:
+  - `frontend/src/styles/app-shell.css`
+  - `docs/frontend-redesign/13-flycare-header-readability-workstream.md`
+- forbidden:
+  - no FlyCare workflow edits
+  - no route or auth changes
+- acceptance:
+  - title remains clearly readable on the dark fixed rail
+  - subtitle stays secondary but legible
+  - mobile and desktop header scale remain stable
+
+### Run G: FlyCare closeout only
 
 - target: validate, document, and hand off the FlyCare visual follow-up runs
 - target files:
   - `docs/frontend-redesign/06-flycare-visual-followups-plan.md`
-  - handoff doc if needed
+  - `docs/frontend-redesign/99-flycare-handoff.md`
   - `_ben_mem/CURR.mem`
   - `_ben_mem/LOG/*`
 
@@ -120,4 +148,6 @@
 - Run B: shell background asset and layout
 - Run C: map-stage framing
 - Run D: info panel hierarchy
-- Run E: closeout
+- Run E: layout recovery
+- Run F: header readability
+- Run G: closeout

@@ -3,7 +3,7 @@
   --ambient-header-offset: clamp(5.25rem, 5.6vw, 6rem);
   --ambient-header-width: min(1640px, calc(100% - 2rem));
   --ambient-stage-width: min(1240px, 100%);
-  --ambient-flycare-header-offset: clamp(4.7rem, 5.2vw, 5.35rem);
+  --ambient-flycare-header-offset: clamp(5rem, 5.35vw, 5.7rem);
   padding-top: var(--ambient-shell-frame-top);
 }
 
@@ -72,7 +72,7 @@
   right: 0;
   width: 100%;
   margin-bottom: 0;
-  padding: 0.55rem 0 0.45rem;
+  padding: 0.68rem 0 0.58rem;
   z-index: 55;
   background: linear-gradient(180deg, rgba(9, 16, 25, 0.94), rgba(9, 17, 24, 0.84));
   border-bottom-color: rgba(255, 255, 255, 0.08);
@@ -114,24 +114,42 @@
 .ambient-header--flycare .ambient-header__inner {
   grid-template-columns: 1fr;
   justify-items: center;
-  width: min(1440px, calc(100% - 1rem));
+  width: min(1440px, calc(100% - 1.25rem));
   padding: 0;
 }
 
 .ambient-header--flycare .ambient-header__brand {
   justify-content: center;
+  width: 100%;
 }
 
 .ambient-header--flycare .ambient-header__brand-lockup {
   justify-content: center;
+  gap: clamp(0.9rem, 1.1vw, 1.18rem);
+  align-items: center;
 }
 
 .ambient-header--flycare .ambient-header__mark {
-  color: var(--text-contrast);
+  color: rgba(248, 241, 229, 0.98);
+  font-size: clamp(1.28rem, 0.65vw + 1.05rem, 2rem);
+  line-height: 1.03;
+  font-weight: 600;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.16);
 }
 
 .ambient-header--flycare .ambient-header__tagline {
-  color: rgba(248, 241, 229, 0.78);
+  color: rgba(240, 232, 221, 0.88);
+  font-size: clamp(0.86rem, 0.12vw + 0.8rem, 1rem);
+  line-height: 1.28;
+  max-width: 32ch;
+}
+
+.ambient-header--flycare .ambient-header__copy {
+  gap: 0.25rem;
+}
+
+.ambient-header--flycare .ambient-header__brand-copy {
+  max-width: min(26rem, calc(100vw - 8.5rem));
 }
 
 .ambient-header__brand {
@@ -174,8 +192,8 @@
 }
 
 .ambient-header__brand-mark--flycare {
-  height: clamp(1.75rem, 2vw, 2.08rem);
-  max-width: min(5.6rem, 18vw);
+  height: clamp(2rem, 2.15vw, 2.3rem);
+  max-width: min(6.2rem, 18vw);
 }
 
 :root[data-theme='dark'] .ambient-header__brand-mark-wrap--flycare {
@@ -720,7 +738,7 @@
   .app-background {
     --ambient-shell-frame-top: 0.5rem;
     --ambient-header-offset: 7.55rem;
-    --ambient-flycare-header-offset: 4.85rem;
+    --ambient-flycare-header-offset: 5.2rem;
   }
 
   .app-shell--ambient {
@@ -760,6 +778,38 @@
   .ambient-header__brand-mark--flycare {
     height: 1.78rem;
     max-width: min(5rem, 38vw);
+  }
+
+  .ambient-header--flycare {
+    padding: 0.54rem 0 0.46rem;
+  }
+
+  .ambient-header--flycare .ambient-header__inner {
+    width: min(100%, calc(100% - 0.9rem));
+  }
+
+  .ambient-header--flycare .ambient-header__brand-lockup {
+    width: min(100%, 28rem);
+    gap: 0.72rem;
+  }
+
+  .ambient-header--flycare .ambient-header__brand-mark--flycare {
+    height: 1.96rem;
+    max-width: min(5.15rem, 30vw);
+  }
+
+  .ambient-header--flycare .ambient-header__brand-copy {
+    max-width: min(18.75rem, calc(100vw - 5.9rem));
+  }
+
+  .ambient-header--flycare .ambient-header__mark {
+    font-size: clamp(1.08rem, 0.7rem + 1.35vw, 1.34rem);
+    line-height: 1.05;
+  }
+
+  .ambient-header--flycare .ambient-header__tagline {
+    font-size: 0.84rem;
+    line-height: 1.22;
   }
 
   .ambient-header__status {
