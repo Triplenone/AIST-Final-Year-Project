@@ -1,0 +1,17 @@
+R.scope=frontend-only-optimization-queue-run5-operations-family-consistency
+R.phase=issue-sized-workstream
+R.parent=frontend-only-optimization-queue
+R.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+R.files=[frontend/src/App.tsx,frontend/src/styles/app-shell.css,docs/frontend-redesign/20-frontend-only-optimization-queue.md,docs/frontend-redesign/25-operations-family-consistency-workstream.md]
+V.build=ok
+V.lint=ok
+V.verify.operations.light=[root:1037x1129,summary:4-cols,layout:576.53|377.73,nav:830/830,overflowX:false]
+V.verify.operations.dark=[bg:linear-gradient-dark,text:rgb(247,239,227),itemBg:linear-gradient-dark,chipText:rgb(167,182,198),overflowX:false]
+V.verify.family.light=[bg:linear-gradient-light-blue,text:rgb(16,23,34),itemBg:linear-gradient-light-blue,overflowX:false]
+V.verify.family.dark=[root:1037x1129,bg:linear-gradient-dark-blue,text:rgb(247,239,227),itemBg:linear-gradient-dark-blue,chipText:rgb(167,182,198),overflowX:false]
+V.verify.mobile=[operations:summary-2-cols|coverage-2-cols|nav:669/767|overflowX:false,family:summary-2-cols|coverage-2-cols|nav:669/767|overflowX:false]
+V.docs=ok
+V.svg_fallback=none
+V.commit.code=c2d78ed
+I.next=frontend-only-optimization-queue[run-6-admin-information-architecture]
+B.blocker=[react-router-warnings,bundle-size-warning,upstream-runtime-gaps]
