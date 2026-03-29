@@ -21,13 +21,16 @@ export function QuickActionsDock({
   actionLabel,
   onAction
 }: QuickActionsDockProps) {
+  const panelId = 'ambient-actions-panel';
+
   return (
-    <div className="actions-drawer ambient-actions" aria-label="Quick actions">
+    <div className={`actions-drawer ambient-actions${open ? ' ambient-actions--open' : ''}`} aria-label="Quick actions">
       <button
         type="button"
         className="actions-toggle ambient-actions__toggle"
         onClick={onToggle}
         aria-expanded={open}
+        aria-controls={panelId}
         aria-label={open ? 'Hide controls' : 'Show controls'}
         title={open ? 'Hide controls' : 'Show controls'}
       >
@@ -36,7 +39,12 @@ export function QuickActionsDock({
         </span>
       </button>
 
-      <div className={`actions-panel ambient-actions__panel${open ? ' actions-panel--open' : ''}`}>
+      <div
+        id={panelId}
+        className={`actions-panel ambient-actions__panel${open ? ' actions-panel--open' : ''}`}
+        aria-hidden={!open}
+        hidden={!open}
+      >
         <div className="actions ambient-actions__content">
           <LanguageSwitcher openUpward />
           <button type="button" className="theme-toggle ambient-actions__theme" onClick={onThemeToggle}>

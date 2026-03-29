@@ -53,6 +53,8 @@
 
 ### Run 1: Shared shell resilience only
 
+- status: completed, see `docs/frontend-redesign/21-shared-shell-resilience-workstream.md`
+
 - objective: harden the shared shell against long labels, zoom, desktop clipping, and route-to-route spacing drift
 - target files:
   - `frontend/src/components/shell/AppHeader.tsx`

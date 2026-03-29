@@ -20,9 +20,14 @@ type AppHeaderProps = {
 export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle, navItems }: AppHeaderProps) {
   const activeItem = navItems.find((item) => item.key === activeKey);
   const brandMarkUrl = isFlyCarePage ? flyCareBadgeUrl : smartCareMarkUrl;
+  const hasDenseNav = !isFlyCarePage && activeKey !== 'position' && navItems.length >= 8;
 
   return (
-    <header className={`ambient-header ambient-header--route-${activeKey}${isFlyCarePage ? ' ambient-header--flycare' : ''}`}>
+    <header
+      className={`ambient-header ambient-header--route-${activeKey}${isFlyCarePage ? ' ambient-header--flycare' : ''}${
+        hasDenseNav ? ' ambient-header--dense-nav' : ''
+      }`}
+    >
       <div className="ambient-header__inner">
         <div className="ambient-header__brand">
           <div className="ambient-header__brand-lockup">
