@@ -156,6 +156,8 @@
 
 ### Run 6: Admin information architecture only
 
+- status: completed, see `docs/frontend-redesign/26-admin-information-architecture-workstream.md`
+
 - objective: tighten `/admin` information hierarchy and reduce internal card sprawl without changing admin workflows
 - target files:
   - `frontend/src/components/admin/AdminSection.tsx`
