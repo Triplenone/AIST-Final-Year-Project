@@ -1,0 +1,16 @@
+scope=frontend-flycare-layout-recovery
+phase=issue-sized-flycare-layout-recovery
+branch=ben/frontend-only-improve
+commit=adcb970
+files=frontend/src/styles/global.css|docs/frontend-redesign/12-flycare-layout-recovery-workstream.md|_ben_mem/CURR.mem|_ben_mem/LOG/20260330-020526.mem
+protect=FlyCarePage.tsx-workflow|polling|zone-logic|flight-update-state|map-image-source|backend|backend-routes|backend-payload|db-schema|route-contract|auth-persistence|theme-persistence
+change.flycare.drawer=removed-from-layout-flow-and-restored-to-fixed-overlay
+change.flycare.side_panels=forced-empty-height-reduced
+change.flycare.mobile.drawer=bottom-sheet-presentation-added
+validate.build.cmd=npm run build
+validate.build.result=pass
+validate.lint.cmd=npm run lint
+validate.lint.result=pass
+validate.playwright.flycare.desktop=root:865.12|left:324|center:836.17|right:324|drawerPosition:fixed|overflowX:false
+validate.playwright.flycare.mobile=root:1359.69|left:324|center:681.11|right:324|drawerPosition:fixed|overflowX:false
+note.console.errors=react-router-warnings-and-mongo-upstream-errors-unchanged
