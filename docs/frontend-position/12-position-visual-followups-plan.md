@@ -64,6 +64,20 @@
 
 ## Workstream split
 
+### Run 0: Position presentation recovery only
+
+- target: remove dark-mode readability failures on `/position` and wire the eldercare exact SVG into the Position background layer
+- target files:
+  - `frontend/src/styles/position-page.css`
+  - `docs/frontend-position/13-position-presentation-recovery-workstream.md`
+- acceptance:
+  - resident rail cards, summary tiles, map command strip, and decision controls remain readable in dark mode
+  - `frontend/src/assets/brand/texture-eldercare-exact-full.svg` is the active background asset for Position
+  - no source reference to the eldercare PNG is introduced
+  - light mode remains intact
+  - no adapter or route behavior changes
+  - no overflow or sticky regressions
+
 ### Run A: Position header and shell readability only
 
 - target: make the Proactive Guardian Care route identity readable and intentional in the shared shell
@@ -127,6 +141,7 @@
 
 ## Recommended execution order
 
+- Run 0: presentation recovery
 - Run A: Position header and shell readability
 - Run B: resident rail and summary hierarchy
 - Run C: map stage emphasis and surface unification

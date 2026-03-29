@@ -1,8 +1,27 @@
 .app-background--position {
+  position: relative;
+  isolation: isolate;
   overflow-x: hidden;
 }
 
+.app-background--position::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.13;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(208, 106, 63, 0.16), transparent 34%),
+    radial-gradient(circle at 82% 14%, rgba(29, 95, 116, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.08) 44%, transparent 74%),
+    url('../assets/brand/texture-eldercare-exact-full.svg') center top / cover no-repeat;
+  filter: saturate(0.9) contrast(0.94);
+}
+
 .app-background--position .app-shell--ambient {
+  position: relative;
+  z-index: 1;
   width: min(1640px, calc(100% - 2rem));
   gap: 1rem;
 }
@@ -767,6 +786,198 @@
   margin: 0.45rem 0 0;
   font-size: 0.86rem;
   color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .position-command-center__surface {
+  background:
+    linear-gradient(180deg, rgba(13, 22, 31, 0.96), rgba(10, 18, 26, 0.92)),
+    var(--bg-panel);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 26px 56px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-theme='dark'] .app-background--position::before {
+  opacity: 0.12;
+  background:
+    radial-gradient(circle at 16% 20%, rgba(255, 155, 106, 0.14), transparent 34%),
+    radial-gradient(circle at 84% 14%, rgba(143, 214, 239, 0.11), transparent 30%),
+    linear-gradient(180deg, rgba(8, 15, 24, 0.34), rgba(8, 15, 24, 0.08) 46%, transparent 76%),
+    url('../assets/brand/texture-eldercare-exact-full.svg') center top / cover no-repeat;
+  mix-blend-mode: screen;
+  filter: saturate(0.82) contrast(0.9);
+}
+
+:root[data-theme='dark'] .position-command-center__eyebrow,
+:root[data-theme='dark'] .position-resident-rail__summary-item dt,
+:root[data-theme='dark'] .position-summary-bar__item dt,
+:root[data-theme='dark'] .position-map-stage__command-grid dt,
+:root[data-theme='dark'] .position-decision-panel__section h4,
+:root[data-theme='dark'] .position-decision-panel__metrics dt,
+:root[data-theme='dark'] .position-decision-panel__facts dt {
+  color: rgba(188, 201, 216, 0.72);
+}
+
+:root[data-theme='dark'] .position-command-center__muted,
+:root[data-theme='dark'] .position-summary-bar__support,
+:root[data-theme='dark'] .position-resident-rail__reason,
+:root[data-theme='dark'] .position-resident-rail__meta,
+:root[data-theme='dark'] .position-map-stage__legend-item,
+:root[data-theme='dark'] .position-decision-panel__activity-top span,
+:root[data-theme='dark'] .position-decision-panel__activity-item p {
+  color: rgba(180, 194, 210, 0.82);
+}
+
+:root[data-theme='dark'] .position-command-center__error {
+  background: rgba(127, 29, 29, 0.22);
+  color: rgba(254, 202, 202, 0.96);
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+:root[data-theme='dark'] .position-command-center__notice,
+:root[data-theme='dark'] .position-command-center__notice--warning {
+  background: rgba(120, 53, 15, 0.24);
+  color: rgba(253, 230, 138, 0.96);
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+:root[data-theme='dark'] .position-command-center__state-card {
+  background: rgba(17, 29, 40, 0.94);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='dark'] .position-command-center__state-card--loading {
+  background: rgba(17, 35, 52, 0.94);
+  border-color: rgba(96, 165, 250, 0.26);
+}
+
+:root[data-theme='dark'] .position-command-center__state-card--error {
+  background: rgba(55, 23, 27, 0.94);
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+:root[data-theme='dark'] .position-resident-rail__summary-item,
+:root[data-theme='dark'] .position-summary-bar__item,
+:root[data-theme='dark'] .position-map-stage__command,
+:root[data-theme='dark'] .position-decision-panel__metrics div,
+:root[data-theme='dark'] .position-decision-panel__facts div,
+:root[data-theme='dark'] .position-decision-panel__activity-item,
+:root[data-theme='dark'] .position-map-stage__legend-zone,
+:root[data-theme='dark'] .position-decision-panel__refresh {
+  background: rgba(18, 30, 41, 0.92);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+:root[data-theme='dark'] .position-resident-rail__item {
+  background-color: rgba(17, 28, 38, 0.94);
+  background: rgba(17, 28, 38, 0.94);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+:root[data-theme='dark'] .position-resident-rail__item:hover,
+:root[data-theme='dark'] .position-resident-rail__item:focus-visible {
+  background: rgba(22, 35, 46, 0.98);
+  border-color: rgba(143, 214, 239, 0.28);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme='dark'] .position-resident-rail__item--selected-stable {
+  background-color: rgba(18, 30, 41, 0.96);
+  background:
+    linear-gradient(180deg, rgba(22, 69, 48, 0.42), rgba(18, 30, 41, 0.96)),
+    rgba(18, 30, 41, 0.96);
+  border-color: rgba(74, 222, 128, 0.24);
+}
+
+:root[data-theme='dark'] .position-resident-rail__item--selected-warning {
+  background-color: rgba(18, 30, 41, 0.96);
+  background:
+    linear-gradient(180deg, rgba(120, 53, 15, 0.46), rgba(18, 30, 41, 0.96)),
+    rgba(18, 30, 41, 0.96);
+  border-color: rgba(251, 191, 36, 0.24);
+}
+
+:root[data-theme='dark'] .position-resident-rail__item--selected-critical {
+  background-color: rgba(18, 30, 41, 0.96);
+  background:
+    linear-gradient(180deg, rgba(127, 29, 29, 0.48), rgba(18, 30, 41, 0.96)),
+    rgba(18, 30, 41, 0.96);
+  border-color: rgba(248, 113, 113, 0.26);
+}
+
+:root[data-theme='dark'] .position-resident-rail__zone {
+  color: rgba(227, 234, 242, 0.9);
+}
+
+:root[data-theme='dark'] .position-resident-rail__error {
+  color: rgba(254, 202, 202, 0.96);
+}
+
+:root[data-theme='dark'] .position-summary-bar--attention {
+  background:
+    linear-gradient(180deg, rgba(120, 53, 15, 0.34), rgba(11, 19, 28, 0.94)),
+    var(--bg-panel);
+  border-color: rgba(251, 191, 36, 0.24);
+}
+
+:root[data-theme='dark'] .position-summary-bar--critical,
+:root[data-theme='dark'] .position-summary-bar--error {
+  background:
+    linear-gradient(180deg, rgba(127, 29, 29, 0.34), rgba(11, 19, 28, 0.94)),
+    var(--bg-panel);
+  border-color: rgba(248, 113, 113, 0.24);
+}
+
+:root[data-theme='dark'] .position-summary-bar__grid,
+:root[data-theme='dark'] .position-decision-panel__section + .position-decision-panel__section {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='dark'] .position-map-stage__canvas {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 55%),
+    linear-gradient(180deg, rgba(18, 30, 41, 0.96), rgba(12, 21, 30, 0.98));
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='dark'] .position-map-stage__cell:hover,
+:root[data-theme='dark'] .position-map-stage__cell:focus-visible {
+  background: rgba(143, 214, 239, 0.14);
+}
+
+:root[data-theme='dark'] .position-decision-panel__refresh:hover,
+:root[data-theme='dark'] .position-decision-panel__refresh:focus-visible {
+  background: rgba(28, 45, 60, 0.98);
+}
+
+:root[data-theme='dark'] .position-decision-panel__hero {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='dark'] .position-decision-panel__hero--stable {
+  background: linear-gradient(180deg, rgba(22, 69, 48, 0.36), rgba(18, 30, 41, 0.96));
+  border-color: rgba(74, 222, 128, 0.22);
+}
+
+:root[data-theme='dark'] .position-decision-panel__hero--attention {
+  background: linear-gradient(180deg, rgba(120, 53, 15, 0.4), rgba(18, 30, 41, 0.96));
+  border-color: rgba(251, 191, 36, 0.24);
+}
+
+:root[data-theme='dark'] .position-decision-panel__hero--critical {
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.42), rgba(18, 30, 41, 0.96));
+  border-color: rgba(248, 113, 113, 0.26);
+}
+
+:root[data-theme='dark'] .position-decision-panel__activity-item--critical {
+  background: rgba(55, 23, 27, 0.94);
+  border-color: rgba(248, 113, 113, 0.26);
+}
+
+:root[data-theme='dark'] .position-decision-panel__activity-item--warning {
+  background: rgba(64, 37, 18, 0.94);
+  border-color: rgba(251, 191, 36, 0.24);
 }
 
 @media (prefers-reduced-motion: reduce) {
