@@ -95,6 +95,8 @@
 
 ### Run 3: Residents workspace utility pass only
 
+- status: completed, see `docs/frontend-redesign/23-residents-workspace-utility-workstream.md`
+
 - objective: make `/residents` feel like an operator workspace instead of a generic admin card wall
 - target files:
   - `frontend/src/components/admin/ResidentsAdmin.tsx`
