@@ -126,12 +126,31 @@
   flex: 0 0 auto;
 }
 
+.ambient-header__brand-mark-wrap--flycare {
+  padding: 0.15rem 0.38rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 243, 236, 0.34));
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  box-shadow: 0 12px 24px rgba(16, 23, 34, 0.08);
+}
+
 .ambient-header__brand-mark {
   display: block;
   width: auto;
   height: clamp(1.5rem, 1.7vw, 1.78rem);
   max-width: min(3.15rem, 13vw);
   object-fit: contain;
+}
+
+.ambient-header__brand-mark--flycare {
+  height: clamp(1.75rem, 2vw, 2.08rem);
+  max-width: min(5.6rem, 18vw);
+}
+
+:root[data-theme='dark'] .ambient-header__brand-mark-wrap--flycare {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 155, 106, 0.08));
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
 }
 
 .ambient-header__copy {
@@ -652,6 +671,11 @@
 
   .ambient-header__brand-mark {
     height: 1.55rem;
+  }
+
+  .ambient-header__brand-mark--flycare {
+    height: 1.78rem;
+    max-width: min(5rem, 38vw);
   }
 
   .ambient-header__status {

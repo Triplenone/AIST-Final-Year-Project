@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 
+import flyCareBadgeUrl from '../../assets/brand/flycare-badge-exact-crop.svg';
 import smartCareMarkUrl from '../../assets/brand/smartcare-mark-exact-full.svg';
 
 type AppHeaderNavItem = {
@@ -18,14 +19,22 @@ type AppHeaderProps = {
 
 export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle, navItems }: AppHeaderProps) {
   const activeItem = navItems.find((item) => item.key === activeKey);
+  const brandMarkUrl = isFlyCarePage ? flyCareBadgeUrl : smartCareMarkUrl;
 
   return (
     <header className={`ambient-header ambient-header--route-${activeKey}${isFlyCarePage ? ' ambient-header--flycare' : ''}`}>
       <div className="ambient-header__inner">
         <div className="ambient-header__brand">
           <div className="ambient-header__brand-lockup">
-            <span className="ambient-header__brand-mark-wrap" aria-hidden="true">
-              <img className="ambient-header__brand-mark" src={smartCareMarkUrl} alt="" />
+            <span
+              className={`ambient-header__brand-mark-wrap${isFlyCarePage ? ' ambient-header__brand-mark-wrap--flycare' : ''}`}
+              aria-hidden="true"
+            >
+              <img
+                className={`ambient-header__brand-mark${isFlyCarePage ? ' ambient-header__brand-mark--flycare' : ''}`}
+                src={brandMarkUrl}
+                alt=""
+              />
             </span>
             <div className="ambient-header__copy ambient-header__brand-copy">
               <span className="ambient-header__mark">{brandTitle}</span>
