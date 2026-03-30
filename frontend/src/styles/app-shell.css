@@ -760,6 +760,24 @@
   box-shadow: 0 22px 50px rgba(0, 0, 0, 0.24);
 }
 
+.route-surface--lazy-loading {
+  min-height: clamp(18rem, 42vh, 26rem);
+  align-items: center;
+  justify-content: center;
+}
+
+.route-surface__loading-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.route-surface__loading-copy h2 {
+  margin: 0;
+}
+
 .route-surface--narrow {
   width: min(1040px, 100%);
   margin: 0 auto;

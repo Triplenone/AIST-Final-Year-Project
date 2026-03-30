@@ -176,6 +176,8 @@
 
 ### Run 7: Performance and asset hygiene only
 
+- status: completed, see `docs/frontend-redesign/27-performance-asset-hygiene-workstream.md`
+
 - objective: reduce frontend delivery weight without changing product behavior
 - target files:
   - `frontend/package.json`

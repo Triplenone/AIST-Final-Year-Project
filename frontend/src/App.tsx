@@ -4,23 +4,18 @@ import './styles/app-shell.css';
 import './styles/overview.css';
 
 import type { FormEvent } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { FallAlertModal } from './components/FallAlertModal';
-import { ResidentsAdmin } from './components/admin/ResidentsAdmin';
-import { AdminSection, type AdminTab } from './components/admin/AdminSection';
+import type { AdminTab } from './components/admin/AdminSection';
 import { AppHeader } from './components/shell/AppHeader';
 import { AuthModal } from './components/shell/AuthModal';
 import { QuickActionsDock } from './components/shell/QuickActionsDock';
-import { OverviewExperience } from './components/overview/OverviewExperience';
-import { LocationDashboard } from './components/LocationDashboard';
 import { initialMetrics, type Metrics } from './constants/metrics';
 import { useBackendEvents } from './hooks/useBackendEvents';
-import { FlyCarePage } from './pages/FlyCarePage';
-import { PositionPage } from './pages/PositionPage';
 import { useResidentLiveStore } from './shared/resident-live-store';
 import type { Resident } from './sse/client';
 import {
@@ -90,6 +85,25 @@ const NAV_ITEMS: ReadonlyArray<{
   { key: 'family', to: '/family', labelKey: 'layout.nav.family' },
   { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin' }
 ] as const;
+
+const OverviewExperience = lazy(() =>
+  import('./components/overview/OverviewExperience').then((module) => ({ default: module.OverviewExperience }))
+);
+const ResidentsAdmin = lazy(() =>
+  import('./components/admin/ResidentsAdmin').then((module) => ({ default: module.ResidentsAdmin }))
+);
+const AdminSection = lazy(() =>
+  import('./components/admin/AdminSection').then((module) => ({ default: module.AdminSection }))
+);
+const LocationDashboard = lazy(() =>
+  import('./components/LocationDashboard').then((module) => ({ default: module.LocationDashboard }))
+);
+const PositionPage = lazy(() =>
+  import('./pages/PositionPage').then((module) => ({ default: module.PositionPage }))
+);
+const FlyCarePage = lazy(() =>
+  import('./pages/FlyCarePage').then((module) => ({ default: module.FlyCarePage }))
+);
 
 const INDOOR_ZONES = ['Bedroom 1', 'Bedroom 2', 'Bathroom', 'Common Lounge'];
 const SIM_STATUSES: Resident['status'][] = ['high', 'followUp', 'stable'];
@@ -344,6 +358,7 @@ export default function App() {
   const isPositionPage = activePage === 'position';
   const isFlyCarePage = activePage === 'flycare';
   const stageTone = resolveStageTone(activePage);
+  const activeNavItem = NAV_ITEMS.find((item) => item.key === activePage);
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.accounts, accounts);
@@ -1090,6 +1105,15 @@ export default function App() {
         exit: { opacity: 0, y: -12 }
       };
 
+  const routeLoadingFallback = (
+    <section className="route-surface route-surface--lazy-loading" aria-busy="true" aria-live="polite">
+      <div className="route-surface__loading-copy">
+        <p className="route-surface__eyebrow">{activeNavItem?.label ?? t('layout.title')}</p>
+        <h2>{t('common.loading')}</h2>
+      </div>
+    </section>
+  );
+
   return (
     <div
       className={`app-background${isPositionPage ? ' app-background--position' : ''}${isFlyCarePage ? ' app-background--flycare' : ''}`}
@@ -1112,7 +1136,7 @@ export default function App() {
             transition={{ duration: shouldReduceMotion ? 0 : 0.38, ease: [0.22, 1, 0.36, 1] }}
             {...pageTransition}
           >
-            {renderDashboardPage()}
+            <Suspense fallback={routeLoadingFallback}>{renderDashboardPage()}</Suspense>
           </motion.div>
         </AnimatePresence>
 
