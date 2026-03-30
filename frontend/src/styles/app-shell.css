@@ -394,6 +394,14 @@
   outline: none;
 }
 
+.ambient-header__nav a:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.26);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.94),
+    0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
 .ambient-header__nav a.is-active {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 238, 0.98));
   border-color: rgba(208, 106, 63, 0.18);
@@ -404,10 +412,22 @@
   outline: none;
 }
 
+.ambient-header__nav a.is-active:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.26);
+  outline-offset: 3px;
+}
+
 :root[data-theme='dark'] .ambient-header__nav a:hover,
 :root[data-theme='dark'] .ambient-header__nav a:focus-visible {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
+}
+
+:root[data-theme='dark'] .ambient-header__nav a:focus-visible {
+  outline-color: rgba(143, 214, 239, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(8, 16, 25, 0.92),
+    0 14px 28px rgba(0, 0, 0, 0.28);
 }
 
 :root[data-theme='dark'] .ambient-header__nav a.is-active {
@@ -415,6 +435,10 @@
   border-color: rgba(255, 155, 106, 0.18);
   color: var(--accent-strong);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme='dark'] .ambient-header__nav a.is-active:focus-visible {
+  outline-color: rgba(143, 214, 239, 0.42);
 }
 
 .ambient-header__nav a:hover:not(.is-active),
@@ -543,6 +567,14 @@
   color: rgba(16, 23, 34, 0.98);
 }
 
+.ambient-header--route-position .ambient-header__nav a:focus-visible {
+  outline: 3px solid rgba(74, 123, 149, 0.28);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.96),
+    0 14px 28px rgba(15, 23, 42, 0.12);
+}
+
 .ambient-header--route-position .ambient-header__nav a.is-active {
   background: linear-gradient(135deg, rgba(255, 234, 220, 0.96), rgba(250, 240, 233, 0.92));
   border-color: rgba(255, 155, 106, 0.26);
@@ -550,6 +582,11 @@
   box-shadow:
     0 12px 26px rgba(157, 56, 31, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.44);
+}
+
+.ambient-header--route-position .ambient-header__nav a.is-active:focus-visible {
+  outline: 3px solid rgba(74, 123, 149, 0.28);
+  outline-offset: 3px;
 }
 
 :root[data-theme='dark'] .ambient-header--route-position {
@@ -592,6 +629,17 @@
   background: linear-gradient(135deg, rgba(255, 228, 213, 0.98), rgba(249, 238, 229, 0.94));
   border-color: rgba(255, 155, 106, 0.3);
   color: #7f4028;
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__nav a.is-active:focus-visible {
+  outline-color: rgba(143, 214, 239, 0.42);
+}
+
+:root[data-theme='dark'] .ambient-header--route-position .ambient-header__nav a:focus-visible {
+  outline-color: rgba(143, 214, 239, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(8, 16, 25, 0.94),
+    0 14px 28px rgba(0, 0, 0, 0.28);
 }
 
 .app-stage {
@@ -711,6 +759,10 @@
 .app-stage--utility > * {
   position: relative;
   z-index: 1;
+}
+
+.app-shell--ambient :where(a, button, input, select, textarea, [role='button']):focus-visible {
+  scroll-margin-top: calc(var(--ambient-header-offset) + 1rem);
 }
 
 :root[data-theme='dark'] .app-stage--workspace::after,
@@ -1289,6 +1341,17 @@
   pointer-events: auto;
 }
 
+.ambient-actions__toggle:focus-visible,
+.ambient-actions__theme:focus-visible,
+.ambient-actions .language-switcher--open-upward .language-switcher__trigger:focus-visible,
+.ambient-actions .auth-menu__button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.94),
+    0 18px 34px rgba(15, 23, 42, 0.18);
+}
+
 .ambient-actions__panel {
   position: absolute;
   right: 0;
@@ -1311,6 +1374,13 @@
 
 .ambient-actions__panel[hidden] {
   display: none;
+}
+
+.ambient-actions__panel:focus-within {
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.92),
+    0 24px 56px rgba(16, 23, 34, 0.18);
 }
 
 .ambient-actions__content {
@@ -1381,6 +1451,23 @@
   color: rgba(244, 239, 231, 0.96);
 }
 
+:root[data-theme='dark'] .ambient-actions__toggle:focus-visible,
+:root[data-theme='dark'] .ambient-actions__theme:focus-visible,
+:root[data-theme='dark'] .ambient-actions .language-switcher--open-upward .language-switcher__trigger:focus-visible,
+:root[data-theme='dark'] .ambient-actions .auth-menu__button:focus-visible {
+  outline-color: rgba(143, 214, 239, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(8, 16, 25, 0.94),
+    0 18px 36px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme='dark'] .ambient-actions__panel:focus-within {
+  border-color: rgba(143, 214, 239, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(8, 16, 25, 0.94),
+    0 24px 56px rgba(0, 0, 0, 0.35);
+}
+
 :root[data-theme='dark'] .ambient-actions__theme.theme-toggle {
   background: linear-gradient(135deg, rgba(255, 170, 126, 0.18), rgba(143, 214, 239, 0.12));
   border-color: rgba(255, 255, 255, 0.14);
@@ -1428,6 +1515,23 @@
 :root[data-theme='dark'] .ambient-actions .language-switcher--open-upward .language-switcher__option:hover,
 :root[data-theme='dark'] .ambient-actions .language-switcher--open-upward .language-switcher__option:focus-visible {
   background: rgba(143, 214, 239, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-header__nav a,
+  .ambient-actions__toggle,
+  .ambient-actions__theme,
+  .ambient-actions .auth-menu__button,
+  .ambient-actions .language-switcher--open-upward .language-switcher__trigger,
+  .ambient-actions__panel {
+    transition: none;
+    animation: none;
+  }
+
+  .ambient-header__nav a:hover:not(.is-active),
+  .ambient-header__nav a:focus-visible:not(.is-active) {
+    transform: none;
+  }
 }
 
 .auth-modal__dialog {
@@ -1645,6 +1749,61 @@
   .route-brief__list-meta {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 393px) {
+  .app-shell--ambient {
+    width: min(100%, calc(100% - 0.75rem));
+  }
+
+  .route-surface,
+  .app-stage--workspace,
+  .app-stage--utility,
+  .app-stage--position.app-stage--route-position {
+    padding: clamp(0.85rem, 4vw, 1rem);
+  }
+
+  .app-stage--position.app-stage--route-position::after,
+  .app-stage--workspace::after,
+  .app-stage--utility::after {
+    inset: 0.55rem;
+  }
+
+  .ambient-actions {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  .ambient-actions__panel.actions-panel--open {
+    width: min(calc(100vw - 1.5rem), 26rem);
+    max-height: min(calc(100vh - 4.75rem), 20rem);
+  }
+}
+
+@media (max-width: 320px) {
+  .route-surface,
+  .app-stage--workspace,
+  .app-stage--utility,
+  .app-stage--position.app-stage--route-position {
+    padding: 0.78rem;
+  }
+
+  .ambient-header__nav a,
+  .ambient-header--route-position .ambient-header__nav a {
+    min-height: 2.3rem;
+    padding-inline: 0.72rem;
+  }
+
+  .ambient-actions {
+    right: 0.625rem;
+    bottom: 0.625rem;
+  }
+
+  .ambient-actions__toggle {
+    width: 2.8rem;
+    height: 2.8rem;
   }
 }
 

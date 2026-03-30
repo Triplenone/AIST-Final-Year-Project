@@ -1024,6 +1024,11 @@ body,
 .position-page__cell:hover {
   background: rgba(26, 115, 232, 0.12);
 }
+.position-page__cell:focus-visible {
+  background: rgba(26, 115, 232, 0.12);
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 1px;
+}
 .position-page__cell--highlight {
   background: rgba(26, 115, 232, 0.35);
 }
@@ -1153,6 +1158,11 @@ body,
 }
 .position-page__refresh-btn:hover {
   background: var(--bg-hover, #f1f3f4);
+}
+.position-page__refresh-btn:focus-visible {
+  background: var(--bg-hover, #f1f3f4);
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 3px;
 }
 
 .flycare-page .position-page__info-panel {
@@ -1297,6 +1307,11 @@ body,
 .flycare-page__simulate-btn:hover {
   background: var(--bg-hover, #f1f3f4);
 }
+.flycare-page__simulate-btn:focus-visible {
+  background: var(--bg-hover, #f1f3f4);
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 3px;
+}
 
 :root[data-theme='dark'] .flycare-page__info-panel-header {
   background:
@@ -1354,6 +1369,12 @@ body,
 
 :root[data-theme='dark'] .flycare-page .position-page__value--muted {
   color: rgba(226, 232, 240, 0.82);
+}
+
+:root[data-theme='dark'] .position-page__cell:focus-visible,
+:root[data-theme='dark'] .position-page__refresh-btn:focus-visible,
+:root[data-theme='dark'] .flycare-page__simulate-btn:focus-visible {
+  outline-color: rgba(143, 214, 239, 0.42);
 }
 @keyframes flycareFadeIn {
   from { opacity: 0; }
@@ -1507,6 +1528,16 @@ body,
     width: 100%;
     height: 100%;
     object-fit: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flycare-page__flight-drawer-backdrop,
+  .flycare-page__flight-drawer,
+  .position-page__refresh-btn,
+  .flycare-page__simulate-btn {
+    animation: none;
+    transition: none;
   }
 }
 

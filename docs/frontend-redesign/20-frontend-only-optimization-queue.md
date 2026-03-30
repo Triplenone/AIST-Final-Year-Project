@@ -196,6 +196,8 @@
 
 ### Run 8: Accessibility and responsive hardening only
 
+- status: completed, see `docs/frontend-redesign/28-accessibility-responsive-hardening-workstream.md`
+
 - objective: close keyboard, contrast, reduced-motion, and narrow-width gaps across the frontend shell and key routes
 - target files:
   - `frontend/src/styles/app-shell.css`
