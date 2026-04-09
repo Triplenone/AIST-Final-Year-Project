@@ -77,6 +77,18 @@ def _to_vitals_item(doc: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _extract_vitals_simple(item: Dict[str, Any]) -> Dict[str, Any]:
+    vitals = item.get("vitals") or {}
+    hr = (vitals.get("heart_rate") or {}).get("bpm") if isinstance(vitals.get("heart_rate"), dict) else None
+    spo2 = (vitals.get("spo2") or {}).get("percentage") if isinstance(vitals.get("spo2"), dict) else None
+    return {
+        "timestamp": item.get("timestamp"),
+        "heart_rate": hr,
+        "spo2": spo2,
+        "device_id": item.get("device_id"),
+    }
+
+
 @router.get("/vitals/latest", response_model=Dict[str, Any])
 async def get_latest_vitals(
     device_id: str = Query(..., description="设备外部ID，例如 ESP32_00005CFA7AD4DB1C"),
@@ -157,6 +169,58 @@ async def get_latest_vitals_by_user(user_id: int):
             "user_id": user_id,
             "device_id": device.mac_address,
             "item": _to_vitals_item(doc),
+        }
+    finally:
+        session.close()
+
+
+@router.get("/vitals/user/{user_id}/history", response_model=Dict[str, Any])
+async def get_vitals_history_by_user(
+    user_id: int,
+    start_ts: Optional[int] = Query(None, description="起始时间戳（含）"),
+    end_ts: Optional[int] = Query(None, description="结束时间戳（含）"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(50, ge=1, le=200, description="每页条数"),
+):
+    """
+    通过 user_id 查绑定设备并分页返回体征历史（支持时间段筛选）。
+    """
+    session = SessionLocal()
+    try:
+        device = (
+            session.query(Device)
+            .filter(Device.elderly_user_id == user_id, Device.mac_address.isnot(None))
+            .order_by(Device.updated_at.desc())
+            .first()
+        )
+        if not device or not device.mac_address:
+            return {"found": False, "user_id": user_id, "message": "该用户未绑定可用于 MQTT 的设备标识"}
+        db = get_mongo_db()
+        coll = db[COLLECTION_RAW_UPSTREAM]
+        q: Dict[str, Any] = {
+            "device_id": device.mac_address,
+            "data_type": {"$in": ["vitals", "status_update"]},
+        }
+        if start_ts is not None or end_ts is not None:
+            q["timestamp"] = {}
+            if start_ts is not None:
+                q["timestamp"]["$gte"] = start_ts
+            if end_ts is not None:
+                q["timestamp"]["$lte"] = end_ts
+        skip = (page - 1) * page_size
+        cursor = coll.find(q).sort("server_received_at", -1).skip(skip).limit(page_size)
+        items: List[Dict[str, Any]] = []
+        async for doc in cursor:
+            items.append(_extract_vitals_simple(_to_vitals_item(doc)))
+        total = await coll.count_documents(q)
+        return {
+            "found": True,
+            "user_id": user_id,
+            "device_id": device.mac_address,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "items": items,
         }
     finally:
         session.close()

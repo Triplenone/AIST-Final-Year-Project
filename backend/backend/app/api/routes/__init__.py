@@ -13,6 +13,7 @@ from app.api.routes import (
     device_data_log,
     data_reception,
     mongo_upstream,
+    family_summary,
 )
 
 # 创建API路由器
@@ -29,4 +30,5 @@ api_router.include_router(user_status.router, prefix="/user-status", tags=["user
 api_router.include_router(device_data_log.router, prefix="/device-data-log", tags=["device-data-log"])
 api_router.include_router(data_reception.router, prefix="/data-reception", tags=["data-reception"])
 api_router.include_router(mongo_upstream.router, prefix="/mongo-upstream", tags=["mongo-upstream"])
+api_router.include_router(family_summary.router, prefix="/family-summary", tags=["family-summary"])
 

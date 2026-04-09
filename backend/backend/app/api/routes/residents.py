@@ -19,6 +19,14 @@ from app.schemas.device_data_log import DeviceDataLogResponse
 router = APIRouter()
 
 
+def build_resident_avatar_url(user: User) -> str:
+    """
+    生成住民默认头像 URL（避免前端因缺失头像字段而额外兜底）。
+    """
+    seed = f"{user.user_id}-{user.name or 'resident'}"
+    return f"https://api.dicebear.com/7.x/initials/svg?seed={seed}"
+
+
 def calculate_resident_status(db: Session, user_id: int) -> str:
     """根据最新事件计算住民状态"""
     latest_event = db.query(Event).filter(
@@ -283,6 +291,7 @@ def get_residents(
             residents.append(ResidentResponse(
                 id=str(user.user_id),
                 name=user.name,
+                avatar_url=build_resident_avatar_url(user),
                 room=room,
                 status=status,
                 last_seen_at=last_seen_at,
@@ -382,6 +391,7 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     return ResidentResponse(
         id=str(user.user_id),
         name=user.name,
+        avatar_url=build_resident_avatar_url(user),
         room=room,
         status=status,
         last_seen_at=last_seen_at,

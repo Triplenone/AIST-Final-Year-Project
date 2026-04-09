@@ -19,6 +19,7 @@ class ResidentResponse(BaseModel):
     """住民响应模型（前端Resident格式）"""
     id: str = Field(..., description="住民ID（user_id转为字符串）")
     name: str = Field(..., description="姓名")
+    avatar_url: Optional[str] = Field(None, description="头像URL")
     room: str = Field(..., description="房间号")
     status: str = Field(..., description="状态: stable, followUp, high, checked_out")
     last_seen_at: Optional[str] = Field(None, description="最后出现时间")

@@ -1,0 +1,16 @@
+V.mem.ts=2026-04-09T18:42:00+08:00
+V.scope=frontend-demand-gap-fill
+V.repo.path=F:\AAAA-FYP-Git
+V.feature.added.vitals_user_history=/api/v1/mongo-upstream/vitals/user/{user_id}/history
+V.feature.added.family_summary_today=/api/v1/family-summary/today
+V.feature.added.resident_avatar_field=avatar_url
+V.feature.updated.residents_route=backend/backend/app/api/routes/residents.py
+V.feature.updated.mongo_upstream_route=backend/backend/app/api/routes/mongo_upstream.py
+V.feature.added.family_summary_route=backend/backend/app/api/routes/family_summary.py
+V.feature.updated.api_router=backend/backend/app/api/routes/__init__.py
+V.feature.updated.resident_schema=backend/backend/app/schemas/resident.py
+V.check.frontend.req1=backend-ready-avatar-name-room
+V.check.frontend.req2=backend-ready-user-history-with-time-range
+V.check.frontend.req3=backend-ready-today-summary-placeholder
+V.check.frontend.req4=backend-not-required-frontend-i18n-needed
+V.check.frontend.req5=backend-ready-popup-data-source-user-history-api
