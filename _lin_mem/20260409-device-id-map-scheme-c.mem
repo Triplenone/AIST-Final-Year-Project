@@ -1,0 +1,13 @@
+V.mem.ts=2026-04-09T18:20:00+08:00
+V.scope=device-id-map-scheme-c
+V.repo.path=F:\AAAA-FYP-Git
+V.target=external-device-id-to-mysql-device-id
+V.strategy=scheme-c-config-mapping
+V.mapping.key=ESP32_00005CFA7AD4DB1C
+V.mapping.value=1
+V.change.config=backend/backend/app/config.py
+V.change.mqtt=backend/backend/app/services/mqtt_subscriber.py
+V.change.env=backend/backend/.env
+V.change.env_example=backend/backend/.env.example
+V.effect.payload_fields=[trigger_device_id,device_pk]
+V.note=message-ingest-applies-mapping-before-mongo-write-and-event-bridge

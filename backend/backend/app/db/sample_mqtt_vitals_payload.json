@@ -1,0 +1,50 @@
+{
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 1775635200,
+  "data_type": "vitals",
+  "location": {
+    "current": {
+      "x": 12.34,
+      "y": 5.67,
+      "accuracy": 1.25
+    }
+  },
+  "sensors": {
+    "heart_rate": {
+      "bpm": 126,
+      "confidence": 0.97,
+      "timestamp": 1775635200,
+      "valid": true
+    },
+    "spo2": {
+      "percentage": 91,
+      "confidence": 0.95,
+      "timestamp": 1775635200,
+      "valid": true
+    },
+    "body_temperature": {
+      "celsius": 38.1,
+      "confidence": 0.93,
+      "timestamp": 1775635200,
+      "valid": true
+    },
+    "resp_rate": {
+      "rpm": 26,
+      "confidence": 0.9,
+      "timestamp": 1775635200,
+      "valid": true
+    },
+    "hrv": {
+      "ms": 18.5,
+      "confidence": 0.88,
+      "timestamp": 1775635200,
+      "valid": true
+    }
+  },
+  "system": {
+    "battery": {
+      "level": 82,
+      "charging": false
+    }
+  }
+}

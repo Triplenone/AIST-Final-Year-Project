@@ -1,6 +1,7 @@
 """
 FastAPI应用主入口
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -8,6 +9,23 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 from app.config import settings
 from app.api.routes import api_router
+from app.db.mongo import ensure_indexes, close_mongo_client
+from app.services.mqtt_subscriber import start_mqtt, stop_mqtt
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """应用生命周期：启动 Mongo 索引与 MQTT 订阅，关闭时释放资源。"""
+    try:
+        await ensure_indexes()
+    except Exception as e:
+        print(f"⚠️ Mongo 索引初始化失败: {e}")
+    start_mqtt()
+    try:
+        yield
+    finally:
+        stop_mqtt()
+        await close_mongo_client()
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -15,7 +33,8 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="智能养老系统后端API",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # 配置CORS（跨域资源共享）

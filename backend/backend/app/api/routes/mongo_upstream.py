@@ -6,7 +6,9 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Query, HTTPException
 from bson.objectid import ObjectId
 
-from app.db.mongo import get_mongo_db, COLLECTION_RAW_UPSTREAM
+from app.db.mongo import get_mongo_db, COLLECTION_RAW_UPSTREAM, CANONICAL_MONGO_DB_NAME
+from app.database import SessionLocal
+from app.models.device import Device
 
 router = APIRouter()
 
@@ -16,10 +18,9 @@ async def mongo_upstream_status():
     """
     诊断接口：检查是否连上 MongoDB 以及集合内文档数量。
     """
-    from app.config import settings
     out = {
         "connected": False,
-        "db_name": settings.MONGO_DB_NAME,
+        "db_name": CANONICAL_MONGO_DB_NAME,
         "collection": COLLECTION_RAW_UPSTREAM,
         "document_count": None,
         "error": None,
@@ -50,6 +51,115 @@ def _serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
         doc = dict(doc)
         doc["_id"] = str(doc["_id"])
     return doc
+
+
+def _extract_vitals_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    sensors = payload.get("sensors") or {}
+    return {
+        "heart_rate": sensors.get("heart_rate"),
+        "spo2": sensors.get("spo2"),
+        "body_temperature": sensors.get("body_temperature") or sensors.get("temperature"),
+        "resp_rate": sensors.get("resp_rate") or sensors.get("respiratory_rate"),
+        "hrv": sensors.get("hrv"),
+    }
+
+
+def _to_vitals_item(doc: Dict[str, Any]) -> Dict[str, Any]:
+    payload = doc.get("payload") or {}
+    return {
+        "_id": str(doc.get("_id")) if doc.get("_id") else None,
+        "device_id": doc.get("device_id") or payload.get("device_id"),
+        "timestamp": doc.get("timestamp") or payload.get("timestamp"),
+        "server_received_at": doc.get("server_received_at"),
+        "data_type": doc.get("data_type"),
+        "vitals": _extract_vitals_from_payload(payload),
+        "raw_payload": payload,
+    }
+
+
+@router.get("/vitals/latest", response_model=Dict[str, Any])
+async def get_latest_vitals(
+    device_id: str = Query(..., description="设备外部ID，例如 ESP32_00005CFA7AD4DB1C"),
+):
+    """
+    返回指定设备最新一条生命体征上行（优先 data_type=vitals，兜底 status_update）。
+    """
+    db = get_mongo_db()
+    coll = db[COLLECTION_RAW_UPSTREAM]
+    q = {"device_id": device_id.strip(), "data_type": {"$in": ["vitals", "status_update"]}}
+    doc = await coll.find_one(q, sort=[("server_received_at", -1)])
+    if doc is None:
+        return {"found": False, "device_id": device_id, "message": "未找到该设备生命体征上行数据"}
+    return {"found": True, "item": _to_vitals_item(doc)}
+
+
+@router.get("/vitals/history", response_model=Dict[str, Any])
+async def get_vitals_history(
+    device_id: str = Query(..., description="设备外部ID，例如 ESP32_00005CFA7AD4DB1C"),
+    start_ts: Optional[int] = Query(None, description="起始时间戳（含）"),
+    end_ts: Optional[int] = Query(None, description="结束时间戳（含）"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(50, ge=1, le=200, description="每页条数"),
+):
+    """
+    分页返回设备生命体征历史（data_type in [vitals, status_update]）。
+    """
+    db = get_mongo_db()
+    coll = db[COLLECTION_RAW_UPSTREAM]
+    q: Dict[str, Any] = {
+        "device_id": device_id.strip(),
+        "data_type": {"$in": ["vitals", "status_update"]},
+    }
+    if start_ts is not None or end_ts is not None:
+        q["timestamp"] = {}
+        if start_ts is not None:
+            q["timestamp"]["$gte"] = start_ts
+        if end_ts is not None:
+            q["timestamp"]["$lte"] = end_ts
+
+    skip = (page - 1) * page_size
+    cursor = coll.find(q).sort("server_received_at", -1).skip(skip).limit(page_size)
+    items: List[Dict[str, Any]] = []
+    async for doc in cursor:
+        items.append(_to_vitals_item(doc))
+    total = await coll.count_documents(q)
+    return {"page": page, "page_size": page_size, "total": total, "items": items}
+
+
+@router.get("/vitals/user/{user_id}/latest", response_model=Dict[str, Any])
+async def get_latest_vitals_by_user(user_id: int):
+    """
+    通过 user_id 自动查绑定设备（device.mac_address），再返回该设备最新生命体征。
+    """
+    session = SessionLocal()
+    try:
+        device = (
+            session.query(Device)
+            .filter(Device.elderly_user_id == user_id, Device.mac_address.isnot(None))
+            .order_by(Device.updated_at.desc())
+            .first()
+        )
+        if not device or not device.mac_address:
+            return {"found": False, "user_id": user_id, "message": "该用户未绑定可用于 MQTT 的设备标识"}
+        db = get_mongo_db()
+        coll = db[COLLECTION_RAW_UPSTREAM]
+        q = {"device_id": device.mac_address, "data_type": {"$in": ["vitals", "status_update"]}}
+        doc = await coll.find_one(q, sort=[("server_received_at", -1)])
+        if doc is None:
+            return {
+                "found": False,
+                "user_id": user_id,
+                "device_id": device.mac_address,
+                "message": "设备已绑定，但尚无生命体征上行数据",
+            }
+        return {
+            "found": True,
+            "user_id": user_id,
+            "device_id": device.mac_address,
+            "item": _to_vitals_item(doc),
+        }
+    finally:
+        session.close()
 
 
 @router.get("/", response_model=Dict[str, Any])

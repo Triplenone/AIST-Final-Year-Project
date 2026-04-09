@@ -8,6 +8,7 @@ from app.config import settings
 
 _mongo_client: Optional[AsyncIOMotorClient] = None
 
+CANONICAL_MONGO_DB_NAME = "smart_elderly_care_system"
 COLLECTION_RAW_UPSTREAM = "device_raw_upstream"
 
 
@@ -20,7 +21,8 @@ def get_mongo_client() -> AsyncIOMotorClient:
 
 def get_mongo_db():
     client = get_mongo_client()
-    return client[settings.MONGO_DB_NAME]
+    # Canonical target to keep all upstream data in one database.
+    return client[CANONICAL_MONGO_DB_NAME]
 
 
 async def close_mongo_client():
@@ -38,5 +40,7 @@ async def ensure_indexes():
     await coll.create_index([("device_id", 1), ("server_received_at", -1)])
     await coll.create_index([("data_type", 1)])
     await coll.create_index([("server_received_at", -1)])
+    await coll.create_index([("device_id", 1), ("timestamp", -1)])
+    await coll.create_index([("data_type", 1), ("timestamp", -1)])
     # 可选：TTL 索引，仅保留最近 30 天，按需取消注释
     # await coll.create_index("server_received_at", expireAfterSeconds=30 * 24 * 3600)

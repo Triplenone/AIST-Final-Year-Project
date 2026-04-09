@@ -1,0 +1,13 @@
+V.mem.ts=2026-04-09T18:05:00+08:00
+V.scope=mongo-canonical-unification
+V.repo.path=F:\AAAA-FYP-Git
+V.target.mongodb.db=smart_elderly_care_system
+V.target.mongodb.collection=device_raw_upstream
+V.change.file1=backend/backend/app/db/mongo.py
+V.change.file2=backend/backend/app/api/routes/mongo_upstream.py
+V.change.details.db_pin=CANONICAL_MONGO_DB_NAME applied in get_mongo_db
+V.change.details.status_api=/api/v1/mongo-upstream/status returns canonical db name
+V.env.backend=backend/backend/.env
+V.env.mongo_uri=mongodb://localhost:27017
+V.env.mongo_db_name=smart_elderly_care_system
+V.result.read_write_scope=all mongo upstream read/write unified to smart_elderly_care_system.device_raw_upstream

@@ -10,6 +10,7 @@ import uuid
 
 from app.config import settings
 from app.services.mongo_raw_upstream import run_sync_save_raw_upstream
+from app.services.vitals_event_bridge import maybe_create_vitals_event
 
 # MQTT-topic：设备上行主题
 UPLINK_TOPICS = [
@@ -21,6 +22,7 @@ UPLINK_TOPICS = [
     "smartwatch/+/light",
     "smartwatch/+/log",
     "smartwatch/+/heartbeat",
+    "smartwatch/+/vitals",
 ]
 
 # 航班信息主题：Postman 等客户端向此 topic 发布 JSON 即可模拟航班信息更新
@@ -36,6 +38,7 @@ SUFFIX_TO_DATA_TYPE = {
     "light": "light",
     "log": "log",
     "heartbeat": "heartbeat",
+    "vitals": "vitals",
 }
 
 _client = None
@@ -51,6 +54,21 @@ def _sanitize_json_trailing_commas(s: str) -> str:
     例如：{"a":1,} -> {"a":1}， [{"a":1,},{"a":2,}] -> [{"a":1},{"a":2}]
     """
     return _TRAILING_COMMA_RE.sub(r"\1", s)
+
+
+def _apply_device_id_mapping(data: dict) -> None:
+    """
+    方案 C：根据配置映射外部设备ID -> MySQL device_id。
+    命中后写入 data["trigger_device_id"] 与 data["device_pk"]。
+    """
+    external_id = str(data.get("device_id") or "").strip()
+    if not external_id:
+        return
+    mapped = settings.device_id_map.get(external_id)
+    if mapped is None:
+        return
+    data["trigger_device_id"] = int(mapped)
+    data["device_pk"] = int(mapped)
 
 
 def _on_connect(client, userdata, flags, rc):
@@ -104,6 +122,7 @@ def _on_message(client, userdata, msg):
 
     # 设备上行主题：smartwatch/<device_id>/<suffix>
     parts = msg.topic.split("/")
+    suffix = None
     if len(parts) >= 3:
         device_id_from_topic = parts[1]
         suffix = parts[2].lower()
@@ -114,10 +133,22 @@ def _on_message(client, userdata, msg):
     else:
         data.setdefault("device_id", "UNKNOWN")
         data.setdefault("data_type", "status_update")
+    _apply_device_id_mapping(data)
     try:
         run_sync_save_raw_upstream(data)
     except Exception as e:
         print(f"⚠️ MQTT 写入 Mongo 失败: {e}")
+        return
+
+    # 生命体征主题复用 events 告警逻辑
+    if suffix == "vitals":
+        result = maybe_create_vitals_event(
+            external_device_id=str(data.get("device_id", device_id_from_topic)),
+            payload=data,
+            mqtt_topic=msg.topic,
+        )
+        if result.get("created"):
+            print(f"  [vitals] 已创建异常事件 event_id={result.get('event_id')}")
 
 
 def start_mqtt():
@@ -133,12 +164,16 @@ def start_mqtt():
             return
         client_id = f"aist-backend-{uuid.uuid4().hex[:8]}"
         try:
-            client = mqtt.Client(
-                callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
-                client_id=client_id,
-                protocol=mqtt.MQTTv311,
-            )
-        except TypeError:
+            callback_api = getattr(mqtt, "CallbackAPIVersion", None)
+            if callback_api is not None:
+                client = mqtt.Client(
+                    callback_api_version=callback_api.VERSION1,
+                    client_id=client_id,
+                    protocol=mqtt.MQTTv311,
+                )
+            else:
+                client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
+        except (TypeError, AttributeError):
             client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
         client.on_connect = _on_connect
         client.on_message = _on_message

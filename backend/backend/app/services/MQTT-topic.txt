@@ -8,6 +8,7 @@
 #define MQTT_TOPIC_LIGHT "smartwatch/%s/light"          // 上行 - 灯光
 #define MQTT_TOPIC_LOG "smartwatch/%s/log"              // 上行 - 日志
 #define MQTT_TOPIC_HEARTBEAT "smartwatch/%s/heartbeat"  // 上行 - 心跳
+#define MQTT_TOPIC_VITALS "smartwatch/%s/vitals"        // 上行 - 生命体征
 
 #define MQTT_TOPIC_NAVIGATION "smartwatch/%s/navigation"    // 下行 - 导航
 #define MQTT_TOPIC_FLIGHT "smartwatch/%s/flight"            // 下行 - 航班
