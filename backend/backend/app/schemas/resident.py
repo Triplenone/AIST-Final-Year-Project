@@ -1,47 +1,46 @@
-"""
-住民相关的Pydantic模型（聚合User/Event/Device数据）
-"""
-from pydantic import BaseModel, Field
+"""Resident response schemas."""
+
 from typing import Optional
-from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class ResidentVitals(BaseModel):
-    """生命体征"""
-    hr: Optional[int] = Field(None, description="心率")
-    bp_systolic: Optional[int] = Field(None, description="收缩压")
-    bp_diastolic: Optional[int] = Field(None, description="舒张压")
-    spo2: Optional[int] = Field(None, description="血氧饱和度")
-    temperature: Optional[float] = Field(None, description="体温")
+    """Resident vital-sign snapshot."""
+
+    hr: Optional[int] = Field(None, description="Heart rate")
+    bp_systolic: Optional[int] = Field(None, description="Systolic blood pressure")
+    bp_diastolic: Optional[int] = Field(None, description="Diastolic blood pressure")
+    spo2: Optional[int] = Field(None, description="Blood oxygen saturation")
+    temperature: Optional[float] = Field(None, description="Body temperature")
 
 
 class ResidentResponse(BaseModel):
-    """住民响应模型（前端Resident格式）"""
-    id: str = Field(..., description="住民ID（user_id转为字符串）")
-    name: str = Field(..., description="姓名")
-    room: str = Field(..., description="房间号")
-    status: str = Field(..., description="状态: stable, followUp, high, checked_out")
-    last_seen_at: Optional[str] = Field(None, description="最后出现时间")
-    last_seen_location: Optional[str] = Field(None, description="最后出现位置")
-    vitals: Optional[ResidentVitals] = Field(None, description="生命体征")
-    checked_out: bool = Field(False, description="是否已退房")
-    created_at: str = Field(..., description="创建时间")
-    updated_at: str = Field(..., description="更新时间")
-    
-    # 用户状态相关字段
-    user_status_id: Optional[int] = Field(None, description="用户状态ID")
-    heart_rate: Optional[int] = Field(None, description="心率")
-    blood_oxygen: Optional[float] = Field(None, description="血氧饱和度")
-    body_temperature: Optional[float] = Field(None, description="体温")
-    is_normal: Optional[bool] = Field(None, description="状态是否正常")
-    status_timestamp: Optional[str] = Field(None, description="状态采集时间")
-    
-    # 设备相关字段
-    device_id: Optional[int] = Field(None, description="设备ID")
-    device_current_status: Optional[str] = Field(None, description="设备当前状态")
-    device_battery_level: Optional[int] = Field(None, description="设备电池电量")
-    device_deploy_location: Optional[str] = Field(None, description="设备部署位置")
-    
+    """Resident response model used by the frontend."""
+
+    id: str = Field(..., description="Resident ID")
+    name: str = Field(..., description="Resident name")
+    avatar_url: Optional[str] = Field(None, description="Avatar URL")
+    room: str = Field(..., description="Room name")
+    status: str = Field(..., description="Resident status")
+    last_seen_at: Optional[str] = Field(None, description="Last seen timestamp")
+    last_seen_location: Optional[str] = Field(None, description="Last seen location")
+    vitals: Optional[ResidentVitals] = Field(None, description="Resident vitals")
+    checked_out: bool = Field(False, description="Checkout status")
+    created_at: str = Field(..., description="Creation timestamp")
+    updated_at: str = Field(..., description="Update timestamp")
+
+    user_status_id: Optional[int] = Field(None, description="User status ID")
+    heart_rate: Optional[int] = Field(None, description="Heart rate")
+    blood_oxygen: Optional[float] = Field(None, description="Blood oxygen")
+    body_temperature: Optional[float] = Field(None, description="Body temperature")
+    is_normal: Optional[bool] = Field(None, description="Normal-state flag")
+    status_timestamp: Optional[str] = Field(None, description="Status timestamp")
+
+    device_id: Optional[int] = Field(None, description="Device ID")
+    device_current_status: Optional[str] = Field(None, description="Device status")
+    device_battery_level: Optional[int] = Field(None, description="Device battery level")
+    device_deploy_location: Optional[str] = Field(None, description="Device deploy location")
+
     class Config:
         from_attributes = True
-

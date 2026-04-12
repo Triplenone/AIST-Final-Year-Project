@@ -283,6 +283,7 @@ def get_residents(
             residents.append(ResidentResponse(
                 id=str(user.user_id),
                 name=user.name,
+                avatar_url=None,
                 room=room,
                 status=status,
                 last_seen_at=last_seen_at,
@@ -382,6 +383,7 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     return ResidentResponse(
         id=str(user.user_id),
         name=user.name,
+        avatar_url=None,
         room=room,
         status=status,
         last_seen_at=last_seen_at,

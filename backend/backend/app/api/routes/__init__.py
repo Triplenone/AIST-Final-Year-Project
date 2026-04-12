@@ -7,6 +7,7 @@ from app.api.routes import (
     device_data_log,
     devices,
     events,
+    family_summary,
     kpi,
     locations,
     mongo_upstream,
@@ -38,4 +39,9 @@ api_router.include_router(
     mongo_upstream.router,
     prefix="/mongo-upstream",
     tags=["mongo-upstream"],
+)
+api_router.include_router(
+    family_summary.router,
+    prefix="/family-summary",
+    tags=["family-summary"],
 )
