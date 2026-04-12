@@ -1,8 +1,8 @@
-"""
-MongoDB 连接（Motor 异步驱动），用于上行 JSON 原始数据缓存。
-"""
-from motor.motor_asyncio import AsyncIOMotorClient
+"""MongoDB helpers for raw upstream storage."""
+
 from typing import Optional
+
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.config import settings
 
@@ -19,12 +19,11 @@ def get_mongo_client() -> AsyncIOMotorClient:
 
 
 def get_mongo_db():
-    client = get_mongo_client()
-    return client[settings.MONGO_DB_NAME]
+    return get_mongo_client()[settings.MONGO_DB_NAME]
 
 
 async def close_mongo_client():
-    """关闭 MongoDB 连接（在应用 shutdown 时调用）"""
+    """Close the shared MongoDB client."""
     global _mongo_client
     if _mongo_client is not None:
         _mongo_client.close()
@@ -32,11 +31,10 @@ async def close_mongo_client():
 
 
 async def ensure_indexes():
-    """创建上行集合的索引（启动时调用一次）"""
-    db = get_mongo_db()
-    coll = db[COLLECTION_RAW_UPSTREAM]
+    """Ensure indexes used by raw upstream queries."""
+    coll = get_mongo_db()[COLLECTION_RAW_UPSTREAM]
     await coll.create_index([("device_id", 1), ("server_received_at", -1)])
     await coll.create_index([("data_type", 1)])
     await coll.create_index([("server_received_at", -1)])
-    # 可选：TTL 索引，仅保留最近 30 天，按需取消注释
-    # await coll.create_index("server_received_at", expireAfterSeconds=30 * 24 * 3600)
+    await coll.create_index([("device_id", 1), ("timestamp", -1)])
+    await coll.create_index([("data_type", 1), ("timestamp", -1)])
