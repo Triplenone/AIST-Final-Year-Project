@@ -297,6 +297,12 @@
       "delete": "Delete",
       "confirmDelete": "Remove {{name}} from the simulation dataset?"
     },
+    "vitalsModal": {
+      "view": "View vitals",
+      "title": "Vitals history",
+      "subtitle": "Latest history for {{name}}",
+      "close": "Close panel"
+    },
     "empty": "No residents match this filter right now.",
     "status": {
       "stable": "Stable",

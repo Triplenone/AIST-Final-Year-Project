@@ -275,6 +275,75 @@
   font-weight: 700;
 }
 
+.residents-workspace__modal-trigger {
+  justify-content: center;
+  min-height: 2.35rem;
+  margin-top: 0.25rem;
+}
+
+.family-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(9, 16, 24, 0.46);
+  backdrop-filter: blur(10px);
+}
+
+.family-modal__dialog {
+  width: min(960px, 100%);
+  max-height: min(90vh, 920px);
+  overflow: auto;
+  padding: 1.15rem;
+  border-radius: 32px;
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(143, 214, 239, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 251, 0.96));
+  box-shadow: 0 36px 80px rgba(16, 23, 34, 0.2);
+}
+
+.family-modal__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.family-modal__header h3 {
+  margin: 0.15rem 0 0.25rem;
+}
+
+.family-modal__eyebrow,
+.family-modal__note {
+  margin: 0;
+}
+
+.family-modal__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(79, 91, 104, 0.88);
+}
+
+.family-modal__note {
+  color: var(--text-secondary);
+}
+
+.family-modal__close {
+  min-height: 2.6rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 23, 34, 0.12);
+  background: rgba(255, 255, 255, 0.74);
+  cursor: pointer;
+}
+
 .family-resident-card {
   width: 100%;
   display: grid;
@@ -474,6 +543,29 @@
     rgba(18, 30, 41, 0.72);
 }
 
+:root[data-theme='dark'] .family-modal {
+  background: rgba(4, 10, 17, 0.66);
+}
+
+:root[data-theme='dark'] .family-modal__dialog {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(143, 214, 239, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(16, 27, 38, 0.98), rgba(10, 20, 29, 0.97));
+  box-shadow: 0 36px 88px rgba(0, 0, 0, 0.42);
+}
+
+:root[data-theme='dark'] .family-modal__eyebrow,
+:root[data-theme='dark'] .family-modal__note {
+  color: var(--text-secondary);
+}
+
+:root[data-theme='dark'] .family-modal__close {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(18, 30, 41, 0.78);
+  color: var(--text-primary);
+}
+
 :root[data-theme='dark'] .family-vitals-history__range-label,
 :root[data-theme='dark'] .family-vitals-history__timestamp span,
 :root[data-theme='dark'] .family-vitals-history__reading dt {
@@ -566,6 +658,14 @@
 
   .family-vitals-history__readings {
     grid-template-columns: 1fr;
+  }
+
+  .family-modal {
+    padding: 0.75rem;
+  }
+
+  .family-modal__dialog {
+    padding: 1rem;
   }
 
   .family-resident-card {

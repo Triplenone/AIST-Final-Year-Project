@@ -345,6 +345,13 @@
       "lastEvent": "上次事件 {{time}} 前",
       "waiting": "等待串流"
     }
+  ,
+    "vitalsModal": {
+      "view": "\u67e5\u770b\u751f\u547d\u4f53\u5f81",
+      "title": "\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "subtitle": "{{name}} \u7684\u6700\u65b0\u5386\u53f2",
+      "close": "\u5173\u95ed\u7a97\u53e3"
+    }
   },
   "location": {
     "title": "位置总览",

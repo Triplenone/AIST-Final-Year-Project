@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { VitalsHistoryModal } from '../family/VitalsHistoryModal';
 import '../../styles/residents-admin.css';
 import { useResidentLiveStore } from '../../shared/resident-live-store';
 import { residentApi } from '../../services/api';
@@ -106,6 +108,7 @@ export const ResidentsAdmin = () => {
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<BackendResidentStatus | 'all'>('all');
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [selectedResident, setSelectedResident] = useState<{ id: string; name: string } | null>(null);
   const { residents: liveResidents, demoMode } = useResidentLiveStore();
 
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
@@ -273,9 +276,18 @@ export const ResidentsAdmin = () => {
   const activeStatusLabel =
     statusFilter === 'all' ? workspaceCopy.allResidents : t(`residents.status.${statusFilter}`);
 
+  const openVitalsModal = useCallback((resident: BackendResident) => {
+    setSelectedResident({ id: resident.id, name: resident.name });
+  }, []);
+
+  const closeVitalsModal = useCallback(() => {
+    setSelectedResident(null);
+  }, []);
+
   return (
-    <section className="admin-card residents-workspace">
-      <header className="residents-workspace__header">
+    <>
+      <section className="admin-card residents-workspace">
+        <header className="residents-workspace__header">
         <div className="residents-workspace__intro">
           <p className="residents-workspace__eyebrow">{workspaceCopy.eyebrow}</p>
           <div className="residents-workspace__title-block">
@@ -320,43 +332,43 @@ export const ResidentsAdmin = () => {
             {loading ? t('common.loading') : t('admin.residents.refresh')}
           </button>
         </div>
-      </header>
+        </header>
 
-      <dl className="residents-workspace__summary" aria-label={workspaceCopy.tableTitle}>
-        {residentMetrics.map((metric) => (
-          <div
-            key={metric.label}
-            className={`residents-workspace__metric residents-workspace__metric--${metric.tone}`}
-          >
-            <dt>{metric.label}</dt>
-            <dd>{metric.value}</dd>
+        <dl className="residents-workspace__summary" aria-label={workspaceCopy.tableTitle}>
+          {residentMetrics.map((metric) => (
+            <div
+              key={metric.label}
+              className={`residents-workspace__metric residents-workspace__metric--${metric.tone}`}
+            >
+              <dt>{metric.label}</dt>
+              <dd>{metric.value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {error ? (
+          <div className="residents-workspace__banner residents-workspace__banner--error" role="alert">
+            <strong>{workspaceCopy.errorTitle}</strong>
+            <p>{error}</p>
           </div>
-        ))}
-      </dl>
+        ) : null}
 
-      {error ? (
-        <div className="residents-workspace__banner residents-workspace__banner--error" role="alert">
-          <strong>{workspaceCopy.errorTitle}</strong>
-          <p>{error}</p>
-        </div>
-      ) : null}
+        {loading ? (
+          <div className="residents-workspace__banner residents-workspace__banner--loading" aria-live="polite">
+            <strong>{workspaceCopy.loadingTitle}</strong>
+            <p>{workspaceCopy.loadingBody}</p>
+          </div>
+        ) : null}
 
-      {loading ? (
-        <div className="residents-workspace__banner residents-workspace__banner--loading" aria-live="polite">
-          <strong>{workspaceCopy.loadingTitle}</strong>
-          <p>{workspaceCopy.loadingBody}</p>
-        </div>
-      ) : null}
+        {!loading && !error && filtered.length === 0 ? (
+          <div className="residents-workspace__banner residents-workspace__banner--empty" aria-live="polite">
+            <strong>{workspaceCopy.emptyTitle}</strong>
+            <p>{workspaceCopy.emptyBody}</p>
+          </div>
+        ) : null}
 
-      {!loading && !error && filtered.length === 0 ? (
-        <div className="residents-workspace__banner residents-workspace__banner--empty" aria-live="polite">
-          <strong>{workspaceCopy.emptyTitle}</strong>
-          <p>{workspaceCopy.emptyBody}</p>
-        </div>
-      ) : null}
-
-      <section className="residents-workspace__table-shell" aria-label={workspaceCopy.tableTitle}>
-        <div className="residents-workspace__table-header">
+        <section className="residents-workspace__table-shell" aria-label={workspaceCopy.tableTitle}>
+          <div className="residents-workspace__table-header">
           <div>
             <p className="residents-workspace__table-eyebrow">{workspaceCopy.tableTitle}</p>
             <p className="residents-workspace__table-note">{workspaceCopy.tableNote}</p>
@@ -371,82 +383,97 @@ export const ResidentsAdmin = () => {
               </span>
             ) : null}
           </div>
-        </div>
+          </div>
 
-        <div className="residents-workspace__table-scroll">
-          <table className="admin-table residents-workspace__table">
-            <thead>
-              <tr>
-                <th>{t('admin.residents.columns.id')}</th>
-                <th>{t('admin.residents.columns.name')}</th>
-                <th>{t('admin.residents.columns.room')}</th>
-                <th>{t('admin.residents.columns.status')}</th>
-                <th>{t('admin.residents.columns.lastSeen')}</th>
-                <th>{t('admin.residents.columns.vitals')}</th>
-                <th>{t('admin.residents.columns.device')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
+          <div className="residents-workspace__table-scroll">
+            <table className="admin-table residents-workspace__table">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="empty-placeholder">
-                    {t('admin.residents.noData')}
-                  </td>
+                  <th>{t('admin.residents.columns.id')}</th>
+                  <th>{t('admin.residents.columns.name')}</th>
+                  <th>{t('admin.residents.columns.room')}</th>
+                  <th>{t('admin.residents.columns.status')}</th>
+                  <th>{t('admin.residents.columns.lastSeen')}</th>
+                  <th>{t('admin.residents.columns.vitals')}</th>
+                  <th>{t('admin.residents.columns.device')}</th>
                 </tr>
-              ) : (
-                filtered.map((resident) => (
-                  <tr key={resident.id}>
-                    <td>
-                      <span className="residents-workspace__id">#{resident.id}</span>
-                    </td>
-                    <td>
-                      <div className="residents-workspace__stack">
-                        <span className="residents-workspace__cell-main">{resident.name}</span>
-                        {resident.role_type ? (
-                          <span className="residents-workspace__cell-sub">{resident.role_type}</span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="residents-workspace__room-chip">
-                        {resident.room ?? t('admin.residents.lastSeenUnknown')}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status status-${resident.status}`}>
-                        {t(`residents.status.${resident.status}`)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="residents-workspace__stack">
-                        <span className="residents-workspace__cell-main">
-                          {formatDateTime(resident.last_seen_at)}
-                        </span>
-                        <span className="residents-workspace__cell-sub">
-                          {resident.last_seen_location ?? t('admin.residents.lastSeenUnknown')}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="residents-workspace__cell-copy">{describeVitals(resident)}</span>
-                    </td>
-                    <td>
-                      <div className="residents-workspace__stack">
-                        <span className="residents-workspace__cell-main">
-                          {describeDevicePrimary(resident)}
-                        </span>
-                        <span className="residents-workspace__cell-sub">
-                          {describeDeviceSecondary(resident)}
-                        </span>
-                      </div>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="empty-placeholder">
+                      {t('admin.residents.noData')}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filtered.map((resident) => (
+                    <tr key={resident.id}>
+                      <td>
+                        <span className="residents-workspace__id">#{resident.id}</span>
+                      </td>
+                      <td>
+                        <div className="residents-workspace__stack">
+                          <span className="residents-workspace__cell-main">{resident.name}</span>
+                          {resident.role_type ? (
+                            <span className="residents-workspace__cell-sub">{resident.role_type}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>
+                        <span className="residents-workspace__room-chip">
+                          {resident.room ?? t('admin.residents.lastSeenUnknown')}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status status-${resident.status}`}>
+                          {t(`residents.status.${resident.status}`)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="residents-workspace__stack">
+                          <span className="residents-workspace__cell-main">
+                            {formatDateTime(resident.last_seen_at)}
+                          </span>
+                          <span className="residents-workspace__cell-sub">
+                            {resident.last_seen_location ?? t('admin.residents.lastSeenUnknown')}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="residents-workspace__cell-copy">{describeVitals(resident)}</span>
+                      </td>
+                      <td>
+                        <div className="residents-workspace__stack">
+                          <span className="residents-workspace__cell-main">
+                            {describeDevicePrimary(resident)}
+                          </span>
+                          <span className="residents-workspace__cell-sub">
+                            {describeDeviceSecondary(resident)}
+                          </span>
+                          <button
+                            type="button"
+                            className="secondary residents-workspace__modal-trigger"
+                            onClick={() => openVitalsModal(resident)}
+                          >
+                            {t('residents.vitalsModal.view')}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </section>
-    </section>
+
+      <VitalsHistoryModal
+        residentId={selectedResident?.id ?? null}
+        residentName={selectedResident?.name ?? null}
+        isOpen={selectedResident !== null}
+        onClose={closeVitalsModal}
+      />
+    </>
   );
 };
