@@ -513,6 +513,26 @@
     "emptyTitle": "No residents to show",
     "emptyBody": "The family workspace will populate when residents are available from the backend.",
     "errorTitle": "Family workspace unavailable",
-    "errorFallback": "Unable to load the resident roster."
+    "errorFallback": "Unable to load the resident roster.",
+    "summary": {
+      "title": "Today's summary",
+      "residentLabel": "Selected resident",
+      "promptTitle": "Select a resident",
+      "promptBody": "Choose a resident card to load today's family summary.",
+      "loadingTitle": "Loading today's summary",
+      "loadingBody": "Fetching the latest placeholder summary from the backend.",
+      "emptyTitle": "No summary available yet",
+      "emptyBody": "The backend returned no summary for this resident today.",
+      "unavailableTitle": "Summary service unavailable",
+      "unavailableBody": "Today's summary is temporarily unavailable. Please try again later.",
+      "errorTitle": "Unable to load summary",
+      "generatedAt": "Generated {{time}}",
+      "source": "Source: {{source}}",
+      "stats": {
+        "total": "Events tracked",
+        "critical": "Critical events",
+        "unhandled": "Unhandled alerts"
+      }
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { FamilySummarySection } from '../components/family/FamilySummarySection';
 import { FamilyResidentCard } from '../components/family/FamilyResidentCard';
 import { residentApi } from '../services/api';
 import '../styles/family-page.css';
@@ -33,6 +34,9 @@ export function FamilyPage() {
   useEffect(() => {
     void loadResidents();
   }, [loadResidents]);
+
+  const selectedResident =
+    residents.find((resident) => resident.id === selectedResidentId) ?? null;
 
   return (
     <section className="family-page route-surface route-surface--family">
@@ -82,6 +86,11 @@ export function FamilyPage() {
           ))}
         </div>
       ) : null}
+
+      <FamilySummarySection
+        residentId={selectedResidentId}
+        residentName={selectedResident?.name ?? null}
+      />
     </section>
   );
 }

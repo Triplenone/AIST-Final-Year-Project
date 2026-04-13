@@ -19,12 +19,28 @@ const api = axios.create({
   },
 });
 
+export class ApiError extends Error {
+  status?: number;
+  detail?: unknown;
+
+  constructor(message: string, status?: number, detail?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 // 統一錯誤處理 (Unified error handling)
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    const message = error?.response?.data?.detail || error?.message || 'Request failed';
-    return Promise.reject(new Error(message));
+    const detail = error?.response?.data?.detail ?? error?.response?.data;
+    const message =
+      (typeof detail === 'string' ? detail : detail?.message) ||
+      error?.message ||
+      'Request failed';
+    return Promise.reject(new ApiError(message, error?.response?.status, detail));
   }
 );
 
@@ -96,6 +112,31 @@ export const residentApi = {
   get: (id: string | number) => api.get<BackendResident>(`/residents/${id}`),
   getDeviceDataLogs: (id: string | number, params?: Record<string, unknown>) =>
     api.get<BackendDeviceDataLog[]>(`/residents/${id}/device-data-logs`, { params }),
+};
+
+export type FamilySummaryTodayResponse = {
+  found: boolean;
+  placeholder?: boolean;
+  user_id?: number;
+  user_name?: string;
+  date?: string;
+  source?: string;
+  generated_at?: string;
+  summary_text?: string;
+  message?: string;
+  stats?: {
+    total_events?: number;
+    critical_events?: number;
+    unhandled_events?: number;
+    latest_event_type?: string | null;
+  };
+};
+
+export const familySummaryApi = {
+  getToday: (userId: number) =>
+    api.get<FamilySummaryTodayResponse>('/family-summary/today', {
+      params: { user_id: userId },
+    }),
 };
 
 // 數據接收 API (Data reception APIs)
