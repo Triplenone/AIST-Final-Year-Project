@@ -7,7 +7,7 @@ import type { FormEvent } from 'react';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { FallAlertModal } from './components/FallAlertModal';
 import type { AdminTab } from './components/admin/AdminSection';
@@ -78,7 +78,6 @@ const NAV_ITEMS: ReadonlyArray<{
 }> = [
   { key: 'overview', to: '/', labelKey: 'layout.nav.overview' },
   { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents' },
-  { key: 'location', to: '/location', labelKey: 'layout.nav.location' },
   { key: 'position', to: '/position', labelKey: 'layout.nav.position' },
   { key: 'flycare', to: '/flycare', labelKey: 'layout.nav.flycare' },
   { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations' },
@@ -94,9 +93,6 @@ const ResidentsAdmin = lazy(() =>
 );
 const AdminSection = lazy(() =>
   import('./components/admin/AdminSection').then((module) => ({ default: module.AdminSection }))
-);
-const LocationDashboard = lazy(() =>
-  import('./components/LocationDashboard').then((module) => ({ default: module.LocationDashboard }))
 );
 const PositionPage = lazy(() =>
   import('./pages/PositionPage').then((module) => ({ default: module.PositionPage }))
@@ -118,7 +114,6 @@ const resolveDashboardPage = (pathname: string): DashboardPageKey => {
     case '/residents':
       return 'residents';
     case '/location':
-      return 'location';
     case '/position':
       return 'position';
     case '/flycare':
@@ -1039,6 +1034,10 @@ export default function App() {
 
   // 用 route key 驱动页面切换，避免旧版多重 return 再次回流。
   const renderDashboardPage = () => {
+    if (location.pathname === '/location') {
+      return <Navigate to="/position" replace />;
+    }
+
     switch (activePage) {
       case 'position':
         return <PositionPage onSosOrFallDetected={() => setShowFallAlertModal(true)} />;
@@ -1056,12 +1055,6 @@ export default function App() {
             </div>
             <ResidentsAdmin />
           </section>
-        );
-      case 'location':
-        return (
-          <div className="route-stack">
-            <LocationDashboard />
-          </div>
         );
       case 'operations':
         return <div className="route-stack route-stack--narrow">{renderAlertsPanel()}</div>;
