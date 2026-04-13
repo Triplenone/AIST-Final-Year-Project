@@ -179,6 +179,102 @@
   font-size: 0.88rem;
 }
 
+.family-vitals-history__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.family-vitals-history__range-label {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.family-vitals-history__ranges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.family-vitals-history__range {
+  min-height: 2.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 23, 34, 0.1);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.family-vitals-history__range:hover,
+.family-vitals-history__range:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(208, 106, 63, 0.24);
+  outline: none;
+}
+
+.family-vitals-history__range--active {
+  border-color: rgba(208, 106, 63, 0.32);
+  background: rgba(255, 244, 236, 0.96);
+  color: var(--text-primary);
+}
+
+.family-vitals-history__list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.family-vitals-history__row {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(143, 214, 239, 0.1), transparent 35%),
+    rgba(255, 255, 255, 0.78);
+}
+
+.family-vitals-history__timestamp {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.family-vitals-history__timestamp span,
+.family-vitals-history__reading dt {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.family-vitals-history__timestamp strong {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+.family-vitals-history__readings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.family-vitals-history__reading {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.family-vitals-history__reading dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .family-resident-card {
   width: 100%;
   display: grid;
@@ -359,6 +455,31 @@
   background: linear-gradient(180deg, rgba(61, 25, 28, 0.86), rgba(31, 18, 22, 0.92));
 }
 
+:root[data-theme='dark'] .family-vitals-history__range {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(18, 30, 41, 0.72);
+  color: var(--text-secondary);
+}
+
+:root[data-theme='dark'] .family-vitals-history__range--active {
+  border-color: rgba(255, 155, 106, 0.34);
+  background: rgba(45, 30, 23, 0.94);
+  color: var(--text-primary);
+}
+
+:root[data-theme='dark'] .family-vitals-history__row {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(143, 214, 239, 0.08), transparent 35%),
+    rgba(18, 30, 41, 0.72);
+}
+
+:root[data-theme='dark'] .family-vitals-history__range-label,
+:root[data-theme='dark'] .family-vitals-history__timestamp span,
+:root[data-theme='dark'] .family-vitals-history__reading dt {
+  color: var(--text-secondary);
+}
+
 :root[data-theme='dark'] .family-resident-card {
   border-color: rgba(255, 255, 255, 0.08);
   background:
@@ -427,7 +548,23 @@
     flex-direction: column;
   }
 
+  .family-vitals-history__toolbar {
+    align-items: flex-start;
+  }
+
+  .family-vitals-history__ranges {
+    width: 100%;
+  }
+
+  .family-vitals-history__range {
+    flex: 1 1 calc(50% - 0.5rem);
+  }
+
   .family-summary__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .family-vitals-history__readings {
     grid-template-columns: 1fr;
   }
 

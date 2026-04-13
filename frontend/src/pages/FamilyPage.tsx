@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { FamilySummarySection } from '../components/family/FamilySummarySection';
 import { FamilyResidentCard } from '../components/family/FamilyResidentCard';
+import { VitalsHistoryPanel } from '../components/family/VitalsHistoryPanel';
 import { residentApi } from '../services/api';
 import '../styles/family-page.css';
 import type { BackendResident } from '../types/backend';
@@ -85,6 +86,13 @@ export function FamilyPage() {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {selectedResident ? (
+        <VitalsHistoryPanel
+          residentId={selectedResident.id}
+          residentName={selectedResident.name}
+        />
       ) : null}
 
       <FamilySummarySection

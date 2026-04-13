@@ -205,6 +205,31 @@ export type MongoUpstreamLatest = {
   payload?: Record<string, unknown>;
 };
 
+export type MongoVitalsHistoryQuery = {
+  start_ts?: number;
+  end_ts?: number;
+  page?: number;
+  page_size?: number;
+};
+
+export type MongoVitalsHistoryItem = {
+  _id?: string;
+  user_id?: string | number;
+  device_id?: string | number;
+  timestamp?: number;
+  server_received_at?: string;
+  sensors?: Record<string, unknown>;
+  vitals?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+};
+
+export type MongoVitalsHistoryResponse = {
+  page: number;
+  page_size: number;
+  total: number;
+  items: MongoVitalsHistoryItem[];
+};
+
 export type FlightLatestResponse = {
   found: boolean;
   _id?: string;
@@ -229,6 +254,8 @@ export const mongoUpstreamApi = {
   list: (params?: Record<string, unknown>) =>
     api.get<{ page: number; page_size: number; total: number; items: unknown[] }>('/mongo-upstream/', { params }),
   get: (docId: string) => api.get<unknown>(`/mongo-upstream/${docId}`),
+  getVitalsHistoryByUser: (userId: number, params?: MongoVitalsHistoryQuery) =>
+    api.get<MongoVitalsHistoryResponse>(`/mongo-upstream/vitals/user/${userId}/history`, { params }),
 };
 
 export default api;

@@ -533,6 +533,25 @@
         "critical": "Critical events",
         "unhandled": "Unhandled alerts"
       }
+    },
+    "vitalsHistory": {
+      "title": "Vitals history",
+      "residentLabel": "Selected resident",
+      "rangeTitle": "Time range",
+      "loadingTitle": "Loading vitals history",
+      "loadingBody": "Checking whether the backend vitals history endpoint is ready.",
+      "emptyTitle": "No vitals history available",
+      "emptyBody": "There are no vitals readings for the selected range yet.",
+      "unavailableTitle": "Vitals history unavailable",
+      "unavailableBody": "Vitals history is not yet available. Waiting for backend update.",
+      "errorTitle": "Unable to load vitals history",
+      "noReading": "--",
+      "columns": {
+        "recordedAt": "Recorded",
+        "heartRate": "Heart rate",
+        "spo2": "SpO2",
+        "temperature": "Temperature"
+      }
     }
   }
 }
