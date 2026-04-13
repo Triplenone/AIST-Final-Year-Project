@@ -503,5 +503,20 @@
     "pending": "處理中…",
     "sent": "已送出",
     "error": "Service Worker 未就緒"
+  },
+  "family": {
+    "title": "家屬簡報",
+    "note": "以住民頭像卡片快速整理姓名與房間，方便家屬溝通前先掌握現況。",
+    "refresh": "重新整理住民",
+    "gridAria": "家屬頁住民卡片",
+    "avatarAlt": "{{name}} 的頭像",
+    "roomLabel": "房間",
+    "roomUnknown": "房間待確認",
+    "loadingTitle": "正在載入住民卡片",
+    "loadingBody": "正在取得家屬頁所需的最新住民名單。",
+    "emptyTitle": "目前沒有可顯示的住民",
+    "emptyBody": "當後端提供住民資料後，家屬頁會在這裡顯示卡片。",
+    "errorTitle": "家屬頁暫時無法使用",
+    "errorFallback": "目前無法取得住民名單。"
   }
 }

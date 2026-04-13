@@ -503,5 +503,20 @@
     "pending": "处理中…",
     "sent": "已发送",
     "error": "Service Worker 未就绪"
+  },
+  "family": {
+    "title": "家属简报",
+    "note": "用住民头像卡片快速整理姓名与房间，方便家属沟通前先掌握现况。",
+    "refresh": "刷新住民",
+    "gridAria": "家属页住民卡片",
+    "avatarAlt": "{{name}} 的头像",
+    "roomLabel": "房间",
+    "roomUnknown": "房间待确认",
+    "loadingTitle": "正在加载住民卡片",
+    "loadingBody": "正在获取家属页所需的最新住民名单。",
+    "emptyTitle": "目前没有可显示的住民",
+    "emptyBody": "当后端提供住民资料后，家属页会在这里显示卡片。",
+    "errorTitle": "家属页暂时不可用",
+    "errorFallback": "目前无法获取住民名单。"
   }
 }

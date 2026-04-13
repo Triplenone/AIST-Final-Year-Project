@@ -134,6 +134,7 @@ export type BackendResidentStatus = 'stable' | 'followUp' | 'high' | 'checked_ou
 export interface BackendResident {
   id: string;
   name: string;
+  avatar_url?: string | null;
   room: string;
   role_type?: RoleType | null;
   status: BackendResidentStatus;

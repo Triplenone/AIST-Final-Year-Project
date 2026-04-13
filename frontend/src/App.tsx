@@ -97,6 +97,9 @@ const AdminSection = lazy(() =>
 const PositionPage = lazy(() =>
   import('./pages/PositionPage').then((module) => ({ default: module.PositionPage }))
 );
+const FamilyPage = lazy(() =>
+  import('./pages/FamilyPage').then((module) => ({ default: module.FamilyPage }))
+);
 const FlyCarePage = lazy(() =>
   import('./pages/FlyCarePage').then((module) => ({ default: module.FlyCarePage }))
 );
@@ -1032,6 +1035,8 @@ export default function App() {
     );
   };
 
+  void renderInsightsPanel;
+
   // 用 route key 驱动页面切换，避免旧版多重 return 再次回流。
   const renderDashboardPage = () => {
     if (location.pathname === '/location') {
@@ -1059,7 +1064,7 @@ export default function App() {
       case 'operations':
         return <div className="route-stack route-stack--narrow">{renderAlertsPanel()}</div>;
       case 'family':
-        return <div className="route-stack route-stack--narrow">{renderInsightsPanel()}</div>;
+        return <FamilyPage />;
       case 'admin':
         return (
           <div className="route-stack">

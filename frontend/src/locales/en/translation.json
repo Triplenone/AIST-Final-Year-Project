@@ -499,5 +499,20 @@
     "pending": "Working…",
     "sent": "Command sent",
     "error": "Service worker not ready"
+  },
+  "family": {
+    "title": "Family briefing",
+    "note": "Portrait-first resident cards keep room context ready for a quick family update.",
+    "refresh": "Refresh residents",
+    "gridAria": "Family resident cards",
+    "avatarAlt": "{{name}} avatar",
+    "roomLabel": "Room",
+    "roomUnknown": "Room pending",
+    "loadingTitle": "Loading resident cards",
+    "loadingBody": "Fetching the latest resident roster for the family workspace.",
+    "emptyTitle": "No residents to show",
+    "emptyBody": "The family workspace will populate when residents are available from the backend.",
+    "errorTitle": "Family workspace unavailable",
+    "errorFallback": "Unable to load the resident roster."
   }
 }
