@@ -1,0 +1,14 @@
+# Arduino / ESP32 build artifacts
+build/
+.pio/
+.pioenvs/
+*.bin
+*.elf
+*.map
+*.hex
+*.o
+*.a
+
+# IDE metadata
+.vscode/
+.idea/
