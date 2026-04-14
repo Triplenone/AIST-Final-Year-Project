@@ -1,0 +1,14 @@
+V.log.ts=2026-04-14T15:14:27+08:00
+V.log.kind=firmware-dual-import
+V.log.repo=D:\f\AIST-Final-Year-Project
+V.log.plan=D:\f\AIST-Final-Year-Project\docs\firmware_Claude_Plan.md
+V.log.base=Lin-saved-cleanup-release
+V.log.branch=ben/firmware-smartwatch-dual-import
+V.log.commit=8ab6808a5909070264d138c29bd8311850e170fc
+V.log.commit_msg=feat(firmware): import dual smartwatch variants (old/new)
+V.log.push=ok
+V.log.upstream=origin/ben/firmware-smartwatch-dual-import
+V.log.scope=[firmware/smartwatch]
+V.log.variants={old:50,new:54}
+V.log.sanitize={old_config:ok,new_config:ok}
+V.log.dirty.persist=[frontend/package-lock.json,docs/firmware_Claude_Plan.md]
