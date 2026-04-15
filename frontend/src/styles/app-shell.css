@@ -1358,7 +1358,7 @@
   bottom: calc(100% + 0.95rem);
   width: min(28rem, calc(100vw - 2rem));
   max-height: min(calc(100vh - 6rem), 22rem);
-  overflow: auto;
+  overflow: visible;
   pointer-events: auto;
   transform: translateY(0);
   transform-origin: right bottom;
@@ -1413,9 +1413,18 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
+.ambient-actions .language-switcher--open-upward {
+  z-index: 3;
+}
+
+.ambient-actions .language-switcher--open-upward .language-switcher__trigger-wrap {
+  z-index: 4;
+}
+
 .ambient-actions .language-switcher--open-upward .language-switcher__list {
   border-color: rgba(16, 23, 34, 0.08);
   box-shadow: 0 -10px 28px rgba(16, 23, 34, 0.12);
+  z-index: 120;
 }
 
 .ambient-actions .auth-menu__name {
