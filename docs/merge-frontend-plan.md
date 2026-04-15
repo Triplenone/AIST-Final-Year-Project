@@ -22,13 +22,8 @@ Reader: future Codex, frontend maintainer, PR reviewer.
 |-------|--------|-------|
 | A | `417a73d` | Mongo foundation, config, router registration, graceful 503 |
 | B | `c0918e7` | Additive `avatar_url`, `family_summary` placeholder at `/api/v1/family-summary` |
-
-### Pending slices
-
-| Slice | Status | Gate |
-|-------|--------|------|
-| C | not started | MQTT raw ingest only; no frontend dependency |
-| D | not started | `vitals_event_bridge` blocked by device mapping strategy; `Device.mac_address` remains `String(20)` vs 22-char external ID |
+| C | `9a47204` | MQTT device mapping + sync Mongo writes |
+| D | `0d5f0f2` | vitals event bridge `GET /vitals/user/{user_id}/history` + Device.mac_address String(32) |
 
 ---
 
@@ -59,8 +54,7 @@ Reader: future Codex, frontend maintainer, PR reviewer.
 - `git diff -- frontend/src/adapters/position-command-center.ts`
 
 ### Remaining backend dependency
-- `/api/v1/mongo-upstream/vitals/user/{id}/history` is still pending Slice D
-- Family and residents vitals UI already degrade gracefully for `404/503`
+All backend slices (A-D) landed. `/api/v1/mongo-upstream/vitals/user/{id}/history` is live. Frontend vitals UI will show real data when MongoDB has upstream documents.
 
 ---
 
@@ -82,3 +76,4 @@ Reader: future Codex, frontend maintainer, PR reviewer.
 | 2026-04-13 | Keep `/location` route and redirect | Preserve URL compatibility |
 | 2026-04-13 | Bind family summary to selected resident only | Avoid silent fallback to the first resident |
 | 2026-04-13 | Keep vitals history on user endpoint only | Device mapping remains a Slice D gate |
+| 2026-04-16 | Complete Slice C/D before merge to main | All backend slices needed for complete feature set |
