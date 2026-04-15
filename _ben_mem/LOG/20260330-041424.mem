@@ -1,0 +1,16 @@
+V.mem.ts=2026-03-30T04:14:25+08:00
+V.run.scope=frontend-position-light-mode-shell-rebalance
+V.run.phase=issue-sized-position-light-mode-shell-rebalance
+V.run.branch=ben/frontend-only-improve
+V.run.code_commit=9ec6171
+V.run.files=[frontend/src/styles/app-shell.css,docs/frontend-position/18-position-light-mode-shell-rebalance-workstream.md]
+V.run.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+V.run.asset.position.background=frontend/src/assets/brand/texture-eldercare-exact-full.svg
+V.run.asset.position.png_fallback=0
+V.run.validation.build=npm run build:ok
+V.run.validation.lint=npm run lint:ok
+V.run.validation.playwright.light=[headerBg:linear-gradient-light-porcelain,headerH:111.81,title:36.36px,titleColor:rgba(16,23,34,0.98),taglineColor:rgba(67,83,99,0.9),navW:991.05,stageW:1640,overflowX:false]
+V.run.validation.playwright.dark=[headerBg:linear-gradient-dark-rail,titleColor:rgba(248,241,229,0.98),taglineColor:rgba(215,225,235,0.9),overflowX:false]
+V.run.validation.playwright.mobile=[headerH:215.11,title:22.49px,navClient:467,navScroll:910,stageW:450.69,overflowX:false]
+V.run.blocker=[react-router-warnings-unchanged,status_update-404-unchanged]
+V.run.next=frontend-position-workstream[new-issue-required]

@@ -1,0 +1,6 @@
+V.mem.ts=2026-03-23T00:21:21+08:00
+V.git.push_main.start=2026-03-23T00:21:21+08:00
+R.git.push_main.goal=merge-origin-main-then-push-head-to-main
+R.git.push_main.strategy=merge-no-rewrite
+V.git.push_main.ff=0
+I.git.push_main.divergence=[origin/main:+1,HEAD:+2]

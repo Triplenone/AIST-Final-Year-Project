@@ -1,0 +1,5 @@
+V.mem.ts=2026-03-23T00:09:19+08:00
+V.frontend.phase.chart_polish.start=2026-03-23T00:09:19+08:00
+R.frontend.phase.chart_polish.goal=stabilize-recharts-container-and-close-warning
+R.frontend.phase.chart_polish.constraints=[no-backend-change,no-flycare-change,docs-required,memory-before-and-after]
+R.frontend.phase.chart_polish.files=[E:\FYP\AIST-Final-Year-Project-main\frontend\src\components\charts\DashboardCharts.tsx,E:\FYP\AIST-Final-Year-Project-main\frontend\src\styles\charts.css,E:\FYP\AIST-Final-Year-Project-main\docs\frontend-redesign\04-chart-stability-and-polish.md,E:\FYP\AIST-Final-Year-Project-main\docs\frontend-redesign\README.md]

@@ -1,0 +1,12 @@
+V.ts=2026-03-28T01:29:46+08:00
+V.branch=ben/frontend-only-improve
+R.scope=position-layout-hotfix
+R.phase=command-post-fix
+R.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+R.files.target=[frontend/src/components/position/PositionSummaryBar.tsx,frontend/src/styles/position-page.css]
+R.files.allow=[_ben_mem/CURR.mem]
+R.reason=fix-position-layout-overflow-and-compression
+V.issue.summary_bar=overflow-risk-pill-and-compressed-metrics
+V.issue.panel_metrics=three-column-grid-too-tight
+V.issue.scope=frontend-position-only
+V.backend_touch=0

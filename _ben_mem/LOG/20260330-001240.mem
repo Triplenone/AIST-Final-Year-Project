@@ -1,0 +1,8 @@
+scope=memory-log-backfill
+phase=brand-workstream-closeout-followup
+branch=ben/frontend-only-improve
+files=_ben_mem/CURR.mem|_ben_mem/LOG/20260329-224126.mem|_ben_mem/LOG/20260329-225510.mem|_ben_mem/LOG/20260329-230701.mem|_ben_mem/LOG/20260329-233935.mem|_ben_mem/LOG/20260329-235452.mem|_ben_mem/LOG/20260330-001240.mem
+reason=backfill-missing-logs-after-20260328-060610
+coverage.through_commit=c655294
+backend_touch=0
+app_code_touch=0

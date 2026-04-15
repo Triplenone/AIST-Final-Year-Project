@@ -1,0 +1,9 @@
+V.mem.ts=2026-03-27T19:59:07+08:00
+V.mem.path.repo_old=E:\FYP\AIST-Final-Year-Project-main\_codex_mem
+V.mem.path.repo_new=E:\FYP\AIST-Final-Year-Project-main\_ben_mem
+R.mem.path.outer_deprecated=E:\FYP\_codex_mem
+V.mem.rename.repo_local=ok
+V.mem.rename.preserve=[PROTO.md,CURR.mem,LOG/*]
+V.mem.path.canonical=E:\FYP\AIST-Final-Year-Project-main\_ben_mem
+V.mem.path.policy=repo-local-only
+V.next.mem.repo_local=read-PROTO-then-CURR-under-E:\FYP\AIST-Final-Year-Project-main\_ben_mem

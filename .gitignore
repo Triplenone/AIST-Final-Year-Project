@@ -1,3 +1,48 @@
+# --- Node ---
 node_modules/
 dist/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+
+# virtual envs
+.venv/
+venv/
+env/
+.env/
+
+# dotenv files (keep .env.example committed)
+.env
+.env.*
+!.env.example
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- OS / Editor ---
 .DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+# --- Project-specific (local/legacy) ---
+# (typo'd legacy dashboard; main frontend is in /frontend)
+backend/forntend/
+
+# Office docs (often local notes/screenshots)
+*.docx
+
+# Local API tooling / delivery artifacts
+.postman/
+postman/
+release/
+!scripts/release/
+!scripts/release/*.md

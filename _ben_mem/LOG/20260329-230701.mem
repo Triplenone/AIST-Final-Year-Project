@@ -1,0 +1,11 @@
+scope=frontend-brand-overview
+phase=brand-workstream
+branch=ben/frontend-only-improve
+commit=1f514e3
+commit.subject=feat(overview): 添加 eldercare texture hero 层并补齐 SVG
+files=frontend/src/assets/brand/smartcare-mark-exact-full.svg|frontend/src/assets/brand/texture-eldercare-exact-full.svg|frontend/src/components/overview/OverviewExperience.tsx|frontend/src/styles/overview.css
+overview_texture=integrated
+backend_touch=0
+position_architecture_touch=0
+flycare_workflow_touch=0
+svg_fallback=none

@@ -1,0 +1,16 @@
+V.mem.ts=2026-03-30T04:45:32+08:00
+V.run.scope=frontend-only-optimization-queue-planning
+V.run.phase=issue-sized-queue-planning
+V.run.branch=ben/frontend-only-improve
+V.run.docs_commit=4fef646
+V.run.files=[docs/frontend-redesign/20-frontend-only-optimization-queue.md]
+V.run.docs.path=docs/frontend-redesign/20-frontend-only-optimization-queue.md
+V.run.queue=[shared-shell-resilience,overview-narrative-tightening,residents-utility-pass,location-workspace-emphasis,operations-family-consistency,admin-information-architecture,performance-asset-hygiene,accessibility-responsive-hardening]
+V.run.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+V.run.inspect=[frontend/package.json,frontend/src/App.tsx,docs/frontend-position/99-handoff.md,docs/frontend-redesign/99-flycare-handoff.md,_ben_mem/CURR.mem]
+V.run.validation=docs-and-memory-only
+V.run.build=not-run
+V.run.lint=not-run
+V.run.reason=no-frontend-source-change
+V.run.blocker=[react-router-warnings-unchanged,status_update-404-unchanged,mongo-upstream-runtime-errors-unchanged]
+V.run.next=frontend-only-optimization-queue[run-selection-required]

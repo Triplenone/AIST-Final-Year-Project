@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
+:root {
+  color-scheme: light;
+  font-family: 'Manrope', 'Noto Sans SC', 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-size: 18px;
+  --bg-body: #f3f0e8;
+  --bg-panel: rgba(255, 251, 244, 0.78);
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-strong: #0f1722;
+  --bg-muted: rgba(23, 32, 43, 0.08);
+  --text-primary: #101722;
+  --text-secondary: #4f5b68;
+  --text-contrast: #f8f1e5;
+  --accent: #d06a3f;
+  --accent-strong: #9d381f;
+  --accent-soft: rgba(208, 106, 63, 0.18);
+  --accent-secondary: #1d5f74;
+  --border-soft: rgba(16, 23, 34, 0.12);
+  --border-strong: rgba(16, 23, 34, 0.25);
+  --shadow-soft: 0 30px 70px rgba(16, 23, 34, 0.12);
+  --shadow-panel: 0 22px 50px rgba(16, 23, 34, 0.14);
+  --shell-stage-bg: linear-gradient(160deg, rgba(255, 252, 247, 0.84), rgba(246, 238, 228, 0.64));
+  --shell-stage-wash: rgba(208, 106, 63, 0.14);
+  --shell-stage-wash-secondary: rgba(29, 95, 116, 0.11);
+  --shell-stage-border: rgba(16, 23, 34, 0.1);
+  --shell-stage-shadow: 0 28px 68px rgba(16, 23, 34, 0.12);
+  --shell-stage-highlight: rgba(255, 255, 255, 0.5);
+  --shell-stage-line: rgba(16, 23, 34, 0.05);
+  --radius-xl: 32px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-pill: 999px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-body: #091118;
+  --bg-panel: rgba(10, 18, 26, 0.78);
+  --bg-card: rgba(18, 29, 40, 0.92);
+  --bg-strong: #eff4f8;
+  --bg-muted: rgba(255, 255, 255, 0.06);
+  --text-primary: #f7efe3;
+  --text-secondary: #a7b6c6;
+  --text-contrast: #0d131c;
+  --accent: #ff9b6a;
+  --accent-strong: #ffd1b8;
+  --accent-soft: rgba(255, 155, 106, 0.16);
+  --accent-secondary: #8fd6ef;
+  --border-soft: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --shadow-soft: 0 35px 80px rgba(0, 0, 0, 0.4);
+  --shadow-panel: 0 26px 60px rgba(0, 0, 0, 0.42);
+  --shell-stage-bg: linear-gradient(165deg, rgba(11, 19, 28, 0.9), rgba(16, 28, 39, 0.72));
+  --shell-stage-wash: rgba(255, 155, 106, 0.14);
+  --shell-stage-wash-secondary: rgba(143, 214, 239, 0.1);
+  --shell-stage-border: rgba(255, 255, 255, 0.12);
+  --shell-stage-shadow: 0 32px 76px rgba(0, 0, 0, 0.4);
+  --shell-stage-highlight: rgba(255, 255, 255, 0.06);
+  --shell-stage-line: rgba(255, 255, 255, 0.05);
+}
+
+body {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(208, 106, 63, 0.18), transparent 32%),
+    radial-gradient(circle at 88% 18%, rgba(29, 95, 116, 0.16), transparent 26%),
+    linear-gradient(180deg, rgba(255, 249, 241, 0.96), rgba(243, 240, 232, 0.98)),
+    var(--bg-body);
+  color: var(--text-primary);
+}
+
+:root[data-theme='dark'] body {
+  background:
+    radial-gradient(circle at 10% 18%, rgba(255, 155, 106, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(143, 214, 239, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(8, 16, 23, 0.98), rgba(9, 17, 24, 1)),
+    var(--bg-body);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+.ambient-header__mark,
+.overview-hero__eyebrow,
+.overview-panel__eyebrow {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+.primary,
+.secondary,
+.ghost-button {
+  border-radius: var(--radius-pill);
+  padding: 0.85rem 1.25rem;
+  border: 1px solid transparent;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff7f0;
+  box-shadow: 0 16px 36px rgba(157, 56, 31, 0.26);
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+  backdrop-filter: blur(10px);
+}
+
+.primary:hover,
+.secondary:hover,
+.ghost-button:hover,
+.primary:focus-visible,
+.secondary:focus-visible,
+.ghost-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+  outline: none;
+}

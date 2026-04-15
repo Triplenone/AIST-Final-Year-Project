@@ -2,18 +2,154 @@
   "common": {
     "language": "语言",
     "switchTo": "切换至{{label}}",
-    "close": "关闭"
+    "close": "关闭",
+    "loading": "载入中..."
   },
   "layout": {
-    "subtitle": "帮一线照护人员更快交接的操作中心",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "nav": {
       "aria": "主导航",
       "overview": "总览",
       "residents": "住民",
+      "location": "位置",
+      "position": "室内定位",
+      "flycare": "机场关怀",
       "operations": "运营",
-      "family": "家属互动"
+      "family": "家属互动",
+      "admin": "系统管理"
     },
-    "footer": "© 2024 SmartCare Collaborative — 为照护团队而生"
+    "footer": "© 2024 SmartCare Collaborative — 为照护团队而生",
+    "flycareBrand": "Smart FlyCare System"
+  },
+  "position": {
+    "userList": "用户列表",
+    "usersOnline": "{{count}} 人在线",
+    "noUsersOnline": "暂无用户在线",
+    "currentLocation": "当前位置",
+    "rightPanelTitle": "信息",
+    "zoneListHint": "点击平面图或左侧位置可高亮",
+    "noDeviceData": "暂无设备上行数据",
+    "noDataShort": "暂无",
+    "apiUnavailable": "上行数据接口不可用（请确认后端已启用 MongoDB 并重启服务）",
+    "userName": "用户名称",
+    "deviceId": "设备 ID",
+    "currentX": "位置 X",
+    "currentY": "位置 Y",
+    "targetX": "目标 X",
+    "targetY": "目标 Y",
+    "fallStateDescription": "跌倒状态",
+    "sosStatus": "SOS 状态",
+    "heartRateBpm": "心率 (bpm)",
+    "spo2Percentage": "血氧 (%)",
+    "batteryLevel": "电量",
+    "timestamp": "时间戳",
+    "location": "位置",
+    "fallDetection": "跌倒检测",
+    "sos": "SOS 状态",
+    "sensors": "传感器",
+    "system": "系统状态",
+    "refresh": "刷新",
+    "zone": {
+      "door1": "门1",
+      "door2": "门2",
+      "nurse_station": "护士站",
+      "activity_room": "活动室",
+      "rehabilitation_room": "康复室",
+      "central_common_area": "中央公共区域",
+      "toilet": "洗手间",
+      "bedroom": "卧室"
+    }
+  },
+  "flyCare": {
+    "userList": "用户列表",
+    "usersOnline": "{{count}} 人在线",
+    "noUsersOnline": "暂无用户在线",
+    "currentLocation": "当前位置",
+    "rightPanelTitle": "信息",
+    "noDeviceData": "暂无设备上行数据",
+    "apiUnavailable": "上行接口不可用",
+    "userName": "用户名称",
+    "deviceId": "设备 ID",
+    "currentX": "位置 X",
+    "currentY": "位置 Y",
+    "targetX": "目标 X",
+    "targetY": "目标 Y",
+    "navigationTitle": "导航",
+    "navigationPlaceholder": "前方10米后，右转20米",
+    "navigationStepForward": "前方{{meters}}米",
+    "navigationStepBackward": "后方{{meters}}米",
+    "navigationStepLeft": "左转{{meters}}米",
+    "navigationStepRight": "右转{{meters}}米",
+    "navigationTwoSteps": "{{first}}后，{{second}}",
+    "navigationArrived": "您已到达目标位置",
+    "fallStateDescription": "跌倒状态",
+    "sosStatus": "SOS 状态",
+    "heartRateBpm": "心率 (bpm)",
+    "spo2Percentage": "血氧 (%)",
+    "batteryLevel": "电量",
+    "refresh": "刷新",
+    "mapAlt": "机场平面图",
+    "flightTitle": "航班信息",
+    "flightPassengerName": "乘客姓名",
+    "flightNumber": "航班号",
+    "flightGate": "登机口",
+    "flightTime": "航班时间",
+    "flightDeparture": "起飞机场",
+    "flightArrival": "目的机场",
+    "flightSeat": "座位号",
+    "flightUpdateTitle": "航班信息变动",
+    "flightUpdateConfirm": "确认",
+    "simulateFlightUpdate": "模拟航班变动",
+    "zone": {
+      "boarding_gate_1": "Boarding Gate 1",
+      "boarding_gate_2": "Boarding Gate 2",
+      "restricted_area": "禁区",
+      "toilet": "洗手间",
+      "security_check": "安检",
+      "non_restricted_area": "非禁区",
+      "check_in_counter": "值机柜台"
+    }
+  },
+  "admin": {
+    "title": "系统管理",
+    "subtitle": "直接连到 TestStage-FYP 后端资源",
+    "detailsTitle": "Proactive Guardian Care 详情",
+    "detailsSubtitle": "System Admin 控制台：长者院舍智慧穿戴安全系统",
+    "tabs": {
+      "users": "用户",
+      "devices": "设备",
+      "locations": "位置",
+      "events": "事件",
+      "logs": "设备日志",
+      "status": "用户状态",
+      "residents": "住民",
+      "kpi": "KPI"
+    },
+    "residents": {
+      "title": "住民名册",
+      "subtitle": "同步自 /api/v1/residents",
+      "searchPlaceholder": "搜姓名或房号",
+      "statusFilterLabel": "状态",
+      "allStatuses": "全部状态",
+      "refresh": "重新整理",
+      "lastUpdated": "更新于 {{time}}",
+      "columns": {
+        "id": "ID",
+        "name": "住民",
+        "room": "房号",
+        "status": "状态",
+        "lastSeen": "最后出现",
+        "vitals": "生命体征",
+        "device": "设备",
+        "updated": "更新时间"
+      },
+      "noData": "目前没有住民资料。",
+      "lastSeenUnknown": "未知",
+      "deviceUnknown": "未绑定",
+      "vitalsUnknown": "等待生命体征",
+      "error": "无法取得住民资料，请稍后再试。"
+    }
   },
   "auth": {
     "guestName": "访客",
@@ -46,7 +182,12 @@
     }
   },
   "actions": {
-    "simulate": "模拟更新数据"
+    "simulate": "模拟更新数据",
+    "exitDemo": "退出演示模式"
+  },
+  "fallAlert": {
+    "message": "出现跌倒类型事件！请处理！",
+    "goToEvents": "前往处理"
   },
   "hero": {
     "eyebrow": "渐进式网页应用原型",
@@ -76,6 +217,24 @@
       "minutes": "{{count}} 分钟"
     }
   },
+  "charts": {
+    "title": "护理状态概览",
+    "subtitle": "实时可视化呈现住户状态、区域活动与警报。",
+    "status": {
+      "title": "住户状态分布",
+      "subtitle": "当前住户状态占比。"
+    },
+    "zones": {
+      "title": "区域占用",
+      "subtitle": "按最后出现位置统计。"
+    },
+    "alerts": {
+      "title": "警报活动",
+      "subtitle": "过去 6 小时的高优先事件。",
+      "series": "警报"
+    },
+    "empty": "暂无数据"
+  },
   "filters": {
     "all": "全部",
     "high": "高优先",
@@ -83,8 +242,8 @@
     "stable": "稳定"
   },
   "residents": {
-    "title": "住民目录",
-    "subtitle": "即时查看生命体征与最新巡房时间。",
+    "title": "Proactive Guardian Care",
+    "subtitle": "Smart Wearable Safety System for Elderly Homes",
     "filters": {
       "aria": "按状态筛选住民"
     },
@@ -146,6 +305,74 @@
       "lastEvent": "上次事件 {{time}} 前",
       "waiting": "等待串流"
     }
+  ,
+    "vitalsModal": {
+      "view": "\u67e5\u770b\u751f\u547d\u4f53\u5f81",
+      "title": "\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "subtitle": "{{name}} \u7684\u6700\u65b0\u5386\u53f2",
+      "close": "\u5173\u95ed\u7a97\u53e3"
+    }
+  },
+  "location": {
+    "title": "位置总览",
+    "subtitle": "室内平面图（课堂演示）。",
+    "refresh": "更新地图数据",
+    "map": {
+      "aria": "位置地图",
+      "status": "状态",
+      "zone": "区域"
+    },
+    "zones": {
+      "bedroom1": "卧室 1",
+      "bedroom2": "卧室 2",
+      "bathroom": "浴室",
+      "commonLounge": "公共休息区",
+      "unknown": "未知区域"
+    },
+    "legend": {
+      "title": "图例",
+      "indoorZones": "室内区域",
+      "safeZone": "安全区",
+      "alerts": "活跃事件",
+      "residents": "住民"
+    },
+    "occupancy": {
+      "title": "区域入住情况",
+      "subtitle": "按最近位置分组的住民。",
+      "aria": "区域入住列表",
+      "empty": "该区域暂无住民。"
+    },
+    "events": {
+      "status": "状态",
+      "time": "时间",
+      "types": {
+        "fall": "跌倒",
+        "bed_exit": "离床",
+        "bathroom_retention": "浴室逗留",
+        "geofence_breach": "围栏越界",
+        "sos": "SOS",
+        "vital_signs_abnormal": "生命体征异常"
+      }
+    },
+    "breaches": {
+      "title": "围栏越界",
+      "subtitle": "更新于 {{time}}",
+      "empty": "目前没有活跃的围栏越界事件。",
+      "aria": "活跃的围栏越界事件",
+      "itemTitle": "越界事件 #{{id}}",
+      "zone": "区域",
+      "zoneUnknown": "未知区域",
+      "time": "时间",
+      "coords": "坐标",
+      "coordsUnknown": "未知",
+      "approx": "估算",
+      "status": "状态"
+    },
+    "actions": {
+      "ack": "确认",
+      "resolve": "解决",
+      "falseAlarm": "误报"
+    }
   },
   "alerts": {
     "title": "最新警报",
@@ -157,6 +384,7 @@
       "ota": "新的固件可供 OTA 更新。"
     },
     "generated": {
+      "fall": "侦测到 {{name}} 可能在 {{location}} 跌倒。",
       "highStatus": "{{name}}（{{room}}）需要紧急巡查。",
       "followUp": "安排对 {{name}}（{{room}}）的随访检查。",
       "stale": "{{name}} 已 {{duration}} 未巡房，请安排查访。",
@@ -242,5 +470,61 @@
     "pending": "处理中…",
     "sent": "已发送",
     "error": "Service Worker 未就绪"
+  },
+  "family": {
+    "title": "家属简报",
+    "note": "用住民头像卡片快速整理姓名与房间，方便家属沟通前先掌握现况。",
+    "refresh": "刷新住民",
+    "gridAria": "家属页住民卡片",
+    "avatarAlt": "{{name}} 的头像",
+    "roomLabel": "房间",
+    "roomUnknown": "房间待确认",
+    "loadingTitle": "正在加载住民卡片",
+    "loadingBody": "正在获取家属页所需的最新住民名单。",
+    "emptyTitle": "目前没有可显示的住民",
+    "emptyBody": "当后端提供住民资料后，家属页会在这里显示卡片。",
+    "errorTitle": "家属页暂时不可用",
+    "errorFallback": "目前无法获取住民名单。"
+  ,
+    "summary": {
+      "title": "\u4eca\u65e5\u6458\u8981",
+      "residentLabel": "\u5df2\u9009\u4f4f\u6237",
+      "promptTitle": "\u8bf7\u5148\u9009\u62e9\u4f4f\u6237",
+      "promptBody": "\u8bf7\u5148\u9009\u62e9\u4e00\u5f20\u4f4f\u6237\u5361\u7247\uff0c\u4ee5\u52a0\u8f7d\u4eca\u65e5\u5bb6\u5c5e\u6458\u8981\u3002",
+      "loadingTitle": "\u6b63\u5728\u52a0\u8f7d\u4eca\u65e5\u6458\u8981",
+      "loadingBody": "\u6b63\u5728\u4ece\u540e\u7aef\u83b7\u53d6\u6700\u65b0\u7684 placeholder \u6458\u8981\u3002",
+      "emptyTitle": "\u4eca\u65e5\u6682\u65e0\u6458\u8981",
+      "emptyBody": "\u540e\u7aef\u4eca\u65e5\u672a\u4e3a\u8be5\u4f4f\u6237\u8fd4\u56de\u6458\u8981\u3002",
+      "unavailableTitle": "\u6458\u8981\u670d\u52a1\u6682\u4e0d\u53ef\u7528",
+      "unavailableBody": "\u4eca\u65e5\u6458\u8981\u6682\u65f6\u65e0\u6cd5\u83b7\u53d6\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002",
+      "errorTitle": "\u65e0\u6cd5\u52a0\u8f7d\u6458\u8981",
+      "generatedAt": "{{time}} \u751f\u6210",
+      "source": "\u6765\u6e90\uff1a{{source}}",
+      "stats": {
+        "total": "\u5df2\u8ffd\u8e2a\u4e8b\u4ef6",
+        "critical": "\u9ad8\u98ce\u9669\u4e8b\u4ef6",
+        "unhandled": "\u672a\u5904\u7406\u63d0\u9192"
+      }
+    }
+  ,
+    "vitalsHistory": {
+      "title": "\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "residentLabel": "\u5df2\u9009\u4f4f\u6237",
+      "rangeTitle": "\u65f6\u95f4\u8303\u56f4",
+      "loadingTitle": "\u6b63\u5728\u52a0\u8f7d\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "loadingBody": "\u6b63\u5728\u68c0\u67e5\u540e\u7aef\u751f\u547d\u4f53\u5f81\u5386\u53f2\u63a5\u53e3\u662f\u5426\u5c31\u7eea\u3002",
+      "emptyTitle": "\u6682\u65e0\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "emptyBody": "\u5f53\u524d\u6240\u9009\u65f6\u95f4\u8303\u56f4\u5185\u6682\u65e0\u53ef\u663e\u793a\u7684\u751f\u547d\u4f53\u5f81\u8bfb\u6570\u3002",
+      "unavailableTitle": "\u751f\u547d\u4f53\u5f81\u5386\u53f2\u6682\u4e0d\u53ef\u7528",
+      "unavailableBody": "\u751f\u547d\u4f53\u5f81\u5386\u53f2\u63a5\u53e3\u5c1a\u672a\u5c31\u7eea\uff0c\u8bf7\u7b49\u5f85\u540e\u7aef\u66f4\u65b0\u3002",
+      "errorTitle": "\u65e0\u6cd5\u52a0\u8f7d\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "noReading": "--",
+      "columns": {
+        "recordedAt": "\u8bb0\u5f55\u65f6\u95f4",
+        "heartRate": "\u5fc3\u7387",
+        "spo2": "SpO2",
+        "temperature": "\u4f53\u6e29"
+      }
+    }
   }
 }

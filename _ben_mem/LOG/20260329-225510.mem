@@ -1,0 +1,11 @@
+scope=frontend-brand-header
+phase=brand-workstream
+branch=ben/frontend-only-improve
+commit=bbfb2a5
+commit.subject=feat(shell): 集成 SmartCare Header brand mark
+files=frontend/src/components/shell/AppHeader.tsx|frontend/src/styles/app-shell.css
+asset.used=frontend/src/assets/brand/smartcare-mark-exact-full.svg
+backend_touch=0
+position_architecture_touch=0
+flycare_workflow_touch=0
+svg_fallback=none

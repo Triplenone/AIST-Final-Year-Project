@@ -1,0 +1,15 @@
+scope=frontend-flycare-visual-followups-planning
+phase=issue-sized-flycare-visual-plan
+branch=ben/frontend-only-improve
+files=docs/frontend-redesign/06-flycare-visual-followups-plan.md|_ben_mem/CURR.mem|_ben_mem/LOG/20260330-004913.mem
+protect=backend|backend-routes|backend-payload|db-schema|FlyCarePage.tsx|route-contract|auth-persistence|theme-persistence|polling|zone-logic|flight-drawer|device-mapping|map-image-source
+verify.flycare.assets.map_base=frontend/src/img/FlyCare.png|png|1052699
+verify.flycare.assets.shell_texture=frontend/src/assets/brand/texture-airport-exact-full.svg|svg|5914951
+verify.flycare.assets.header_mark=frontend/src/assets/brand/smartcare-mark-exact-full.svg|svg|4377467
+verify.flycare.assets.panel_badge=frontend/src/assets/brand/flycare-badge-exact-crop.svg|svg|1099668
+verify.flycare.header.mark.size=56.7x32.04px
+verify.flycare.shell.texture.opacity=0.11
+verify.flycare.shell.texture.size=min(1180px,92%)
+verify.flycare.panel.badge.size=57.59x35.09px
+plan.runs=header-brand-lockup|shell-background-asset|map-stage-framing|info-panel-hierarchy|closeout
+validation.source=playwright-flycare-route|file-stat|css-inspection

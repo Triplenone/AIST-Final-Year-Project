@@ -1,0 +1,16 @@
+V.mem.ts=2026-03-30T06:24:32+08:00
+V.ctx.branch=ben/frontend-only-improve
+V.mem.log.coverage.through_commit=3c08b02
+V.run.scope=frontend-only-optimization-queue-run4-location-workspace-emphasis
+V.run.objective=make-/location-read-like-map-first-operations-surface
+V.run.files=[frontend/src/components/LocationDashboard.tsx,frontend/src/styles/location-map.css,docs/frontend-redesign/20-frontend-only-optimization-queue.md,docs/frontend-redesign/24-location-workspace-emphasis-workstream.md]
+V.run.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+V.run.accept=[map-first-priority,side-context-supports-map,mobile-map-first-order]
+V.run.validate.build=ok
+V.run.validate.lint=ok
+V.run.validate.playwright.location.light=[root:1165.05x1492.31,stage:746.94x851.48,map:708.01x562.96,panel:334.19x973.43,overflowX:false]
+V.run.validate.playwright.location.dark=[titleColor:rgba(247,239,227,0.98),panelBg:rgba(17,25,36,0.92),overflowX:false]
+V.run.validate.playwright.location.mobile=[summary:2-cols,grid:1-col,zoneStrip:2-cols,mapTop:954.72,panelTop:1694.58,overflowX:false]
+V.run.validate.playwright.overview.smoke=[overflowX:false]
+B.run.blocker=[react-router-future-warnings,recharts-size-warnings-on-overview]
+I.next=frontend-only-optimization-queue[run-5-operations-family-consistency]

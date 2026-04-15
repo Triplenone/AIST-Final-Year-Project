@@ -1,0 +1,14 @@
+scope=position-ui-layout-fix
+phase=production-followup
+branch=ben/frontend-only-improve
+protect.backend=backend/backend/**
+protect.flycare=frontend/src/pages/FlyCarePage.tsx
+files.primary=frontend/src/styles/app-shell.css
+files.mem=_ben_mem/CURR.mem|_ben_mem/LOG/20260328-040649.mem
+build=ok
+runtime.overview=ok
+runtime.position=ok
+backend_touch=0
+flycare_regress=0
+blocker=backend/backend/.env-extra-keys-settings-validation
+next=commit-layout-fix-if-user-wants

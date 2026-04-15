@@ -1,0 +1,11 @@
+scope=frontend-position-visual-plan
+phase=issue-sized-position-visual-plan
+branch=ben/frontend-only-improve
+commit=d8c0206
+files=docs/frontend-position/12-position-visual-followups-plan.md|_ben_mem/CURR.mem|_ben_mem/LOG/20260330-030033.mem
+protect=backend|backend-routes|backend-payload|db-schema|route-contract|auth-persistence|theme-persistence|frontend/src/adapters/position-command-center.ts|frontend/src/pages/FlyCarePage.tsx
+plan.visual_thesis=calm-clinical-command-desk-with-map-first-focus
+plan.runs=header-shell-readability|resident-rail-summary-hierarchy|map-stage-emphasis|decision-panel-readability|closeout
+validate.runtime.position.plan_probe=ok
+validate.runtime.position.snapshot=error-state-visible|map-first-layout-preserved
+note.user_request=kickoff-proactive-guardian-care-with-formal-plan

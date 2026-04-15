@@ -1,0 +1,15 @@
+scope=frontend-flycare-panel-badge-removal
+phase=issue-sized-flycare-panel-badge-removal
+branch=ben/frontend-only-improve
+files=frontend/src/styles/app-shell.css|docs/frontend-redesign/08-flycare-panel-badge-removal-workstream.md|_ben_mem/CURR.mem|_ben_mem/LOG/20260330-005656.mem
+protect=FlyCarePage.tsx|polling|zone-logic|flight-drawer|device-mapping|backend|backend-routes|backend-payload|db-schema|route-contract
+change.flycare.panel.badge=removed-from-info-panel-header
+validate.build.cmd=npm run build
+validate.build.result=pass
+validate.lint.cmd=npm run lint
+validate.lint.result=pass
+validate.playwright.route=/flycare
+validate.playwright.panel.before_content=none
+validate.playwright.panel.before_background=none
+validate.playwright.panel.refresh_gap=0
+note.console.errors=mongo-upstream-local-dev-errors-unchanged

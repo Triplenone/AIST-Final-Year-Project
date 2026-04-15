@@ -1,0 +1,16 @@
+V.mem.ts=2026-03-30T04:25:34+08:00
+V.run.scope=frontend-position-nav-overflow-recovery
+V.run.phase=issue-sized-position-nav-overflow-recovery
+V.run.branch=ben/frontend-only-improve
+V.run.code_commit=9431b3e
+V.run.files=[frontend/src/styles/app-shell.css,docs/frontend-position/19-position-nav-overflow-recovery-workstream.md]
+V.run.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+V.run.validation.build=npm run build:ok
+V.run.validation.lint=npm run lint:ok
+V.run.validation.playwright.light=[innerW:1640,innerScrollW:1640,brandW:483.49,navW:1128.63,navClient:1127,navScroll:1127,adminVisible:1,overflowX:false]
+V.run.validation.playwright.dark=[innerW:1640,innerScrollW:1640,brandW:483.49,navW:1128.63,titleColor:rgba(248,241,229,0.98),overflowX:false]
+V.run.validation.playwright.mobile=[headerH:209.35,navClient:467,navScroll:910,contextPad:0px,overflowX:false]
+V.run.asset.position.background=frontend/src/assets/brand/texture-eldercare-exact-full.svg
+V.run.asset.position.png_fallback=0
+V.run.blocker=[react-router-warnings-unchanged,status_update-404-unchanged]
+V.run.next=frontend-position-workstream[new-issue-required]

@@ -1,73 +1,51 @@
-# SmartCare Dashboard Adventure / 智慧照護小冒險
+# SmartCare Dashboard Adventure / 智慧照護小冒險（更新版）
 
 ## English Version — Explain Like I’m in Fifth Grade
 ### What You Need
-1. **Node.js LTS** (Download from [https://nodejs.org](https://nodejs.org) → click the green “LTS” button and install). This gives you Node + npm.
-2. **Python 3** (already bundled on macOS/Linux; Windows users can grab it from the Microsoft Store). We only use it to serve the old dashboard quickly.
+1. **Node.js LTS** (install from [https://nodejs.org](https://nodejs.org) → green “LTS”).
+2. **Python 3** (built-in on macOS/Linux; Windows: Microsoft Store) if you want to run legacy demos; main backend is FastAPI.
 3. A terminal (Command Prompt, PowerShell, or macOS Terminal).
 
-### Start the New React App
-1. Open a terminal and run:
+### Start the React App (now using the real backend)
+1. Open a terminal:
    ```bash
    cd frontend
    npm install
    npm run dev -- --host
    ```
-2. When Vite says `Local: http://localhost:5173`, open that link in your browser.
-3. Things to try:
-   - Press **Simulate new data** to shuffle the numbers.
-   - Click the language menu (Language / 語言 / 语言) and switch between English, 繁體中文, 简体中文.
-   - Filter residents with the round buttons (All / High priority / Needs follow-up / Stable).
+2. Open the link shown by Vite (usually `http://localhost:5173`).
+3. The app now fetches residents from `http://localhost:8000/api/v1/residents` (polling every 10s). Simulator service worker is no longer auto-registered.
 
-### Peek at the Legacy Dashboard
-1. In a **second terminal** run:
-   ```bash
-   cd frontend/web-dashboard
-   python -m http.server 5500
-   ```
-2. Visit `http://localhost:5500`.
-3. Sign in with:
-   - Admin: `Admin / admin`
-   - Caregiver: `Ms.Testing / admin`
-4. Explore the tabs, try dark mode, switch languages, and click **Generate Report** to download the JSON snapshot.
+### Admin & Dashboard
+- Dashboard: KPIs, alerts, insights, resident list still keep the same look.
+- Admin section: manages Users / Devices / Locations / Events / Device Logs / User Status / Residents / KPI via `/api/v1/*`.
 
 ### If Something Looks Wrong
-- Blank screen? Check the terminal that runs `npm run dev` for red errors. Most of the time re-running `npm install` fixes missing packages.
-- Lots of red squiggles in VS Code? It usually means npm modules are missing. Run `npm install` inside `frontend/` and reload the window.
-- Need to stop the servers? Press `Ctrl + C` in the terminal windows.
+- Blank screen? Check the terminal running `npm run dev` for red errors; re-run `npm install` if packages are missing.
+- No data? Ensure the FastAPI backend is running on `http://localhost:8000` and MySQL has `smart_elderly_care_system`.
+- Stop servers: press `Ctrl + C` in the terminal.
 
-## 繁體中文（香港）版本 
+## 繁體中文（香港）版本
 ### 需要準備
-1. **Node.js LTS**（到 [https://nodejs.org](https://nodejs.org) 下載綠色的 LTS 版並安裝）。內含 Node 與 npm。
-2. **Python 3**（macOS / Linux 已內建；Windows 可從 Microsoft Store 安裝）。我們只拿它來開啟舊儀表板。
+1. **Node.js LTS**（到 [https://nodejs.org](https://nodejs.org) 安裝綠色 LTS 版）。
+2. **Python 3**（macOS / Linux 內建；Windows 可從 Microsoft Store 安裝）若要跑舊 demo；主要後端是 FastAPI。
 3. 一個終端機（Command Prompt、PowerShell 或 macOS Terminal）。
 
-### 啟動新的 React 儀表板
-1. 打開終端機並輸入：
+### 啟動新的 React 儀表板（改用真實後端）
+1. 打開終端機：
    ```bash
    cd frontend
    npm install
    npm run dev -- --host
    ```
-2. 當 Vite 顯示 `Local: http://localhost:5173`，用瀏覽器開啟此網址。
-3. 可以玩的功能：
-   - 按 **模擬更新資料** 看數字與圖表隨機變化。
-   - 點語言選單（Language / 語言 / 语言）切換英／繁／简。
-   - 用圓形按鈕篩選住民（全部／高優先／需跟進／穩定）。
+2. 打開 Vite 提供的網址（通常 `http://localhost:5173`）。
+3. 現在會從 `http://localhost:8000/api/v1/residents` 取住民（每 10 秒輪詢），不再自動註冊模擬器的 service worker。
 
-### 同時看看舊版儀表板
-1. 在**另一個終端機視窗**輸入：
-   ```bash
-   cd frontend/web-dashboard
-   python -m http.server 5500
-   ```
-2. 造訪 `http://localhost:5500`。
-3. 登入帳密：
-   - Admin：`Admin / admin`
-   - Caregiver：`Ms.Testing / admin`
-4. 逛逛各分頁、試試明暗主題、語言切換，按 **Generate Report** 可下載 JSON 報告。
+### Admin 與儀表板
+- 儀表板：維持原本 KPI／警報／住民卡片的設計。
+- Admin 區：透過 `/api/v1/*` 管理用戶、設備、位置、事件、設備日誌、用戶狀態、住民、KPI。
 
 ### 發生問題怎麼辦？
-- 頁面空白？檢查執行 `npm run dev` 的終端機是否出現紅字，重新跑一次 `npm install` 通常可修復。
-- VS Code 出現一堆紅色波浪線？多半是 npm 套件還沒裝好，在 `frontend/` 內跑 `npm install` 後重開視窗。
-- 想停止伺服器？在終端機中按 `Ctrl + C` 即可。
+- 頁面空白：查看執行 `npm run dev` 的終端機是否有紅字，缺套件就 `npm install`。
+- 沒資料：確認 FastAPI 後端已啟動且 MySQL 有 `smart_elderly_care_system`。
+- 停止伺服器：終端機按 `Ctrl + C`。

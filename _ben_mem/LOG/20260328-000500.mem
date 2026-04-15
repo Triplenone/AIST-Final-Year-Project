@@ -1,0 +1,14 @@
+V.mem.ts=2026-03-28T00:05:00+08:00
+R.scope=position-phase2-command
+R.phase=command
+V.ctx.repo=E:\FYP\AIST-Final-Year-Project-main
+V.ctx.branch=ben/frontend-only-improve
+R.protect=[backend,backend-routes,backend-payload,db-schema,FlyCarePage.tsx,route-contract,auth-persistence,theme-persistence]
+R.files.primary=[frontend/src/adapters/position-command-center.ts,frontend/src/components/position/PositionResidentRail.tsx,frontend/src/components/position/PositionMapStage.tsx,frontend/src/components/position/PositionDecisionPanel.tsx,frontend/src/components/position/PositionSummaryBar.tsx,frontend/src/pages/PositionPage.tsx,frontend/src/styles/position-page.css,frontend/src/adapters/position-command-center.test.ts,docs/frontend-position/02-phase-command.md,docs/frontend-position/10-maintainer-notes.md,docs/frontend-position/99-handoff.md,_ben_mem/CURR.mem]
+R.files.secondary=[docs/frontend-position/11-backend-facing-boundary.md]
+V.activity.source=mongoUpstreamApi.list(device_id,data_type=status_update)
+B.runtime.backend=blocked-existing-config-validation
+I.runtime.backend.blocker=backend/backend/.env contains extra keys rejected by current Settings model
+V.backend_touch=0
+V.flycare_regress=0
+V.next=implement-phase2-command-with-adapter-led-priority-zone-activity

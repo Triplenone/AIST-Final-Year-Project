@@ -1,0 +1,17 @@
+scope=frontend-position-header-shell-readability
+phase=issue-sized-position-header-shell-readability
+branch=ben/frontend-only-improve
+commit=0ec37e4
+files=frontend/src/styles/app-shell.css|docs/frontend-position/14-position-header-shell-readability-workstream.md|_ben_mem/CURR.mem|_ben_mem/LOG/20260330-032420.mem
+protect=backend|backend-routes|backend-payload|db-schema|route-contract|auth-persistence|theme-persistence|frontend/src/adapters/position-command-center.ts|frontend/src/pages/FlyCarePage.tsx
+change.position.header_shell=route-position-dark-command-rail-with-stronger-brand-and-nav
+change.position.stage_shell=route-position-stage-frame-unified-with-header
+validate.build.cmd=npm run build
+validate.build.result=pass
+validate.lint.cmd=npm run lint
+validate.lint.result=pass
+validate.playwright.position.light=headerH:112.64|title:36.36px|tagline:17.45px|navW:1008.09|activeW:103.1|stageW:1640|overflowX:false
+validate.playwright.position.dark=headerH:112.64|title:36.36px|tagline:17.45px|navW:1008.09|activeW:103.1|overflowX:false
+validate.playwright.position.mobile=headerH:165.51|title:23.09px|tagline:14.76px|navClient:516|navScroll:910|shellTop:9|overflowX:false
+note.console.errors=react-router-warnings-and-status_update-404s-unchanged
+note.user_request=continue-position-run-a-with-frontend-skill

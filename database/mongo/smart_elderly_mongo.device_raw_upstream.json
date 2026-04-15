@@ -1,0 +1,1158 @@
+[{
+  "_id": {
+    "$oid": "69ba78ae048cac8c73478c3b"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 4196,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-18T10:04:30.775Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 4196,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 0,
+        "y": 0,
+        "accuracy": 0,
+        "quality": "unknown",
+        "beacon_count": 0,
+        "beacons_used": []
+      },
+      "target": {
+        "x": 0,
+        "y": 0,
+        "name": "",
+        "distance": 0,
+        "direction": "none",
+        "bearing": 0,
+        "eta": 0
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "gyroscope": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "magnitude": 1,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "右",
+      "fall_time": 3747
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [
+      {
+        "door_id": "main_entrance",
+        "beacon_mac": "20:A7:16:60:F7:C4",
+        "distance": 2,
+        "trigger_time": 0,
+        "action": "unlock"
+      },
+      {
+        "door_id": "side_door",
+        "beacon_mac": "20:A7:16:60:F7:CA",
+        "distance": 1.5,
+        "trigger_time": 0,
+        "action": "unlock"
+      }
+    ],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 3639387
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 60,
+        "voltage": 3.84,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -36,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 8484748,
+        "min_free_heap": 8469800,
+        "psram_free": 8372880
+      },
+      "uptime": 4196816,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc2f4484cb1e4e5e193733"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 1000,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T17:15:48.674Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 1000,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 4.57,
+        "y": 9.36,
+        "accuracy": 1,
+        "quality": "very_high",
+        "beacon_count": 0,
+        "beacons_used": []
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 7.5,
+        "direction": "south",
+        "bearing": -79,
+        "eta": 5
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "gyroscope": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "left",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 78,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 56,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 51,
+        "voltage": 3.76,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -51,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7031512,
+        "min_free_heap": 7017852,
+        "psram_free": 6932584
+      },
+      "uptime": 993068,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc401984cb1e4e5e19373c"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 68,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T18:27:37.016Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 68,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 0,
+        "y": 0,
+        "accuracy": 0,
+        "quality": "unknown",
+        "beacon_count": 0,
+        "beacons_used": []
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 6.32,
+        "direction": "east",
+        "bearing": 18.4,
+        "eta": 4
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": -0.023,
+        "y": 0.019,
+        "z": 0.984
+      },
+      "gyroscope": {
+        "x": -1.562,
+        "y": 0.375,
+        "z": 0.031
+      },
+      "magnitude": 0.985,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "forward",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 58,
+        "voltage": 3.83,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -51,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7041840,
+        "min_free_heap": 7031280,
+        "psram_free": 6938828
+      },
+      "uptime": 68405,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc403484cb1e4e5e19373d"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 96,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T18:28:04.819Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 96,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 0,
+        "y": 0,
+        "accuracy": 0,
+        "quality": "unknown",
+        "beacon_count": 0,
+        "beacons_used": []
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 6.32,
+        "direction": "east",
+        "bearing": 18.4,
+        "eta": 4
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": -0.024,
+        "y": 0.027,
+        "z": 0.986
+      },
+      "gyroscope": {
+        "x": -0.656,
+        "y": 0.359,
+        "z": -0.359
+      },
+      "magnitude": 0.986,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "left",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 52,
+        "voltage": 3.77,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -49,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7040820,
+        "min_free_heap": 7029348,
+        "psram_free": 6936232
+      },
+      "uptime": 96222,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc45758efe816d044f33e2"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 79,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T18:50:29.220Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 79,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 4.33,
+        "y": 11.91,
+        "accuracy": 1,
+        "quality": "very_high",
+        "beacon_count": 3,
+        "beacons_used": [
+          {
+            "mac": "20:A7:16:5E:BB:FA"
+          }
+        ]
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 10.05,
+        "direction": "south",
+        "bearing": -80.4,
+        "eta": 7
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": 0.007,
+        "y": 0.584,
+        "z": 0.81
+      },
+      "gyroscope": {
+        "x": -0.687,
+        "y": 0.109,
+        "z": -0.234
+      },
+      "magnitude": 0.999,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "left",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 50,
+        "voltage": 3.76,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -46,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7059864,
+        "min_free_heap": 7044844,
+        "psram_free": 6956216
+      },
+      "uptime": 79992,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc45e88efe816d044f33e5"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 1773946344.2858703,
+  "data_type": "flight",
+  "server_received_at": {
+    "$date": "2026-03-19T18:52:24.285Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "passengerName": "TestUser01",
+    "flightNumber": "CA1234",
+    "gate": "A1",
+    "flightTime": "2025-02-02 14:30",
+    "departureAirport": "PEK",
+    "arrivalAirport": "PVG",
+    "seatNumber": "12A",
+    "data_type": "flight",
+    "timestamp": 1773946344.2858703
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc461c8efe816d044f33e6"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 246,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T18:53:16.002Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 246,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 5.95,
+        "y": 8.52,
+        "accuracy": 1,
+        "quality": "very_high",
+        "beacon_count": 3,
+        "beacons_used": [
+          {
+            "mac": "20:A7:16:60:FD:34"
+          }
+        ]
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 6.52,
+        "direction": "south",
+        "bearing": -89.6,
+        "eta": 4
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": 0.007,
+        "y": 0.89,
+        "z": 0.479
+      },
+      "gyroscope": {
+        "x": -0.422,
+        "y": -0.5,
+        "z": -0.469
+      },
+      "magnitude": 1.01,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "left",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 55,
+        "voltage": 3.8,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -43,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7047796,
+        "min_free_heap": 7028404,
+        "psram_free": 6947300
+      },
+      "uptime": 246605,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc46bc8efe816d044f33e8"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 407,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T18:55:56.941Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 407,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 4.11,
+        "y": 12.03,
+        "accuracy": 1,
+        "quality": "very_high",
+        "beacon_count": 3,
+        "beacons_used": [
+          {
+            "mac": "20:A7:16:60:FD:34"
+          }
+        ]
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 10.2,
+        "direction": "south",
+        "bearing": -79.3,
+        "eta": 7
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": -0.099,
+        "y": -0.039,
+        "z": 0.979
+      },
+      "gyroscope": {
+        "x": -1.234,
+        "y": -0.906,
+        "z": -0.141
+      },
+      "magnitude": 0.985,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "forward",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 58,
+        "voltage": 3.83,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -54,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7049064,
+        "min_free_heap": 7027100,
+        "psram_free": 6947448
+      },
+      "uptime": 407608,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc47158efe816d044f33e9"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 496,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T18:57:25.429Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 496,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 6.73,
+        "y": 8.22,
+        "accuracy": 1,
+        "quality": "very_high",
+        "beacon_count": 3,
+        "beacons_used": [
+          {
+            "mac": "20:A7:16:5E:BB:FA"
+          },
+          {
+            "mac": "20:A7:16:61:02:32"
+          }
+        ]
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 6.26,
+        "direction": "south",
+        "bearing": -96.7,
+        "eta": 4
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": -0.608,
+        "y": 0.027,
+        "z": 0.774
+      },
+      "gyroscope": {
+        "x": -0.453,
+        "y": -0.062,
+        "z": -0.656
+      },
+      "magnitude": 0.984,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 1.99,
+      "direction": "forward",
+      "fall_time": 468
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 50,
+        "voltage": 3.75,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -50,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7049536,
+        "min_free_heap": 7027100,
+        "psram_free": 6946924
+      },
+      "uptime": 496204,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc4a858efe816d044f33ea"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 753,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T19:12:05.019Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 753,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 4.04,
+        "y": 12.11,
+        "accuracy": 1,
+        "quality": "very_high",
+        "beacon_count": 3,
+        "beacons_used": [
+          {
+            "mac": "20:A7:16:5E:BB:FA"
+          }
+        ]
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 10.3,
+        "direction": "south",
+        "bearing": -79,
+        "eta": 7
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": 0.24,
+        "y": 0.099,
+        "z": 0.955
+      },
+      "gyroscope": {
+        "x": -0.562,
+        "y": -0.031,
+        "z": 0.125
+      },
+      "magnitude": 0.989,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "backward",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 57,
+        "voltage": 3.81,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -50,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7052612,
+        "min_free_heap": 7038108,
+        "psram_free": 6950516
+      },
+      "uptime": 753941,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc53f88efe816d044f33eb"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 29,
+  "data_type": "status_update",
+  "server_received_at": {
+    "$date": "2026-03-19T19:52:24.357Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "timestamp": 29,
+    "data_type": "status_update",
+    "location": {
+      "current": {
+        "x": 7.81,
+        "y": 7.09,
+        "accuracy": 1,
+        "quality": "very_high",
+        "beacon_count": 3,
+        "beacons_used": [
+          {
+            "mac": "20:A7:16:60:FD:34"
+          }
+        ]
+      },
+      "target": {
+        "x": 6,
+        "y": 2,
+        "name": "Boarding Gate",
+        "distance": 5.4,
+        "direction": "south",
+        "bearing": -109.6,
+        "eta": 3
+      }
+    },
+    "motion": {
+      "accelerometer": {
+        "x": 0.01,
+        "y": 0.02,
+        "z": 0.988
+      },
+      "gyroscope": {
+        "x": 0,
+        "y": 0.828,
+        "z": -0.266
+      },
+      "magnitude": 0.988,
+      "step_count": 0,
+      "movement_status": "walking"
+    },
+    "fall_detection": {
+      "state": 0,
+      "state_description": "正常",
+      "confidence": 0,
+      "is_fall_confirmed": false,
+      "impact_force": 0,
+      "direction": "left",
+      "fall_time": 3
+    },
+    "sos": {
+      "active": false,
+      "trigger_method": "none",
+      "trigger_time": 0,
+      "trigger_count": 0,
+      "duration": 0
+    },
+    "door_events": [],
+    "night_mode": {
+      "active": false,
+      "light_triggered": false,
+      "movement_detected": false,
+      "last_movement": 0
+    },
+    "sensors": {
+      "heart_rate": {
+        "bpm": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      },
+      "spo2": {
+        "percentage": 0,
+        "confidence": 0,
+        "timestamp": 0,
+        "valid": false
+      }
+    },
+    "system": {
+      "battery": {
+        "level": 51,
+        "voltage": 3.76,
+        "charging": true
+      },
+      "wifi": {
+        "connected": true,
+        "ssid": "VOX",
+        "rssi": -74,
+        "ip": "192.168.3.109"
+      },
+      "memory": {
+        "free_heap": 7062076,
+        "min_free_heap": 7048584,
+        "psram_free": 6958696
+      },
+      "uptime": 29201,
+      "temperature": 42.5
+    },
+    "log": []
+  }
+},
+{
+  "_id": {
+    "$oid": "69bc54738efe816d044f33ec"
+  },
+  "device_id": "ESP32_00005CFA7AD4DB1C",
+  "timestamp": 1773950067.2221875,
+  "data_type": "flight",
+  "server_received_at": {
+    "$date": "2026-03-19T19:54:27.222Z"
+  },
+  "payload": {
+    "device_id": "ESP32_00005CFA7AD4DB1C",
+    "passengerName": "TestUser01",
+    "flightNumber": "CA9999",
+    "gate": "A1",
+    "flightTime": "2025-02-02 14:30",
+    "departureAirport": "PEK",
+    "arrivalAirport": "PVG",
+    "seatNumber": "12A",
+    "data_type": "flight",
+    "timestamp": 1773950067.2221875
+  }
+}]

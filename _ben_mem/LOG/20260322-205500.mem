@@ -1,0 +1,5 @@
+V.log.ts=2026-03-22T20:55:00+08:00
+V.log.kind=bootstrap-memory-snapshot
+V.log.src=this-chat+direct-verification
+V.log.actions=[read-plan,checked-git-status,checked-tree,read-readme+setup+.env.example,ran-npm-install,ran-npm-build,ran-build_release,verified-release-contents,created-temp-venv,installed-backend-reqs,started-backend,probed-endpoints,created-memory-folder]
+V.log.key_findings=[plan-matches-actual-structure,frontend-build-ok,release-script-ok,mongo-status-ok,mqtt-status-ok,tcp-status-ok,health-404,raw-backend-startup-encoding-crash]

@@ -1,0 +1,13 @@
+V.mem.ts=2026-03-27T23:46:10+08:00
+R.scope=position-handoff-doc-repair
+R.phase=foundation-doc-hygiene
+V.ctx.repo=E:\FYP\AIST-Final-Year-Project-main
+V.ctx.branch=Lin-saved-cleanup-release
+V.file.changed=docs/frontend-position/99-handoff.md
+V.file.changed_2=_ben_mem/CURR.mem
+V.docs.position.handoff.corruption_source=pre-git-big5-to-utf8-bad-conversion
+V.docs.position.handoff.fix=rewrote-damaged-cn-intro-lines-only
+V.docs.position.handoff.english_sections_preserved=1
+V.backend_touch=0
+V.flycare_regress=0
+V.next=continue-position-phase2-only-when-separately-requested

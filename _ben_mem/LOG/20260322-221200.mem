@@ -1,0 +1,8 @@
+V.mem.prev_ts=2026-03-22T22:09:11+08:00
+V.mem.new_ts=2026-03-22T22:12:00+08:00
+V.db.mongo.seed.file=E:\FYP\AIST-Final-Year-Project-main\database\mongo\smart_elderly_mongo.device_raw_upstream.json
+V.db.mongo.seed.method=python+bson.json_util+pymongo
+V.db.mongo.seed.inserted=12
+V.db.mongo.seed.collection=smart_elderly_mongo.device_raw_upstream
+V.db.mongo.seed.count.after=12
+V.run.backend.mongo_status.local={connected:1,db_name:smart_elderly_mongo,collection:device_raw_upstream,document_count:12,error:null}

@@ -1,0 +1,17 @@
+V.mem.ts=2026-04-16T05:38:37+08:00
+V.ctx.branch=ben/merge-backend-slices-rescue
+V.task.scope=slice-d-vitals-event-bridge
+V.task.files=[backend/backend/app/models/device.py,backend/backend/app/api/routes/mongo_upstream.py]
+V.merge.phase.old=slice-b-committed
+V.merge.phase.new=slice-d-code-ready-uncommitted
+V.merge.sliceD.old=not-started
+V.merge.sliceD.new=complete-in-code
+V.merge.sliceD.endpoint=GET /api/v1/mongo-upstream/vitals/user/{id}/history
+V.merge.sliceD.mac_address_length.old=String(20)-vs-22-char-external-id
+V.merge.sliceD.mac_address_length.new=String(32)
+V.merge.sliceD.bridge_logic=user_id->Device.elderly_user_id->candidate_device_ids->MongoDB
+V.merge.sliceD.validation=[python-import-ok,task-files-diff-ok,mac-address-grep-ok]
+B.merge.sliceD.frontend_diff=preexisting-frontend/src/styles/app-shell.css
+B.merge.sliceD.worktree_diff=preexisting-[backend/backend/app/config.py,backend/backend/app/services/mongo_raw_upstream.py,backend/backend/app/services/mqtt_subscriber.py,frontend/src/styles/app-shell.css]
+B.merge.sliceD.runtime=end-to-end-not-verified
+I.next.merge=clean-preexisting-diffs-then-commit-sliceD
