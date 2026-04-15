@@ -1,28 +1,24 @@
-"""
-上行原始 JSON 写入 MongoDB 缓存（与「完整 JSON 数据格式」一致）。
-支持异步写入（HTTP 路径）与同步封装（TCP 线程中调用）。
-"""
+"""Helpers for storing raw upstream device payloads in MongoDB."""
+
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from app.db.mongo import get_mongo_db, COLLECTION_RAW_UPSTREAM
+from pymongo import MongoClient
+
+from app.config import settings
+from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
+
+_sync_mongo_client: Optional[MongoClient] = None
 
 
-async def save_raw_upstream(data: Dict[str, Any]) -> None:
-    """
-    将上行 JSON 写入 MongoDB device_raw_upstream 集合。
-    data 为完整上行结构（device_id, timestamp, data_type, location, motion, fall_detection 等）。
-    """
-    db = get_mongo_db()
-    coll = db[COLLECTION_RAW_UPSTREAM]
-
+def _build_doc(data: Dict[str, Any]) -> Dict[str, Any]:
     device_id = data.get("device_id")
     if device_id is None:
         device_id = "UNKNOWN"
     else:
         device_id = str(device_id)
 
-    doc = {
+    return {
         "device_id": device_id,
         "timestamp": data.get("timestamp"),
         "data_type": data.get("data_type", "status_update"),
@@ -30,17 +26,24 @@ async def save_raw_upstream(data: Dict[str, Any]) -> None:
         "payload": data,
     }
 
-    await coll.insert_one(doc)
+
+def get_sync_mongo_db():
+    global _sync_mongo_client
+    if _sync_mongo_client is None:
+        _sync_mongo_client = MongoClient(settings.MONGO_URI)
+    return _sync_mongo_client[settings.MONGO_DB_NAME]
+
+
+async def save_raw_upstream(data: Dict[str, Any]) -> None:
+    """Persist a raw upstream payload to the shared Mongo collection."""
+    coll = get_mongo_db()[COLLECTION_RAW_UPSTREAM]
+    await coll.insert_one(_build_doc(data))
 
 
 def run_sync_save_raw_upstream(data: Dict[str, Any]) -> None:
-    """
-    在同步上下文（如 TCP 处理线程）中调用，将上行 JSON 写入 MongoDB。
-    内部在新事件循环中执行 save_raw_upstream；Mongo 不可用时仅打日志不抛错。
-    """
-    import asyncio
-
+    """Allow sync MQTT callbacks to persist raw payloads without crashing."""
     try:
-        asyncio.run(save_raw_upstream(data))
-    except Exception as e:
-        print(f"⚠️ MongoDB 写入上行缓存失败（不影响主流程）: {e}")
+        coll = get_sync_mongo_db()[COLLECTION_RAW_UPSTREAM]
+        coll.insert_one(_build_doc(data))
+    except Exception as exc:
+        print(f"[mongo_raw_upstream] write failed but skipped: {exc}")

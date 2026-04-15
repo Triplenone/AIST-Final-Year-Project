@@ -24,10 +24,27 @@ class Settings(BaseSettings):
     MONGO_DB_NAME: str = "smart_elderly_care_system"
 
     # MQTT subscriber
-    MQTT_BROKER: str = "localhost"
+    MQTT_BROKER: str = "broker.emqx.io"
     MQTT_PORT: int = 1883
     MQTT_USER: str = ""
     MQTT_PASSWORD: str = ""
+
+    # MQTT string device-id -> MySQL integer device_id
+    # Format: "ESP32_001:1,ESP32_002:2"
+    DEVICE_ID_MAP: str = ""
+
+    @property
+    def device_id_map(self) -> dict[str, int]:
+        if not self.DEVICE_ID_MAP:
+            return {}
+        mapping: dict[str, int] = {}
+        for pair in self.DEVICE_ID_MAP.split(","):
+            pair = pair.strip()
+            if ":" not in pair:
+                continue
+            key, val = pair.split(":", 1)
+            mapping[key.strip()] = int(val.strip())
+        return mapping
 
     @property
     def database_url(self) -> str:

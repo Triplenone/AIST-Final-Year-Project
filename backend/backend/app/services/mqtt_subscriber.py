@@ -55,20 +55,20 @@ def _sanitize_json_trailing_commas(s: str) -> str:
 
 def _on_connect(client, userdata, flags, rc):
     if rc != 0:
-        print(f"⚠️ MQTT 连接失败 rc={rc}")
+        print(f"[mqtt] connect failed rc={rc}")
         return
-    print("✅ MQTT 已连接")
+    print("[mqtt] connected")
     for topic in UPLINK_TOPICS:
         client.subscribe(topic)
     client.subscribe(FLIGHT_TOPIC)
-    print(f"  已订阅 {len(UPLINK_TOPICS)} 个设备上行主题 + {FLIGHT_TOPIC}")
+    print(f"[mqtt] subscribed topics={len(UPLINK_TOPICS)}+1 flight={FLIGHT_TOPIC}")
 
 
 def _on_message(client, userdata, msg):
     try:
         payload_str = msg.payload.decode("utf-8")
     except Exception as e:
-        print(f"⚠️ MQTT payload 解码失败: {e}")
+        print(f"[mqtt] payload decode failed: {e}")
         return
     try:
         data = json.loads(payload_str)
@@ -78,15 +78,15 @@ def _on_message(client, userdata, msg):
         if cleaned != payload_str:
             try:
                 data = json.loads(cleaned)
-                print(f"⚠️ MQTT payload 非标准 JSON（已尝试清洗 trailing comma）: {e}")
+                print(f"[mqtt] payload sanitized after trailing comma parse error: {e}")
             except json.JSONDecodeError:
-                print(f"⚠️ MQTT payload 非 JSON: {e}")
+                print(f"[mqtt] payload is not valid json: {e}")
                 return
         else:
-            print(f"⚠️ MQTT payload 非 JSON: {e}")
+            print(f"[mqtt] payload is not valid json: {e}")
             return
     except Exception as e:
-        print(f"⚠️ MQTT payload JSON 解析异常: {e}")
+        print(f"[mqtt] payload json parse error: {e}")
         return
     if not isinstance(data, dict):
         data = {"payload": data}
@@ -97,9 +97,9 @@ def _on_message(client, userdata, msg):
         data.setdefault("timestamp", time.time())
         try:
             run_sync_save_raw_upstream(data)
-            print(f"  [flycare] 已写入航班信息: {data.get('flightNumber', 'N/A')}")
+            print(f"[mqtt] flycare flight saved: {data.get('flightNumber', 'N/A')}")
         except Exception as e:
-            print(f"⚠️ 航班信息写入 Mongo 失败: {e}")
+            print(f"[mqtt] flycare mongo write failed: {e}")
         return
 
     # 设备上行主题：smartwatch/<device_id>/<suffix>
@@ -107,7 +107,10 @@ def _on_message(client, userdata, msg):
     if len(parts) >= 3:
         device_id_from_topic = parts[1]
         suffix = parts[2].lower()
-        if data.get("device_id") is None:
+        mapped = settings.device_id_map.get(device_id_from_topic)
+        if mapped is not None:
+            data["device_id"] = mapped
+        elif data.get("device_id") is None:
             data["device_id"] = device_id_from_topic
         data_type = SUFFIX_TO_DATA_TYPE.get(suffix, "status_update")
         data["data_type"] = data.get("data_type") or data_type
@@ -117,7 +120,7 @@ def _on_message(client, userdata, msg):
     try:
         run_sync_save_raw_upstream(data)
     except Exception as e:
-        print(f"⚠️ MQTT 写入 Mongo 失败: {e}")
+        print(f"[mqtt] mongo write failed: {e}")
 
 
 def start_mqtt():
@@ -129,16 +132,20 @@ def start_mqtt():
         try:
             import paho.mqtt.client as mqtt
         except ImportError:
-            print("⚠️ 未安装 paho-mqtt，MQTT 订阅已跳过。执行: pip install paho-mqtt")
+            print("[mqtt] paho-mqtt not installed; subscriber skipped")
             return
         client_id = f"aist-backend-{uuid.uuid4().hex[:8]}"
-        try:
-            client = mqtt.Client(
-                callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
-                client_id=client_id,
-                protocol=mqtt.MQTTv311,
-            )
-        except TypeError:
+        callback_api_version = getattr(mqtt, "CallbackAPIVersion", None)
+        if callback_api_version is not None:
+            try:
+                client = mqtt.Client(
+                    callback_api_version=callback_api_version.VERSION1,
+                    client_id=client_id,
+                    protocol=mqtt.MQTTv311,
+                )
+            except (TypeError, AttributeError, ValueError):
+                client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
+        else:
             client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
         client.on_connect = _on_connect
         client.on_message = _on_message
@@ -147,12 +154,12 @@ def start_mqtt():
         try:
             client.connect(settings.MQTT_BROKER, settings.MQTT_PORT, keepalive=60)
         except Exception as e:
-            print(f"⚠️ MQTT 连接失败（Broker 可能不可达）: {e}")
+            print(f"[mqtt] broker connect failed: {e}")
             return
         client.loop_start()
         _client = client
         _started = True
-        print(f"   MQTT 已启动 -> {settings.MQTT_BROKER}:{settings.MQTT_PORT}")
+        print(f"[mqtt] started -> {settings.MQTT_BROKER}:{settings.MQTT_PORT}")
 
 
 def stop_mqtt():
@@ -168,7 +175,7 @@ def stop_mqtt():
             pass
         _client = None
         _started = False
-        print("   MQTT 已断开")
+        print("[mqtt] disconnected")
 
 
 def get_mqtt_status():
