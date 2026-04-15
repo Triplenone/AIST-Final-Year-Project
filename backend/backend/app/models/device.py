@@ -66,7 +66,7 @@ class Device(Base):
     device_type = Column(String(50), nullable=True)
     model_desc = Column(String(100), nullable=True)
     elderly_user_id = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)
-    mac_address = Column(String(20), nullable=True, unique=True)
+    mac_address = Column(String(32), nullable=True, unique=True)
     current_status = Column(DeviceStatusType(DeviceStatus, length=20), default=DeviceStatus.OFFLINE)
     battery_level = Column(TINYINT, nullable=True)
     deploy_location = Column(String(100), nullable=True)

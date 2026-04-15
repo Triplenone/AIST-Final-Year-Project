@@ -3,10 +3,13 @@
 from typing import Any, Dict, List, Optional
 
 from bson.objectid import ObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import get_db
 from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
+from app.models.device import Device
 
 router = APIRouter()
 
@@ -219,6 +222,63 @@ async def get_vitals_history(
         items: List[Dict[str, Any]] = []
         async for doc in cursor:
             items.append(_to_vitals_item(doc))
+        total = await coll.count_documents(query)
+    except Exception as exc:
+        raise _mongo_unavailable(exc) from exc
+
+    return {"page": page, "page_size": page_size, "total": total, "items": items}
+
+
+@router.get("/vitals/user/{user_id}/history", response_model=Dict[str, Any])
+async def get_vitals_history_for_user(
+    user_id: int,
+    start_ts: Optional[int] = Query(None, description="Start timestamp (inclusive)"),
+    end_ts: Optional[int] = Query(None, description="End timestamp (inclusive)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=200, description="Page size"),
+    db: Session = Depends(get_db),
+):
+    """Bridge user_id -> device -> MongoDB vitals history."""
+    devices = db.query(Device).filter(Device.elderly_user_id == user_id).all()
+    if not devices:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No device bound to user_id={user_id}",
+        )
+
+    candidate_ids: List[str] = []
+    reverse_map = {value: key for key, value in settings.device_id_map.items()}
+
+    for dev in devices:
+        candidate_ids.append(str(dev.device_id))
+        if dev.mac_address:
+            candidate_ids.append(dev.mac_address)
+        external_id = reverse_map.get(dev.device_id)
+        if external_id:
+            candidate_ids.append(external_id)
+
+    candidate_ids = list(dict.fromkeys(candidate_ids))
+
+    query: Dict[str, Any] = {
+        "device_id": {"$in": candidate_ids} if len(candidate_ids) > 1 else candidate_ids[0],
+        "data_type": {"$in": ["vitals", "status_update"]},
+    }
+    if start_ts is not None or end_ts is not None:
+        query["timestamp"] = {}
+        if start_ts is not None:
+            query["timestamp"]["$gte"] = start_ts
+        if end_ts is not None:
+            query["timestamp"]["$lte"] = end_ts
+
+    try:
+        coll = _get_collection()
+        skip = (page - 1) * page_size
+        cursor = coll.find(query).sort("server_received_at", -1).skip(skip).limit(page_size)
+        items: List[Dict[str, Any]] = []
+        async for doc in cursor:
+            item = _to_vitals_item(doc)
+            item["user_id"] = user_id
+            items.append(item)
         total = await coll.count_documents(query)
     except Exception as exc:
         raise _mongo_unavailable(exc) from exc
