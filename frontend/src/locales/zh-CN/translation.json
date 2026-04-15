@@ -151,46 +151,6 @@
       "error": "无法取得住民资料，请稍后再试。"
     }
   },
-  "admin": {
-    "title": "系统管理",
-    "subtitle": "直接连到 TestStage-FYP 后端资源",
-    "detailsTitle": "Proactive Guardian Care 详情",
-    "detailsSubtitle": "System Admin 控制台：长者院舍智慧穿戴安全系统",
-    "tabs": {
-      "users": "用户",
-      "devices": "设备",
-      "locations": "位置",
-      "events": "事件",
-      "logs": "设备日志",
-      "status": "用户状态",
-      "residents": "住民",
-      "kpi": "KPI"
-    },
-    "residents": {
-      "title": "住民名册",
-      "subtitle": "同步自 /api/v1/residents",
-      "searchPlaceholder": "搜姓名或房号",
-      "statusFilterLabel": "状态",
-      "allStatuses": "全部状态",
-      "refresh": "重新整理",
-      "lastUpdated": "更新于 {{time}}",
-      "columns": {
-        "id": "ID",
-        "name": "住民",
-        "room": "房号",
-        "status": "状态",
-        "lastSeen": "最后出现",
-        "vitals": "生命体征",
-        "device": "设备",
-        "updated": "更新时间"
-      },
-      "noData": "目前没有住民资料。",
-      "lastSeenUnknown": "未知",
-      "deviceUnknown": "未绑定",
-      "vitalsUnknown": "等待生命体征",
-      "error": "无法取得住民资料，请稍后再试。"
-    }
-  },
   "auth": {
     "guestName": "访客",
     "signIn": "登录",

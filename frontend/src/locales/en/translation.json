@@ -149,44 +149,6 @@
       "error": "Unable to fetch residents. Try again."
     }
   },
-  "admin": {
-    "title": "System Admin",
-    "subtitle": "Direct access to TestStage-FYP backend resources",
-    "detailsTitle": "Proactive Guardian Care Details",
-    "detailsSubtitle": "System Admin dashboard for Smart Wearable Safety System for Elderly Homes",
-    "tabs": {
-      "users": "Users",
-      "devices": "Devices",
-      "locations": "Locations",
-      "events": "Events",
-    "logs": "Device logs",
-      "residents": "Residents"
-    },
-    "residents": {
-      "title": "Resident directory",
-      "subtitle": "Synced from /api/v1/residents",
-      "searchPlaceholder": "Search by name or room",
-      "statusFilterLabel": "Status",
-      "allStatuses": "All statuses",
-      "refresh": "Refresh",
-      "lastUpdated": "Updated {{time}}",
-      "columns": {
-        "id": "ID",
-        "name": "Resident",
-        "room": "Room",
-        "status": "Status",
-        "lastSeen": "Last seen",
-        "vitals": "Vitals",
-        "device": "Device",
-        "updated": "Updated"
-      },
-      "noData": "No residents found.",
-      "lastSeenUnknown": "Unknown",
-      "deviceUnknown": "Unassigned",
-      "vitalsUnknown": "Waiting for vitals",
-      "error": "Unable to fetch residents. Try again."
-    }
-  },
   "auth": {
     "guestName": "Guest",
     "signIn": "Sign in",
