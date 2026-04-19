@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { RESIDENT_CONTACTS } from '../../constants/resident-family';
 import type { FamilySummaryTodayResponse } from '../../services/api';
 import type { BackendResident } from '../../types/backend';
+import { slugify } from '../../utils/resident-slug';
 
 type PrimaryResidentBriefingProps = {
   resident: BackendResident;
@@ -73,6 +75,9 @@ export function PrimaryResidentBriefing({
     () => [t('family.briefing.activities.breakfastCompleted'), t('family.briefing.activities.middayWalk')],
     [t]
   );
+
+  const contactInfo = useMemo(() => RESIDENT_CONTACTS[slugify(resident.name)] ?? null, [resident.name]);
+  const stripPhone = (value: string) => value.replace(/[^+0-9]/g, '');
 
   return (
     <section className="family-primary-briefing family-panel" aria-live="polite">
@@ -160,6 +165,46 @@ export function PrimaryResidentBriefing({
           </div>
         </div>
       </div>
+
+      <article className="family-primary-briefing__contacts" aria-label={t('family.briefing.contacts.title')}>
+        <div className="family-primary-briefing__contacts-header">
+          <h4>{t('family.briefing.contacts.title')}</h4>
+        </div>
+        <div className="family-primary-briefing__contacts-grid">
+          <div className="family-primary-briefing__contacts-block">
+            <p className="family-primary-briefing__contacts-label">{t('family.briefing.contacts.phoneLabel')}</p>
+            {contactInfo?.phone ? (
+              <a className="family-primary-briefing__contacts-phone" href={`tel:${stripPhone(contactInfo.phone)}`}>
+                {contactInfo.phone}
+              </a>
+            ) : (
+              <p className="family-primary-briefing__contacts-empty">{placeholder}</p>
+            )}
+          </div>
+          <div className="family-primary-briefing__contacts-block">
+            <p className="family-primary-briefing__contacts-label">{t('family.briefing.contacts.rosterTitle')}</p>
+            {contactInfo && contactInfo.family.length > 0 ? (
+              <ul className="family-primary-briefing__roster">
+                {contactInfo.family.map((member) => (
+                  <li key={`${member.name}-${member.phone}`} className="family-primary-briefing__roster-item">
+                    <div className="family-primary-briefing__roster-line">
+                      <strong>{member.name}</strong>
+                      <span className="family-primary-briefing__roster-relation">
+                        {t(`family.briefing.contacts.relations.${member.relation}`)}
+                      </span>
+                    </div>
+                    <a className="family-primary-briefing__roster-phone" href={`tel:${stripPhone(member.phone)}`}>
+                      {member.phone}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="family-primary-briefing__contacts-empty">{t('family.briefing.contacts.rosterEmpty')}</p>
+            )}
+          </div>
+        </div>
+      </article>
 
       <div className="family-primary-briefing__grid">
         <article className="family-primary-briefing__card">

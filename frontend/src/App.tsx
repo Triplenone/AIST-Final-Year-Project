@@ -26,7 +26,7 @@ import {
   type RawMetrics
 } from './utils/resident-derived';
 
-type Role = 'guest' | 'caregiver' | 'admin';
+type Role = 'guest' | 'caregiver' | 'family' | 'admin';
 
 type Account = {
   username: string;
@@ -63,11 +63,13 @@ const DEFAULT_ACCOUNTS: Account[] = [
   { username: 'guest_demo', password: 'guest123', role: 'guest' },
   { username: 'care_demo', password: 'care1234', role: 'caregiver' },
   { username: 'caregiver_lee', password: 'lee1234', role: 'caregiver' },
+  { username: 'family_chan', password: 'chan1234', role: 'family' },
   { username: 'admin_master', password: 'admin888', role: 'admin' }
 ];
 
-const CAREGIVER_PRIMARY_RESIDENT: Record<string, string> = {
-  caregiver_lee: 'chan-tai-man'
+const USER_PRIMARY_RESIDENT: Record<string, string> = {
+  caregiver_lee: 'chan-tai-man',
+  family_chan: 'chan-tai-man'
 };
 
 const STORAGE_KEYS = {
@@ -80,14 +82,14 @@ const NAV_ITEMS: ReadonlyArray<{
   key: DashboardPageKey;
   to: string;
   labelKey: string;
-  adminOnly?: boolean;
+  roles?: ReadonlyArray<Role>;
 }> = [
   { key: 'overview', to: '/', labelKey: 'layout.nav.overview' },
-  { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents' },
-  { key: 'position', to: '/position', labelKey: 'layout.nav.position' },
-  { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations' },
+  { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents', roles: ['guest', 'caregiver', 'admin'] },
+  { key: 'position', to: '/position', labelKey: 'layout.nav.position', roles: ['guest', 'caregiver', 'admin'] },
+  { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations', roles: ['caregiver', 'admin'] },
   { key: 'family', to: '/family', labelKey: 'layout.nav.family' },
-  { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin', adminOnly: true }
+  { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin', roles: ['admin'] }
 ] as const;
 
 const OverviewExperience = lazy(() =>
@@ -673,11 +675,13 @@ export default function App() {
   const signButtonLabel = t(isLoggedIn ? 'auth.signOut' : 'auth.signIn');
 
   const navItems = useMemo(
-    () =>
-      NAV_ITEMS.filter((item) => !item.adminOnly || session?.role === 'admin').map((item) => ({
+    () => {
+      const role: Role = session?.role ?? 'guest';
+      return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role)).map((item) => ({
         ...item,
         label: t(item.labelKey)
-      })),
+      }));
+    },
     [session?.role, t]
   );
 
@@ -1075,7 +1079,7 @@ export default function App() {
       case 'operations':
         return <div className="route-stack route-stack--narrow">{renderAlertsPanel()}</div>;
       case 'family':
-        return <FamilyPage primaryResidentSlug={session ? CAREGIVER_PRIMARY_RESIDENT[session.username] ?? null : null} />;
+        return <FamilyPage primaryResidentSlug={session ? USER_PRIMARY_RESIDENT[session.username] ?? null : null} />;
       case 'admin':
         if (session?.role !== 'admin') {
           return (

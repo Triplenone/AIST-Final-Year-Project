@@ -170,6 +170,7 @@
     "roles": {
       "guest": "訪客",
       "caregiver": "照顧員",
+      "family": "家屬",
       "admin": "管理員"
     },
     "errors": {
@@ -530,6 +531,19 @@
       "notes": {
         "title": "照護備註",
         "placeholder": "記錄下一次與家屬溝通前要補充的照護備註..."
+      },
+      "contacts": {
+        "title": "聯絡資料與家屬",
+        "phoneLabel": "住客電話",
+        "rosterTitle": "家屬名單",
+        "rosterEmpty": "尚未登記家屬名單。",
+        "relations": {
+          "daughter": "女兒",
+          "son": "兒子",
+          "spouse": "配偶",
+          "sibling": "兄弟姊妹",
+          "other": "家屬"
+        }
       }
     }
   ,

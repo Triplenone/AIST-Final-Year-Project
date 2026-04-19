@@ -170,6 +170,7 @@
     "roles": {
       "guest": "访客",
       "caregiver": "看护者",
+      "family": "家属",
       "admin": "管理员"
     },
     "errors": {
@@ -530,6 +531,19 @@
       "notes": {
         "title": "照护备注",
         "placeholder": "记录下一次与家属沟通前要补充的照护备注..."
+      },
+      "contacts": {
+        "title": "联系方式与家属",
+        "phoneLabel": "住户电话",
+        "rosterTitle": "家属名单",
+        "rosterEmpty": "尚未登记家属名单。",
+        "relations": {
+          "daughter": "女儿",
+          "son": "儿子",
+          "spouse": "配偶",
+          "sibling": "兄弟姐妹",
+          "other": "家属"
+        }
       }
     }
   ,

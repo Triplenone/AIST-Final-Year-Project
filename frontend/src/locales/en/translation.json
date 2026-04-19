@@ -168,6 +168,7 @@
     "roles": {
       "guest": "Guest",
       "caregiver": "Caregiver",
+      "family": "Family member",
       "admin": "Admin"
     },
     "errors": {
@@ -525,6 +526,19 @@
       "notes": {
         "title": "Care notes",
         "placeholder": "Add caregiver notes for the next family update..."
+      },
+      "contacts": {
+        "title": "Contact & family",
+        "phoneLabel": "Resident phone",
+        "rosterTitle": "Family members",
+        "rosterEmpty": "No family roster on file yet.",
+        "relations": {
+          "daughter": "Daughter",
+          "son": "Son",
+          "spouse": "Spouse",
+          "sibling": "Sibling",
+          "other": "Family"
+        }
       }
     },
     "vitalsHistory": {
