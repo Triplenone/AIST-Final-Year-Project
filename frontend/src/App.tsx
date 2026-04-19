@@ -79,7 +79,6 @@ const NAV_ITEMS: ReadonlyArray<{
   { key: 'overview', to: '/', labelKey: 'layout.nav.overview' },
   { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents' },
   { key: 'position', to: '/position', labelKey: 'layout.nav.position' },
-  { key: 'flycare', to: '/flycare', labelKey: 'layout.nav.flycare' },
   { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations' },
   { key: 'family', to: '/family', labelKey: 'layout.nav.family' },
   { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin' }
@@ -356,7 +355,7 @@ export default function App() {
   const isPositionPage = activePage === 'position';
   const isFlyCarePage = activePage === 'flycare';
   const stageTone = resolveStageTone(activePage);
-  const activeNavItem = NAV_ITEMS.find((item) => item.key === activePage);
+  const activeNavItem = activePage === 'flycare' ? { label: t('layout.nav.flycare') } : NAV_ITEMS.find((item) => item.key === activePage);
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.accounts, accounts);
