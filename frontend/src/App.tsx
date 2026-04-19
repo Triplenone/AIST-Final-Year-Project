@@ -66,6 +66,10 @@ const DEFAULT_ACCOUNTS: Account[] = [
   { username: 'admin_master', password: 'admin888', role: 'admin' }
 ];
 
+const CAREGIVER_PRIMARY_RESIDENT: Record<string, string> = {
+  caregiver_lee: 'chan-tai-man'
+};
+
 const STORAGE_KEYS = {
   accounts: 'smartcare-react-accounts',
   session: 'smartcare-react-session',
@@ -1071,7 +1075,7 @@ export default function App() {
       case 'operations':
         return <div className="route-stack route-stack--narrow">{renderAlertsPanel()}</div>;
       case 'family':
-        return <FamilyPage />;
+        return <FamilyPage primaryResidentSlug={session ? CAREGIVER_PRIMARY_RESIDENT[session.username] ?? null : null} />;
       case 'admin':
         if (session?.role !== 'admin') {
           return (

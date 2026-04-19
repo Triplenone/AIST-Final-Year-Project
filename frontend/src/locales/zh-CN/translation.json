@@ -508,6 +508,31 @@
       }
     }
   ,
+    "briefing": {
+      "heroEyebrow": "今日简报",
+      "roleFallback": "住民",
+      "vitals": {
+        "title": "生命体征快照",
+        "heartRate": "心率",
+        "bloodPressure": "血压",
+        "respiration": "呼吸"
+      },
+      "activities": {
+        "title": "日常活动",
+        "breakfastCompleted": "早餐已完成",
+        "middayWalk": "午间散步 15 分钟"
+      },
+      "mood": {
+        "title": "情绪检查",
+        "stable": "稳定",
+        "attention": "需要关注"
+      },
+      "notes": {
+        "title": "照护备注",
+        "placeholder": "记录下一次与家属沟通前要补充的照护备注..."
+      }
+    }
+  ,
     "vitalsHistory": {
       "title": "\u751f\u547d\u4f53\u5f81\u5386\u53f2",
       "residentLabel": "\u5df2\u9009\u4f4f\u6237",
