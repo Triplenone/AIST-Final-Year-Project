@@ -225,9 +225,25 @@
   color: var(--text-primary);
 }
 
+/* 可视区域约 3 条记录高度，其余纵向滚动（略加 slack，避免第 3 条底部被裁切） */
+.family-vitals-history__list-scroll {
+  --fv-scroll-row-gap: 0.85rem;
+  --fv-scroll-row-min: 9.1rem;
+  --fv-scroll-slack: 1.35rem;
+  max-height: calc(3 * var(--fv-scroll-row-min) + 2 * var(--fv-scroll-row-gap) + var(--fv-scroll-slack));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  padding-inline-end: 2px;
+}
+
 .family-vitals-history__list {
   display: grid;
-  gap: 0.85rem;
+  gap: var(--fv-scroll-row-gap, 0.85rem);
+}
+
+.family-vitals-history__list-scroll .family-vitals-history__row {
+  min-height: var(--fv-scroll-row-min);
 }
 
 .family-vitals-history__row {
@@ -658,6 +674,11 @@
 
   .family-vitals-history__readings {
     grid-template-columns: 1fr;
+  }
+
+  .family-vitals-history__list-scroll {
+    --fv-scroll-row-min: 12.75rem;
+    --fv-scroll-slack: 1.5rem;
   }
 
   .family-modal {

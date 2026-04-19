@@ -40,15 +40,14 @@ function getZoneLabel(
   zoneName: string | null,
   t: (key: string, options?: Record<string, unknown>) => string
 ): string {
+  const trimmed = zoneName?.trim();
+  if (trimmed) return trimmed;
   if (zoneId) {
     const zone = POSITION_ZONES.find((item) => item.id === zoneId);
     if (zone) {
-      return t(zone.labelKey, { defaultValue: zoneName ?? zone.id });
+      return t(zone.labelKey, { defaultValue: zone.id });
     }
-  }
-
-  if (zoneName) {
-    return zoneName;
+    return zoneId;
   }
 
   return t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
@@ -75,11 +74,6 @@ export function PositionMapStage({
 }: PositionMapStageProps) {
   const { t } = useTranslation();
   const currentPin = resident?.currentCoords ? gridIndicesToPixelPercent(resident.currentCoords) : null;
-  const targetPin =
-    resident?.targetCoords &&
-    (resident.zoneCommandState !== 'target-reached' || !resident.currentCoords)
-      ? gridIndicesToPixelPercent(resident.targetCoords)
-      : null;
   const mapEmptyCopy =
     resident == null
       ? t('position.noSelectionHint', {
@@ -108,8 +102,6 @@ export function PositionMapStage({
 
       const isInspected = zoneId === highlightedZoneId;
       const isCurrentZone = zoneId === resident?.currentZoneId;
-      const isTargetZone =
-        zoneId === resident?.targetZoneId && resident?.zoneCommandState !== 'target-reached';
       const isPrimaryTabStop = !tabbableZones.has(zoneId);
 
       if (isPrimaryTabStop) {
@@ -120,7 +112,7 @@ export function PositionMapStage({
         <button
           key={`${row}-${col}`}
           type="button"
-          className={`position-map-stage__cell${isCurrentZone ? ' position-map-stage__cell--current' : ''}${isTargetZone ? ' position-map-stage__cell--target' : ''}${isInspected ? ' position-map-stage__cell--inspected' : ''}`}
+          className={`position-map-stage__cell${isCurrentZone ? ' position-map-stage__cell--current' : ''}${isInspected ? ' position-map-stage__cell--inspected' : ''}`}
           aria-label={t('position.inspectZone', {
             defaultValue: `Inspect ${getZoneLabel(zoneId, null, t)} zone`
           })}
@@ -161,7 +153,7 @@ export function PositionMapStage({
         {surfaceState === 'loading' ? (
           <div className="position-command-center__state-card position-command-center__state-card--loading">
             <strong>{t('position.loadingMapContext', { defaultValue: 'Loading map context...' })}</strong>
-            <p>{t('position.loadingMapContextHint', { defaultValue: 'Current zone, target zone, and map pin are pending from upstream.' })}</p>
+            <p>{t('position.loadingMapContextHint', { defaultValue: 'Current zone and map pin are pending from upstream.' })}</p>
           </div>
         ) : null}
 
@@ -189,10 +181,6 @@ export function PositionMapStage({
               <div>
                 <dt>{t('position.currentLocation', { defaultValue: 'Current zone' })}</dt>
                 <dd>{getZoneLabel(resident.currentZoneId ?? null, resident.currentZoneName ?? null, t)}</dd>
-              </div>
-              <div>
-                <dt>{t('position.targetZone', { defaultValue: 'Target zone' })}</dt>
-                <dd>{getZoneLabel(resident.targetZoneId ?? null, resident.targetZoneName ?? null, t)}</dd>
               </div>
               <div>
                 <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>
@@ -230,19 +218,6 @@ export function PositionMapStage({
             </div>
           ) : null}
 
-          {targetPin ? (
-            <div
-              className="position-map-stage__pin position-map-stage__pin--target"
-              style={{ left: `${targetPin.leftPercent}%`, top: `${targetPin.topPercent}%` }}
-              aria-hidden
-            >
-              <span className="position-map-stage__pin-label position-map-stage__pin-label--target">
-                {t('position.targetZone', { defaultValue: 'Target' })}
-              </span>
-              <span className="position-map-stage__target-dot" />
-            </div>
-          ) : null}
-
           {surfaceState !== 'ready' ? (
             <div className={`position-map-stage__empty position-map-stage__empty--${surfaceState}`}>
               <p>
@@ -261,10 +236,6 @@ export function PositionMapStage({
         <span className="position-map-stage__legend-item" role="listitem">
           <span className="position-map-stage__legend-dot position-map-stage__legend-dot--current" />
           {t('position.currentLocation', { defaultValue: 'Current location' })}
-        </span>
-        <span className="position-map-stage__legend-item" role="listitem">
-          <span className="position-map-stage__legend-dot position-map-stage__legend-dot--target" />
-          {t('position.targetZone', { defaultValue: 'Target zone' })}
         </span>
         <span className="position-map-stage__legend-item" role="listitem">
           <span className="position-map-stage__legend-zone">

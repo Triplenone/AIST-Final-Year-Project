@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type {
-  PositionFreshnessLevel,
-  PositionPriorityReasonCode,
-  PositionSurfaceState,
-  PositionResidentViewModel
+import {
+  getPositionZoneDisplayForResident,
+  type PositionFreshnessLevel,
+  type PositionPriorityReasonCode,
+  type PositionSurfaceState,
+  type PositionResidentViewModel
 } from '../../adapters/position-command-center';
 
 type PositionResidentRailProps = {
@@ -105,17 +106,7 @@ function getZoneLabel(
   resident: PositionResidentViewModel,
   t: (key: string, options?: Record<string, unknown>) => string
 ): string {
-  if (resident.currentZoneLabelKey) {
-    return t(resident.currentZoneLabelKey, {
-      defaultValue: resident.currentZoneName ?? 'Unknown zone'
-    });
-  }
-
-  if (resident.currentZoneName) {
-    return resident.currentZoneName;
-  }
-
-  return t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
+  return getPositionZoneDisplayForResident(resident, t);
 }
 
 function getOperatorError(

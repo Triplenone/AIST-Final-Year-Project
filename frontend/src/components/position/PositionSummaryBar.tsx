@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type {
-  PositionFreshnessLevel,
-  PositionPriorityReasonCode,
-  PositionRiskLevel,
-  PositionResidentViewModel,
-  PositionSurfaceState,
-  PositionTruthState
+import {
+  getPositionZoneDisplayForResident,
+  type PositionFreshnessLevel,
+  type PositionPriorityReasonCode,
+  type PositionRiskLevel,
+  type PositionResidentViewModel,
+  type PositionSurfaceState,
+  type PositionTruthState
 } from '../../adapters/position-command-center';
 
 type PositionSummaryBarProps = {
@@ -95,12 +96,7 @@ function getZoneLabel(
   t: (key: string, options?: Record<string, unknown>) => string
 ): string {
   if (!resident) return t('position.noSelection', { defaultValue: 'No resident selected' });
-  if (resident.currentZoneLabelKey) {
-    return t(resident.currentZoneLabelKey, {
-      defaultValue: resident.currentZoneName ?? 'Unknown zone'
-    });
-  }
-  return resident.currentZoneName ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
+  return getPositionZoneDisplayForResident(resident, t);
 }
 
 function getOperatorError(

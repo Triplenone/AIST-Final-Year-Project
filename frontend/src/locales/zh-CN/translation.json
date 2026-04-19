@@ -187,7 +187,20 @@
   },
   "fallAlert": {
     "message": "出现跌倒类型事件！请处理！",
-    "goToEvents": "前往处理"
+    "goToEvents": "前往处理",
+    "close": "关闭",
+    "detailIntro": "以下列表展示触发警报的设备、绑定用户、当前位置与触发时间（可多设备同时列出）。",
+    "colDevice": "设备 ID",
+    "colUser": "绑定用户",
+    "colLocation": "当前位置",
+    "colTime": "触发时间",
+    "colType": "类型",
+    "kindSos": "SOS",
+    "kindFall": "跌倒",
+    "fallbackUser": "用户 #{{id}}",
+    "fallbackZone": "区域 #{{id}}",
+    "unknownDash": "—",
+    "handleAckRemark": "已从警报弹窗前往处理（已认领）"
   },
   "hero": {
     "eyebrow": "渐进式网页应用原型",
@@ -518,6 +531,8 @@
       "unavailableTitle": "\u751f\u547d\u4f53\u5f81\u5386\u53f2\u6682\u4e0d\u53ef\u7528",
       "unavailableBody": "\u751f\u547d\u4f53\u5f81\u5386\u53f2\u63a5\u53e3\u5c1a\u672a\u5c31\u7eea\uff0c\u8bf7\u7b49\u5f85\u540e\u7aef\u66f4\u65b0\u3002",
       "errorTitle": "\u65e0\u6cd5\u52a0\u8f7d\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "invalidResidentIdTitle": "\u65e0\u6cd5\u52a0\u8f7d\u751f\u547d\u4f53\u5f81\u5386\u53f2",
+      "invalidResidentIdBody": "\u4f4f\u6237\u6807\u8bc6\u987b\u4e3a\u6570\u5b57\u578b\u7528\u6237 ID\uff08\u4e0e\u540e\u7aef user.user_id \u4e00\u81f4\uff09\u3002\u5f53\u524d\u503c\u65e0\u6cd5\u8bf7\u6c42\u5386\u53f2\u63a5\u53e3\uff0c\u8bf7\u68c0\u67e5\u4f4f\u6237\u6570\u636e\u6216\u8054\u7cfb\u7ba1\u7406\u5458\u3002",
       "noReading": "--",
       "columns": {
         "recordedAt": "\u8bb0\u5f55\u65f6\u95f4",

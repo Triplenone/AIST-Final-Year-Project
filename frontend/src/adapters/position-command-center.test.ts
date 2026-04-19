@@ -4,6 +4,7 @@ import {
   POSITION_RESIDENT_REGISTRY,
   buildPositionCommandCenterViewModel,
   buildPositionResidentActivity,
+  getPositionZoneDisplayForResident,
   getZoneCommandState,
   resolvePositionSelection,
   sortPositionResidents,
@@ -51,6 +52,34 @@ function makeResident(
 }
 
 describe('position-command-center adapter', () => {
+  it('getPositionZoneDisplayForResident prefers non-empty currentZoneName over labelKey i18n', () => {
+    const t = (key: string) => `i18n:${key}`;
+    expect(
+      getPositionZoneDisplayForResident(
+        {
+          currentZoneId: 'bedroom',
+          currentZoneLabelKey: 'position.zone.bedroom',
+          currentZoneName: 'Bedroom'
+        },
+        t
+      )
+    ).toBe('Bedroom');
+  });
+
+  it('getPositionZoneDisplayForResident falls back to labelKey when name is absent', () => {
+    const t = (key: string) => `i18n:${key}`;
+    expect(
+      getPositionZoneDisplayForResident(
+        {
+          currentZoneId: 'bedroom',
+          currentZoneLabelKey: 'position.zone.bedroom',
+          currentZoneName: null
+        },
+        t
+      )
+    ).toBe('i18n:position.zone.bedroom');
+  });
+
   it('classifies truth and freshness from Mongo $date values', () => {
     const resident = POSITION_RESIDENT_REGISTRY[0];
     const snapshot = {
@@ -83,6 +112,147 @@ describe('position-command-center adapter', () => {
     expect(viewModel.selectedResident?.truthState).toBe('online');
     expect(viewModel.selectedResident?.freshnessLevel).toBe('live');
     expect(viewModel.selectedResident?.priorityBand).toBe('stable');
+  });
+
+  it('reads flat numeric sensors when bpm/percentage objects are absent', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const snapshot = {
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: null,
+      records: [
+        {
+          resident,
+          error: null,
+          latestStatus: {
+            device_id: resident.deviceId,
+            server_received_at: '2026-03-28T00:00:00.000Z',
+            location: {
+              current: { x: 5, y: 13, name: 'Bedroom' }
+            },
+            sensors: {
+              heart_rate: 88,
+              spo2: 99
+            }
+          } as never
+        }
+      ]
+    };
+
+    const viewModel = buildPositionCommandCenterViewModel(snapshot, {
+      selectedResidentId: resident.residentId,
+      now: Date.parse('2026-03-28T00:00:20.000Z')
+    });
+
+    expect(viewModel.selectedResident?.heartRate).toBe(88);
+    expect(viewModel.selectedResident?.spo2).toBe(99);
+  });
+
+  it('shows heart rate and SpO2 when Mongo reports 0 (not No data)', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const snapshot = {
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: null,
+      records: [
+        {
+          resident,
+          error: null,
+          latestStatus: {
+            device_id: resident.deviceId,
+            server_received_at: '2026-03-28T00:00:00.000Z',
+            sensors: {
+              heart_rate: { valid: true, bpm: 0 },
+              spo2: { valid: true, percentage: 0 }
+            }
+          } as never
+        }
+      ]
+    };
+
+    const viewModel = buildPositionCommandCenterViewModel(snapshot, {
+      selectedResidentId: resident.residentId,
+      now: Date.parse('2026-03-28T00:00:20.000Z')
+    });
+
+    expect(viewModel.selectedResident?.heartRate).toBe(0);
+    expect(viewModel.selectedResident?.spo2).toBe(0);
+  });
+
+  it('reads HR/SpO2 from payload.sensors when top-level sensors is an empty object', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const snapshot = {
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: null,
+      records: [
+        {
+          resident,
+          error: null,
+          latestStatus: {
+            device_id: resident.deviceId,
+            server_received_at: '2026-03-28T00:00:00.000Z',
+            location: { current: { x: 5, y: 13, name: 'Bedroom' } },
+            sensors: {},
+            payload: {
+              sensors: {
+                heart_rate: { bpm: 72, valid: true },
+                spo2: { percentage: 98, valid: true }
+              }
+            }
+          } as never
+        }
+      ]
+    };
+
+    const viewModel = buildPositionCommandCenterViewModel(snapshot, {
+      selectedResidentId: resident.residentId,
+      now: Date.parse('2026-03-28T00:00:20.000Z')
+    });
+
+    expect(viewModel.selectedResident?.heartRate).toBe(72);
+    expect(viewModel.selectedResident?.spo2).toBe(98);
+  });
+
+  it('reads 0 from payload.sensors even when valid is false', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const snapshot = {
+      fetchedAt: '2026-03-28T00:00:20.000Z',
+      loadError: null,
+      records: [
+        {
+          resident,
+          error: null,
+          latestStatus: {
+            device_id: resident.deviceId,
+            server_received_at: '2026-03-28T00:00:00.000Z',
+            sensors: {},
+            payload: {
+              sensors: {
+                heart_rate: { bpm: 0, valid: false },
+                spo2: { percentage: 0, valid: false }
+              }
+            }
+          } as never
+        }
+      ]
+    };
+
+    const viewModel = buildPositionCommandCenterViewModel(snapshot, {
+      selectedResidentId: resident.residentId,
+      now: Date.parse('2026-03-28T00:00:20.000Z')
+    });
+
+    expect(viewModel.selectedResident?.heartRate).toBe(0);
+    expect(viewModel.selectedResident?.spo2).toBe(0);
+  });
+
+  it('uses emptyRegistry when snapshot is null', () => {
+    const custom = [{ residentId: '99', displayName: 'Custom', deviceId: 'ESP32_custom' }];
+    const viewModel = buildPositionCommandCenterViewModel(null, {
+      emptyRegistry: custom,
+      now: Date.parse('2026-03-28T00:00:20.000Z')
+    });
+    expect(viewModel.residents).toHaveLength(1);
+    expect(viewModel.residents[0]?.residentId).toBe('99');
+    expect(viewModel.residents[0]?.displayName).toBe('Custom');
   });
 
   it('recognizes confirmed fall from English and localized state descriptions', () => {

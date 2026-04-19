@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next';
 
-import type {
-  PositionActivityState,
-  PositionActivityItem,
-  PositionNextActionCode,
-  PositionPriorityReasonCode,
-  PositionResidentViewModel,
-  PositionSurfaceState,
-  PositionZoneCommandState
+import {
+  getPositionZoneDisplayForResident,
+  type PositionActivityState,
+  type PositionActivityItem,
+  type PositionNextActionCode,
+  type PositionPriorityReasonCode,
+  type PositionResidentViewModel,
+  type PositionSurfaceState,
+  type PositionZoneCommandState
 } from '../../adapters/position-command-center';
 
 type PositionDecisionPanelProps = {
@@ -92,18 +93,6 @@ function formatMetric(value: number | null, suffix: string): string {
 function formatCoords(resident: PositionResidentViewModel | null): string {
   if (!resident?.currentCoords) return 'No data';
   return `${resident.currentCoords.x}, ${resident.currentCoords.y}`;
-}
-
-function formatZoneLabel(
-  labelKey: string | null,
-  name: string | null,
-  t: (key: string, options?: Record<string, unknown>) => string
-): string {
-  if (labelKey) {
-    return t(labelKey, { defaultValue: name ?? 'Unknown zone' });
-  }
-
-  return name ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
 }
 
 function formatActivityTimestamp(timestamp: string | null, locale: string): string {
@@ -261,11 +250,7 @@ export function PositionDecisionPanel({
             <dl className="position-decision-panel__metrics">
               <div>
                 <dt>{t('position.currentLocation', { defaultValue: 'Current zone' })}</dt>
-                <dd>{formatZoneLabel(resident.currentZoneLabelKey, resident.currentZoneName, t)}</dd>
-              </div>
-              <div>
-                <dt>{t('position.targetZone', { defaultValue: 'Target zone' })}</dt>
-                <dd>{formatZoneLabel(resident.targetZoneLabelKey, resident.targetZoneName, t)}</dd>
+                <dd>{getPositionZoneDisplayForResident(resident, t)}</dd>
               </div>
               <div>
                 <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>

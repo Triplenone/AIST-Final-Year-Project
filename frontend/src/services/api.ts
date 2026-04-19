@@ -201,6 +201,8 @@ export type MongoUpstreamLatest = {
   fall_detection?: Record<string, unknown>;
   sos?: Record<string, unknown>;
   sensors?: Record<string, unknown>;
+  /** 部分上行在顶层携带体征摘要（与 payload.vitals 二选一或并存）。 */
+  vitals?: Record<string, unknown>;
   system?: Record<string, unknown>;
   payload?: Record<string, unknown>;
 };
@@ -221,6 +223,8 @@ export type MongoVitalsHistoryItem = {
   sensors?: Record<string, unknown>;
   vitals?: Record<string, unknown>;
   payload?: Record<string, unknown>;
+  /** Present on some backend responses alongside `payload`. */
+  raw_payload?: Record<string, unknown>;
 };
 
 export type MongoVitalsHistoryResponse = {
