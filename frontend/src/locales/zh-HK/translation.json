@@ -3,7 +3,8 @@
     "language": "語言",
     "switchTo": "切換至{{label}}",
     "close": "關閉",
-    "loading": "載入中..."
+    "loading": "載入中...",
+    "forbidden": "沒有權限存取"
   },
   "layout": {
     "title": "Proactive Guardian Care",

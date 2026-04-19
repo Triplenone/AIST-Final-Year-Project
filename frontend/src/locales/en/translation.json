@@ -3,7 +3,8 @@
     "language": "Language",
     "switchTo": "Switch to {{label}}",
     "close": "Close",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "forbidden": "Access restricted"
   },
   "layout": {
     "title": "Proactive Guardian Care",
