@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
@@ -317,6 +318,12 @@ export function OverviewExperience({
           </ol>
         </div>
       </motion.section>
+
+      <div className="overview-flycare-hint">
+        <NavLink to="/flycare" aria-label={t('layout.nav.flycare')}>
+          {t('layout.nav.flycare')}
+        </NavLink>
+      </div>
     </div>
   );
 }

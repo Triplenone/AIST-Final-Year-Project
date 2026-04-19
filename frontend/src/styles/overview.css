@@ -434,6 +434,27 @@
   font-size: 0.9rem;
 }
 
+.overview-flycare-hint {
+  margin-top: 2.5rem;
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+
+.overview-flycare-hint:hover,
+.overview-flycare-hint:focus-within {
+  opacity: 1;
+}
+
+.overview-flycare-hint a {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 1px dashed currentColor;
+  padding: 0.15rem 0.2rem;
+}
+
 @media (max-width: 1100px) {
   .overview-hero,
   .overview-support,
