@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "mongo_to_mysql": [
+    {
+      "mongodb_device_id": "ESP32_0000E03948D4DB1C",
+      "mysql_device_id": 1
+    },
+    {
+      "mongodb_device_id": "ESP32_00005CFA7AD4DB1C",
+      "mysql_device_id": 2
+    }
+  ]
+}
