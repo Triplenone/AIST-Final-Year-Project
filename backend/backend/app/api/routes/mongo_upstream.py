@@ -1,5 +1,6 @@
 """MongoDB raw upstream query routes."""
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from bson.objectid import ObjectId
@@ -9,7 +10,8 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
-from app.models.device import Device
+from app.services.elderly_device_queries import VITALS_UPSTREAM_DATA_TYPES, devices_by_elderly_user_ids
+from app.services.sensor_vitals_extract import extract_hr_spo2_from_sensors
 
 router = APIRouter()
 
@@ -31,6 +33,26 @@ def _get_collection():
     return db[COLLECTION_RAW_UPSTREAM]
 
 
+def _apply_time_range_server_received_ms(
+    query: Dict[str, Any],
+    start_ts: Optional[int],
+    end_ts: Optional[int],
+) -> None:
+    """
+    start_ts / end_ts from the frontend are Unix epoch in milliseconds (Date.now()).
+    Filter on server_received_at. Device payload `timestamp` is often not comparable
+    (e.g. small integers or non-ms values) and would otherwise return zero rows.
+    """
+    if start_ts is None and end_ts is None:
+        return
+    bounds: Dict[str, Any] = {}
+    if start_ts is not None:
+        bounds["$gte"] = datetime.fromtimestamp(start_ts / 1000.0, tz=timezone.utc)
+    if end_ts is not None:
+        bounds["$lte"] = datetime.fromtimestamp(end_ts / 1000.0, tz=timezone.utc)
+    query["server_received_at"] = bounds
+
+
 def _serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
     if doc and "_id" in doc:
         doc = dict(doc)
@@ -40,10 +62,18 @@ def _serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 def _extract_vitals_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     sensors = payload.get("sensors") or {}
+    hr, spo2 = extract_hr_spo2_from_sensors(sensors)
+    spo2_int = int(round(spo2)) if spo2 is not None else None
+
+    body_temp = sensors.get("body_temperature") or sensors.get("temperature")
+    if isinstance(body_temp, dict):
+        body_temp = body_temp.get("value") or body_temp.get("celsius")
+
     return {
-        "heart_rate": sensors.get("heart_rate"),
-        "spo2": sensors.get("spo2"),
-        "body_temperature": sensors.get("body_temperature") or sensors.get("temperature"),
+        "hr": hr,
+        "heart_rate": hr,
+        "spo2": spo2_int,
+        "body_temperature": body_temp,
         "resp_rate": sensors.get("resp_rate") or sensors.get("respiratory_rate"),
         "hrv": sensors.get("hrv"),
     }
@@ -57,6 +87,7 @@ def _to_vitals_item(doc: Dict[str, Any]) -> Dict[str, Any]:
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
         "server_received_at": doc.get("server_received_at"),
         "data_type": doc.get("data_type"),
+        "sensors": payload.get("sensors") or doc.get("sensors"),
         "vitals": _extract_vitals_from_payload(payload),
         "raw_payload": payload,
     }
@@ -95,8 +126,14 @@ async def seed_one_document(data: Dict[str, Any]):
 async def list_raw_upstream(
     device_id: Optional[str] = Query(None, description="Filter by external device ID"),
     data_type: Optional[str] = Query(None, description="Filter by data_type"),
-    start_ts: Optional[int] = Query(None, description="Start timestamp (inclusive)"),
-    end_ts: Optional[int] = Query(None, description="End timestamp (inclusive)"),
+    start_ts: Optional[int] = Query(
+        None,
+        description="Start time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
+    end_ts: Optional[int] = Query(
+        None,
+        description="End time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
 ):
@@ -105,12 +142,7 @@ async def list_raw_upstream(
         query["device_id"] = device_id
     if data_type is not None:
         query["data_type"] = data_type
-    if start_ts is not None or end_ts is not None:
-        query["timestamp"] = {}
-        if start_ts is not None:
-            query["timestamp"]["$gte"] = start_ts
-        if end_ts is not None:
-            query["timestamp"]["$lte"] = end_ts
+    _apply_time_range_server_received_ms(query, start_ts, end_ts)
 
     try:
         coll = _get_collection()
@@ -179,7 +211,7 @@ async def get_latest_vitals(
 ):
     query = {
         "device_id": device_id.strip(),
-        "data_type": {"$in": ["vitals", "status_update"]},
+        "data_type": {"$in": VITALS_UPSTREAM_DATA_TYPES},
     }
     try:
         doc = await _get_collection().find_one(query, sort=[("server_received_at", -1)])
@@ -199,21 +231,22 @@ async def get_latest_vitals(
 @router.get("/vitals/history", response_model=Dict[str, Any])
 async def get_vitals_history(
     device_id: str = Query(..., description="External device ID"),
-    start_ts: Optional[int] = Query(None, description="Start timestamp (inclusive)"),
-    end_ts: Optional[int] = Query(None, description="End timestamp (inclusive)"),
+    start_ts: Optional[int] = Query(
+        None,
+        description="Start time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
+    end_ts: Optional[int] = Query(
+        None,
+        description="End time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
 ):
     query: Dict[str, Any] = {
         "device_id": device_id.strip(),
-        "data_type": {"$in": ["vitals", "status_update"]},
+        "data_type": {"$in": VITALS_UPSTREAM_DATA_TYPES},
     }
-    if start_ts is not None or end_ts is not None:
-        query["timestamp"] = {}
-        if start_ts is not None:
-            query["timestamp"]["$gte"] = start_ts
-        if end_ts is not None:
-            query["timestamp"]["$lte"] = end_ts
+    _apply_time_range_server_received_ms(query, start_ts, end_ts)
 
     try:
         coll = _get_collection()
@@ -232,18 +265,27 @@ async def get_vitals_history(
 @router.get("/vitals/user/{user_id}/history", response_model=Dict[str, Any])
 async def get_vitals_history_for_user(
     user_id: int,
-    start_ts: Optional[int] = Query(None, description="Start timestamp (inclusive)"),
-    end_ts: Optional[int] = Query(None, description="End timestamp (inclusive)"),
+    start_ts: Optional[int] = Query(
+        None,
+        description="Start time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
+    end_ts: Optional[int] = Query(
+        None,
+        description="End time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
     db: Session = Depends(get_db),
 ):
     """Bridge user_id -> device -> MongoDB vitals history."""
-    devices = db.query(Device).filter(Device.elderly_user_id == user_id).all()
+    devices = devices_by_elderly_user_ids(db, [user_id]).get(user_id) or []
     if not devices:
         raise HTTPException(
             status_code=404,
-            detail=f"No device bound to user_id={user_id}",
+            detail=(
+                f"No device bound to user_id={user_id}. "
+                "Set device.elderly_user_id or link device via user_status."
+            ),
         )
 
     candidate_ids: List[str] = []
@@ -252,23 +294,18 @@ async def get_vitals_history_for_user(
     for dev in devices:
         candidate_ids.append(str(dev.device_id))
         if dev.mac_address:
-            candidate_ids.append(dev.mac_address)
+            candidate_ids.append(str(dev.mac_address).strip())
         external_id = reverse_map.get(dev.device_id)
         if external_id:
-            candidate_ids.append(external_id)
+            candidate_ids.append(str(external_id))
 
-    candidate_ids = list(dict.fromkeys(candidate_ids))
+    candidate_ids = list(dict.fromkeys([c for c in candidate_ids if c]))
 
     query: Dict[str, Any] = {
         "device_id": {"$in": candidate_ids} if len(candidate_ids) > 1 else candidate_ids[0],
-        "data_type": {"$in": ["vitals", "status_update"]},
+        "data_type": {"$in": VITALS_UPSTREAM_DATA_TYPES},
     }
-    if start_ts is not None or end_ts is not None:
-        query["timestamp"] = {}
-        if start_ts is not None:
-            query["timestamp"]["$gte"] = start_ts
-        if end_ts is not None:
-            query["timestamp"]["$lte"] = end_ts
+    _apply_time_range_server_received_ms(query, start_ts, end_ts)
 
     try:
         coll = _get_collection()

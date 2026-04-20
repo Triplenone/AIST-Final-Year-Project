@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from app.database import get_db
 from app.models.user import User
@@ -15,8 +15,47 @@ from app.models.device import Device
 from app.models.device_data_log import DeviceDataLog
 from app.schemas.resident import ResidentResponse, ResidentVitals
 from app.schemas.device_data_log import DeviceDataLogResponse
+from app.services.mongo_resident_sensor_vitals import load_mongo_sensor_vitals_for_users
 
 router = APIRouter()
+
+
+def _apply_mongo_sensor_vitals(
+    user_id: int,
+    mongo_map: Dict[int, Tuple[Optional[int], Optional[float]]],
+    vitals: Optional[ResidentVitals],
+    heart_rate: Optional[int],
+    blood_oxygen: Optional[float],
+) -> Tuple[Optional[ResidentVitals], Optional[int], Optional[float]]:
+    """Overlay latest MongoDB sensors.* readings onto SQL-derived vitals / user_status."""
+    pair = mongo_map.get(user_id)
+    if not pair:
+        return vitals, heart_rate, blood_oxygen
+    mh, ms = pair
+
+    new_hr = mh if mh is not None else heart_rate
+    new_bo = float(ms) if ms is not None else blood_oxygen
+
+    if vitals is None:
+        if mh is None and ms is None:
+            return vitals, new_hr, new_bo
+        new_vitals = ResidentVitals(
+            hr=mh,
+            bp_systolic=None,
+            bp_diastolic=None,
+            spo2=int(round(ms)) if ms is not None else None,
+            temperature=None,
+        )
+        return new_vitals, new_hr, new_bo
+
+    new_vitals = ResidentVitals(
+        hr=mh if mh is not None else vitals.hr,
+        bp_systolic=vitals.bp_systolic,
+        bp_diastolic=vitals.bp_diastolic,
+        spo2=int(round(ms)) if ms is not None else vitals.spo2,
+        temperature=vitals.temperature,
+    )
+    return new_vitals, new_hr, new_bo
 
 
 def calculate_resident_status(db: Session, user_id: int) -> str:
@@ -193,6 +232,12 @@ def get_residents(
                 # 获取关联的设备信息
                 if status.device:
                     devices_by_user[status.user_id] = status.device
+
+        mongo_vitals_map: Dict[int, Tuple[Optional[int], Optional[float]]] = {}
+        try:
+            mongo_vitals_map = load_mongo_sensor_vitals_for_users(db, user_ids)
+        except Exception as e:
+            print(f"Warning: Mongo vitals merge skipped: {e}")
         
         # 构建响应
         residents = []
@@ -266,6 +311,10 @@ def get_residents(
                     spo2=params.get('spo2'),
                     temperature=params.get('temperature')
                 )
+
+            vitals, heart_rate, blood_oxygen = _apply_mongo_sensor_vitals(
+                user_id, mongo_vitals_map, vitals, heart_rate, blood_oxygen
+            )
             
             # 获取最后出现信息
             last_seen_at = None
@@ -379,6 +428,15 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
             device_current_status = str(device.current_status) if device.current_status else None
         device_battery_level = device.battery_level
         device_deploy_location = device.deploy_location
+
+    mongo_vitals_map: Dict[int, Tuple[Optional[int], Optional[float]]] = {}
+    try:
+        mongo_vitals_map = load_mongo_sensor_vitals_for_users(db, [user.user_id])
+    except Exception as e:
+        print(f"Warning: Mongo vitals merge skipped: {e}")
+    vitals, heart_rate, blood_oxygen = _apply_mongo_sensor_vitals(
+        user.user_id, mongo_vitals_map, vitals, heart_rate, blood_oxygen
+    )
     
     return ResidentResponse(
         id=str(user.user_id),

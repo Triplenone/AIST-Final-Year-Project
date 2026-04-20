@@ -3,7 +3,8 @@
     "language": "语言",
     "switchTo": "切换至{{label}}",
     "close": "关闭",
-    "loading": "载入中..."
+    "loading": "载入中...",
+    "forbidden": "无权限访问"
   },
   "layout": {
     "title": "Proactive Guardian Care",
@@ -504,6 +505,31 @@
         "total": "\u5df2\u8ffd\u8e2a\u4e8b\u4ef6",
         "critical": "\u9ad8\u98ce\u9669\u4e8b\u4ef6",
         "unhandled": "\u672a\u5904\u7406\u63d0\u9192"
+      }
+    }
+  ,
+    "briefing": {
+      "heroEyebrow": "今日简报",
+      "roleFallback": "住民",
+      "vitals": {
+        "title": "生命体征快照",
+        "heartRate": "心率",
+        "bloodPressure": "血压",
+        "respiration": "呼吸"
+      },
+      "activities": {
+        "title": "日常活动",
+        "breakfastCompleted": "早餐已完成",
+        "middayWalk": "午间散步 15 分钟"
+      },
+      "mood": {
+        "title": "情绪检查",
+        "stable": "稳定",
+        "attention": "需要关注"
+      },
+      "notes": {
+        "title": "照护备注",
+        "placeholder": "记录下一次与家属沟通前要补充的照护备注..."
       }
     }
   ,

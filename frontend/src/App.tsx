@@ -62,8 +62,13 @@ type DashboardPageKey =
 const DEFAULT_ACCOUNTS: Account[] = [
   { username: 'guest_demo', password: 'guest123', role: 'guest' },
   { username: 'care_demo', password: 'care1234', role: 'caregiver' },
+  { username: 'caregiver_lee', password: 'lee1234', role: 'caregiver' },
   { username: 'admin_master', password: 'admin888', role: 'admin' }
 ];
+
+const CAREGIVER_PRIMARY_RESIDENT: Record<string, string> = {
+  caregiver_lee: 'chan-tai-man'
+};
 
 const STORAGE_KEYS = {
   accounts: 'smartcare-react-accounts',
@@ -75,14 +80,14 @@ const NAV_ITEMS: ReadonlyArray<{
   key: DashboardPageKey;
   to: string;
   labelKey: string;
+  adminOnly?: boolean;
 }> = [
   { key: 'overview', to: '/', labelKey: 'layout.nav.overview' },
   { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents' },
   { key: 'position', to: '/position', labelKey: 'layout.nav.position' },
-  { key: 'flycare', to: '/flycare', labelKey: 'layout.nav.flycare' },
   { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations' },
   { key: 'family', to: '/family', labelKey: 'layout.nav.family' },
-  { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin' }
+  { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin', adminOnly: true }
 ] as const;
 
 const OverviewExperience = lazy(() =>
@@ -323,6 +328,12 @@ function removeStorage(key: string) {
   }
 }
 
+function mergeDefaultAccounts(accounts: Account[]) {
+  const merged = new Map(DEFAULT_ACCOUNTS.map((account) => [account.username, account]));
+  accounts.forEach((account) => merged.set(account.username, account));
+  return Array.from(merged.values());
+}
+
 export default function App() {
   const { t, i18n } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
@@ -334,7 +345,7 @@ export default function App() {
 
   const [accounts, setAccounts] = useState<Account[]>(() => {
     const stored = readStorage<Account[]>(STORAGE_KEYS.accounts, []);
-    return stored.length ? stored : DEFAULT_ACCOUNTS;
+    return mergeDefaultAccounts(stored);
   });
   const [session, setSession] = useState<Session | null>(() => readStorage<Session | null>(STORAGE_KEYS.session, null));
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | null>(null);
@@ -356,7 +367,7 @@ export default function App() {
   const isPositionPage = activePage === 'position';
   const isFlyCarePage = activePage === 'flycare';
   const stageTone = resolveStageTone(activePage);
-  const activeNavItem = NAV_ITEMS.find((item) => item.key === activePage);
+  const activeNavItem = activePage === 'flycare' ? { label: t('layout.nav.flycare') } : NAV_ITEMS.find((item) => item.key === activePage);
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.accounts, accounts);
@@ -663,11 +674,11 @@ export default function App() {
 
   const navItems = useMemo(
     () =>
-      NAV_ITEMS.map((item) => ({
+      NAV_ITEMS.filter((item) => !item.adminOnly || session?.role === 'admin').map((item) => ({
         ...item,
         label: t(item.labelKey)
       })),
-    [t]
+    [session?.role, t]
   );
 
   const activeResidentCount = useMemo(() => residentList.filter((resident) => !resident.checkedOut).length, [residentList]);
@@ -1064,8 +1075,15 @@ export default function App() {
       case 'operations':
         return <div className="route-stack route-stack--narrow">{renderAlertsPanel()}</div>;
       case 'family':
-        return <FamilyPage />;
+        return <FamilyPage primaryResidentSlug={session ? CAREGIVER_PRIMARY_RESIDENT[session.username] ?? null : null} />;
       case 'admin':
+        if (session?.role !== 'admin') {
+          return (
+            <section className="route-surface">
+              <h2>{t('common.forbidden')}</h2>
+            </section>
+          );
+        }
         return (
           <div className="route-stack">
             <AdminSection activeTab={adminActiveTab} onTabChange={setAdminActiveTab} />
