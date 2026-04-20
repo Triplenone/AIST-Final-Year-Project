@@ -561,10 +561,11 @@
 }
 
 .ambient-header--route-position .ambient-header__nav {
-  justify-self: stretch;
-  width: 100%;
+  justify-self: end;
+  width: max-content;
+  max-width: 100%;
   min-width: 0;
-  margin-left: 0;
+  margin-left: auto;
   padding: 0.42rem 0.5rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(245, 239, 232, 0.68));
   border-color: rgba(16, 23, 34, 0.08);
