@@ -108,10 +108,10 @@ def _on_message(client, userdata, msg):
         device_id_from_topic = parts[1]
         suffix = parts[2].lower()
         mapped = settings.device_id_map.get(device_id_from_topic)
+        # 双写策略：保留外部设备 ID 到 `device_id`，并额外写入 `mysql_device_id`。
+        data["device_id"] = device_id_from_topic
         if mapped is not None:
-            data["device_id"] = mapped
-        elif data.get("device_id") is None:
-            data["device_id"] = device_id_from_topic
+            data["mysql_device_id"] = int(mapped)
         data_type = SUFFIX_TO_DATA_TYPE.get(suffix, "status_update")
         data["data_type"] = data.get("data_type") or data_type
     else:

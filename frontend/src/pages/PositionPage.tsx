@@ -10,8 +10,7 @@ import {
   resolvePositionResidentRegistry,
   type PositionCommandCenterSnapshot,
   type PositionResidentActivitySnapshot,
-  type PositionResidentRegistryEntry,
-  type PositionZoneId
+  type PositionResidentRegistryEntry
 } from '../adapters/position-command-center';
 import { PositionDecisionPanel } from '../components/position/PositionDecisionPanel';
 import { PositionMapStage } from '../components/position/PositionMapStage';
@@ -36,9 +35,9 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
   const [selectedResidentId, setSelectedResidentId] = useState<string | null>(
     () => POSITION_RESIDENT_REGISTRY[0]?.residentId ?? null
   );
-  const [manualHighlightedZoneId, setManualHighlightedZoneId] = useState<PositionZoneId | null>(null);
   const [residentActivity, setResidentActivity] = useState<PositionResidentActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [showAllOnMap, setShowAllOnMap] = useState(false);
   const previousAlertRef = useRef(false);
   const activityRequestSequenceRef = useRef(0);
 
@@ -152,15 +151,21 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
     }
   }, [onSosOrFallDetected, t, viewModel.residents]);
 
-  const effectiveHighlightedZoneId = manualHighlightedZoneId ?? viewModel.selectedResident?.currentZoneId ?? null;
+  const mapResidents = useMemo(() => {
+    if (showAllOnMap) {
+      // 全员模式按“有坐标即可展示”，避免 stale/delayed 被误过滤导致地图无点。
+      return viewModel.residents.filter((resident) => resident.currentCoords != null);
+    }
+    return viewModel.selectedResident?.currentCoords ? [viewModel.selectedResident] : [];
+  }, [showAllOnMap, viewModel.residents, viewModel.selectedResident]);
 
   const handleSelectResident = useCallback((residentId: string) => {
+    setShowAllOnMap(false);
     setSelectedResidentId(residentId);
-    setManualHighlightedZoneId(null);
   }, []);
 
-  const handleHighlightZone = useCallback((zoneId: PositionZoneId | null) => {
-    setManualHighlightedZoneId((current) => (current === zoneId ? null : zoneId));
+  const handleShowAllOnMap = useCallback(() => {
+    setShowAllOnMap(true);
   }, []);
 
   return (
@@ -169,10 +174,12 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
         <PositionResidentRail
           residents={viewModel.residents}
           selectedResidentId={viewModel.selectedResidentId}
+          showAllOnMap={showAllOnMap}
           counts={viewModel.counts}
           surfaceState={viewModel.surfaceStates.rail}
           loadError={viewModel.loadError}
           partialFailureCount={viewModel.partialFailureCount}
+          onShowAllOnMap={handleShowAllOnMap}
           onSelectResident={handleSelectResident}
         />
         <PositionSummaryBar
@@ -187,10 +194,10 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
       <div className="position-command-center__column position-command-center__column--center">
         <PositionMapStage
           resident={viewModel.selectedResident}
+          mapResidents={mapResidents}
+          showAllOnMap={showAllOnMap}
           surfaceState={viewModel.surfaceStates.map}
           recordError={viewModel.selectedResidentRecordError}
-          highlightedZoneId={effectiveHighlightedZoneId}
-          onHighlightZone={handleHighlightZone}
         />
       </div>
 

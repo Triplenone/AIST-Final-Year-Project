@@ -12,6 +12,7 @@ import {
 type PositionResidentRailProps = {
   residents: PositionResidentViewModel[];
   selectedResidentId: string | null;
+  showAllOnMap: boolean;
   counts: {
     total: number;
     online: number;
@@ -21,6 +22,7 @@ type PositionResidentRailProps = {
   surfaceState: PositionSurfaceState;
   loadError: string | null;
   partialFailureCount: number;
+  onShowAllOnMap: () => void;
   onSelectResident: (residentId: string) => void;
 };
 
@@ -131,10 +133,12 @@ function getOperatorError(
 export function PositionResidentRail({
   residents,
   selectedResidentId,
+  showAllOnMap,
   counts,
   surfaceState,
   loadError,
   partialFailureCount,
+  onShowAllOnMap,
   onSelectResident
 }: PositionResidentRailProps) {
   const { t } = useTranslation();
@@ -183,6 +187,14 @@ export function PositionResidentRail({
                   })}
           </p>
         </div>
+        <button
+          type="button"
+          className={`position-resident-rail__show-all${showAllOnMap ? ' position-resident-rail__show-all--active' : ''}`}
+          onClick={onShowAllOnMap}
+          aria-pressed={showAllOnMap}
+        >
+          {t('position.viewAllOnMap', { defaultValue: '查看所有人' })}
+        </button>
       </header>
 
       {surfaceState === 'error' ? (

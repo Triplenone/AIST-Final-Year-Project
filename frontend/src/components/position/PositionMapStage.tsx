@@ -1,24 +1,20 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import mapImage from '../../img/ElderlyCare.png';
 import {
-  POSITION_GRID_COLUMNS,
-  POSITION_GRID_ROWS,
-  POSITION_GRID_TO_ZONE,
-  POSITION_ZONES,
   gridIndicesToPixelPercent,
   type PositionSurfaceState,
   type PositionResidentViewModel,
-  type PositionZoneCommandState,
-  type PositionZoneId
+  type PositionZoneCommandState
 } from '../../adapters/position-command-center';
 
 type PositionMapStageProps = {
   resident: PositionResidentViewModel | null;
+  mapResidents: PositionResidentViewModel[];
+  showAllOnMap: boolean;
   surfaceState: PositionSurfaceState;
   recordError: string | null;
-  highlightedZoneId: PositionZoneId | null;
-  onHighlightZone: (zoneId: PositionZoneId | null) => void;
 };
 
 const zoneCommandStateLabelKey: Record<PositionZoneCommandState, string> = {
@@ -35,24 +31,6 @@ const zoneCommandStateDefaultLabel: Record<PositionZoneCommandState, string> = {
   'zone-unknown': 'Zone unknown'
 };
 
-function getZoneLabel(
-  zoneId: PositionZoneId | null,
-  zoneName: string | null,
-  t: (key: string, options?: Record<string, unknown>) => string
-): string {
-  const trimmed = zoneName?.trim();
-  if (trimmed) return trimmed;
-  if (zoneId) {
-    const zone = POSITION_ZONES.find((item) => item.id === zoneId);
-    if (zone) {
-      return t(zone.labelKey, { defaultValue: zone.id });
-    }
-    return zoneId;
-  }
-
-  return t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
-}
-
 function getOperatorError(
   error: string | null,
   t: (key: string, options?: Record<string, unknown>) => string
@@ -67,15 +45,52 @@ function getOperatorError(
 
 export function PositionMapStage({
   resident,
+  mapResidents,
+  showAllOnMap,
   surfaceState,
-  recordError,
-  highlightedZoneId,
-  onHighlightZone
+  recordError
 }: PositionMapStageProps) {
   const { t } = useTranslation();
-  const currentPin = resident?.currentCoords ? gridIndicesToPixelPercent(resident.currentCoords) : null;
+  const hasMapResidents = mapResidents.length > 0;
+  const effectiveSurfaceState =
+    showAllOnMap && hasMapResidents && (surfaceState === 'empty' || surfaceState === 'error' || surfaceState === 'partial-error')
+      ? 'ready'
+      : surfaceState;
+  const residentPinRows = mapResidents
+    .map((item) => {
+      if (!item.currentCoords) return null;
+      return {
+        residentId: item.residentId,
+        displayName: item.displayName,
+        truthState: item.truthState,
+        x: item.currentCoords.x,
+        y: item.currentCoords.y,
+        point: gridIndicesToPixelPercent(item.currentCoords)
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item != null);
+  const clusteredPins = Array.from(
+    residentPinRows.reduce<Map<string, typeof residentPinRows>>((acc, pin) => {
+      const key = `${Math.round(pin.x)}:${Math.round(pin.y)}`;
+      const list = acc.get(key) ?? [];
+      list.push(pin);
+      acc.set(key, list);
+      return acc;
+    }, new Map())
+  ).map(([, members]) => {
+    const anchor = members[0];
+    return {
+      key: `${Math.round(anchor.x)}:${Math.round(anchor.y)}`,
+      point: anchor.point,
+      members
+    };
+  });
   const mapEmptyCopy =
-    resident == null
+    showAllOnMap
+      ? t('position.noOnlineResidentsOnMap', {
+          defaultValue: 'No online residents with location data right now.'
+        })
+      : resident == null
       ? t('position.noSelectionHint', {
           defaultValue: 'Choose a resident from the rail to inspect Position context.'
         })
@@ -84,46 +99,6 @@ export function PositionMapStage({
             defaultValue: 'Zone resolution is unavailable for the current snapshot.'
           })
         : t('position.noDeviceData', { defaultValue: 'No device upstream data yet' });
-
-  const renderedCells: JSX.Element[] = [];
-  const tabbableZones = new Set<PositionZoneId>();
-
-  for (let row = 0; row < POSITION_GRID_ROWS; row += 1) {
-    for (let col = 0; col < POSITION_GRID_COLUMNS; col += 1) {
-      const rawZoneId = POSITION_GRID_TO_ZONE[row]?.[col] ?? '';
-      const zoneId = rawZoneId && rawZoneId.trim() !== '' ? (rawZoneId as PositionZoneId) : null;
-
-      if (!zoneId) {
-        renderedCells.push(
-          <div key={`${row}-${col}`} className="position-map-stage__cell position-map-stage__cell--void" aria-hidden="true" />
-        );
-        continue;
-      }
-
-      const isInspected = zoneId === highlightedZoneId;
-      const isCurrentZone = zoneId === resident?.currentZoneId;
-      const isPrimaryTabStop = !tabbableZones.has(zoneId);
-
-      if (isPrimaryTabStop) {
-        tabbableZones.add(zoneId);
-      }
-
-      renderedCells.push(
-        <button
-          key={`${row}-${col}`}
-          type="button"
-          className={`position-map-stage__cell${isCurrentZone ? ' position-map-stage__cell--current' : ''}${isInspected ? ' position-map-stage__cell--inspected' : ''}`}
-          aria-label={t('position.inspectZone', {
-            defaultValue: `Inspect ${getZoneLabel(zoneId, null, t)} zone`
-          })}
-          aria-pressed={isInspected}
-          tabIndex={isPrimaryTabStop ? 0 : -1}
-          title={getZoneLabel(zoneId, null, t)}
-          onClick={() => onHighlightZone(zoneId)}
-        />
-      );
-    }
-  }
 
   return (
     <section className="position-command-center__surface position-map-stage">
@@ -135,36 +110,34 @@ export function PositionMapStage({
           <h2>{t('layout.nav.position', { defaultValue: 'Position' })}</h2>
         </div>
         <p className="position-command-center__muted">
-          {surfaceState === 'loading'
+          {effectiveSurfaceState === 'loading'
             ? t('position.loadingMapContext', { defaultValue: 'Loading map context...' })
-            : highlightedZoneId
-              ? t('position.mapFocus', {
-                  defaultValue: `Focused zone: ${getZoneLabel(highlightedZoneId, null, t)}`
-                })
-              : t('position.zoneListHint', { defaultValue: 'Click the map to inspect a zone' })}
+            : showAllOnMap
+              ? t('position.viewAllOnMap', { defaultValue: '查看所有人' })
+              : t('position.currentLocation', { defaultValue: 'Current location' })}
         </p>
       </header>
 
-      {surfaceState === 'error' ? (
+      {effectiveSurfaceState === 'error' ? (
         <p className="position-command-center__error">{getOperatorError(recordError, t)}</p>
       ) : null}
 
       <div className="position-map-stage__command">
-        {surfaceState === 'loading' ? (
+        {effectiveSurfaceState === 'loading' ? (
           <div className="position-command-center__state-card position-command-center__state-card--loading">
             <strong>{t('position.loadingMapContext', { defaultValue: 'Loading map context...' })}</strong>
             <p>{t('position.loadingMapContextHint', { defaultValue: 'Current zone and map pin are pending from upstream.' })}</p>
           </div>
         ) : null}
 
-        {surfaceState === 'empty' ? (
+        {effectiveSurfaceState === 'empty' ? (
           <div className="position-command-center__state-card">
             <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
             <p>{mapEmptyCopy}</p>
           </div>
         ) : null}
 
-        {resident && surfaceState !== 'loading' ? (
+        {resident && effectiveSurfaceState !== 'loading' ? (
           <>
             <div className="position-map-stage__command-row">
               <span className={`position-state-pill position-state-pill--${resident.truthState}`}>
@@ -180,7 +153,7 @@ export function PositionMapStage({
             <dl className="position-map-stage__command-grid">
               <div>
                 <dt>{t('position.currentLocation', { defaultValue: 'Current zone' })}</dt>
-                <dd>{getZoneLabel(resident.currentZoneId ?? null, resident.currentZoneName ?? null, t)}</dd>
+                <dd>{resident.currentZoneName ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' })}</dd>
               </div>
               <div>
                 <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>
@@ -203,27 +176,42 @@ export function PositionMapStage({
             className="position-map-stage__image"
           />
 
-          <div className="position-map-stage__grid" role="img" aria-label={t('layout.nav.position', { defaultValue: 'Position map' })}>
-            {renderedCells}
-          </div>
+          {clusteredPins.map((cluster) => {
+            if (cluster.members.length <= 1) {
+              const pin = cluster.members[0];
+              return (
+                <div
+                  key={pin.residentId}
+                  className="position-map-stage__pin position-map-stage__pin--current"
+                  style={{ left: `${pin.point.leftPercent}%`, top: `${pin.point.topPercent}%` }}
+                  aria-hidden
+                >
+                  <span className="position-map-stage__pin-label">{pin.displayName}</span>
+                  <span className={`position-map-stage__pin-dot position-map-stage__pin-dot--${pin.truthState}`} />
+                </div>
+              );
+            }
 
-          {currentPin ? (
-            <div
-              className="position-map-stage__pin position-map-stage__pin--current"
-              style={{ left: `${currentPin.leftPercent}%`, top: `${currentPin.topPercent}%` }}
-              aria-hidden
-            >
-              <span className="position-map-stage__pin-label">{resident?.displayName ?? 'Resident'}</span>
-              <span className="position-map-stage__pin-dot" />
-            </div>
-          ) : null}
+            const memberNames = cluster.members.map((item) => item.displayName).join(' / ');
+            return (
+              <div
+                key={cluster.key}
+                className="position-map-stage__pin position-map-stage__pin--cluster"
+                style={{ left: `${cluster.point.leftPercent}%`, top: `${cluster.point.topPercent}%` }}
+                aria-hidden
+                title={memberNames}
+              >
+                <span className="position-map-stage__pin-cluster-count">+{cluster.members.length}</span>
+              </div>
+            );
+          })}
 
-          {surfaceState !== 'ready' ? (
-            <div className={`position-map-stage__empty position-map-stage__empty--${surfaceState}`}>
+          {effectiveSurfaceState !== 'ready' ? (
+            <div className={`position-map-stage__empty position-map-stage__empty--${effectiveSurfaceState}`}>
               <p>
-                {surfaceState === 'loading'
+                {effectiveSurfaceState === 'loading'
                   ? t('position.loadingMapContext', { defaultValue: 'Loading map context...' })
-                  : surfaceState === 'error'
+                  : effectiveSurfaceState === 'error'
                     ? getOperatorError(recordError, t)
                     : mapEmptyCopy}
               </p>
@@ -236,11 +224,6 @@ export function PositionMapStage({
         <span className="position-map-stage__legend-item" role="listitem">
           <span className="position-map-stage__legend-dot position-map-stage__legend-dot--current" />
           {t('position.currentLocation', { defaultValue: 'Current location' })}
-        </span>
-        <span className="position-map-stage__legend-item" role="listitem">
-          <span className="position-map-stage__legend-zone">
-            {highlightedZoneId ? getZoneLabel(highlightedZoneId, null, t) : t('position.mapTapHint', { defaultValue: 'Tap any grid cell' })}
-          </span>
         </span>
       </div>
     </section>

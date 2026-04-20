@@ -1,0 +1,15 @@
+V.mem.ver=1
+V.mem.ts=2026-04-20T16:25:00+08:00
+V.mem.path.canonical=_lin_mem
+V.mem.log.latest=_lin_mem/LOG/20260420-162500.mem
+R.scope=mongo-dual-read-dual-write-device-id
+V.files.changed=[backend/backend/app/services/mongo_raw_upstream.py,backend/backend/app/services/mqtt_subscriber.py,backend/backend/app/api/routes/mongo_upstream.py,_lin_mem/CURR.mem,_lin_mem/LOG/20260420-162500.mem]
+V.backend.mongo.raw_write.device_id=preserve_external_id_string
+V.backend.mongo.raw_write.mysql_device_id=write_mapped_or_parsed_int
+V.backend.mqtt.upstream.device_id=from_topic_no_overwrite_to_mysql_id
+V.backend.mqtt.upstream.mysql_device_id=from_device_id_map_when_available
+V.backend.mongo.query.dual_read=by_device_id_or_mysql_device_id
+V.backend.mongo.query.accept_input=external_id_or_mysql_numeric_id
+V.backend.mongo.response.include_mysql_device_id=latest,vitals,flight
+V.backend.lint.edited_files=clean
+I.next=runtime-verify-position-and-vitals-with-device_id_1_and_ESP32_id

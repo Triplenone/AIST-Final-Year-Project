@@ -1,0 +1,14 @@
+V.mem.ver=1
+V.mem.ts=2026-04-20T17:10:00+08:00
+V.mem.path.canonical=_lin_mem
+V.mem.log.latest=_lin_mem/LOG/20260420-171000.mem
+R.scope=position-map-remove-zone-grid-keep-pin-label
+V.files.changed=[frontend/src/components/position/PositionMapStage.tsx,frontend/src/pages/PositionPage.tsx,_lin_mem/CURR.mem,_lin_mem/LOG/20260420-171000.mem]
+V.frontend.position.map.grid_overlay=removed
+V.frontend.position.map.zone_cell_interaction=removed
+V.frontend.position.map.render_mode=base_image_plus_pins_plus_labels
+V.frontend.position.page.manual_highlight_zone_state=removed
+V.frontend.position.page.map_props.highlightedZoneId_onHighlightZone=removed
+V.frontend.build=ok
+V.frontend.lints.edited_files=clean
+I.next=optional-replace-zone-command-fields-with-coordinate-focused-copy

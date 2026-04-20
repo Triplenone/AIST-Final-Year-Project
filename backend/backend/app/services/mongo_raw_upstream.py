@@ -11,15 +11,36 @@ from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
 _sync_mongo_client: Optional[MongoClient] = None
 
 
+def _resolve_mysql_device_id(data: Dict[str, Any], device_id_text: str) -> Optional[int]:
+    explicit = data.get("mysql_device_id")
+    if explicit is not None:
+        try:
+            return int(explicit)
+        except (TypeError, ValueError):
+            pass
+
+    mapped = settings.device_id_map.get(device_id_text)
+    if mapped is not None:
+        return int(mapped)
+
+    try:
+        parsed = int(device_id_text)
+        return parsed if parsed > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _build_doc(data: Dict[str, Any]) -> Dict[str, Any]:
     device_id = data.get("device_id")
     if device_id is None:
         device_id = "UNKNOWN"
     else:
         device_id = str(device_id)
+    mysql_device_id = _resolve_mysql_device_id(data, device_id)
 
     return {
         "device_id": device_id,
+        "mysql_device_id": mysql_device_id,
         "timestamp": data.get("timestamp"),
         "data_type": data.get("data_type", "status_update"),
         "server_received_at": datetime.now(timezone.utc),

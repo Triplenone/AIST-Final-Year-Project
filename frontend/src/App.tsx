@@ -355,6 +355,7 @@ export default function App() {
   const authFirstFieldRef = useRef<HTMLInputElement | null>(null);
   const previousRawMetricsRef = useRef<RawMetrics | null>(null);
   const knownFallEventIdsRef = useRef<Set<number>>(new Set());
+  const seenFallAlertRowIdsRef = useRef<Set<string>>(new Set());
   const fallEventsInitializedRef = useRef(false);
 
   const activePage = resolveDashboardPage(location.pathname);
@@ -633,7 +634,16 @@ export default function App() {
 
   const openFallAlertModal = useCallback((rows: FallAlertDetailRow[]) => {
     if (!rows.length) return;
-    setFallAlertRows(rows);
+    const unseenRows = rows.filter((row) => {
+      const key = row.id.trim();
+      if (!key) return false;
+      return !seenFallAlertRowIdsRef.current.has(key);
+    });
+    if (!unseenRows.length) return;
+    for (const row of unseenRows) {
+      seenFallAlertRowIdsRef.current.add(row.id.trim());
+    }
+    setFallAlertRows(unseenRows);
     setShowFallAlertModal(true);
   }, []);
 

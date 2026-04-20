@@ -1,0 +1,13 @@
+V.mem.ver=1
+V.mem.ts=2026-04-20T16:40:00+08:00
+V.mem.path.canonical=_lin_mem
+V.mem.log.latest=_lin_mem/LOG/20260420-164000.mem
+R.scope=position-map-show-all-overlay-fix
+V.files.changed=[frontend/src/pages/PositionPage.tsx,frontend/src/components/position/PositionMapStage.tsx,_lin_mem/CURR.mem,_lin_mem/LOG/20260420-164000.mem]
+V.frontend.position.map.show_all.filter=currentCoords_only_not_truth_online
+V.frontend.position.map.show_all.surface_state_override=ready_when_has_mapResidents
+V.frontend.position.map.show_all.empty_gate=mapResidents_length
+V.frontend.position.map.pin_layer=currentPins_from_mapResidents
+V.frontend.build=ok
+V.frontend.lints.edited_files=clean
+I.next=runtime-verify-show_all_then_select_resident_back_to_single_mode

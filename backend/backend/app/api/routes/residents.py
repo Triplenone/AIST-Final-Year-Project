@@ -103,11 +103,29 @@ def get_last_seen_info(db: Session, user_id: int) -> Tuple[Optional[str], Option
     
     if not latest_event:
         return None, None
-    
+
+    # 回退链：最新事件位置 -> 最近一次有位置事件 -> 最新 user_status 位置
     location_name = None
-    if latest_event.location_zone_id:
+    location_zone_id = latest_event.location_zone_id
+
+    if not location_zone_id:
+        latest_location_event = db.query(Event).filter(
+            Event.related_user_id == user_id,
+            Event.location_zone_id.isnot(None)
+        ).order_by(Event.event_timestamp.desc()).first()
+        if latest_location_event:
+            location_zone_id = latest_location_event.location_zone_id
+
+    if not location_zone_id:
+        latest_status = db.query(UserStatus).filter(
+            UserStatus.user_id == user_id
+        ).order_by(UserStatus.status_timestamp.desc()).first()
+        if latest_status and latest_status.location_zone_id:
+            location_zone_id = latest_status.location_zone_id
+
+    if location_zone_id:
         location = db.query(LocationZone).filter(
-            LocationZone.location_zone_id == latest_event.location_zone_id
+            LocationZone.location_zone_id == location_zone_id
         ).first()
         if location:
             location_name = location.name
@@ -120,17 +138,16 @@ def get_last_seen_info(db: Session, user_id: int) -> Tuple[Optional[str], Option
 
 def get_resident_room(db: Session, user_id: int) -> str:
     """获取住民房间（从最新位置或默认位置）"""
-    latest_event = db.query(Event).filter(
-        Event.related_user_id == user_id
-    ).order_by(Event.event_timestamp.desc()).first()
-    
-    if latest_event and latest_event.location_zone_id:
-        location = db.query(LocationZone).filter(
-            LocationZone.location_zone_id == latest_event.location_zone_id
-        ).first()
-        if location:
-            return location.name
-    
+    _, last_seen_location = get_last_seen_info(db, user_id)
+    if last_seen_location:
+        return last_seen_location
+    latest_status = db.query(UserStatus).options(
+        joinedload(UserStatus.device)
+    ).filter(
+        UserStatus.user_id == user_id
+    ).order_by(UserStatus.status_timestamp.desc()).first()
+    if latest_status and latest_status.device and latest_status.device.deploy_location:
+        return latest_status.device.deploy_location
     return "Unknown"
 
 
@@ -185,8 +202,29 @@ def get_residents(
             if event.related_user_id not in events_by_user:
                 events_by_user[event.related_user_id] = event
         
-        # 批量获取所有需要的位置信息
+        # 批量获取每个用户最近一次“有位置”的事件（不被无位置事件覆盖）
+        latest_loc_events = []
+        try:
+            subquery_loc = db.query(
+                Event.related_user_id,
+                func.max(Event.event_timestamp).label('max_timestamp')
+            ).filter(
+                Event.related_user_id.in_(user_ids),
+                Event.location_zone_id.isnot(None)
+            ).group_by(Event.related_user_id).subquery()
+            latest_loc_events = db.query(Event).join(
+                subquery_loc,
+                (Event.related_user_id == subquery_loc.c.related_user_id) &
+                (Event.event_timestamp == subquery_loc.c.max_timestamp)
+            ).all()
+        except Exception as e:
+            print(f"Warning: Error querying latest location events: {e}")
+            latest_loc_events = []
+        location_event_by_user = {event.related_user_id: event for event in latest_loc_events}
+
+        # 批量获取所有需要的位置信息（先含 latest event + latest location event）
         location_ids = [e.location_zone_id for e in latest_events if e.location_zone_id]
+        location_ids.extend([e.location_zone_id for e in latest_loc_events if e.location_zone_id])
         locations = {}
         if location_ids:
             location_list = db.query(LocationZone).filter(
@@ -232,6 +270,16 @@ def get_residents(
                 # 获取关联的设备信息
                 if status.device:
                     devices_by_user[status.user_id] = status.device
+
+        # 补充 user_status 中的位置区，完善 last_seen_location 回退链
+        status_location_ids = [s.location_zone_id for s in user_statuses if s.location_zone_id]
+        missing_status_location_ids = [loc_id for loc_id in status_location_ids if loc_id not in locations]
+        if missing_status_location_ids:
+            status_locations = db.query(LocationZone).filter(
+                LocationZone.location_zone_id.in_(missing_status_location_ids)
+            ).all()
+            for loc in status_locations:
+                locations[loc.location_zone_id] = loc
 
         mongo_vitals_map: Dict[int, Tuple[Optional[int], Optional[float]]] = {}
         try:
@@ -316,18 +364,22 @@ def get_residents(
                 user_id, mongo_vitals_map, vitals, heart_rate, blood_oxygen
             )
             
-            # 获取最后出现信息
+            # 获取最后出现信息（回退链：最新事件位置 -> 最近有位置事件 -> user_status 位置 -> device 部署位置）
             last_seen_at = None
             last_seen_location = None
             if latest_event:
                 last_seen_at = latest_event.event_timestamp.isoformat() if latest_event.event_timestamp else None
-                if latest_event.location_zone_id and latest_event.location_zone_id in locations:
-                    last_seen_location = locations[latest_event.location_zone_id].name
+            loc_zone_id = latest_event.location_zone_id if latest_event else None
+            if not loc_zone_id:
+                loc_event = location_event_by_user.get(user_id)
+                loc_zone_id = loc_event.location_zone_id if loc_event else None
+            if not loc_zone_id and user_status and user_status.location_zone_id:
+                loc_zone_id = user_status.location_zone_id
+            if loc_zone_id and loc_zone_id in locations:
+                last_seen_location = locations[loc_zone_id].name
             
-            # 获取房间
-            room = "Unknown"
-            if latest_event and latest_event.location_zone_id and latest_event.location_zone_id in locations:
-                room = locations[latest_event.location_zone_id].name
+            # 获取房间：优先位置名，再回退 device.deploy_location
+            room = last_seen_location or (device_deploy_location or "Unknown")
             
             residents.append(ResidentResponse(
                 id=str(user.user_id),
