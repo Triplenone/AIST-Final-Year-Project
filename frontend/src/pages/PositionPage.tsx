@@ -139,7 +139,9 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
   useEffect(() => {
     if (!onSosOrFallDetected) return;
 
-    const alerting = viewModel.residents.filter((resident) => resident.sosState || resident.fallConfirmed);
+    const alerting = viewModel.residents.filter(
+      (resident) => (resident.sosState || resident.fallConfirmed) && resident.freshnessLevel !== 'stale'
+    );
     const alertNow = alerting.length > 0;
     if (alertNow && !previousAlertRef.current) {
       previousAlertRef.current = true;

@@ -26,6 +26,12 @@ def get_devices(db: Session, skip: int = 0, limit: int = 100,
 
 def create_device(db: Session, device: DeviceCreate) -> Device:
     """创建设备"""
+    # 约束：同一 elderly_user_id 同时只允许绑定一台设备。
+    if device.elderly_user_id is not None:
+        db.query(Device).filter(
+            Device.elderly_user_id == device.elderly_user_id
+        ).update({"elderly_user_id": None}, synchronize_session=False)
+
     db_device = Device(**device.model_dump())
     db.add(db_device)
     db.commit()
@@ -40,6 +46,15 @@ def update_device(db: Session, device_id: int, device_update: DeviceUpdate) -> O
         return None
     
     update_data = device_update.model_dump(exclude_unset=True)
+
+    # 约束：当把设备绑定到某 elderly_user_id 时，自动解绑该用户其他设备。
+    next_elderly_user_id = update_data.get("elderly_user_id")
+    if next_elderly_user_id is not None:
+        db.query(Device).filter(
+            Device.elderly_user_id == next_elderly_user_id,
+            Device.device_id != device_id
+        ).update({"elderly_user_id": None}, synchronize_session=False)
+
     for field, value in update_data.items():
         setattr(db_device, field, value)
     

@@ -545,6 +545,17 @@ body,
   background: rgba(255, 243, 236, 0.58);
 }
 
+.events-admin__table-scroll {
+  /* header + roughly 5 body rows, then scroll */
+  max-height: 360px;
+  overflow-y: auto;
+  border-radius: 18px;
+}
+
+.events-admin__table-scroll .admin-table {
+  margin-bottom: 0;
+}
+
 .admin-section--workspace .admin-form {
   padding: 1rem;
   border-radius: 18px;
@@ -672,6 +683,10 @@ body,
 :root[data-theme='dark'] .admin-section--workspace .admin-table tbody tr:hover,
 :root[data-theme='dark'] .admin-section--workspace .admin-table tbody tr:focus-within {
   background: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme='dark'] .events-admin__table-scroll {
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 1100px) {

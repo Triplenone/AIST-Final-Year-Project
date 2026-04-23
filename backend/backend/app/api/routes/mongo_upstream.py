@@ -54,10 +54,27 @@ def _apply_time_range_server_received_ms(
 
 
 def _serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
-    if doc and "_id" in doc:
-        doc = dict(doc)
-        doc["_id"] = str(doc["_id"])
-    return doc
+    if not doc:
+        return doc
+    out = _deep_serialize_mongo_value(dict(doc))
+    if "_id" in out:
+        out["_id"] = str(out["_id"])
+    return out
+
+
+def _to_iso_utc(value: Any) -> Any:
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    return value
+
+
+def _deep_serialize_mongo_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _deep_serialize_mongo_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_deep_serialize_mongo_value(v) for v in value]
+    return _to_iso_utc(value)
 
 
 def _resolve_device_filter_candidates(raw_device_id: str) -> Tuple[List[str], List[int]]:
@@ -142,11 +159,65 @@ def _to_vitals_item(doc: Dict[str, Any]) -> Dict[str, Any]:
         "device_id": doc.get("device_id") or payload.get("device_id"),
         "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
-        "server_received_at": doc.get("server_received_at"),
+        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "data_type": doc.get("data_type"),
         "sensors": payload.get("sensors") or doc.get("sensors"),
         "vitals": _extract_vitals_from_payload(payload),
         "raw_payload": payload,
+    }
+
+
+def _to_finite_float(value: Any) -> Optional[float]:
+    if isinstance(value, (int, float)):
+        if value != value:  # NaN
+            return None
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = float(text)
+            if parsed != parsed:  # NaN
+                return None
+            return parsed
+        except ValueError:
+            return None
+    return None
+
+
+def _extract_current_location_from_doc(doc: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    payload = doc.get("payload") or {}
+    location = payload.get("location") or doc.get("location") or {}
+    if not isinstance(location, dict):
+        return None
+    current = location.get("current") or {}
+    if not isinstance(current, dict):
+        return None
+
+    x = _to_finite_float(current.get("x"))
+    y = _to_finite_float(current.get("y"))
+    if x is None or y is None:
+        return None
+
+    name = current.get("name")
+    if not isinstance(name, str):
+        name = None
+    elif not name.strip():
+        name = None
+    else:
+        name = name.strip()
+
+    zone_id = (
+        current.get("location_zone_id")
+        or current.get("zone_id")
+        or current.get("locationZoneId")
+    )
+    return {
+        "x": x,
+        "y": y,
+        "location_name": name,
+        "location_zone_id": zone_id,
     }
 
 
@@ -252,7 +323,7 @@ async def get_latest_for_position_panel(
         "device_id": doc.get("device_id") or payload.get("device_id"),
         "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
-        "server_received_at": doc.get("server_received_at"),
+        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "location": payload.get("location") or doc.get("location"),
         "fall_detection": payload.get("fall_detection") or doc.get("fall_detection"),
         "sos": payload.get("sos") or doc.get("sos"),
@@ -280,6 +351,45 @@ async def get_latest_vitals(
         }
 
     return {"found": True, "item": _to_vitals_item(doc)}
+
+
+@router.get("/location/latest", response_model=Dict[str, Any])
+async def get_latest_valid_location(
+    device_id: str = Query(..., description="External device ID or MySQL device ID"),
+    scan_limit: int = Query(200, ge=1, le=1000, description="Max recent docs to scan"),
+):
+    query: Dict[str, Any] = {}
+    _apply_device_id_filter(query, device_id)
+    if not query:
+        return {"found": False, "device_id": device_id, "message": "No device filter resolved"}
+
+    try:
+        coll = _get_collection()
+        cursor = coll.find(query).sort("server_received_at", -1).limit(scan_limit)
+        async for doc in cursor:
+            location = _extract_current_location_from_doc(doc)
+            if not location:
+                continue
+            payload = doc.get("payload") or {}
+            return {
+                "found": True,
+                "_id": str(doc.get("_id")) if doc.get("_id") else None,
+                "device_id": doc.get("device_id") or payload.get("device_id"),
+                "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
+                "server_received_at": _to_iso_utc(doc.get("server_received_at")),
+                "x": location["x"],
+                "y": location["y"],
+                "location_name": location["location_name"],
+                "location_zone_id": location["location_zone_id"],
+            }
+    except Exception as exc:
+        raise _mongo_unavailable(exc) from exc
+
+    return {
+        "found": False,
+        "device_id": device_id,
+        "message": "No valid current.x/current.y location found in recent upstream documents",
+    }
 
 
 @router.get("/vitals/history", response_model=Dict[str, Any])
@@ -402,7 +512,7 @@ async def get_latest_flight(
         "device_id": doc.get("device_id"),
         "mysql_device_id": doc.get("mysql_device_id"),
         "_id": str(doc["_id"]) if doc.get("_id") else None,
-        "server_received_at": doc.get("server_received_at"),
+        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "passengerName": payload.get("passengerName"),
         "flightNumber": payload.get("flightNumber"),
         "gate": payload.get("gate"),

@@ -495,7 +495,7 @@ export default function App() {
     pollIntervalMs: 5000,
     limit: 300,
     activeStatuses: ['unhandled', 'confirmed'],
-    includeTypes: ['fall']
+    includeTypes: ['fall', 'sos']
   });
 
   const residentList = useMemo<Resident[]>(() => {
@@ -670,7 +670,10 @@ export default function App() {
     }
     if (newlyDiscovered.length > 0) {
       void (async () => {
-        const lookups = await fetchFallAlertBackendLookups();
+        const lookups = await fetchFallAlertBackendLookups(
+          false,
+          newlyDiscovered.map((event) => String(event.trigger_device_id))
+        );
         openFallAlertModal(buildFallAlertRowsFromBackendEvents(newlyDiscovered, lookups));
       })();
     }

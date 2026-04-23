@@ -248,12 +248,29 @@ export type FlightLatestResponse = {
   message?: string;
 };
 
+export type MongoLatestValidLocationResponse = {
+  found: boolean;
+  _id?: string;
+  device_id?: string | number;
+  mysql_device_id?: number;
+  server_received_at?: string;
+  x?: number;
+  y?: number;
+  location_name?: string | null;
+  location_zone_id?: number | string | null;
+  message?: string;
+};
+
 export const mongoUpstreamApi = {
   getLatest: (params?: { device_id?: string; data_type?: string; exclude_data_type?: string }) =>
     api.get<MongoUpstreamLatest>('/mongo-upstream/latest', { params }),
   getLatestFlight: (deviceId?: string) =>
     api.get<FlightLatestResponse>('/mongo-upstream/flight/latest', {
       params: deviceId ? { device_id: deviceId } : undefined,
+    }),
+  getLatestValidLocation: (deviceId: string, params?: { scan_limit?: number }) =>
+    api.get<MongoLatestValidLocationResponse>('/mongo-upstream/location/latest', {
+      params: { device_id: deviceId, ...params },
     }),
   list: (params?: Record<string, unknown>) =>
     api.get<{ page: number; page_size: number; total: number; items: unknown[] }>('/mongo-upstream/', { params }),

@@ -122,52 +122,6 @@ export function PositionMapStage({
         <p className="position-command-center__error">{getOperatorError(recordError, t)}</p>
       ) : null}
 
-      <div className="position-map-stage__command">
-        {effectiveSurfaceState === 'loading' ? (
-          <div className="position-command-center__state-card position-command-center__state-card--loading">
-            <strong>{t('position.loadingMapContext', { defaultValue: 'Loading map context...' })}</strong>
-            <p>{t('position.loadingMapContextHint', { defaultValue: 'Current zone and map pin are pending from upstream.' })}</p>
-          </div>
-        ) : null}
-
-        {effectiveSurfaceState === 'empty' ? (
-          <div className="position-command-center__state-card">
-            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
-            <p>{mapEmptyCopy}</p>
-          </div>
-        ) : null}
-
-        {resident && effectiveSurfaceState !== 'loading' ? (
-          <>
-            <div className="position-map-stage__command-row">
-              <span className={`position-state-pill position-state-pill--${resident.truthState}`}>
-                {t(`position.truth.${resident.truthState}`, { defaultValue: resident.truthState })}
-              </span>
-              <span className={`position-risk-pill position-risk-pill--${resident.riskLevel}`}>
-                {t(`position.risk.${resident.riskLevel}`, { defaultValue: resident.riskLevel })}
-              </span>
-              <span className={`position-freshness-pill position-freshness-pill--${resident.freshnessLevel}`}>
-                {t(`position.freshness.${resident.freshnessLevel}`, { defaultValue: resident.freshnessLevel })}
-              </span>
-            </div>
-            <dl className="position-map-stage__command-grid">
-              <div>
-                <dt>{t('position.currentLocation', { defaultValue: 'Current zone' })}</dt>
-                <dd>{resident.currentZoneName ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' })}</dd>
-              </div>
-              <div>
-                <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>
-                <dd>
-                  {t(zoneCommandStateLabelKey[resident.zoneCommandState], {
-                    defaultValue: zoneCommandStateDefaultLabel[resident.zoneCommandState]
-                  })}
-                </dd>
-              </div>
-            </dl>
-          </>
-        ) : null}
-      </div>
-
       <div className="position-map-stage__frame">
         <div className="position-map-stage__canvas">
           <img
@@ -218,6 +172,52 @@ export function PositionMapStage({
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="position-map-stage__command">
+        {effectiveSurfaceState === 'loading' ? (
+          <div className="position-command-center__state-card position-command-center__state-card--loading">
+            <strong>{t('position.loadingMapContext', { defaultValue: 'Loading map context...' })}</strong>
+            <p>{t('position.loadingMapContextHint', { defaultValue: 'Current zone and map pin are pending from upstream.' })}</p>
+          </div>
+        ) : null}
+
+        {effectiveSurfaceState === 'empty' ? (
+          <div className="position-command-center__state-card">
+            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
+            <p>{mapEmptyCopy}</p>
+          </div>
+        ) : null}
+
+        {resident && effectiveSurfaceState !== 'loading' ? (
+          <>
+            <div className="position-map-stage__command-row">
+              <span className={`position-state-pill position-state-pill--${resident.truthState}`}>
+                {t(`position.truth.${resident.truthState}`, { defaultValue: resident.truthState })}
+              </span>
+              <span className={`position-risk-pill position-risk-pill--${resident.riskLevel}`}>
+                {t(`position.risk.${resident.riskLevel}`, { defaultValue: resident.riskLevel })}
+              </span>
+              <span className={`position-freshness-pill position-freshness-pill--${resident.freshnessLevel}`}>
+                {t(`position.freshness.${resident.freshnessLevel}`, { defaultValue: resident.freshnessLevel })}
+              </span>
+            </div>
+            <dl className="position-map-stage__command-grid">
+              <div>
+                <dt>{t('position.currentLocation', { defaultValue: 'Current zone' })}</dt>
+                <dd>{resident.currentZoneName ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' })}</dd>
+              </div>
+              <div>
+                <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>
+                <dd>
+                  {t(zoneCommandStateLabelKey[resident.zoneCommandState], {
+                    defaultValue: zoneCommandStateDefaultLabel[resident.zoneCommandState]
+                  })}
+                </dd>
+              </div>
+            </dl>
+          </>
+        ) : null}
       </div>
 
       <div className="position-map-stage__legend" role="list" aria-label={t('position.mapLegend', { defaultValue: 'Map legend' })}>

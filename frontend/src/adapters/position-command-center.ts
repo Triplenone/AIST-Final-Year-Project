@@ -172,10 +172,10 @@ type MongoUpstreamHistoryDocument = Partial<MongoUpstreamLatest> & {
   server_received_at?: unknown;
 };
 
-/** 距 `server_received_at` 小于等于该值视为在线 / live（方案 A：放宽以适配常见心跳间隔，原 30s 过严）。 */
-export const POSITION_ONLINE_TTL_MS = 90_000;
+/** 距 `server_received_at` 小于等于该值视为在线 / live。 */
+export const POSITION_ONLINE_TTL_MS = 300_000; // 5 minutes
 /** 超过在线窗口且小于等于该值为 delayed；再大则为 stale 新鲜度。 */
-export const POSITION_DELAYED_TTL_MS = 180_000;
+export const POSITION_DELAYED_TTL_MS = 600_000; // 10 minutes
 export const POSITION_GRID_COLUMNS = 12;
 export const POSITION_GRID_ROWS = 16;
 export const POSITION_MAP_PIXEL_WIDTH = 600;
@@ -425,7 +425,17 @@ function normalizeDateValue(value: unknown): string | number | null {
 export function parsePositionTimestamp(value: unknown): number | null {
   const normalized = normalizeDateValue(value);
   if (normalized == null) return null;
-  const parsed = new Date(normalized).getTime();
+  if (typeof normalized === 'number') {
+    const parsedNumber = new Date(normalized).getTime();
+    return Number.isFinite(parsedNumber) ? parsedNumber : null;
+  }
+  const text = String(normalized).trim();
+  if (!text) return null;
+  const isoText = text.includes('T') ? text : text.replace(' ', 'T');
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(isoText);
+  // Mongo 里常见 UTC naive 字符串（无时区后缀）；按 UTC 解读，避免浏览器按本地时区误差 8 小时。
+  const candidate = hasTimezone ? isoText : `${isoText}Z`;
+  const parsed = new Date(candidate).getTime();
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -439,8 +449,15 @@ function getCoords(
   key: 'current' | 'target'
 ): PositionPoint | null {
   const location = getSectionData(data, 'location');
-  const x = toFiniteNumber(getNestedValue(location, `${key}.x`));
-  const y = toFiniteNumber(getNestedValue(location, `${key}.y`));
+  let x = toFiniteNumber(getNestedValue(location, `${key}.x`));
+  let y = toFiniteNumber(getNestedValue(location, `${key}.y`));
+
+  // 兼容部分上行的扁平结构：location: { x, y, ... }（常见于 SOS / 简化状态包）。
+  if (key === 'current' && (x == null || y == null)) {
+    x = toFiniteNumber(getNestedValue(location, 'x'));
+    y = toFiniteNumber(getNestedValue(location, 'y'));
+  }
+
   if (x == null || y == null) return null;
   return { x, y };
 }

@@ -1,4 +1,6 @@
 import {
+  getPositionZoneFromCoords,
+  getPositionZoneLabelKey,
   getPositionZoneDisplayForResident,
   type PositionResidentViewModel
 } from '../adapters/position-command-center';
@@ -11,14 +13,37 @@ import type { FallAlertDetailRow, FallAlertKind } from '../types/fall-alert';
 export type FallAlertBackendLookups = {
   userNameByUserId: ReadonlyMap<number, string>;
   locationNameByZoneId: ReadonlyMap<number, string>;
+  latestLocationByDeviceId: ReadonlyMap<string, string>;
 };
 
 let fallAlertLookupsCache: { at: number; data: FallAlertBackendLookups } | null = null;
 const FALL_ALERT_LOOKUPS_TTL_MS = 60_000;
 
 /** 拉取用户与位置区列表，供跌倒事件弹窗对齐 MySQL 显示名。 */
-export async function fetchFallAlertBackendLookups(forceRefresh = false): Promise<FallAlertBackendLookups> {
+function normalizeDeviceId(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+function resolveLocationFromLatestXY(
+  x: unknown,
+  y: unknown
+): string | null {
+  const xNum = typeof x === 'number' ? x : Number(x);
+  const yNum = typeof y === 'number' ? y : Number(y);
+  if (!Number.isFinite(xNum) || !Number.isFinite(yNum)) return null;
+  const zoneId = getPositionZoneFromCoords({ x: xNum, y: yNum });
+  if (!zoneId) return null;
+  const labelKey = getPositionZoneLabelKey(zoneId);
+  if (!labelKey) return null;
+  return i18n.t(labelKey, { defaultValue: zoneId });
+}
+
+export async function fetchFallAlertBackendLookups(
+  forceRefresh = false,
+  deviceIds: readonly string[] = []
+): Promise<FallAlertBackendLookups> {
   if (
+    deviceIds.length === 0 &&
     !forceRefresh &&
     fallAlertLookupsCache &&
     Date.now() - fallAlertLookupsCache.at < FALL_ALERT_LOOKUPS_TTL_MS
@@ -43,11 +68,45 @@ export async function fetchFallAlertBackendLookups(forceRefresh = false): Promis
       const nm = row.name?.trim();
       if (row.location_zone_id != null && nm) locationNameByZoneId.set(row.location_zone_id, nm);
     }
-    const data: FallAlertBackendLookups = { userNameByUserId, locationNameByZoneId };
+    const latestLocationByDeviceId = new Map<string, string>();
+    const uniqueDeviceIds = Array.from(
+      new Set(deviceIds.map((id) => normalizeDeviceId(id)).filter((id) => id.length > 0))
+    );
+    if (uniqueDeviceIds.length > 0) {
+      const { mongoUpstreamApi } = await import('../services/api');
+      const results = await Promise.allSettled(
+        uniqueDeviceIds.map((id) => mongoUpstreamApi.getLatestValidLocation(id))
+      );
+      for (let i = 0; i < results.length; i += 1) {
+        const result = results[i];
+        const fallbackKey = uniqueDeviceIds[i];
+        if (result.status !== 'fulfilled') continue;
+        const payload = result.value;
+        if (!payload?.found) continue;
+
+        const rawLocationName = typeof payload.location_name === 'string' ? payload.location_name.trim() : '';
+        const resolvedName = rawLocationName || resolveLocationFromLatestXY(payload.x, payload.y);
+        if (!resolvedName) continue;
+
+        const keyCandidates = [
+          fallbackKey,
+          normalizeDeviceId(payload.device_id),
+          normalizeDeviceId(payload.mysql_device_id)
+        ].filter((x) => x.length > 0);
+        for (const key of keyCandidates) {
+          latestLocationByDeviceId.set(key, resolvedName);
+        }
+      }
+    }
+    const data: FallAlertBackendLookups = { userNameByUserId, locationNameByZoneId, latestLocationByDeviceId };
     fallAlertLookupsCache = { at: Date.now(), data };
     return data;
   } catch {
-    const empty: FallAlertBackendLookups = { userNameByUserId: new Map(), locationNameByZoneId: new Map() };
+    const empty: FallAlertBackendLookups = {
+      userNameByUserId: new Map(),
+      locationNameByZoneId: new Map(),
+      latestLocationByDeviceId: new Map()
+    };
     fallAlertLookupsCache = { at: Date.now(), data: empty };
     return empty;
   }
@@ -99,19 +158,21 @@ export function buildFallAlertRowsFromBackendEvents(
     const zoneId = e.location_zone_id;
     const fromDbLoc =
       zoneId != null ? (lookups?.locationNameByZoneId.get(zoneId)?.trim() ?? '') : '';
-    const location =
+    const fallbackLocation =
       fromParamsLoc ||
       fromDbLoc ||
       (zoneId != null
         ? i18n.t('fallAlert.fallbackZone', { id: zoneId, defaultValue: `Zone #${zoneId}` })
         : i18n.t('fallAlert.unknownDash', { defaultValue: '—' }));
+    const deviceIdText = String(e.trigger_device_id);
+    const location = lookups?.latestLocationByDeviceId?.get(deviceIdText)?.trim() || fallbackLocation;
     return {
       id: `event-${e.event_id}-${index}`,
-      deviceId: String(e.trigger_device_id),
+      deviceId: deviceIdText,
       boundUser: userName,
       location,
       triggeredAtIso: e.event_timestamp,
-      kinds: ['fall'],
+      kinds: e.event_type === 'sos' ? ['sos'] : ['fall'],
       sourceEventId: e.event_id
     };
   });

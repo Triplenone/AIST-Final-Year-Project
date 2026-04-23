@@ -169,7 +169,7 @@ export const ResidentsAdmin = () => {
       if (resident.device_id) {
         return `#${resident.device_id}`;
       }
-      return t('admin.residents.deviceUnknown');
+      return t('admin.residents.deviceUnassigned', { defaultValue: 'unassigned' });
     },
     [t]
   );
@@ -184,7 +184,9 @@ export const ResidentsAdmin = () => {
         parts.push(resident.device_current_status);
       }
 
-      return parts.length ? parts.join(' · ') : t('admin.residents.deviceUnknown');
+      return parts.length
+        ? parts.join(' · ')
+        : t('admin.residents.deviceUnassigned', { defaultValue: 'unassigned' });
     },
     [t]
   );

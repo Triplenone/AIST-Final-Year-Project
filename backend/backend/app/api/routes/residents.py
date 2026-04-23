@@ -263,13 +263,30 @@ def get_residents(
         
         # 创建用户状态字典（每个用户只保留最新的）
         statuses_by_user = {}
-        devices_by_user = {}
+        devices_by_user_status = {}
         for status in user_statuses:
             if status.user_id not in statuses_by_user:
                 statuses_by_user[status.user_id] = status
                 # 获取关联的设备信息
                 if status.device:
-                    devices_by_user[status.user_id] = status.device
+                    devices_by_user_status[status.user_id] = status.device
+
+        # 绑定链（主来源）：device.elderly_user_id，必须与 Device 管理页绑定一致
+        bound_devices = []
+        try:
+            bound_devices = db.query(Device).filter(
+                Device.elderly_user_id.in_(user_ids)
+            ).order_by(Device.updated_at.desc(), Device.device_id.desc()).all()
+        except Exception as e:
+            print(f"Warning: Error querying bound devices by elderly_user_id: {e}")
+            bound_devices = []
+        devices_by_binding = {}
+        for device in bound_devices:
+            uid = device.elderly_user_id
+            if not uid:
+                continue
+            if uid not in devices_by_binding:
+                devices_by_binding[uid] = device
 
         # 补充 user_status 中的位置区，完善 last_seen_location 回退链
         status_location_ids = [s.location_zone_id for s in user_statuses if s.location_zone_id]
@@ -295,7 +312,9 @@ def get_residents(
             
             # 获取用户状态和设备信息
             user_status = statuses_by_user.get(user_id)
-            device = devices_by_user.get(user_id)
+            # 按需求：优先使用 Device 管理页绑定（device.elderly_user_id）
+            # 若未绑定，再回退到 user_status.device（兼容历史链路）
+            device = devices_by_binding.get(user_id) or devices_by_user_status.get(user_id)
             
             # 提取用户状态数据
             user_status_id = None
@@ -442,6 +461,10 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     ).filter(
         UserStatus.user_id == user.user_id
     ).order_by(UserStatus.status_timestamp.desc()).first()
+
+    fallback_device = db.query(Device).filter(
+        Device.elderly_user_id == user.user_id
+    ).order_by(Device.updated_at.desc(), Device.device_id.desc()).first()
     
     # 提取用户状态数据
     user_status_id = None
@@ -465,8 +488,10 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     device_battery_level = None
     device_deploy_location = None
     
-    if user_status and user_status.device:
-        device = user_status.device
+    # 按需求：详情接口也以 Device 管理绑定为准
+    selected_device = fallback_device if fallback_device else (user_status.device if (user_status and user_status.device) else None)
+    if selected_device:
+        device = selected_device
         device_id = device.device_id
         # 安全处理设备状态枚举
         try:

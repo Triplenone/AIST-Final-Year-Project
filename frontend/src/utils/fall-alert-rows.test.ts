@@ -56,4 +56,15 @@ describe('buildFallAlertRowsFromBackendEvents', () => {
     expect(rows[0].boundUser).toBe('Param User');
     expect(rows[0].location).toBe('Param Room');
   });
+
+  it('maps sos event type to sos alert kind', () => {
+    const rows = buildFallAlertRowsFromBackendEvents([
+      makeFallEvent({
+        event_id: 2,
+        event_type: 'sos'
+      })
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].kinds).toEqual(['sos']);
+  });
 });
