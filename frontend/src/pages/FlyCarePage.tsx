@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import airportImg from '../img/FlyCare.png';
 import { mongoUpstreamApi, type MongoUpstreamLatest, type FlightLatestResponse } from '../services/api';
+import type { FallAlertDetailRow } from '../types/fall-alert';
+import { buildFallAlertRowFromFlyCare } from '../utils/fall-alert-rows';
 
 /**
  * 预设用户与设备绑定（机场场景可扩展为旅客列表）。
  * 收到某 device_id 的上行数据时，对应用户视为在线。
  */
 const PRESET_USERS = [
-  { id: 'TestUser01', name: 'TestUser01', deviceId: 'ESP32_00005CFA7AD4DB1C' },
+  { id: 'TestUser01', name: 'TestUser01', deviceId: 'ESP32_0000E03948D4DB1C' },
 ] as const;
 
 /** 机场区域（7 个）：用于根据坐标解析地点名称，labelKey 对应 i18n flyCare.zone.* */
@@ -168,7 +170,7 @@ export type FlightInfo = {
 };
 
 type FlyCarePageProps = {
-  onSosOrFallDetected?: () => void;
+  onSosOrFallDetected?: (items: FallAlertDetailRow[]) => void;
 };
 
 export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
@@ -281,10 +283,11 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     const alertNow = isSosOrFallAlert(panelData);
     if (alertNow && !previousAlertRef.current) {
       previousAlertRef.current = true;
-      onSosOrFallDetected();
+      const row = buildFallAlertRowFromFlyCare(panelData, displayUser?.name ?? null);
+      onSosOrFallDetected([row]);
     }
     if (!alertNow) previousAlertRef.current = false;
-  }, [panelData, onSosOrFallDetected]);
+  }, [displayUser?.name, onSosOrFallDetected, panelData]);
 
   /** 确认航班变动：将侧边弹窗中的新航班信息同步到右侧信息面板 */
   const handleConfirmFlightUpdate = useCallback(() => {

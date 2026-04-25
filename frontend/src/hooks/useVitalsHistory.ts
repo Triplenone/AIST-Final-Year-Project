@@ -22,6 +22,8 @@ type UseVitalsHistoryResult = {
   loading: boolean;
   error: string | null;
   isUnavailable: boolean;
+  /** 住民 id 不是正整数 MySQL user_id 时无法请求 /vitals/user/{id}/history */
+  invalidResidentId: boolean;
   refresh: () => Promise<void>;
 };
 
@@ -57,19 +59,30 @@ const pickRecord = (value: unknown) =>
 const normalizeVitalsHistoryItem = (item: MongoVitalsHistoryItem): VitalsHistoryReading => {
   const sensors = pickRecord(item.sensors);
   const vitals = pickRecord(item.vitals);
-  const payload = pickRecord(item.payload);
+  const payload = pickRecord(item.payload ?? item.raw_payload);
   const payloadSensors = pickRecord(payload?.sensors);
   const payloadVitals = pickRecord(payload?.vitals);
+  const hrNested = pickRecord(sensors?.heart_rate);
+  const spo2Nested = pickRecord(sensors?.spo2);
+  const payloadHrNested = pickRecord(payloadSensors?.heart_rate);
+  const payloadSpo2Nested = pickRecord(payloadSensors?.spo2);
 
   const timestampValue = readNumber(item.timestamp);
+  /** Device `timestamp` is often not epoch ms; only use it when it looks like ms. */
+  const timestampLooksLikeEpochMs =
+    timestampValue !== null && timestampValue >= 1_000_000_000_000;
   const recordedAt =
-    item.server_received_at ??
-    (timestampValue ? new Date(timestampValue).toISOString() : null);
+    (typeof item.server_received_at === 'string' && item.server_received_at.trim()
+      ? item.server_received_at
+      : null) ??
+    (timestampLooksLikeEpochMs ? new Date(timestampValue).toISOString() : null);
 
   return {
     id: item._id ?? `${item.device_id ?? 'device'}-${item.timestamp ?? item.server_received_at ?? 'reading'}`,
     recordedAt,
     heartRate: readNumber(
+      hrNested?.bpm,
+      payloadHrNested?.bpm,
       sensors?.heart_rate,
       sensors?.heartRate,
       payloadSensors?.heart_rate,
@@ -80,6 +93,8 @@ const normalizeVitalsHistoryItem = (item: MongoVitalsHistoryItem): VitalsHistory
       payloadVitals?.hr
     ),
     spo2: readNumber(
+      spo2Nested?.percentage,
+      payloadSpo2Nested?.percentage,
       sensors?.spo2,
       sensors?.SpO2,
       payloadSensors?.spo2,
@@ -120,6 +135,7 @@ export function useVitalsHistory(
   const [isUnavailable, setIsUnavailable] = useState(false);
 
   const userId = useMemo(() => toResidentUserId(residentId), [residentId]);
+  const invalidResidentId = Boolean(residentId && userId === null);
 
   const refresh = useCallback(async () => {
     if (!userId) {
@@ -155,5 +171,5 @@ export function useVitalsHistory(
     void refresh();
   }, [refresh]);
 
-  return { data, loading, error, isUnavailable, refresh };
+  return { data, loading, error, isUnavailable, invalidResidentId, refresh };
 }

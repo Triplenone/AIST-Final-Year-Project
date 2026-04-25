@@ -4,9 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { FamilySummarySection } from '../components/family/FamilySummarySection';
 import { FamilyResidentCard } from '../components/family/FamilyResidentCard';
 import { VitalsHistoryPanel } from '../components/family/VitalsHistoryPanel';
-import { residentApi } from '../services/api';
+import { getPositionZoneFromCoords, getPositionZoneLabelKey } from '../adapters/position-command-center';
+import { deviceApi, mongoUpstreamApi, residentApi } from '../services/api';
 import '../styles/family-page.css';
 import type { BackendResident } from '../types/backend';
+
+function isUnknownRoom(value: string | null | undefined): boolean {
+  const text = String(value ?? '').trim();
+  if (!text) return true;
+  return text.toLowerCase() === 'unknown';
+}
 
 export function FamilyPage() {
   const { t } = useTranslation();
@@ -21,9 +28,71 @@ export function FamilyPage() {
 
     try {
       const nextResidents = await residentApi.list({ limit: 500 });
-      setResidents(nextResidents);
+      const devices = await deviceApi.list({ limit: 1000 });
+      const deviceIdByUserId = new Map<string, number>();
+      for (const device of devices) {
+        const uid = device.elderly_user_id;
+        if (uid == null || device.device_id == null) continue;
+        deviceIdByUserId.set(String(uid), device.device_id);
+      }
+
+      const fallbackCandidates = nextResidents.filter(
+        (resident) =>
+          isUnknownRoom(resident.room) &&
+          (resident.device_id != null || deviceIdByUserId.get(String(resident.id)) != null)
+      );
+
+      let mergedResidents = nextResidents;
+      if (fallbackCandidates.length > 0) {
+        const resolvedByResidentId = new Map<string, string>();
+        const results = await Promise.allSettled(
+          fallbackCandidates.map((resident) => {
+            const queryDeviceId = resident.device_id ?? deviceIdByUserId.get(String(resident.id));
+            return queryDeviceId != null
+              ? mongoUpstreamApi.getLatestValidLocation(String(queryDeviceId), { scan_limit: 300 })
+              : Promise.resolve({ found: false } as const);
+          })
+        );
+
+        for (let i = 0; i < results.length; i += 1) {
+          const result = results[i];
+          const resident = fallbackCandidates[i];
+          if (result.status !== 'fulfilled') continue;
+          if (!result.value?.found) continue;
+
+          const locationName = result.value.location_name?.trim();
+          if (locationName) {
+            resolvedByResidentId.set(resident.id, locationName);
+            continue;
+          }
+
+          if (typeof result.value.x === 'number' && typeof result.value.y === 'number') {
+            const zoneId = getPositionZoneFromCoords({ x: result.value.x, y: result.value.y });
+            const labelKey = getPositionZoneLabelKey(zoneId);
+            if (labelKey) {
+              resolvedByResidentId.set(
+                resident.id,
+                t(labelKey, { defaultValue: zoneId ?? t('family.roomUnknown') })
+              );
+            }
+          }
+        }
+
+        if (resolvedByResidentId.size > 0) {
+          mergedResidents = nextResidents.map((resident) => {
+            const nextRoom = resolvedByResidentId.get(resident.id);
+            if (!nextRoom) return resident;
+            return {
+              ...resident,
+              room: nextRoom,
+              last_seen_location: resident.last_seen_location?.trim() ? resident.last_seen_location : nextRoom
+            };
+          });
+        }
+      }
+      setResidents(mergedResidents);
       setSelectedResidentId((current) =>
-        current && nextResidents.some((resident) => resident.id === current) ? current : null
+        current && mergedResidents.some((resident) => resident.id === current) ? current : null
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : t('family.errorFallback'));

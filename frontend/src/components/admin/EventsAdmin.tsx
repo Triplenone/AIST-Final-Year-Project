@@ -142,40 +142,42 @@ export const EventsAdmin = () => {
       {error && <div className="admin-error">{error}</div>}
       {loading ? <div className="admin-loading">載入中 (Loading)...</div> : null}
 
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>類型 (Type)</th>
-            <th>狀態 (Status)</th>
-            <th>住民 (User)</th>
-            <th>設備 (Device)</th>
-            <th>時間</th>
-            <th>備註</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((ev) => (
-            <tr key={ev.event_id}>
-              <td>{ev.event_id}</td>
-              <td>{ev.event_type}</td>
-              <td>{ev.event_status}</td>
-              <td>{ev.related_user_id}</td>
-              <td>{ev.trigger_device_id}</td>
-              <td>{new Date(ev.event_timestamp).toLocaleString()}</td>
-              <td>{ev.remark ?? '-'}</td>
-              <td>
-                <button onClick={() => handleEdit(ev)}>編輯</button>
-                <button onClick={() => setHandling(ev)}>處理</button>
-                <button className="danger" onClick={() => void handleDelete(ev)}>
-                  刪除
-                </button>
-              </td>
+      <div className="events-admin__table-scroll" role="region" aria-label="Events list">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>類型 (Type)</th>
+              <th>狀態 (Status)</th>
+              <th>住民 (User)</th>
+              <th>設備 (Device)</th>
+              <th>時間</th>
+              <th>備註</th>
+              <th>操作</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map((ev) => (
+              <tr key={ev.event_id}>
+                <td>{ev.event_id}</td>
+                <td>{ev.event_type}</td>
+                <td>{ev.event_status}</td>
+                <td>{ev.related_user_id}</td>
+                <td>{ev.trigger_device_id}</td>
+                <td>{new Date(ev.event_timestamp).toLocaleString()}</td>
+                <td>{ev.remark ?? '-'}</td>
+                <td>
+                  <button onClick={() => handleEdit(ev)}>編輯</button>
+                  <button onClick={() => setHandling(ev)}>處理</button>
+                  <button className="danger" onClick={() => void handleDelete(ev)}>
+                    刪除
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* 建立/更新事件表單 */}
       <div className="admin-form">

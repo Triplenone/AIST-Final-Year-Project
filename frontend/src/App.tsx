@@ -11,6 +11,10 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { FallAlertModal } from './components/FallAlertModal';
 import type { AdminTab } from './components/admin/AdminSection';
+import type { BackendEvent } from './types/backend';
+import type { FallAlertDetailRow } from './types/fall-alert';
+import { eventApi } from './services/api';
+import { buildFallAlertRowsFromBackendEvents, fetchFallAlertBackendLookups } from './utils/fall-alert-rows';
 import { AppHeader } from './components/shell/AppHeader';
 import { AuthModal } from './components/shell/AuthModal';
 import { QuickActionsDock } from './components/shell/QuickActionsDock';
@@ -344,12 +348,14 @@ export default function App() {
   const [now, setNow] = useState(() => Date.now());
   const [metrics, setMetrics] = useState<Metrics>(initialMetrics);
   const [showFallAlertModal, setShowFallAlertModal] = useState(false);
+  const [fallAlertRows, setFallAlertRows] = useState<FallAlertDetailRow[]>([]);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [adminActiveTab, setAdminActiveTab] = useState<AdminTab>('users');
 
   const authFirstFieldRef = useRef<HTMLInputElement | null>(null);
   const previousRawMetricsRef = useRef<RawMetrics | null>(null);
   const knownFallEventIdsRef = useRef<Set<number>>(new Set());
+  const seenFallAlertRowIdsRef = useRef<Set<string>>(new Set());
   const fallEventsInitializedRef = useRef(false);
 
   const activePage = resolveDashboardPage(location.pathname);
@@ -481,11 +487,15 @@ export default function App() {
   );
 
   const { residents: residentMap, startStream, stopStream, updateResident, setDemoMode, demoMode } = useResidentLiveStore();
-  const { activeEvents: fallEvents } = useBackendEvents({
+  const {
+    events: allFallTypeEvents,
+    activeEvents: fallEvents,
+    refresh: refreshFallBackendEvents
+  } = useBackendEvents({
     pollIntervalMs: 5000,
     limit: 300,
     activeStatuses: ['unhandled', 'confirmed'],
-    includeTypes: ['fall']
+    includeTypes: ['fall', 'sos']
   });
 
   const residentList = useMemo<Resident[]>(() => {
@@ -622,6 +632,26 @@ export default function App() {
 
   const fallEventIds = useMemo(() => new Set(fallEvents.map((event) => event.event_id)), [fallEvents]);
 
+  const openFallAlertModal = useCallback((rows: FallAlertDetailRow[]) => {
+    if (!rows.length) return;
+    const unseenRows = rows.filter((row) => {
+      const key = row.id.trim();
+      if (!key) return false;
+      return !seenFallAlertRowIdsRef.current.has(key);
+    });
+    if (!unseenRows.length) return;
+    for (const row of unseenRows) {
+      seenFallAlertRowIdsRef.current.add(row.id.trim());
+    }
+    setFallAlertRows(unseenRows);
+    setShowFallAlertModal(true);
+  }, []);
+
+  const closeFallAlertModal = useCallback(() => {
+    setShowFallAlertModal(false);
+    setFallAlertRows([]);
+  }, []);
+
   useEffect(() => {
     if (!fallEventsInitializedRef.current) {
       knownFallEventIdsRef.current = new Set(fallEventIds);
@@ -630,22 +660,67 @@ export default function App() {
     }
 
     const known = knownFallEventIdsRef.current;
-    for (const id of fallEventIds) {
-      if (!known.has(id)) {
-        known.add(id);
-        setShowFallAlertModal(true);
-        break;
+    const newlyDiscovered: BackendEvent[] = [];
+    for (const event of fallEvents) {
+      if (event.event_status !== 'unhandled') continue;
+      if (!known.has(event.event_id)) {
+        known.add(event.event_id);
+        newlyDiscovered.push(event);
       }
     }
-  }, [fallEventIds]);
+    if (newlyDiscovered.length > 0) {
+      void (async () => {
+        const lookups = await fetchFallAlertBackendLookups(
+          false,
+          newlyDiscovered.map((event) => String(event.trigger_device_id))
+        );
+        openFallAlertModal(buildFallAlertRowsFromBackendEvents(newlyDiscovered, lookups));
+      })();
+    }
+  }, [fallEvents, openFallAlertModal]);
 
-  const handleGoToEvents = useCallback(() => {
-    setShowFallAlertModal(false);
+  /** 任一端将相关事件标为非 unhandled 后，其他客户端轮询到即关窗 */
+  useEffect(() => {
+    if (!showFallAlertModal || fallAlertRows.length === 0) return;
+    const ids = fallAlertRows
+      .map((row) => row.sourceEventId)
+      .filter((id): id is number => typeof id === 'number');
+    if (ids.length === 0) return;
+    // 避免首屏尚未拉到 /events 时误判为「已无待处理」而误关窗
+    if (allFallTypeEvents.length === 0) return;
+    const anyStillUnhandled = ids.some((id) => {
+      const ev = allFallTypeEvents.find((e) => e.event_id === id);
+      return ev?.event_status === 'unhandled';
+    });
+    if (!anyStillUnhandled) {
+      closeFallAlertModal();
+    }
+  }, [allFallTypeEvents, showFallAlertModal, fallAlertRows, closeFallAlertModal]);
+
+  const handleGoToEvents = useCallback(async () => {
+    const eventIds = fallAlertRows
+      .map((row) => row.sourceEventId)
+      .filter((id): id is number => typeof id === 'number');
+    const remark = t('fallAlert.handleAckRemark');
+    if (eventIds.length > 0) {
+      await Promise.allSettled(
+        eventIds.map((eventId) => eventApi.handle(eventId, 'confirmed', undefined, remark))
+      );
+      await refreshFallBackendEvents();
+    }
+    closeFallAlertModal();
     if (location.pathname !== '/admin') {
       navigate('/admin');
     }
     setAdminActiveTab('events');
-  }, [location.pathname, navigate]);
+  }, [
+    closeFallAlertModal,
+    fallAlertRows,
+    location.pathname,
+    navigate,
+    refreshFallBackendEvents,
+    t
+  ]);
 
   const formattedTime = useMemo(
     () =>
@@ -1045,9 +1120,9 @@ export default function App() {
 
     switch (activePage) {
       case 'position':
-        return <PositionPage onSosOrFallDetected={() => setShowFallAlertModal(true)} />;
+        return <PositionPage onSosOrFallDetected={openFallAlertModal} />;
       case 'flycare':
-        return <FlyCarePage onSosOrFallDetected={() => setShowFallAlertModal(true)} />;
+        return <FlyCarePage onSosOrFallDetected={openFallAlertModal} />;
       case 'residents':
         return (
           <section className="route-surface">
@@ -1151,7 +1226,9 @@ export default function App() {
       </main>
 
       <AnimatePresence>
-        {showFallAlertModal ? <FallAlertModal onGoToEvents={handleGoToEvents} /> : null}
+        {showFallAlertModal && fallAlertRows.length > 0 ? (
+          <FallAlertModal items={fallAlertRows} onGoToEvents={handleGoToEvents} onClose={closeFallAlertModal} />
+        ) : null}
       </AnimatePresence>
 
       <AnimatePresence>

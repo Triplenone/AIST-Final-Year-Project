@@ -1,6 +1,7 @@
 """MongoDB raw upstream query routes."""
 
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 from bson.objectid import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,7 +10,8 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
-from app.models.device import Device
+from app.services.elderly_device_queries import VITALS_UPSTREAM_DATA_TYPES, devices_by_elderly_user_ids
+from app.services.sensor_vitals_extract import extract_hr_spo2_from_sensors
 
 router = APIRouter()
 
@@ -31,19 +33,120 @@ def _get_collection():
     return db[COLLECTION_RAW_UPSTREAM]
 
 
+def _apply_time_range_server_received_ms(
+    query: Dict[str, Any],
+    start_ts: Optional[int],
+    end_ts: Optional[int],
+) -> None:
+    """
+    start_ts / end_ts from the frontend are Unix epoch in milliseconds (Date.now()).
+    Filter on server_received_at. Device payload `timestamp` is often not comparable
+    (e.g. small integers or non-ms values) and would otherwise return zero rows.
+    """
+    if start_ts is None and end_ts is None:
+        return
+    bounds: Dict[str, Any] = {}
+    if start_ts is not None:
+        bounds["$gte"] = datetime.fromtimestamp(start_ts / 1000.0, tz=timezone.utc)
+    if end_ts is not None:
+        bounds["$lte"] = datetime.fromtimestamp(end_ts / 1000.0, tz=timezone.utc)
+    query["server_received_at"] = bounds
+
+
 def _serialize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
-    if doc and "_id" in doc:
-        doc = dict(doc)
-        doc["_id"] = str(doc["_id"])
-    return doc
+    if not doc:
+        return doc
+    out = _deep_serialize_mongo_value(dict(doc))
+    if "_id" in out:
+        out["_id"] = str(out["_id"])
+    return out
+
+
+def _to_iso_utc(value: Any) -> Any:
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
+    return value
+
+
+def _deep_serialize_mongo_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _deep_serialize_mongo_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_deep_serialize_mongo_value(v) for v in value]
+    return _to_iso_utc(value)
+
+
+def _resolve_device_filter_candidates(raw_device_id: str) -> Tuple[List[str], List[int]]:
+    """
+    双读策略：输入可为外部设备 ID（ESP32_...）或 MySQL 数字 ID（1/2/...）。
+    返回候选：
+    - device_id 字段：字符串候选（外部 ID + 数字字符串）
+    - mysql_device_id 字段：数字候选
+    """
+    raw = (raw_device_id or "").strip()
+    if not raw:
+        return ([], [])
+
+    text_candidates: List[str] = [raw]
+    int_candidates: List[int] = []
+
+    mapped = settings.device_id_map.get(raw)
+    if mapped is not None:
+        int_candidates.append(int(mapped))
+        text_candidates.append(str(int(mapped)))
+
+    reverse_map = {str(v): k for k, v in settings.device_id_map.items()}
+    external = reverse_map.get(raw)
+    if external:
+        text_candidates.append(external)
+        try:
+            int_candidates.append(int(raw))
+        except ValueError:
+            pass
+
+    try:
+        parsed = int(raw)
+        int_candidates.append(parsed)
+    except ValueError:
+        pass
+
+    text_unique = list(dict.fromkeys([x for x in text_candidates if x]))
+    int_unique = list(dict.fromkeys([x for x in int_candidates if x > 0]))
+    return (text_unique, int_unique)
+
+
+def _apply_device_id_filter(query: Dict[str, Any], raw_device_id: Optional[str]) -> None:
+    if raw_device_id is None:
+        return
+    text_ids, int_ids = _resolve_device_filter_candidates(raw_device_id)
+    clauses: List[Dict[str, Any]] = []
+    if text_ids:
+        clauses.append({"device_id": {"$in": text_ids} if len(text_ids) > 1 else text_ids[0]})
+    if int_ids:
+        clauses.append({"mysql_device_id": {"$in": int_ids} if len(int_ids) > 1 else int_ids[0]})
+    if not clauses:
+        return
+    if len(clauses) == 1:
+        query.update(clauses[0])
+    else:
+        query["$or"] = clauses
 
 
 def _extract_vitals_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     sensors = payload.get("sensors") or {}
+    hr, spo2 = extract_hr_spo2_from_sensors(sensors)
+    spo2_int = int(round(spo2)) if spo2 is not None else None
+
+    body_temp = sensors.get("body_temperature") or sensors.get("temperature")
+    if isinstance(body_temp, dict):
+        body_temp = body_temp.get("value") or body_temp.get("celsius")
+
     return {
-        "heart_rate": sensors.get("heart_rate"),
-        "spo2": sensors.get("spo2"),
-        "body_temperature": sensors.get("body_temperature") or sensors.get("temperature"),
+        "hr": hr,
+        "heart_rate": hr,
+        "spo2": spo2_int,
+        "body_temperature": body_temp,
         "resp_rate": sensors.get("resp_rate") or sensors.get("respiratory_rate"),
         "hrv": sensors.get("hrv"),
     }
@@ -54,11 +157,67 @@ def _to_vitals_item(doc: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "_id": str(doc.get("_id")) if doc.get("_id") else None,
         "device_id": doc.get("device_id") or payload.get("device_id"),
+        "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
-        "server_received_at": doc.get("server_received_at"),
+        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "data_type": doc.get("data_type"),
+        "sensors": payload.get("sensors") or doc.get("sensors"),
         "vitals": _extract_vitals_from_payload(payload),
         "raw_payload": payload,
+    }
+
+
+def _to_finite_float(value: Any) -> Optional[float]:
+    if isinstance(value, (int, float)):
+        if value != value:  # NaN
+            return None
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = float(text)
+            if parsed != parsed:  # NaN
+                return None
+            return parsed
+        except ValueError:
+            return None
+    return None
+
+
+def _extract_current_location_from_doc(doc: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    payload = doc.get("payload") or {}
+    location = payload.get("location") or doc.get("location") or {}
+    if not isinstance(location, dict):
+        return None
+    current = location.get("current") or {}
+    if not isinstance(current, dict):
+        return None
+
+    x = _to_finite_float(current.get("x"))
+    y = _to_finite_float(current.get("y"))
+    if x is None or y is None:
+        return None
+
+    name = current.get("name")
+    if not isinstance(name, str):
+        name = None
+    elif not name.strip():
+        name = None
+    else:
+        name = name.strip()
+
+    zone_id = (
+        current.get("location_zone_id")
+        or current.get("zone_id")
+        or current.get("locationZoneId")
+    )
+    return {
+        "x": x,
+        "y": y,
+        "location_name": name,
+        "location_zone_id": zone_id,
     }
 
 
@@ -95,22 +254,22 @@ async def seed_one_document(data: Dict[str, Any]):
 async def list_raw_upstream(
     device_id: Optional[str] = Query(None, description="Filter by external device ID"),
     data_type: Optional[str] = Query(None, description="Filter by data_type"),
-    start_ts: Optional[int] = Query(None, description="Start timestamp (inclusive)"),
-    end_ts: Optional[int] = Query(None, description="End timestamp (inclusive)"),
+    start_ts: Optional[int] = Query(
+        None,
+        description="Start time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
+    end_ts: Optional[int] = Query(
+        None,
+        description="End time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
 ):
     query: Dict[str, Any] = {}
-    if device_id is not None:
-        query["device_id"] = device_id
+    _apply_device_id_filter(query, device_id)
     if data_type is not None:
         query["data_type"] = data_type
-    if start_ts is not None or end_ts is not None:
-        query["timestamp"] = {}
-        if start_ts is not None:
-            query["timestamp"]["$gte"] = start_ts
-        if end_ts is not None:
-            query["timestamp"]["$lte"] = end_ts
+    _apply_time_range_server_received_ms(query, start_ts, end_ts)
 
     try:
         coll = _get_collection()
@@ -148,8 +307,7 @@ async def get_latest_for_position_panel(
         query["data_type"] = data_type.strip()
     elif exclude_data_type and exclude_data_type.strip():
         query["data_type"] = {"$ne": exclude_data_type.strip()}
-    if device_id and device_id.strip():
-        query["device_id"] = device_id.strip()
+    _apply_device_id_filter(query, device_id)
 
     try:
         doc = await _get_collection().find_one(query, sort=[("server_received_at", -1)])
@@ -163,8 +321,9 @@ async def get_latest_for_position_panel(
     return {
         "_id": str(doc["_id"]) if doc.get("_id") else None,
         "device_id": doc.get("device_id") or payload.get("device_id"),
+        "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
-        "server_received_at": doc.get("server_received_at"),
+        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "location": payload.get("location") or doc.get("location"),
         "fall_detection": payload.get("fall_detection") or doc.get("fall_detection"),
         "sos": payload.get("sos") or doc.get("sos"),
@@ -177,10 +336,8 @@ async def get_latest_for_position_panel(
 async def get_latest_vitals(
     device_id: str = Query(..., description="External device ID"),
 ):
-    query = {
-        "device_id": device_id.strip(),
-        "data_type": {"$in": ["vitals", "status_update"]},
-    }
+    query: Dict[str, Any] = {"data_type": {"$in": VITALS_UPSTREAM_DATA_TYPES}}
+    _apply_device_id_filter(query, device_id)
     try:
         doc = await _get_collection().find_one(query, sort=[("server_received_at", -1)])
     except Exception as exc:
@@ -196,24 +353,62 @@ async def get_latest_vitals(
     return {"found": True, "item": _to_vitals_item(doc)}
 
 
+@router.get("/location/latest", response_model=Dict[str, Any])
+async def get_latest_valid_location(
+    device_id: str = Query(..., description="External device ID or MySQL device ID"),
+    scan_limit: int = Query(200, ge=1, le=1000, description="Max recent docs to scan"),
+):
+    query: Dict[str, Any] = {}
+    _apply_device_id_filter(query, device_id)
+    if not query:
+        return {"found": False, "device_id": device_id, "message": "No device filter resolved"}
+
+    try:
+        coll = _get_collection()
+        cursor = coll.find(query).sort("server_received_at", -1).limit(scan_limit)
+        async for doc in cursor:
+            location = _extract_current_location_from_doc(doc)
+            if not location:
+                continue
+            payload = doc.get("payload") or {}
+            return {
+                "found": True,
+                "_id": str(doc.get("_id")) if doc.get("_id") else None,
+                "device_id": doc.get("device_id") or payload.get("device_id"),
+                "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
+                "server_received_at": _to_iso_utc(doc.get("server_received_at")),
+                "x": location["x"],
+                "y": location["y"],
+                "location_name": location["location_name"],
+                "location_zone_id": location["location_zone_id"],
+            }
+    except Exception as exc:
+        raise _mongo_unavailable(exc) from exc
+
+    return {
+        "found": False,
+        "device_id": device_id,
+        "message": "No valid current.x/current.y location found in recent upstream documents",
+    }
+
+
 @router.get("/vitals/history", response_model=Dict[str, Any])
 async def get_vitals_history(
     device_id: str = Query(..., description="External device ID"),
-    start_ts: Optional[int] = Query(None, description="Start timestamp (inclusive)"),
-    end_ts: Optional[int] = Query(None, description="End timestamp (inclusive)"),
+    start_ts: Optional[int] = Query(
+        None,
+        description="Start time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
+    end_ts: Optional[int] = Query(
+        None,
+        description="End time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
 ):
-    query: Dict[str, Any] = {
-        "device_id": device_id.strip(),
-        "data_type": {"$in": ["vitals", "status_update"]},
-    }
-    if start_ts is not None or end_ts is not None:
-        query["timestamp"] = {}
-        if start_ts is not None:
-            query["timestamp"]["$gte"] = start_ts
-        if end_ts is not None:
-            query["timestamp"]["$lte"] = end_ts
+    query: Dict[str, Any] = {"data_type": {"$in": VITALS_UPSTREAM_DATA_TYPES}}
+    _apply_device_id_filter(query, device_id)
+    _apply_time_range_server_received_ms(query, start_ts, end_ts)
 
     try:
         coll = _get_collection()
@@ -232,18 +427,27 @@ async def get_vitals_history(
 @router.get("/vitals/user/{user_id}/history", response_model=Dict[str, Any])
 async def get_vitals_history_for_user(
     user_id: int,
-    start_ts: Optional[int] = Query(None, description="Start timestamp (inclusive)"),
-    end_ts: Optional[int] = Query(None, description="End timestamp (inclusive)"),
+    start_ts: Optional[int] = Query(
+        None,
+        description="Start time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
+    end_ts: Optional[int] = Query(
+        None,
+        description="End time, Unix epoch milliseconds; filters server_received_at (UTC)",
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Page size"),
     db: Session = Depends(get_db),
 ):
     """Bridge user_id -> device -> MongoDB vitals history."""
-    devices = db.query(Device).filter(Device.elderly_user_id == user_id).all()
+    devices = devices_by_elderly_user_ids(db, [user_id]).get(user_id) or []
     if not devices:
         raise HTTPException(
             status_code=404,
-            detail=f"No device bound to user_id={user_id}",
+            detail=(
+                f"No device bound to user_id={user_id}. "
+                "Set device.elderly_user_id or link device via user_status."
+            ),
         )
 
     candidate_ids: List[str] = []
@@ -252,23 +456,18 @@ async def get_vitals_history_for_user(
     for dev in devices:
         candidate_ids.append(str(dev.device_id))
         if dev.mac_address:
-            candidate_ids.append(dev.mac_address)
+            candidate_ids.append(str(dev.mac_address).strip())
         external_id = reverse_map.get(dev.device_id)
         if external_id:
-            candidate_ids.append(external_id)
+            candidate_ids.append(str(external_id))
 
-    candidate_ids = list(dict.fromkeys(candidate_ids))
+    candidate_ids = list(dict.fromkeys([c for c in candidate_ids if c]))
 
     query: Dict[str, Any] = {
         "device_id": {"$in": candidate_ids} if len(candidate_ids) > 1 else candidate_ids[0],
-        "data_type": {"$in": ["vitals", "status_update"]},
+        "data_type": {"$in": VITALS_UPSTREAM_DATA_TYPES},
     }
-    if start_ts is not None or end_ts is not None:
-        query["timestamp"] = {}
-        if start_ts is not None:
-            query["timestamp"]["$gte"] = start_ts
-        if end_ts is not None:
-            query["timestamp"]["$lte"] = end_ts
+    _apply_time_range_server_received_ms(query, start_ts, end_ts)
 
     try:
         coll = _get_collection()
@@ -291,8 +490,7 @@ async def get_latest_flight(
     device_id: Optional[str] = Query(None, description="Filter flight data by external device ID"),
 ):
     query: Dict[str, Any] = {"data_type": "flight"}
-    if device_id and device_id.strip():
-        query["device_id"] = device_id.strip()
+    _apply_device_id_filter(query, device_id)
 
     try:
         doc = await _get_collection().find_one(query, sort=[("server_received_at", -1)])
@@ -312,8 +510,9 @@ async def get_latest_flight(
     return {
         "found": True,
         "device_id": doc.get("device_id"),
+        "mysql_device_id": doc.get("mysql_device_id"),
         "_id": str(doc["_id"]) if doc.get("_id") else None,
-        "server_received_at": doc.get("server_received_at"),
+        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "passengerName": payload.get("passengerName"),
         "flightNumber": payload.get("flightNumber"),
         "gate": payload.get("gate"),

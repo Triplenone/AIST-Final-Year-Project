@@ -7,8 +7,14 @@ import re
 import threading
 import time
 import uuid
+from datetime import datetime, timedelta
+
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import SessionLocal
+from app.models.device import Device
+from app.models.event import Event, EventStatus, EventType
 from app.services.mongo_raw_upstream import run_sync_save_raw_upstream
 
 # MQTT-topic：设备上行主题
@@ -51,6 +57,93 @@ def _sanitize_json_trailing_commas(s: str) -> str:
     例如：{"a":1,} -> {"a":1}， [{"a":1,},{"a":2,}] -> [{"a":1},{"a":2}]
     """
     return _TRAILING_COMMA_RE.sub(r"\1", s)
+
+
+def _is_sos_active(data: dict) -> bool:
+    sos = data.get("sos")
+    if isinstance(sos, dict):
+        active = sos.get("active")
+        pressed = sos.get("pressed")
+        return active is True or str(active).lower() == "true" or pressed is True or str(pressed).lower() == "true"
+    return sos is True or str(sos).lower() == "true"
+
+
+def _is_fall_confirmed(data: dict) -> bool:
+    fall_detection = data.get("fall_detection")
+    if not isinstance(fall_detection, dict):
+        return False
+    confirmed = fall_detection.get("is_fall_confirmed")
+    if confirmed is True or str(confirmed).lower() == "true":
+        return True
+    desc = fall_detection.get("state_description")
+    if isinstance(desc, str):
+        normalized = desc.strip().lower()
+        return normalized in {"确认跌倒", "confirmed fall"}
+    return False
+
+
+def _create_unhandled_event_if_needed(data: dict) -> None:
+    data_type = str(data.get("data_type", "")).strip().lower()
+    target_event_type: EventType | None = None
+
+    if data_type == "sos" and _is_sos_active(data):
+        target_event_type = EventType.SOS
+    elif data_type == "fall" and _is_fall_confirmed(data):
+        target_event_type = EventType.FALL
+    else:
+        return
+
+    mysql_device_id = data.get("mysql_device_id")
+    if mysql_device_id is None:
+        return
+    try:
+        device_id = int(mysql_device_id)
+    except (TypeError, ValueError):
+        return
+
+    db: Session = SessionLocal()
+    try:
+        device = db.query(Device).filter(Device.device_id == device_id).first()
+        if not device or not device.elderly_user_id:
+            return
+
+        dedupe_since = datetime.now() - timedelta(minutes=1)
+        existing = (
+            db.query(Event)
+            .filter(
+                Event.trigger_device_id == device_id,
+                Event.event_type == target_event_type,
+                Event.event_status == EventStatus.UNHANDLED,
+                Event.event_timestamp >= dedupe_since,
+            )
+            .first()
+        )
+        if existing:
+            return
+
+        event = Event(
+            event_type=target_event_type,
+            related_user_id=device.elderly_user_id,
+            trigger_device_id=device_id,
+            location_zone_id=None,
+            event_timestamp=datetime.now(),
+            event_params={
+                "source": "mqtt_upstream",
+                "data_type": data_type,
+                "payload": data,
+            },
+            event_status=EventStatus.UNHANDLED,
+            handled_by=None,
+            handled_at=None,
+            remark=None,
+        )
+        db.add(event)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"[mqtt] event create failed: {exc}")
+    finally:
+        db.close()
 
 
 def _on_connect(client, userdata, flags, rc):
@@ -108,12 +201,19 @@ def _on_message(client, userdata, msg):
         device_id_from_topic = parts[1]
         suffix = parts[2].lower()
         mapped = settings.device_id_map.get(device_id_from_topic)
+        # 双写策略：保留外部设备 ID 到 `device_id`，并额外写入 `mysql_device_id`。
+        data["device_id"] = device_id_from_topic
         if mapped is not None:
-            data["device_id"] = mapped
-        elif data.get("device_id") is None:
-            data["device_id"] = device_id_from_topic
+            data["mysql_device_id"] = int(mapped)
         data_type = SUFFIX_TO_DATA_TYPE.get(suffix, "status_update")
-        data["data_type"] = data.get("data_type") or data_type
+        incoming_data_type = data.get("data_type")
+        if incoming_data_type and str(incoming_data_type).strip().lower() != data_type:
+            print(
+                f"[mqtt] data_type mismatch topic={msg.topic}: "
+                f"payload={incoming_data_type} -> forced={data_type}"
+            )
+        # 以 topic 为准，避免设备端 payload 保留旧值导致误写为 status_update。
+        data["data_type"] = data_type
     else:
         data.setdefault("device_id", "UNKNOWN")
         data.setdefault("data_type", "status_update")
@@ -121,6 +221,10 @@ def _on_message(client, userdata, msg):
         run_sync_save_raw_upstream(data)
     except Exception as e:
         print(f"[mqtt] mongo write failed: {e}")
+    try:
+        _create_unhandled_event_if_needed(data)
+    except Exception as e:
+        print(f"[mqtt] event bridge failed: {e}")
 
 
 def start_mqtt():

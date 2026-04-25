@@ -34,7 +34,7 @@ const formatReadingTime = (value: string | null, locale: string) => {
 export function VitalsHistoryPanel({ residentId, residentName }: VitalsHistoryPanelProps) {
   const { t, i18n } = useTranslation();
   const [timeRange, setTimeRange] = useState<VitalsHistoryRange>('24h');
-  const { data, loading, error, isUnavailable } = useVitalsHistory(residentId, timeRange);
+  const { data, loading, error, isUnavailable, invalidResidentId } = useVitalsHistory(residentId, timeRange);
 
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
   const rows = useMemo(
@@ -84,51 +84,60 @@ export function VitalsHistoryPanel({ residentId, residentName }: VitalsHistoryPa
         </div>
       ) : null}
 
-      {!loading && isUnavailable ? (
+      {!loading && invalidResidentId ? (
+        <div className="family-panel__state family-panel__state--warning" role="status">
+          <strong>{t('family.vitalsHistory.invalidResidentIdTitle')}</strong>
+          <p>{t('family.vitalsHistory.invalidResidentIdBody')}</p>
+        </div>
+      ) : null}
+
+      {!loading && !invalidResidentId && isUnavailable ? (
         <div className="family-panel__state family-panel__state--warning">
           <strong>{t('family.vitalsHistory.unavailableTitle')}</strong>
           <p>{t('family.vitalsHistory.unavailableBody')}</p>
         </div>
       ) : null}
 
-      {!loading && !isUnavailable && error ? (
+      {!loading && !invalidResidentId && !isUnavailable && error ? (
         <div className="family-panel__state family-panel__state--error" role="alert">
           <strong>{t('family.vitalsHistory.errorTitle')}</strong>
           <p>{error}</p>
         </div>
       ) : null}
 
-      {!loading && !isUnavailable && !error && rows.length === 0 ? (
+      {!loading && !invalidResidentId && !isUnavailable && !error && rows.length === 0 ? (
         <div className="family-panel__state family-panel__state--empty">
           <strong>{t('family.vitalsHistory.emptyTitle')}</strong>
           <p>{t('family.vitalsHistory.emptyBody')}</p>
         </div>
       ) : null}
 
-      {!loading && !isUnavailable && !error && rows.length > 0 ? (
-        <div className="family-vitals-history__list" role="list">
-          {rows.map((item) => (
-            <article key={item.id} className="family-vitals-history__row" role="listitem">
-              <div className="family-vitals-history__timestamp">
-                <span>{t('family.vitalsHistory.columns.recordedAt')}</span>
-                <strong>{item.label ?? t('family.vitalsHistory.noReading')}</strong>
-              </div>
-              <dl className="family-vitals-history__readings">
-                <div className="family-vitals-history__reading">
-                  <dt>{t('family.vitalsHistory.columns.heartRate')}</dt>
-                  <dd>{item.heartRate ?? t('family.vitalsHistory.noReading')}</dd>
+      {!loading && !invalidResidentId && !isUnavailable && !error && rows.length > 0 ? (
+        <div className="family-vitals-history__list-scroll">
+          <div className="family-vitals-history__list" role="list">
+            {rows.map((item) => (
+              <article key={item.id} className="family-vitals-history__row" role="listitem">
+                <div className="family-vitals-history__timestamp">
+                  <span>{t('family.vitalsHistory.columns.recordedAt')}</span>
+                  <strong>{item.label ?? t('family.vitalsHistory.noReading')}</strong>
                 </div>
-                <div className="family-vitals-history__reading">
-                  <dt>{t('family.vitalsHistory.columns.spo2')}</dt>
-                  <dd>{item.spo2 ?? t('family.vitalsHistory.noReading')}</dd>
-                </div>
-                <div className="family-vitals-history__reading">
-                  <dt>{t('family.vitalsHistory.columns.temperature')}</dt>
-                  <dd>{item.temperature ?? t('family.vitalsHistory.noReading')}</dd>
-                </div>
-              </dl>
-            </article>
-          ))}
+                <dl className="family-vitals-history__readings">
+                  <div className="family-vitals-history__reading">
+                    <dt>{t('family.vitalsHistory.columns.heartRate')}</dt>
+                    <dd>{item.heartRate ?? t('family.vitalsHistory.noReading')}</dd>
+                  </div>
+                  <div className="family-vitals-history__reading">
+                    <dt>{t('family.vitalsHistory.columns.spo2')}</dt>
+                    <dd>{item.spo2 ?? t('family.vitalsHistory.noReading')}</dd>
+                  </div>
+                  <div className="family-vitals-history__reading">
+                    <dt>{t('family.vitalsHistory.columns.temperature')}</dt>
+                    <dd>{item.temperature ?? t('family.vitalsHistory.noReading')}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
         </div>
       ) : null}
     </section>

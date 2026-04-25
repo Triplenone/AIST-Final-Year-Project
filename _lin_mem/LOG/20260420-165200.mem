@@ -1,0 +1,14 @@
+V.mem.ver=1
+V.mem.ts=2026-04-20T16:52:00+08:00
+V.mem.path.canonical=_lin_mem
+V.mem.log.latest=_lin_mem/LOG/20260420-165200.mem
+R.scope=position-map-3to10-online-cluster-visibility
+V.files.changed=[frontend/src/components/position/PositionMapStage.tsx,frontend/src/styles/position-page.css,_lin_mem/CURR.mem,_lin_mem/LOG/20260420-165200.mem]
+V.frontend.position.map.cluster.grouping=same_grid_cell_round_x_y
+V.frontend.position.map.cluster.render=badge_plus_count
+V.frontend.position.map.cluster.tooltip=joined_display_names
+V.frontend.position.map.label_strategy.show_all=only_selected_label_always_visible
+V.frontend.position.map.pin_state_style=online_full,stale_dim,offline_gray_dim
+V.frontend.build=ok
+V.frontend.lints.edited_files=clean
+I.next=optional-add-clickable-cluster-popover-to-select-resident

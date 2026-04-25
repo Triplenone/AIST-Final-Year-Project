@@ -184,8 +184,21 @@
     "exitDemo": "Exit demo mode"
   },
   "fallAlert": {
-    "message": "Fall event detected! Please handle it.",
-    "goToEvents": "Go to events"
+    "message": "A fall-type alert has occurred. Please respond.",
+    "goToEvents": "Go to handle",
+    "close": "Close",
+    "detailIntro": "The table lists the alerting device, bound user, current location, and trigger time. Multiple devices may appear at once.",
+    "colDevice": "Device ID",
+    "colUser": "Bound user",
+    "colLocation": "Current location",
+    "colTime": "Trigger time",
+    "colType": "Type",
+    "kindSos": "SOS",
+    "kindFall": "Fall",
+    "fallbackUser": "User #{{id}}",
+    "fallbackZone": "Zone #{{id}}",
+    "unknownDash": "—",
+    "handleAckRemark": "Acknowledged from fall alert (staff responding)"
   },
   "hero": {
     "eyebrow": "Progressive web app prototype",
@@ -513,6 +526,8 @@
       "unavailableTitle": "Vitals history unavailable",
       "unavailableBody": "Vitals history is not yet available. Waiting for backend update.",
       "errorTitle": "Unable to load vitals history",
+      "invalidResidentIdTitle": "Cannot load vitals history",
+      "invalidResidentIdBody": "The resident identifier must be a numeric user ID (same as user.user_id in the database). The current value cannot be used with the history API.",
       "noReading": "--",
       "columns": {
         "recordedAt": "Recorded",

@@ -89,7 +89,7 @@ export const AdminSection = () => {
     }
   };
 
-  const orderedTabs = Object.keys(tabLabels) as AdminTab[];
+  const orderedTabs: AdminTab[] = ['events', 'residents', 'users', 'devices', 'locations', 'logs'];
   const activeMeta = tabMeta[activeTab];
 
   const renderActivePanel = () => {

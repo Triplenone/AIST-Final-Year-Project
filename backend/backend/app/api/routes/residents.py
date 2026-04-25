@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from app.database import get_db
 from app.models.user import User
@@ -15,8 +15,47 @@ from app.models.device import Device
 from app.models.device_data_log import DeviceDataLog
 from app.schemas.resident import ResidentResponse, ResidentVitals
 from app.schemas.device_data_log import DeviceDataLogResponse
+from app.services.mongo_resident_sensor_vitals import load_mongo_sensor_vitals_for_users
 
 router = APIRouter()
+
+
+def _apply_mongo_sensor_vitals(
+    user_id: int,
+    mongo_map: Dict[int, Tuple[Optional[int], Optional[float]]],
+    vitals: Optional[ResidentVitals],
+    heart_rate: Optional[int],
+    blood_oxygen: Optional[float],
+) -> Tuple[Optional[ResidentVitals], Optional[int], Optional[float]]:
+    """Overlay latest MongoDB sensors.* readings onto SQL-derived vitals / user_status."""
+    pair = mongo_map.get(user_id)
+    if not pair:
+        return vitals, heart_rate, blood_oxygen
+    mh, ms = pair
+
+    new_hr = mh if mh is not None else heart_rate
+    new_bo = float(ms) if ms is not None else blood_oxygen
+
+    if vitals is None:
+        if mh is None and ms is None:
+            return vitals, new_hr, new_bo
+        new_vitals = ResidentVitals(
+            hr=mh,
+            bp_systolic=None,
+            bp_diastolic=None,
+            spo2=int(round(ms)) if ms is not None else None,
+            temperature=None,
+        )
+        return new_vitals, new_hr, new_bo
+
+    new_vitals = ResidentVitals(
+        hr=mh if mh is not None else vitals.hr,
+        bp_systolic=vitals.bp_systolic,
+        bp_diastolic=vitals.bp_diastolic,
+        spo2=int(round(ms)) if ms is not None else vitals.spo2,
+        temperature=vitals.temperature,
+    )
+    return new_vitals, new_hr, new_bo
 
 
 def calculate_resident_status(db: Session, user_id: int) -> str:
@@ -64,11 +103,29 @@ def get_last_seen_info(db: Session, user_id: int) -> Tuple[Optional[str], Option
     
     if not latest_event:
         return None, None
-    
+
+    # 回退链：最新事件位置 -> 最近一次有位置事件 -> 最新 user_status 位置
     location_name = None
-    if latest_event.location_zone_id:
+    location_zone_id = latest_event.location_zone_id
+
+    if not location_zone_id:
+        latest_location_event = db.query(Event).filter(
+            Event.related_user_id == user_id,
+            Event.location_zone_id.isnot(None)
+        ).order_by(Event.event_timestamp.desc()).first()
+        if latest_location_event:
+            location_zone_id = latest_location_event.location_zone_id
+
+    if not location_zone_id:
+        latest_status = db.query(UserStatus).filter(
+            UserStatus.user_id == user_id
+        ).order_by(UserStatus.status_timestamp.desc()).first()
+        if latest_status and latest_status.location_zone_id:
+            location_zone_id = latest_status.location_zone_id
+
+    if location_zone_id:
         location = db.query(LocationZone).filter(
-            LocationZone.location_zone_id == latest_event.location_zone_id
+            LocationZone.location_zone_id == location_zone_id
         ).first()
         if location:
             location_name = location.name
@@ -81,17 +138,16 @@ def get_last_seen_info(db: Session, user_id: int) -> Tuple[Optional[str], Option
 
 def get_resident_room(db: Session, user_id: int) -> str:
     """获取住民房间（从最新位置或默认位置）"""
-    latest_event = db.query(Event).filter(
-        Event.related_user_id == user_id
-    ).order_by(Event.event_timestamp.desc()).first()
-    
-    if latest_event and latest_event.location_zone_id:
-        location = db.query(LocationZone).filter(
-            LocationZone.location_zone_id == latest_event.location_zone_id
-        ).first()
-        if location:
-            return location.name
-    
+    _, last_seen_location = get_last_seen_info(db, user_id)
+    if last_seen_location:
+        return last_seen_location
+    latest_status = db.query(UserStatus).options(
+        joinedload(UserStatus.device)
+    ).filter(
+        UserStatus.user_id == user_id
+    ).order_by(UserStatus.status_timestamp.desc()).first()
+    if latest_status and latest_status.device and latest_status.device.deploy_location:
+        return latest_status.device.deploy_location
     return "Unknown"
 
 
@@ -146,8 +202,29 @@ def get_residents(
             if event.related_user_id not in events_by_user:
                 events_by_user[event.related_user_id] = event
         
-        # 批量获取所有需要的位置信息
+        # 批量获取每个用户最近一次“有位置”的事件（不被无位置事件覆盖）
+        latest_loc_events = []
+        try:
+            subquery_loc = db.query(
+                Event.related_user_id,
+                func.max(Event.event_timestamp).label('max_timestamp')
+            ).filter(
+                Event.related_user_id.in_(user_ids),
+                Event.location_zone_id.isnot(None)
+            ).group_by(Event.related_user_id).subquery()
+            latest_loc_events = db.query(Event).join(
+                subquery_loc,
+                (Event.related_user_id == subquery_loc.c.related_user_id) &
+                (Event.event_timestamp == subquery_loc.c.max_timestamp)
+            ).all()
+        except Exception as e:
+            print(f"Warning: Error querying latest location events: {e}")
+            latest_loc_events = []
+        location_event_by_user = {event.related_user_id: event for event in latest_loc_events}
+
+        # 批量获取所有需要的位置信息（先含 latest event + latest location event）
         location_ids = [e.location_zone_id for e in latest_events if e.location_zone_id]
+        location_ids.extend([e.location_zone_id for e in latest_loc_events if e.location_zone_id])
         locations = {}
         if location_ids:
             location_list = db.query(LocationZone).filter(
@@ -186,13 +263,46 @@ def get_residents(
         
         # 创建用户状态字典（每个用户只保留最新的）
         statuses_by_user = {}
-        devices_by_user = {}
+        devices_by_user_status = {}
         for status in user_statuses:
             if status.user_id not in statuses_by_user:
                 statuses_by_user[status.user_id] = status
                 # 获取关联的设备信息
                 if status.device:
-                    devices_by_user[status.user_id] = status.device
+                    devices_by_user_status[status.user_id] = status.device
+
+        # 绑定链（主来源）：device.elderly_user_id，必须与 Device 管理页绑定一致
+        bound_devices = []
+        try:
+            bound_devices = db.query(Device).filter(
+                Device.elderly_user_id.in_(user_ids)
+            ).order_by(Device.updated_at.desc(), Device.device_id.desc()).all()
+        except Exception as e:
+            print(f"Warning: Error querying bound devices by elderly_user_id: {e}")
+            bound_devices = []
+        devices_by_binding = {}
+        for device in bound_devices:
+            uid = device.elderly_user_id
+            if not uid:
+                continue
+            if uid not in devices_by_binding:
+                devices_by_binding[uid] = device
+
+        # 补充 user_status 中的位置区，完善 last_seen_location 回退链
+        status_location_ids = [s.location_zone_id for s in user_statuses if s.location_zone_id]
+        missing_status_location_ids = [loc_id for loc_id in status_location_ids if loc_id not in locations]
+        if missing_status_location_ids:
+            status_locations = db.query(LocationZone).filter(
+                LocationZone.location_zone_id.in_(missing_status_location_ids)
+            ).all()
+            for loc in status_locations:
+                locations[loc.location_zone_id] = loc
+
+        mongo_vitals_map: Dict[int, Tuple[Optional[int], Optional[float]]] = {}
+        try:
+            mongo_vitals_map = load_mongo_sensor_vitals_for_users(db, user_ids)
+        except Exception as e:
+            print(f"Warning: Mongo vitals merge skipped: {e}")
         
         # 构建响应
         residents = []
@@ -202,7 +312,9 @@ def get_residents(
             
             # 获取用户状态和设备信息
             user_status = statuses_by_user.get(user_id)
-            device = devices_by_user.get(user_id)
+            # 按需求：优先使用 Device 管理页绑定（device.elderly_user_id）
+            # 若未绑定，再回退到 user_status.device（兼容历史链路）
+            device = devices_by_binding.get(user_id) or devices_by_user_status.get(user_id)
             
             # 提取用户状态数据
             user_status_id = None
@@ -266,19 +378,27 @@ def get_residents(
                     spo2=params.get('spo2'),
                     temperature=params.get('temperature')
                 )
+
+            vitals, heart_rate, blood_oxygen = _apply_mongo_sensor_vitals(
+                user_id, mongo_vitals_map, vitals, heart_rate, blood_oxygen
+            )
             
-            # 获取最后出现信息
+            # 获取最后出现信息（回退链：最新事件位置 -> 最近有位置事件 -> user_status 位置 -> device 部署位置）
             last_seen_at = None
             last_seen_location = None
             if latest_event:
                 last_seen_at = latest_event.event_timestamp.isoformat() if latest_event.event_timestamp else None
-                if latest_event.location_zone_id and latest_event.location_zone_id in locations:
-                    last_seen_location = locations[latest_event.location_zone_id].name
+            loc_zone_id = latest_event.location_zone_id if latest_event else None
+            if not loc_zone_id:
+                loc_event = location_event_by_user.get(user_id)
+                loc_zone_id = loc_event.location_zone_id if loc_event else None
+            if not loc_zone_id and user_status and user_status.location_zone_id:
+                loc_zone_id = user_status.location_zone_id
+            if loc_zone_id and loc_zone_id in locations:
+                last_seen_location = locations[loc_zone_id].name
             
-            # 获取房间
-            room = "Unknown"
-            if latest_event and latest_event.location_zone_id and latest_event.location_zone_id in locations:
-                room = locations[latest_event.location_zone_id].name
+            # 获取房间：优先位置名，再回退 device.deploy_location
+            room = last_seen_location or (device_deploy_location or "Unknown")
             
             residents.append(ResidentResponse(
                 id=str(user.user_id),
@@ -341,6 +461,10 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     ).filter(
         UserStatus.user_id == user.user_id
     ).order_by(UserStatus.status_timestamp.desc()).first()
+
+    fallback_device = db.query(Device).filter(
+        Device.elderly_user_id == user.user_id
+    ).order_by(Device.updated_at.desc(), Device.device_id.desc()).first()
     
     # 提取用户状态数据
     user_status_id = None
@@ -364,8 +488,10 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     device_battery_level = None
     device_deploy_location = None
     
-    if user_status and user_status.device:
-        device = user_status.device
+    # 按需求：详情接口也以 Device 管理绑定为准
+    selected_device = fallback_device if fallback_device else (user_status.device if (user_status and user_status.device) else None)
+    if selected_device:
+        device = selected_device
         device_id = device.device_id
         # 安全处理设备状态枚举
         try:
@@ -379,6 +505,15 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
             device_current_status = str(device.current_status) if device.current_status else None
         device_battery_level = device.battery_level
         device_deploy_location = device.deploy_location
+
+    mongo_vitals_map: Dict[int, Tuple[Optional[int], Optional[float]]] = {}
+    try:
+        mongo_vitals_map = load_mongo_sensor_vitals_for_users(db, [user.user_id])
+    except Exception as e:
+        print(f"Warning: Mongo vitals merge skipped: {e}")
+    vitals, heart_rate, blood_oxygen = _apply_mongo_sensor_vitals(
+        user.user_id, mongo_vitals_map, vitals, heart_rate, blood_oxygen
+    )
     
     return ResidentResponse(
         id=str(user.user_id),
