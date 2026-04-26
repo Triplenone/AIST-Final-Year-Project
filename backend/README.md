@@ -17,7 +17,7 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ## Database
 
 - DB driver: MySQL via `mysql+pymysql://...` (see `backend/app/config.py` and `backend/app/database.py`)
-- Schema + seed dump: [`Dump20251120.sql`](Dump20251120.sql)
+- Schema + seed dump: [`../database/mysql/Dump20260426.sql`](../database/mysql/Dump20260426.sql)
 - **DB import command**: Not found in repo (use your preferred MySQL client/tooling to import the dump).
 
 ## Configuration (env vars)
