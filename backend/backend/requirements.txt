@@ -1,2 +1,0 @@
-# Delegate to the root backend requirements to keep a single source of truth.
--r ../requirements.txt
