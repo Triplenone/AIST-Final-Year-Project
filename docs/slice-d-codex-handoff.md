@@ -1,4 +1,8 @@
 # Codex 任務：Slice D — vitals_event_bridge endpoint
+> **Status: COMPLETED — historical handoff, kept for audit trail.**
+> Landed via: PR #30 / commits 9a47204, 0d5f0f2
+> Date completed: 2026-04
+> 為 final report 引用保留原文，唔再係 active plan。
 
 ## Boot order
 

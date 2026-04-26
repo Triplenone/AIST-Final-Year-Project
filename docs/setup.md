@@ -9,7 +9,7 @@ This runbook describes how to run the **implemented prototype**:
 
 - Node.js (CI uses Node 20: `.github/workflows/ci-frontend.yml`)
 - Python (CI uses Python 3.11: `.github/workflows/ci-backend.yml`)
-- MySQL database (schema file: `backend/Dump20251120.sql`)
+- MySQL database (schema file: `database/mysql/Dump20260426.sql`)
 
 ## Backend (FastAPI)
 
@@ -60,10 +60,10 @@ Open `http://localhost:5173`.
 
 ## Optional (recommended for a full demo): Initialize the MySQL DB
 
-DB name: `smart_elderly_care_system` (created in `backend/Dump20251120.sql`).
+DB name: `smart_elderly_care_system` (created in `database/mysql/Dump20260426.sql`).
 
 - **DB import command**: Not found in repo.
-- Use your preferred MySQL client/tooling (e.g., GUI import) to load `backend/Dump20251120.sql`.
+- Use your preferred MySQL client/tooling (e.g., GUI import) to load `database/mysql/Dump20260426.sql`.
 
 ## Optional: Admin CRUD UI (legacy / not primary)
 

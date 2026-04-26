@@ -14,7 +14,7 @@
    # macOS/Linux: source .venv/bin/activate
    ```
 3. 安裝套件：`pip install -r requirements.txt`（或依後端說明文件為主）
-4. 確認 MySQL 有 `smart_elderly_care_system`（可用 `backend/Dump20251120.sql` 匯入）
+4. 確認 MySQL 有 `smart_elderly_care_system`（可用 `database/mysql/Dump20260426.sql` 匯入）
 5. 啟動後端（命令依後端說明為主，這裡給一個例子）：
    ```bash
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

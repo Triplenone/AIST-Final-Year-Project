@@ -20,7 +20,7 @@
 ### `POST /api/v1/data-reception/receive` returns “设备不存在”
 
 - The `device_id` must exist in the `device` table (`backend/backend/app/crud/device_data_log.py`).
-- Use seed data from `backend/Dump20251120.sql` (import method: Not found in repo).
+- Use seed data from `database/mysql/Dump20260426.sql` (import method: see `docs/data.md`).
 
 ### Fall event not auto-created after sending a fall payload
 

@@ -6,7 +6,7 @@ Goal: show an end-to-end flow from **fall payload → DB logs/events → dashboa
 
 - Backend running (FastAPI): `http://localhost:8000/health`
 - Frontend running (primary UI): `http://localhost:5173`
-- MySQL schema loaded (recommended): `backend/Dump20251120.sql`
+- MySQL schema loaded (recommended): `database/mysql/Dump20260426.sql`
 
 ## Demo in ~90 seconds (talk track + clicks)
 

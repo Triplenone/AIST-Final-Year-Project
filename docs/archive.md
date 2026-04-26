@@ -19,3 +19,9 @@
 - 文件入口集中到 `README.md` 與 `docs/`
 - 歷史資產仍然可追溯，但不再干擾日常維護與交接
 
+## Completed handoffs (final report cycle, 2026-04)
+
+- [Lin-saved handoff](./Lin-saved-handoff.md) — Lin-saved cleanup release 已完成，保留作 audit trail。
+- [Merge frontend plan](./merge-frontend-plan.md) — Slice A-D backend 與 ee-main frontend merge 已完成。
+- [Slice D Codex handoff](./slice-d-codex-handoff.md) — vitals history bridge 與 Mongo upstream 相關工作已完成。
+- [Frontend phase Codex handoff](./frontend-phase-codex-handoff.md) — 5 個 frontend feature workstream 已完成。

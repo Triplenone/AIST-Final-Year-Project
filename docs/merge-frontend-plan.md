@@ -1,4 +1,8 @@
 # Merge + Frontend Phase Plan
+> **Status: COMPLETED — historical handoff, kept for audit trail.**
+> Landed via: PR #30 / commits 5012536, e61783b, dc4cfba
+> Date completed: 2026-04
+> 為 final report 引用保留原文，唔再係 active plan。
 
 ## Purpose
 

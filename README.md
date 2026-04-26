@@ -4,7 +4,7 @@ Smart wearable + dashboard prototype for elderly-care homes.
 
 - **Primary demo UI**: [`frontend/`](frontend/) (React + Vite + TypeScript, port 5173)
 - **Backend API**: [`backend/backend/`](backend/backend/) (FastAPI, port 8000)
-- **Database**: MySQL schema + seed data in [`backend/Dump20251120.sql`](backend/Dump20251120.sql) (`smart_elderly_care_system`)
+- **Database**: MySQL schema + seed data in [`database/mysql/Dump20260426.sql`](database/mysql/Dump20260426.sql) (`smart_elderly_care_system`)
 - **Legacy/optional UIs**:
   - [`backend/forntend/`](backend/forntend/) — optional admin CRUD UI (Vite/React, port 3000)
   - [`frontend/web-dashboard/`](frontend/web-dashboard/) — legacy static dashboard (no `package.json` scripts)
@@ -29,7 +29,7 @@ Features like **geofence breach monitoring** and **push notifications** are desc
 
 - **Node.js**: CI uses Node 20 (`.github/workflows/ci-frontend.yml`)
 - **Python**: CI uses Python 3.11 (`.github/workflows/ci-backend.yml`)
-- **MySQL**: required for backend `/api/v1/*` (schema in `backend/Dump20251120.sql`)
+- **MySQL**: required for backend `/api/v1/*` (schema in `database/mysql/Dump20260426.sql`)
 
 ### Terminal 1 — Backend (FastAPI)
 
@@ -73,7 +73,7 @@ python test_data_reception.py
 ## Features (implemented — linked to code)
 
 - **FastAPI routers (`/api/v1/*`)**: [`backend/backend/app/api/routes/`](backend/backend/app/api/routes/)
-- **DB schema + seed**: [`backend/Dump20251120.sql`](backend/Dump20251120.sql)
+- **DB schema + seed**: [`database/mysql/Dump20260426.sql`](database/mysql/Dump20260426.sql)
 - **Residents aggregation**: `GET /api/v1/residents/` in [`backend/backend/app/api/routes/residents.py`](backend/backend/app/api/routes/residents.py)
 - **Data reception**: `POST /api/v1/data-reception/receive` in [`backend/backend/app/api/routes/data_reception.py`](backend/backend/app/api/routes/data_reception.py)
 - **Auto-create fall events** when `is_fall_confirmed=true`:
@@ -126,10 +126,13 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) with citations to:
 ```text
 .
 ├─ backend/
-│  ├─ Dump20251120.sql
 │  ├─ requirements.txt
 │  ├─ backend/                 # FastAPI app root
 │  └─ forntend/                # Optional admin CRUD UI
+├─ database/
+│  ├─ mysql/
+│  │  └─ Dump20260426.sql
+│  └─ mongo/
 ├─ frontend/                   # Primary demo UI (React/Vite)
 ├─ docs/                       # Runbooks + design docs
 ├─ firmware/                   # PlatformIO project (scaffold)
@@ -155,7 +158,7 @@ The frontend does **not** use `import.meta.env` today. Update:
 ## Troubleshooting (grounded)
 
 - **Health check**: use `/health` (this repo does not implement `/healthz`).
-- **Empty residents list**: ensure MySQL is running and schema is loaded (`backend/Dump20251120.sql`).
+- **Empty residents list**: ensure MySQL is running and schema is loaded (`database/mysql/Dump20260426.sql`).
 - **`POST /api/v1/data-reception/receive` returns “设备不存在”**: the `device_id` must exist in `device` table.
 - **Fall event not auto-created**: `device.elderly_user_id` must not be `NULL`.
 

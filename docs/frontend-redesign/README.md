@@ -1,57 +1,44 @@
-# 前端重构执行索引
+# Frontend Redesign Rollup Index
 
-## 变更范围
-- 本轮执行仅覆盖前端壳层、overview 体验、非 FlyCare 路由的视觉统一、执行记忆与交付文档。
-- 后端、API 契约、数据库、`frontend/src/pages/FlyCarePage.tsx` 不在本轮改动范围。
+本索引用於 final report cycle，集中列出 `docs/frontend-redesign/` 內嘅 workstream log。個別 log 保留原文作 audit trail，本頁只做 rollup。
 
-## 涉及文件
-- `frontend/package.json`
-- `frontend/package-lock.json`
-- `frontend/src/App.tsx`
-- `frontend/src/components/shell/AppHeader.tsx`
-- `frontend/src/components/shell/QuickActionsDock.tsx`
-- `frontend/src/components/shell/AuthModal.tsx`
-- `frontend/src/components/charts/DashboardCharts.tsx`
-- `frontend/src/components/overview/OverviewExperience.tsx`
-- `frontend/src/styles/tokens.css`
-- `frontend/src/styles/app-shell.css`
-- `frontend/src/styles/overview.css`
-- `frontend/src/styles/charts.css`
-- `docs/frontend-redesign/01-preflight-and-memory.md`
-- `docs/frontend-redesign/02-shell-overview-and-route-harmonization.md`
-- `docs/frontend-redesign/03-validation.md`
-- `docs/frontend-redesign/04-chart-stability-and-polish.md`
+## Legacy redesign logs
 
-## 变更内容
-- 新增 `framer-motion` 作为统一动效基础设施。
-- 将 `App.tsx` 从重复 render 的单体结构改成可维护的 shell orchestration。
-- 新增 shell / overview 组件与样式分层，建立 Ambient Care 视觉方向。
-- 保持 Position、Location、Residents、Operations、Family、Admin 的原有能力，但换上统一壳层。
-- 增加执行前与执行后的 memory 记录。
-- 给 Recharts 图表补上稳定测量容器，降低切页时的宽高 warning。
+| Log | Status | Note |
+| --- | --- | --- |
+| [01-preflight-and-memory](./01-preflight-and-memory.md) | unknown — needs Ben confirmation | 檔頭未有明確 status 欄。 |
+| [02-shell-overview-and-route-harmonization](./02-shell-overview-and-route-harmonization.md) | unknown — needs Ben confirmation | 檔頭未有明確 status 欄。 |
+| [03-validation](./03-validation.md) | unknown — needs Ben confirmation | 檔頭未有明確 status 欄。 |
+| [04-chart-stability-and-polish](./04-chart-stability-and-polish.md) | unknown — needs Ben confirmation | 檔頭未有明確 status 欄。 |
 
-## What
-- 做了一次以 `Ambient Care Command Center` 为主题的前端重构起步版本。
+## Shell and FlyCare visual work
 
-## 为什么
-- 旧结构的 UI 逻辑、路由分支、overview 体验和控制抽屉耦合过重，难以继续做高质量交互打磨。
-- 用户要求前端必须更前卫、更有动态感，同时要留下清晰可交接的变更记录与记忆轨迹。
+| Log | Status | Note |
+| --- | --- | --- |
+| [05-shell-foundation-workstream](./05-shell-foundation-workstream.md) | completed | Shared shell foundation 已落地。 |
+| [06-flycare-visual-followups-plan](./06-flycare-visual-followups-plan.md) | superseded | 已由 07-13 workstream 同 99 handoff 收口。 |
+| [07-flycare-header-brand-lockup-workstream](./07-flycare-header-brand-lockup-workstream.md) | completed | FlyCare header brand lockup 已完成。 |
+| [08-flycare-panel-badge-removal-workstream](./08-flycare-panel-badge-removal-workstream.md) | completed | Panel badge removal 已完成。 |
+| [09-flycare-shell-background-and-sticky-header-workstream](./09-flycare-shell-background-and-sticky-header-workstream.md) | completed | Shell spacing、background、sticky header 已完成。 |
+| [10-flycare-map-stage-framing-workstream](./10-flycare-map-stage-framing-workstream.md) | completed | FlyCare map stage framing 已完成。 |
+| [11-flycare-info-panel-hierarchy-workstream](./11-flycare-info-panel-hierarchy-workstream.md) | completed | Info panel hierarchy 已完成。 |
+| [12-flycare-layout-recovery-workstream](./12-flycare-layout-recovery-workstream.md) | completed | Layout recovery 已完成。 |
+| [13-flycare-header-readability-workstream](./13-flycare-header-readability-workstream.md) | completed | Header readability 已完成。 |
 
-## 如何做
-- 先写执行前记忆，再重构 shell 和 overview，再做构建与浏览器验证，最后补文档与执行后记忆。
-- 文档按阶段拆分，每个阶段都明确回答 `What / 为什么 / 如何做`。
+## Frontend-only optimization queue
 
-## 交付导航
-- [01-preflight-and-memory](./01-preflight-and-memory.md)
-- [02-shell-overview-and-route-harmonization](./02-shell-overview-and-route-harmonization.md)
-- [03-validation](./03-validation.md)
-- [04-chart-stability-and-polish](./04-chart-stability-and-polish.md)
+| Log | Status | Note |
+| --- | --- | --- |
+| [20-frontend-only-optimization-queue](./20-frontend-only-optimization-queue.md) | completed | 21-28 workstream 已逐項完成。 |
+| [21-shared-shell-resilience-workstream](./21-shared-shell-resilience-workstream.md) | completed | Queue doc 已標記 completed。 |
+| [22-overview-narrative-tightening-workstream](./22-overview-narrative-tightening-workstream.md) | completed | Queue doc 已標記 completed。 |
+| [23-residents-workspace-utility-workstream](./23-residents-workspace-utility-workstream.md) | completed | Queue doc 已標記 completed。 |
+| [24-location-workspace-emphasis-workstream](./24-location-workspace-emphasis-workstream.md) | completed | Queue doc 已標記 completed。 |
+| [25-operations-family-consistency-workstream](./25-operations-family-consistency-workstream.md) | completed | Queue doc 已標記 completed。 |
+| [26-admin-information-architecture-workstream](./26-admin-information-architecture-workstream.md) | completed | Queue doc 已標記 completed。 |
+| [27-performance-asset-hygiene-workstream](./27-performance-asset-hygiene-workstream.md) | completed | Queue doc 已標記 completed。 |
+| [28-accessibility-responsive-hardening-workstream](./28-accessibility-responsive-hardening-workstream.md) | completed | Queue doc 已標記 completed。 |
 
-## 验证结果
-- `npm run build` 已通过。
-- 预览站点已在本地跑起，并完成 overview / position / location 的浏览器检查。
-- 图表容器已补强，后续重点从 warning 收敛转向真实数据态的视觉微调。
+## Handoff
 
-## 风险与后续
-- 现有中文 locale 文件在控制台输出时仍表现为编码异常，暂未在本轮改写翻译资源。
-- Recharts 在页面切换时仍有宽高 warning，需要后续专门收敛。
+- [99-flycare-handoff](./99-flycare-handoff.md) — FlyCare visual follow-ups closeout。
