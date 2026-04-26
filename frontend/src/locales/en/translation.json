@@ -515,6 +515,30 @@
         "unhandled": "Unhandled alerts"
       }
     },
+    "briefing": {
+      "heroEyebrow": "Today's briefing",
+      "roleFallback": "Resident",
+      "vitals": {
+        "title": "Vitals snapshot",
+        "heartRate": "Heart rate",
+        "bloodPressure": "Blood pressure",
+        "respiration": "Respiration"
+      },
+      "activities": {
+        "title": "Daily activities",
+        "breakfastCompleted": "Breakfast completed",
+        "middayWalk": "Midday walk · 15 min"
+      },
+      "mood": {
+        "title": "Mood check",
+        "stable": "Stable",
+        "attention": "Needs attention"
+      },
+      "notes": {
+        "title": "Care notes",
+        "placeholder": "Add caregiver notes for the next family update..."
+      }
+    },
     "vitalsHistory": {
       "title": "Vitals history",
       "residentLabel": "Selected resident",

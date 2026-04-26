@@ -1,13 +1,23 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { PrimaryResidentBriefing } from '../components/family/PrimaryResidentBriefing';
 import { FamilySummarySection } from '../components/family/FamilySummarySection';
 import { FamilyResidentCard } from '../components/family/FamilyResidentCard';
 import { VitalsHistoryPanel } from '../components/family/VitalsHistoryPanel';
 import { getPositionZoneFromCoords, getPositionZoneLabelKey } from '../adapters/position-command-center';
+import { useFamilySummary } from '../hooks/useFamilySummary';
 import { deviceApi, mongoUpstreamApi, residentApi } from '../services/api';
 import '../styles/family-page.css';
 import type { BackendResident } from '../types/backend';
+import { slugify } from '../utils/resident-slug';
+
+type FamilyPageProps = {
+  primaryResidentSlug?: string | null;
+  primaryResidentFallbackDisplayName?: string | null;
+};
+
+type ResolvedPrimary = { resident: BackendResident; matched: boolean } | null;
 
 function isUnknownRoom(value: string | null | undefined): boolean {
   const text = String(value ?? '').trim();
@@ -15,7 +25,21 @@ function isUnknownRoom(value: string | null | undefined): boolean {
   return text.toLowerCase() === 'unknown';
 }
 
-export function FamilyPage() {
+const resolvePrimaryResident = (
+  residents: BackendResident[],
+  primaryResidentSlug?: string | null
+): ResolvedPrimary => {
+  if (residents.length === 0) return null;
+  if (!primaryResidentSlug) return { resident: residents[0], matched: false };
+  const matchedResident = residents.find((resident) => slugify(resident.name) === primaryResidentSlug);
+  if (matchedResident) return { resident: matchedResident, matched: true };
+  return { resident: residents[0], matched: false };
+};
+
+export function FamilyPage({
+  primaryResidentSlug = null,
+  primaryResidentFallbackDisplayName = null
+}: FamilyPageProps) {
   const { t } = useTranslation();
   const [residents, setResidents] = useState<BackendResident[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,22 +115,43 @@ export function FamilyPage() {
         }
       }
       setResidents(mergedResidents);
-      setSelectedResidentId((current) =>
-        current && mergedResidents.some((resident) => resident.id === current) ? current : null
-      );
+      setSelectedResidentId((current) => {
+        if (current && mergedResidents.some((resident) => resident.id === current)) {
+          return current;
+        }
+
+        const resolved = resolvePrimaryResident(mergedResidents, primaryResidentSlug);
+        return resolved?.resident.id ?? mergedResidents[0]?.id ?? null;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('family.errorFallback'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [primaryResidentSlug, t]);
 
   useEffect(() => {
     void loadResidents();
   }, [loadResidents]);
 
-  const selectedResident =
-    residents.find((resident) => resident.id === selectedResidentId) ?? null;
+  const resolvedPrimary = useMemo(
+    () => resolvePrimaryResident(residents, primaryResidentSlug),
+    [primaryResidentSlug, residents]
+  );
+  const primaryResident = resolvedPrimary?.resident ?? null;
+  const primaryDisplayNameOverride =
+    resolvedPrimary && !resolvedPrimary.matched ? primaryResidentFallbackDisplayName : null;
+  const secondaryResidents = useMemo(
+    () => residents.filter((resident) => resident.id !== primaryResident?.id),
+    [primaryResident?.id, residents]
+  );
+  const selectedResident = residents.find((resident) => resident.id === selectedResidentId) ?? primaryResident ?? null;
+  const {
+    summary: primarySummary,
+    loading: primarySummaryLoading,
+    error: primarySummaryError,
+    isUnavailable: primarySummaryUnavailable
+  } = useFamilySummary(primaryResident?.id ?? null);
 
   return (
     <section className="family-page route-surface route-surface--family">
@@ -143,9 +188,20 @@ export function FamilyPage() {
         </div>
       ) : null}
 
-      {residents.length > 0 ? (
+      {primaryResident ? (
+        <PrimaryResidentBriefing
+          resident={primaryResident}
+          displayNameOverride={primaryDisplayNameOverride}
+          summary={primarySummary}
+          summaryLoading={primarySummaryLoading}
+          summaryError={primarySummaryError}
+          summaryUnavailable={primarySummaryUnavailable}
+        />
+      ) : null}
+
+      {secondaryResidents.length > 0 ? (
         <div className="family-page__grid" role="list" aria-label={t('family.gridAria')}>
-          {residents.map((resident) => (
+          {secondaryResidents.map((resident) => (
             <div key={resident.id} role="listitem">
               <FamilyResidentCard
                 resident={resident}
@@ -165,7 +221,7 @@ export function FamilyPage() {
       ) : null}
 
       <FamilySummarySection
-        residentId={selectedResidentId}
+        residentId={selectedResident?.id ?? null}
         residentName={selectedResident?.name ?? null}
       />
     </section>
