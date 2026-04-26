@@ -18,7 +18,6 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle, navItems }: AppHeaderProps) {
-  const activeItem = navItems.find((item) => item.key === activeKey);
   const brandMarkUrl = isFlyCarePage ? flyCareBadgeUrl : smartCareMarkUrl;
   const hasDenseNav = !isFlyCarePage && activeKey !== 'position' && navItems.length >= 8;
 
@@ -49,7 +48,6 @@ export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle,
           {!isFlyCarePage ? (
             <div className="ambient-header__context">
               <span className="ambient-header__status">Live Care Workspace</span>
-              {activeItem ? <span className="ambient-header__context-pill">{activeItem.label}</span> : null}
             </div>
           ) : null}
         </div>

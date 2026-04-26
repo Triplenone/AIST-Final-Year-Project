@@ -66,8 +66,13 @@ type DashboardPageKey =
 const DEFAULT_ACCOUNTS: Account[] = [
   { username: 'guest_demo', password: 'guest123', role: 'guest' },
   { username: 'care_demo', password: 'care1234', role: 'caregiver' },
+  { username: 'caregiver_lee', password: 'lee1234', role: 'caregiver' },
   { username: 'admin_master', password: 'admin888', role: 'admin' }
 ];
+
+const CAREGIVER_PRIMARY_RESIDENT: Record<string, { slug: string; fallbackDisplayName: string }> = {
+  caregiver_lee: { slug: 'chan-tai-man', fallbackDisplayName: 'CHAN TAI MAN 陳大文' }
+};
 
 const STORAGE_KEYS = {
   accounts: 'smartcare-react-accounts',
@@ -83,7 +88,6 @@ const NAV_ITEMS: ReadonlyArray<{
   { key: 'overview', to: '/', labelKey: 'layout.nav.overview' },
   { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents' },
   { key: 'position', to: '/position', labelKey: 'layout.nav.position' },
-  { key: 'flycare', to: '/flycare', labelKey: 'layout.nav.flycare' },
   { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations' },
   { key: 'family', to: '/family', labelKey: 'layout.nav.family' },
   { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin' }
@@ -677,7 +681,7 @@ export default function App() {
         openFallAlertModal(buildFallAlertRowsFromBackendEvents(newlyDiscovered, lookups));
       })();
     }
-  }, [fallEvents, openFallAlertModal]);
+  }, [fallEventIds, fallEvents, openFallAlertModal]);
 
   /** 任一端将相关事件标为非 unhandled 后，其他客户端轮询到即关窗 */
   useEffect(() => {
@@ -1139,7 +1143,14 @@ export default function App() {
       case 'operations':
         return <div className="route-stack route-stack--narrow">{renderAlertsPanel()}</div>;
       case 'family':
-        return <FamilyPage />;
+        return (
+          <FamilyPage
+            primaryResidentSlug={session ? CAREGIVER_PRIMARY_RESIDENT[session.username]?.slug ?? null : null}
+            primaryResidentFallbackDisplayName={
+              session ? CAREGIVER_PRIMARY_RESIDENT[session.username]?.fallbackDisplayName ?? null : null
+            }
+          />
+        );
       case 'admin':
         return (
           <div className="route-stack">

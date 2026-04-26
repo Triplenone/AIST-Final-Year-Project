@@ -346,6 +346,9 @@
   justify-content: flex-end;
   gap: clamp(0.2rem, 0.45vw, 0.38rem);
   min-width: 0;
+  justify-self: end;
+  max-width: 100%;
+  width: max-content;
   margin-left: auto;
   overflow-x: auto;
   scrollbar-width: none;
@@ -558,10 +561,11 @@
 }
 
 .ambient-header--route-position .ambient-header__nav {
-  justify-self: stretch;
-  width: 100%;
+  justify-self: end;
+  width: max-content;
+  max-width: 100%;
   min-width: 0;
-  margin-left: 0;
+  margin-left: auto;
   padding: 0.42rem 0.5rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(245, 239, 232, 0.68));
   border-color: rgba(16, 23, 34, 0.08);
@@ -1373,8 +1377,9 @@
   position: absolute;
   right: 0;
   bottom: calc(100% + 0.95rem);
-  width: min(28rem, calc(100vw - 2rem));
-  max-height: min(calc(100vh - 6rem), 22rem);
+  width: auto;
+  max-width: calc(100vw - 2rem);
+  max-height: none;
   overflow: visible;
   pointer-events: auto;
   transform: translateY(0);
@@ -1401,9 +1406,13 @@
 }
 
 .ambient-actions__content {
-  gap: 0.8rem;
-  justify-content: flex-end;
-  padding: 0.5rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-start;
+  padding: 0.5rem 0.75rem;
+  flex-wrap: nowrap;
 }
 
 .ambient-actions__theme {
@@ -1415,8 +1424,14 @@
 }
 
 .ambient-actions__account {
+  width: auto;
+  justify-content: flex-start;
   background: rgba(255, 255, 255, 0.42);
   border-radius: var(--radius-pill);
+}
+
+.ambient-actions__account .auth-menu__details {
+  white-space: nowrap;
 }
 
 .ambient-actions .language-switcher label {
@@ -1431,6 +1446,9 @@
 }
 
 .ambient-actions .language-switcher--open-upward {
+  width: auto;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
   z-index: 3;
 }
 
@@ -1635,7 +1653,8 @@
   }
 
   .ambient-actions__panel.actions-panel--open {
-    width: min(92vw, 28rem);
+    width: auto;
+    max-width: calc(100vw - 2rem);
   }
 
   .ambient-header__inner {
@@ -1821,8 +1840,14 @@
   }
 
   .ambient-actions__panel.actions-panel--open {
-    width: min(calc(100vw - 1.5rem), 26rem);
-    max-height: min(calc(100vh - 4.75rem), 20rem);
+    width: auto;
+    max-width: calc(100vw - 1.5rem);
+    max-height: none;
+  }
+
+  .ambient-actions__content {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }
 
