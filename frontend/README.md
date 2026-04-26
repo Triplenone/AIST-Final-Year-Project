@@ -15,7 +15,7 @@
 
 ### How to run (with backend)
 1. **Start the backend** (summary; follow backend docs for details):
-   - Ensure MySQL has the `smart_elderly_care_system` DB (for example from `backend/Dump20251120.sql`).
+   - Ensure MySQL has the `smart_elderly_care_system` DB (for example from `database/mysql/Dump20260426.sql`).
    - Start FastAPI (e.g. `cd backend/backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`).
    - Backend base: `http://localhost:8000`, API prefix: `/api/v1`.
 2. **Configure frontend backend URL** in `src/constants/backend.ts`:
@@ -96,7 +96,7 @@
 - 首頁 Residents 區塊與 Alerts/Insights/KPI 都建立在同一份住民資料之上。
 
 ### 執行方式（配合後端）
-1. 依照後端說明啟動 FastAPI 與 MySQL（可先匯入 `backend/Dump20251120.sql`）。
+1. 依照後端說明啟動 FastAPI 與 MySQL（可先匯入 `database/mysql/Dump20260426.sql`）。
 2. 在 `src/constants/backend.ts` 設定正確的後端網址/port。
 3. 在 `frontend/` 目錄執行：
    ```bash
