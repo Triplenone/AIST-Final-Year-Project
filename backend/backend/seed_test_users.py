@@ -1,10 +1,11 @@
 """
-测试用户 seed 脚本：CHAN TAI MAN 陈大文 / LEE TAI MAN 李大雯
+测试用户 seed 脚本：CHAN TAI MAN / LEE TAI MAN
 
 目的：
     令前端 caregiver_lee 登入 /family 后，PrimaryResidentBriefing hero 由
-    fallback 的 test-user01 切换至 "CHAN TAI MAN 陈大文"。
+    fallback 的 test-user01 切换至 "CHAN TAI MAN"。
     前端配对逻辑：slugify(resident.name) === 'chan-tai-man'。
+    注意：name 须为纯英文，slugify 才能正确产出 'chan-tai-man'。
 
 使用方法（仿 check_device_id.py / test_data_reception.py）：
     cd backend/backend
@@ -47,7 +48,7 @@ except ImportError as e:
 
 SEED_USERS = [
     {
-        "name": "CHAN TAI MAN 陳大文",
+        "name": "CHAN TAI MAN",
         "role_type": RoleType.ELDERLY,
         "gender": Gender.MALE,
         "age": 78,
@@ -55,7 +56,7 @@ SEED_USERS = [
         "medical_conditions": "高血壓、輕度認知障礙",
     },
     {
-        "name": "LEE TAI MAN 李大雯",
+        "name": "LEE TAI MAN",
         "role_type": RoleType.CAREGIVER,
         "gender": Gender.FEMALE,
         "age": 42,
