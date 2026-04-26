@@ -1,37 +1,47 @@
-# Release 組裝與內容
+# Release 打包
 
-## 組裝腳本
-使用：
+## 打包指令
+
+在 repo root 執行：
 
 ```powershell
 .\scripts\build_release.ps1
 ```
 
-預設輸出：
+成功後會產生：
 
 - `release/AIST-FYP-delivery/`
 - `release/AIST-FYP-delivery.zip`
 
-## release 內容
-release 包固定包含：
+## Release 內容
 
-- 乾淨專案快照
-- `database/mysql`
-- `database/mongo`
-- 已建置的 `backend/backend/static`
+`scripts/build_release.ps1` 會先 build frontend，再複製一份乾淨 project snapshot 到 `release/AIST-FYP-delivery/project/`。
+
+主要包含：
+
+- `frontend/`
+- `backend/backend/`
+- `database/mysql/`
+- `database/mongo/`
+- build 後的 frontend static assets，注入到 `project/backend/backend/static/`
 - `backend/backend/run_backend.ps1`
-- 一份中文 `Quickstart.md`
+- release 根目錄的 `Quickstart.md`
 
-## release 明確排除
+## 排除內容
+
+打包流程會排除：
+
 - `.git`
 - `.env`
 - `venv` / `.venv`
 - `node_modules`
-- zip / installer / exe
-- 舊前端 archive
-- 測試錄影、trace、快取
+- `dist`
+- zip / installer / exe / webm
+- 既有 `release/` 輸出
 
-## 設計原則
-- source repo 只保留實際維護內容
-- release 包保留工程師熟悉的啟動體驗
-- 原始手動命令仍是第一等公民；腳本只提供便利，不取代原命令
+## 注意事項
+
+- MySQL current default seed 是 `database/mysql/Dump20260426.sql`。
+- Mongo JSON 放在 `database/mongo/`。
+- `Quickstart.md` 由 `scripts/release/quickstart.template.md` 複製而來。
+- 如果 release script 或 quickstart template 有改動，請同步更新本文。
