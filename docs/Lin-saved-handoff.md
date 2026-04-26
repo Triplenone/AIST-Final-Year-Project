@@ -1,4 +1,8 @@
 # Lin-saved Handoff Note
+> **Status: COMPLETED — historical handoff, kept for audit trail.**
+> Landed via: PR #29 / commits 2b798fb, 0a86629, fe4a6fb
+> Date completed: 2026-04
+> 為 final report 引用保留原文，唔再係 active plan。
 
 ## 概要
 这份文档用于说明本次 `Lin-saved` 版本整理后，`E:\FYP\AIST-Final-Year-Project-main` 的实际状态、关键变更、GitHub branch 建议，以及已完成的验证结果。
