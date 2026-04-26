@@ -741,12 +741,14 @@ export default function App() {
   const signButtonLabel = t(isLoggedIn ? 'auth.signOut' : 'auth.signIn');
 
   const navItems = useMemo(
-    () =>
-      NAV_ITEMS.map((item) => ({
+    () => {
+      const role: Role = session?.role ?? 'guest';
+      return NAV_ITEMS.filter((item) => item.key !== 'admin' || role === 'admin').map((item) => ({
         ...item,
         label: t(item.labelKey)
-      })),
-    [t]
+      }));
+    },
+    [t, session?.role]
   );
 
   const activeResidentCount = useMemo(() => residentList.filter((resident) => !resident.checkedOut).length, [residentList]);
@@ -1152,6 +1154,9 @@ export default function App() {
           />
         );
       case 'admin':
+        if (session?.role !== 'admin') {
+          return <Navigate to="/" replace />;
+        }
         return (
           <div className="route-stack">
             <AdminSection activeTab={adminActiveTab} onTabChange={setAdminActiveTab} />
