@@ -12,6 +12,8 @@ flowchart LR
   ReactUI -->|"GET /api/v1/*"| FastAPI[FastAPI_backend]
   DeviceOrScript[DeviceOrTestScript] -->|"POST /api/v1/data-reception/receive"| FastAPI
   FastAPI --> MySQL[(MySQL_smart_elderly_care_system)]
+  FastAPI --> MongoDB[(MongoDB_smart_elderly_mongo)]
+  MQTT[MQTT_Broker] -->|"device payloads"| FastAPI
 
   AdminUI[OptionalAdminUI_backend_forntend] -.->|"GET /api/v1/* (via proxy)"| FastAPI
   LegacyUI[LegacyStaticUI_frontend_web_dashboard] -.->|"Frontend_only_mock"| Browser
@@ -22,7 +24,8 @@ Evidence pointers:
 - Frontend base URL + API prefix: `frontend/src/constants/backend.ts`
 - FastAPI entry: `backend/backend/app/main.py`
 - Routers: `backend/backend/app/api/routes/__init__.py`
-- DB schema: `backend/Dump20251120.sql`
+- DB schema: `database/mysql/Dump20260426.sql`
+- Mongo upstream samples: `database/mongo/`
 
 ### Implemented fall pipeline (end-to-end)
 
@@ -51,9 +54,21 @@ Evidence pointers:
 - Auto-event creation: `backend/backend/app/crud/device_data_log.py`
 - Test script: `backend/backend/test_data_reception.py`
 
+### Implemented backend upstream bridge (Slice A-D, 2026-04)
+
+Backend Slice A-D is implemented in the repo: Mongo upstream configuration, MQTT device mapping, raw payload sync to MongoDB, and the vitals history bridge endpoint.
+
+Evidence pointers:
+
+- Mongo foundation and status routes: `backend/backend/app/api/routes/mongo_upstream.py`
+- MQTT raw ingest and device mapping: `backend/backend/app/services/mqtt_subscriber.py`, `backend/backend/config/device_id_map.json`
+- Mongo raw upstream writes: `backend/backend/app/services/mongo_raw_upstream.py`
+- Vitals history bridge: `GET /api/v1/mongo-upstream/vitals/user/{user_id}/history`
+- Completion tracker: `docs/merge-frontend-plan.md`
+
 ## Planned (from PDFs — not fully implemented in repo)
 
-The Initial Report lists functional requirements such as indoor localization, outdoor geofence breach alerts, and caregiver notifications (`Initial_Report_Grp_10.pdf`, pp.25–27).
+The Initial Report lists functional requirements such as indoor localization, outdoor geofence breach alerts, and caregiver notifications (`Initial_Report_Grp_10.pdf`, pp.25-27). Mongo upstream, MQTT ingest, and the vitals history bridge are no longer in this planned bucket; they are implemented as of 2026-04.
 
 The diagram below is **descriptive** (from PDFs) and should not be treated as implemented.
 
