@@ -65,6 +65,17 @@ DB name: `smart_elderly_care_system` (created in `database/mysql/Dump20260426.sq
 - **DB import command**: Not found in repo.
 - Use your preferred MySQL client/tooling (e.g., GUI import) to load `database/mysql/Dump20260426.sql`.
 
+## Demo accounts
+
+| Username | Password | Role |
+|---|---|---|
+| `guest_demo` | `guest123` | guest |
+| `care_demo` | `care1234` | caregiver |
+| `caregiver_lee` | `lee1234` | caregiver |
+| `admin_master` | `admin888` | admin |
+
+> Source: `frontend/src/App.tsx` — `DEFAULT_ACCOUNTS`
+
 ## Optional: Admin CRUD UI (legacy / not primary)
 
 This UI is separate from the primary `frontend/` app:
