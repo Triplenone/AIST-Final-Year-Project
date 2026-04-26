@@ -1,4 +1,8 @@
 # Frontend Phase — Codex 執行指示
+> **Status: COMPLETED — historical handoff, kept for audit trail.**
+> Landed via: PR #30 / commits e45d768, 5d1f0f8, 2063281, 0cb4bbb, 518eb87
+> Date completed: 2026-04
+> 為 final report 引用保留原文，唔再係 active plan。
 
 ## 讀者
 Codex（自動執行者）、frontend maintainer、PR reviewer。
