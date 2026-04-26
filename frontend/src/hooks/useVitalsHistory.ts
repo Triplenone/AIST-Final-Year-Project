@@ -113,6 +113,14 @@ const normalizeVitalsHistoryItem = (item: MongoVitalsHistoryItem): VitalsHistory
   };
 };
 
+const isValidVitalsReading = (reading: VitalsHistoryReading) =>
+  typeof reading.heartRate === 'number' &&
+  Number.isFinite(reading.heartRate) &&
+  reading.heartRate > 0 &&
+  typeof reading.spo2 === 'number' &&
+  Number.isFinite(reading.spo2) &&
+  reading.spo2 > 0;
+
 const buildQuery = (range: VitalsHistoryRange): MongoVitalsHistoryQuery => {
   const end_ts = Date.now();
   const start_ts = end_ts - RANGE_MS[range];
@@ -152,7 +160,18 @@ export function useVitalsHistory(
 
     try {
       const response = await mongoUpstreamApi.getVitalsHistoryByUser(userId, buildQuery(timeRange));
-      setData(Array.isArray(response.items) ? response.items.map(normalizeVitalsHistoryItem) : []);
+      // `api` interceptor usually unwraps to response.data, but keep a typed fallback
+      // for environments where AxiosResponse leaks through.
+      const payload = response as
+        | { items?: MongoVitalsHistoryItem[] }
+        | { data?: { items?: MongoVitalsHistoryItem[] } };
+      const items = Array.isArray((payload as { items?: MongoVitalsHistoryItem[] }).items)
+        ? (payload as { items: MongoVitalsHistoryItem[] }).items
+        : Array.isArray((payload as { data?: { items?: MongoVitalsHistoryItem[] } }).data?.items)
+          ? ((payload as { data: { items: MongoVitalsHistoryItem[] } }).data.items ?? [])
+          : [];
+      const normalized = items.map(normalizeVitalsHistoryItem);
+      setData(normalized.filter(isValidVitalsReading));
     } catch (err) {
       setData([]);
 

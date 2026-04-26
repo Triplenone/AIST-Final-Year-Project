@@ -130,10 +130,6 @@ export function VitalsHistoryPanel({ residentId, residentName }: VitalsHistoryPa
                     <dt>{t('family.vitalsHistory.columns.spo2')}</dt>
                     <dd>{item.spo2 ?? t('family.vitalsHistory.noReading')}</dd>
                   </div>
-                  <div className="family-vitals-history__reading">
-                    <dt>{t('family.vitalsHistory.columns.temperature')}</dt>
-                    <dd>{item.temperature ?? t('family.vitalsHistory.noReading')}</dd>
-                  </div>
                 </dl>
               </article>
             ))}

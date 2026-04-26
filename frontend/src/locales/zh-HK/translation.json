@@ -50,6 +50,7 @@
     "sensors": "傳感器",
     "system": "系統狀態",
     "refresh": "刷新",
+    "viewAllOnMap": "查看所有人",
     "zone": {
       "door1": "門1",
       "door2": "門2",
@@ -140,7 +141,6 @@
         "room": "房號",
         "status": "狀態",
         "lastSeen": "最後出現",
-        "vitals": "生命徵象",
         "device": "裝置",
         "updated": "更新時間"
       },

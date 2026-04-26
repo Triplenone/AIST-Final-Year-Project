@@ -50,6 +50,7 @@
     "sensors": "Sensors",
     "system": "System",
     "refresh": "Refresh",
+    "viewAllOnMap": "View all residents",
     "zone": {
       "door1": "Door 1",
       "door2": "Door 2",
@@ -138,7 +139,6 @@
         "room": "Room",
         "status": "Status",
         "lastSeen": "Last seen",
-        "vitals": "Vitals",
         "device": "Device",
         "updated": "Updated"
       },
