@@ -33,6 +33,9 @@ Thumbs.db
 # --- Logs ---
 *.log
 
+# --- Cloudflare local cache ---
+.wrangler/
+
 # --- Project-specific (local/legacy) ---
 # (typo'd legacy dashboard; main frontend is in /frontend)
 backend/forntend/
