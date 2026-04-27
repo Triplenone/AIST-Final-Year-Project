@@ -1,0 +1,8 @@
+V.ts=2026-04-27T12:33:00+08:00
+V.scope=quick-tunnel-main-fix
+V.branch=ben/quick-tunnel-main-fix
+V.base=origin/main@b78897b
+V.reason=main-used-window-host-plus-port-8000-api-url-so-trycloudflare-could-not-reach-api
+V.files=[.gitignore,frontend/src/constants/backend.ts,frontend/vite.config.ts,docs/SETUP.md,docs/setup.md,_ben_mem/CURR.mem,_ben_mem/LOG/20260427-114300.mem,_ben_mem/LOG/20260427-123300.mem]
+V.validation=[npm-ci-ok,npm-lint-ok,npm-build-ok,diff-check-ok,quick-tunnel-page-200,quick-tunnel-api-200]
+B.smartcare2026.com=not-used-dns-nxdomain-zone-create-permission-missing

@@ -436,3 +436,7 @@ V.verify.backend_health=200
 V.verify.ports=[5173-ok,8000-ok,3306-ok,27017-ok,1883-ok]
 V.verify.custom_domain_https=dns-resolution-failed
 V.frontend.cloudflare.gitignore=.wrangler
+V.quick_tunnel_main_fix.branch=ben/quick-tunnel-main-fix
+V.quick_tunnel_main_fix.base=origin/main@b78897b
+V.quick_tunnel_main_fix.reason=main-used-host-port-8000-api-url-breaking-trycloudflare
+V.quick_tunnel_main_fix.validation=[npm-ci-ok,npm-lint-ok,npm-build-ok,diff-check-ok,quick-tunnel-page-200,quick-tunnel-api-200]
