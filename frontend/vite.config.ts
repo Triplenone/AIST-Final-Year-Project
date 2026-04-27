@@ -39,6 +39,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true
+    host: true,
+    allowedHosts: ['.trycloudflare.com', 'smartcare2026.com', 'www.smartcare2026.com'],
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+      '/health': 'http://127.0.0.1:8000',
+      '/sim': 'http://127.0.0.1:8000'
+    }
   }
 });
