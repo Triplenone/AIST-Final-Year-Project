@@ -713,16 +713,22 @@ export default function App() {
       await refreshFallBackendEvents();
     }
     closeFallAlertModal();
-    if (location.pathname !== '/admin') {
-      navigate('/admin');
+    const isAdmin = session?.role === 'admin';
+    if (isAdmin) {
+      if (location.pathname !== '/admin') {
+        navigate('/admin');
+      }
+      setAdminActiveTab('events');
+    } else if (location.pathname !== '/position') {
+      navigate('/position');
     }
-    setAdminActiveTab('events');
   }, [
     closeFallAlertModal,
     fallAlertRows,
     location.pathname,
     navigate,
     refreshFallBackendEvents,
+    session?.role,
     t
   ]);
 
@@ -1124,7 +1130,12 @@ export default function App() {
 
     switch (activePage) {
       case 'position':
-        return <PositionPage onSosOrFallDetected={openFallAlertModal} />;
+        return (
+          <PositionPage
+            onSosOrFallDetected={openFallAlertModal}
+            userRole={session?.role ?? 'guest'}
+          />
+        );
       case 'flycare':
         return <FlyCarePage onSosOrFallDetected={openFallAlertModal} />;
       case 'residents':

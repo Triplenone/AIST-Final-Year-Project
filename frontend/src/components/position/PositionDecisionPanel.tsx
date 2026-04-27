@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -10,6 +11,9 @@ import {
   type PositionSurfaceState,
   type PositionZoneCommandState
 } from '../../adapters/position-command-center';
+import type { BackendEvent } from '../../types/backend';
+
+export type PositionDecisionPanelHandleStatus = 'confirmed' | 'resolved' | 'false_alarm';
 
 type PositionDecisionPanelProps = {
   resident: PositionResidentViewModel | null;
@@ -19,6 +23,15 @@ type PositionDecisionPanelProps = {
   recordError: string | null;
   partialFailureCount: number;
   onRefresh: () => void;
+  pendingEvents?: BackendEvent[];
+  actionLoadingEventId?: number | null;
+  actionError?: string | null;
+  canHandle?: boolean;
+  onSubmitEventAction?: (
+    eventId: number,
+    status: PositionDecisionPanelHandleStatus,
+    remark: string
+  ) => Promise<void> | void;
 };
 
 const nextActionLabelKey: Record<PositionNextActionCode, string> = {
@@ -150,10 +163,32 @@ export function PositionDecisionPanel({
   loadError,
   recordError,
   partialFailureCount,
-  onRefresh
+  onRefresh,
+  pendingEvents = [],
+  actionLoadingEventId = null,
+  actionError = null,
+  canHandle = false,
+  onSubmitEventAction
 }: PositionDecisionPanelProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const [remarkByEvent, setRemarkByEvent] = useState<Record<number, string>>({});
+
+  const handleEventAction = (
+    eventId: number,
+    status: PositionDecisionPanelHandleStatus
+  ) => {
+    if (!onSubmitEventAction) return;
+    const remark = remarkByEvent[eventId] ?? '';
+    void Promise.resolve(onSubmitEventAction(eventId, status, remark)).then(() => {
+      setRemarkByEvent((current) => {
+        if (!(eventId in current)) return current;
+        const next = { ...current };
+        delete next[eventId];
+        return next;
+      });
+    });
+  };
 
   const formattedLastUpdate = resident?.lastSeenAt
     ? formatActivityTimestamp(resident.lastSeenAt, locale)
@@ -244,6 +279,85 @@ export function PositionDecisionPanel({
               </span>
             </div>
           </div>
+
+          <section className="position-decision-panel__section position-decision-panel__actions">
+            <h4>{t('position.actions.title', { defaultValue: 'Pending events' })}</h4>
+            {actionError ? (
+              <p className="position-command-center__error">{actionError}</p>
+            ) : null}
+            {pendingEvents.length === 0 ? (
+              <p className="position-command-center__muted">
+                {t('position.actions.empty', { defaultValue: 'No pending events for this resident.' })}
+              </p>
+            ) : (
+              <ul className="position-decision-panel__actions-list">
+                {pendingEvents.map((ev) => {
+                  const isLoading = actionLoadingEventId === ev.event_id;
+                  const remarkValue = remarkByEvent[ev.event_id] ?? '';
+                  return (
+                    <li key={ev.event_id} className="position-decision-panel__actions-item">
+                      <div className="position-decision-panel__actions-meta">
+                        <strong>
+                          {t(`location.events.types.${ev.event_type}`, {
+                            defaultValue: ev.event_type
+                          })}
+                        </strong>
+                        <span className="position-command-center__muted">
+                          {formatActivityTimestamp(ev.event_timestamp, locale)}
+                        </span>
+                      </div>
+                      <textarea
+                        className="position-decision-panel__actions-remark"
+                        value={remarkValue}
+                        placeholder={t('position.actions.remarkPlaceholder', {
+                          defaultValue: 'Optional handling note'
+                        })}
+                        disabled={!canHandle || isLoading}
+                        onChange={(e) =>
+                          setRemarkByEvent((current) => ({ ...current, [ev.event_id]: e.target.value }))
+                        }
+                      />
+                      <div className="position-decision-panel__actions-buttons">
+                        <button
+                          type="button"
+                          className="position-decision-panel__action position-decision-panel__action--confirm"
+                          disabled={!canHandle || isLoading}
+                          onClick={() => handleEventAction(ev.event_id, 'confirmed')}
+                        >
+                          {isLoading
+                            ? t('position.actions.handling', { defaultValue: 'Updating…' })
+                            : t('position.actions.confirm', { defaultValue: 'Confirm' })}
+                        </button>
+                        <button
+                          type="button"
+                          className="position-decision-panel__action position-decision-panel__action--resolve"
+                          disabled={!canHandle || isLoading}
+                          onClick={() => handleEventAction(ev.event_id, 'resolved')}
+                        >
+                          {t('position.actions.resolve', { defaultValue: 'Resolve' })}
+                        </button>
+                        <button
+                          type="button"
+                          className="position-decision-panel__action position-decision-panel__action--false-alarm"
+                          disabled={!canHandle || isLoading}
+                          onClick={() => handleEventAction(ev.event_id, 'false_alarm')}
+                        >
+                          {t('position.actions.falseAlarm', { defaultValue: 'False alarm' })}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {!canHandle && pendingEvents.length > 0 ? (
+              <p className="position-command-center__muted">
+                {t('position.actions.guestDisabled', {
+                  defaultValue: 'Sign in as a caregiver to handle events.'
+                })}
+              </p>
+            ) : null}
+          </section>
 
           <section className="position-decision-panel__section">
             <h4>{t('position.liveSummary', { defaultValue: 'Live summary' })}</h4>

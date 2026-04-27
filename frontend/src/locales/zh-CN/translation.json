@@ -50,6 +50,22 @@
     "sensors": "传感器",
     "system": "系统状态",
     "refresh": "刷新",
+    "viewAllOnMap": "查看所有人",
+    "actions": {
+      "title": "待处理事件",
+      "confirm": "确认接收",
+      "resolve": "标记解决",
+      "falseAlarm": "误报",
+      "empty": "该住民暂无待处理事件。",
+      "remarkPlaceholder": "处理备注（可选）",
+      "handling": "更新中…",
+      "handlingError": "事件更新失败。",
+      "guestDisabled": "请以照顾员身份登录以处理事件。",
+      "eventTime": "事件时间"
+    },
+    "tooltip": {
+      "pendingEvents": "{{count}} 件待处理事件"
+    },
     "zone": {
       "door1": "门1",
       "door2": "门2",

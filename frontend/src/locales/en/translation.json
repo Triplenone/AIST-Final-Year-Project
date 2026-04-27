@@ -50,6 +50,22 @@
     "sensors": "Sensors",
     "system": "System",
     "refresh": "Refresh",
+    "viewAllOnMap": "View everyone",
+    "actions": {
+      "title": "Pending events",
+      "confirm": "Confirm",
+      "resolve": "Resolve",
+      "falseAlarm": "False alarm",
+      "empty": "No pending events for this resident.",
+      "remarkPlaceholder": "Optional handling note",
+      "handling": "Updating…",
+      "handlingError": "Failed to update event.",
+      "guestDisabled": "Sign in as a caregiver to handle events.",
+      "eventTime": "Event time"
+    },
+    "tooltip": {
+      "pendingEvents": "{{count}} pending event(s)"
+    },
     "zone": {
       "door1": "Door 1",
       "door2": "Door 2",
