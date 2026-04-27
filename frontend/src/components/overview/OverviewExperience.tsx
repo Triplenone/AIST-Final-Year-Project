@@ -100,6 +100,61 @@ export function OverviewExperience({
     t('nextSteps.addRouting')
   ];
 
+  const aboutPillars = [
+    {
+      key: 'mission',
+      title: t('aboutUs.pillars.mission.title', { defaultValue: 'Our mission' }),
+      description: t('aboutUs.pillars.mission.description', {
+        defaultValue: 'Keep elderly residents safe with quiet, always-on sensing instead of intrusive checks.'
+      })
+    },
+    {
+      key: 'team',
+      title: t('aboutUs.pillars.team.title', { defaultValue: 'Our team' }),
+      description: t('aboutUs.pillars.team.description', {
+        defaultValue: 'A multidisciplinary FYP team — AI, backend, hardware, and frontend — building the platform end to end.'
+      })
+    },
+    {
+      key: 'platform',
+      title: t('aboutUs.pillars.platform.title', { defaultValue: 'Our platform' }),
+      description: t('aboutUs.pillars.platform.description', {
+        defaultValue: 'Wearable sensing, indoor positioning, fall detection, and care workflows woven into one workspace.'
+      })
+    }
+  ];
+
+  const whyItems = [
+    {
+      key: 'fall',
+      title: t('whyChooseUs.items.fall.title', { defaultValue: 'Real-time fall detection' }),
+      description: t('whyChooseUs.items.fall.description', {
+        defaultValue: 'Wearable IMU + edge inference flags falls in seconds and routes the alert to on-shift caregivers.'
+      })
+    },
+    {
+      key: 'position',
+      title: t('whyChooseUs.items.position.title', { defaultValue: 'Indoor positioning awareness' }),
+      description: t('whyChooseUs.items.position.description', {
+        defaultValue: 'Floor-plan map and zone history tell you where each resident is — not just that something happened.'
+      })
+    },
+    {
+      key: 'family',
+      title: t('whyChooseUs.items.family.title', { defaultValue: 'Family communication' }),
+      description: t('whyChooseUs.items.family.description', {
+        defaultValue: 'Daily summaries and vitals snapshots let families stay informed without paging caregivers.'
+      })
+    },
+    {
+      key: 'workflow',
+      title: t('whyChooseUs.items.workflow.title', { defaultValue: 'Caregiver-first workflows' }),
+      description: t('whyChooseUs.items.workflow.description', {
+        defaultValue: 'Handle alerts directly from the resident view — Confirm, Resolve, or False alarm without context switching.'
+      })
+    }
+  ];
+
   const supportMetrics = metricOrder.map((metricKey) => {
     const metric: MetricPoint = metrics[metricKey];
     const isPositive = metric.delta >= 0;
@@ -201,6 +256,62 @@ export function OverviewExperience({
             </article>
           ))}
         </div>
+      </motion.section>
+
+      <motion.section
+        className="overview-about"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ ...heroTransition, delay: 0.05 }}
+      >
+        <div className="overview-about__intro">
+          <p className="overview-panel__eyebrow">{t('aboutUs.eyebrow', { defaultValue: 'About us' })}</p>
+          <h2>{t('aboutUs.title', { defaultValue: 'Built by carers, for carers' })}</h2>
+          <p>
+            {t('aboutUs.description', {
+              defaultValue:
+                'Proactive Guardian Care is an FYP project from a Hong Kong team blending sensing hardware, AI fall detection, and care-team workflows so elderly residents stay safe without losing dignity.'
+            })}
+          </p>
+        </div>
+        <ul className="overview-about__pillars">
+          {aboutPillars.map((pillar) => (
+            <li key={pillar.key} className="overview-about__pillar">
+              <strong>{pillar.title}</strong>
+              <p>{pillar.description}</p>
+            </li>
+          ))}
+        </ul>
+      </motion.section>
+
+      <motion.section
+        className="overview-why"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ ...heroTransition, delay: 0.06 }}
+      >
+        <div className="overview-why__intro">
+          <p className="overview-panel__eyebrow">
+            {t('whyChooseUs.eyebrow', { defaultValue: 'Why choose us' })}
+          </p>
+          <h2>{t('whyChooseUs.title', { defaultValue: "Care that's both proactive and discreet" })}</h2>
+          <p>
+            {t('whyChooseUs.description', {
+              defaultValue:
+                'Four capabilities, one workspace — wearable safety, indoor awareness, family briefings, and a caregiver-first response loop.'
+            })}
+          </p>
+        </div>
+        <ul className="overview-why__grid">
+          {whyItems.map((item) => (
+            <li key={item.key} className="overview-why__card">
+              <h3>{item.title}</h3>
+              <p>{item.description}</p>
+            </li>
+          ))}
+        </ul>
       </motion.section>
 
       <motion.section

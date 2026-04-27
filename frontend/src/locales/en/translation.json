@@ -222,6 +222,48 @@
     "description": "Preview the upcoming React experience while the classic dashboard stays live in production.",
     "lastUpdated": "Last updated {{time}}"
   },
+  "aboutUs": {
+    "eyebrow": "About us",
+    "title": "Built by carers, for carers",
+    "description": "Proactive Guardian Care is an FYP project from a Hong Kong team blending sensing hardware, AI fall detection, and care-team workflows so elderly residents stay safe without losing dignity.",
+    "pillars": {
+      "mission": {
+        "title": "Our mission",
+        "description": "Keep elderly residents safe with quiet, always-on sensing instead of intrusive checks."
+      },
+      "team": {
+        "title": "Our team",
+        "description": "A multidisciplinary FYP team — AI, backend, hardware, and frontend — building the platform end to end."
+      },
+      "platform": {
+        "title": "Our platform",
+        "description": "Wearable sensing, indoor positioning, fall detection, and care workflows woven into one workspace."
+      }
+    }
+  },
+  "whyChooseUs": {
+    "eyebrow": "Why choose us",
+    "title": "Care that's both proactive and discreet",
+    "description": "Four capabilities, one workspace — wearable safety, indoor awareness, family briefings, and a caregiver-first response loop.",
+    "items": {
+      "fall": {
+        "title": "Real-time fall detection",
+        "description": "Wearable IMU + edge inference flags falls in seconds and routes the alert to on-shift caregivers."
+      },
+      "position": {
+        "title": "Indoor positioning awareness",
+        "description": "Floor-plan map and zone history tell you where each resident is — not just that something happened."
+      },
+      "family": {
+        "title": "Family communication",
+        "description": "Daily summaries and vitals snapshots let families stay informed without paging caregivers."
+      },
+      "workflow": {
+        "title": "Caregiver-first workflows",
+        "description": "Handle alerts directly from the resident view — Confirm, Resolve, or False alarm without context switching."
+      }
+    }
+  },
   "stats": {
     "wellbeing": {
       "title": "Wellbeing score",

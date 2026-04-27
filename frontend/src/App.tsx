@@ -67,11 +67,13 @@ const DEFAULT_ACCOUNTS: Account[] = [
   { username: 'guest_demo', password: 'guest123', role: 'guest' },
   { username: 'care_demo', password: 'care1234', role: 'caregiver' },
   { username: 'caregiver_lee', password: 'lee1234', role: 'caregiver' },
+  { username: 'caregiver_wong', password: 'wong1234', role: 'caregiver' },
   { username: 'admin_master', password: 'admin888', role: 'admin' }
 ];
 
 const CAREGIVER_PRIMARY_RESIDENT: Record<string, { slug: string; fallbackDisplayName: string }> = {
-  caregiver_lee: { slug: 'chan-tai-man', fallbackDisplayName: 'CHAN TAI MAN 陳大文' }
+  caregiver_lee: { slug: 'chan-tai-man', fallbackDisplayName: 'CHAN TAI MAN 陳大文' },
+  caregiver_wong: { slug: 'wong-ka-ming', fallbackDisplayName: 'WONG KA MING 王嘉明' }
 };
 
 const STORAGE_KEYS = {
@@ -747,12 +749,20 @@ export default function App() {
   const signButtonLabel = t(isLoggedIn ? 'auth.signOut' : 'auth.signIn');
 
   const navItems = useMemo(
-    () =>
-      NAV_ITEMS.map((item) => ({
+    () => {
+      const role: Role = session?.role ?? 'guest';
+      return NAV_ITEMS.filter((item) => {
+        // 未登入訪客只看到 Overview，必須登入後才能進入其他頁面。
+        if (role === 'guest') return item.key === 'overview';
+        // Admin tab 只授權給 admin 帳戶，避免照顧員看到管理員入口。
+        if (item.key === 'admin') return role === 'admin';
+        return true;
+      }).map((item) => ({
         ...item,
         label: t(item.labelKey)
-      })),
-    [t]
+      }));
+    },
+    [t, session?.role]
   );
 
   const activeResidentCount = useMemo(() => residentList.filter((resident) => !resident.checkedOut).length, [residentList]);
@@ -1126,6 +1136,16 @@ export default function App() {
   const renderDashboardPage = () => {
     if (location.pathname === '/location') {
       return <Navigate to="/position" replace />;
+    }
+
+    // 訪客 (未登入) 不可直接以 URL 進入非 overview 頁面。
+    if (!session && activePage !== 'overview') {
+      return <Navigate to="/" replace />;
+    }
+
+    // Admin 路由僅限 admin 角色。
+    if (activePage === 'admin' && session?.role !== 'admin') {
+      return <Navigate to="/" replace />;
     }
 
     switch (activePage) {

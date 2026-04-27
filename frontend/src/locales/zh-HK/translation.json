@@ -224,6 +224,48 @@
     "description": "在舊版儀表板仍服務線上時，先預覽即將到來的 React 體驗。",
     "lastUpdated": "最後更新：{{time}}"
   },
+  "aboutUs": {
+    "eyebrow": "關於我們",
+    "title": "由照顧團隊打造，為照顧團隊而生",
+    "description": "Proactive Guardian Care 是一個香港團隊的 FYP 項目，結合穿戴感測硬體、AI 跌倒偵測與照護工作流程，讓長者既安全又保有尊嚴。",
+    "pillars": {
+      "mission": {
+        "title": "使命",
+        "description": "以低干擾的全天感測取代頻繁巡查，讓長者隨時被守護。"
+      },
+      "team": {
+        "title": "團隊",
+        "description": "跨領域 FYP 團隊——AI、後端、硬體、前端——一同把平台從零做到上線。"
+      },
+      "platform": {
+        "title": "平台",
+        "description": "穿戴感測、室內定位、跌倒偵測與照護流程匯聚成一個工作空間。"
+      }
+    }
+  },
+  "whyChooseUs": {
+    "eyebrow": "為什麼選擇我們",
+    "title": "既主動又貼心的照護",
+    "description": "四項能力一個工作空間——穿戴安全、室內感知、家屬簡報，以及照顧員優先的回應流程。",
+    "items": {
+      "fall": {
+        "title": "即時跌倒偵測",
+        "description": "穿戴 IMU 加上邊緣推論，數秒內標記跌倒並通知值班照顧員。"
+      },
+      "position": {
+        "title": "室內定位感知",
+        "description": "平面圖與區域歷史告訴你每位住民身在何處——不只是『發生了什麼』。"
+      },
+      "family": {
+        "title": "家屬互動",
+        "description": "每日摘要與生命徵象快照讓家屬保持知情，不必打擾照顧員。"
+      },
+      "workflow": {
+        "title": "照顧員優先流程",
+        "description": "直接在住民面板處理警報——Confirm / Resolve / False alarm，無需切換頁面。"
+      }
+    }
+  },
   "stats": {
     "wellbeing": {
       "title": "健康指標",
