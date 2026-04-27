@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import mapImage from '../../img/ElderlyCare.png';
@@ -14,7 +15,32 @@ type PositionMapStageProps = {
   showAllOnMap: boolean;
   surfaceState: PositionSurfaceState;
   recordError: string | null;
+  pendingEventCountByResidentId?: Record<string, number>;
 };
+
+function formatPinTooltipAge(
+  ageMs: number | null,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  if (ageMs == null) {
+    return t('position.lastUpdateUnknown', { defaultValue: 'Last update unknown' });
+  }
+  const totalMinutes = Math.floor(ageMs / 60_000);
+  if (totalMinutes <= 0) {
+    return t('position.lastUpdateNow', { defaultValue: 'Updated just now' });
+  }
+  if (totalMinutes < 60) {
+    return t('position.lastUpdateMinutes', {
+      count: totalMinutes,
+      defaultValue: `Updated ${totalMinutes}m ago`
+    });
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  return t('position.lastUpdateHours', {
+    count: hours,
+    defaultValue: `Updated ${hours}h ago`
+  });
+}
 
 const zoneCommandStateLabelKey: Record<PositionZoneCommandState, string> = {
   holding: 'position.zoneCommand.holding',
@@ -47,9 +73,11 @@ export function PositionMapStage({
   mapResidents,
   showAllOnMap,
   surfaceState,
-  recordError
+  recordError,
+  pendingEventCountByResidentId
 }: PositionMapStageProps) {
   const { t } = useTranslation();
+  const [hoveredResidentId, setHoveredResidentId] = useState<string | null>(null);
   const hasMapResidents = mapResidents.length > 0;
   const effectiveSurfaceState =
     showAllOnMap && hasMapResidents && (surfaceState === 'empty' || surfaceState === 'error' || surfaceState === 'partial-error')
@@ -62,6 +90,10 @@ export function PositionMapStage({
         residentId: item.residentId,
         displayName: item.displayName,
         truthState: item.truthState,
+        riskLevel: item.riskLevel,
+        freshnessLevel: item.freshnessLevel,
+        currentZoneName: item.currentZoneName,
+        lastSeenAgeMs: item.lastSeenAgeMs,
         x: item.currentCoords.x,
         y: item.currentCoords.y,
         point: gridIndicesToPixelPercent(item.currentCoords)
@@ -112,7 +144,7 @@ export function PositionMapStage({
           {effectiveSurfaceState === 'loading'
             ? t('position.loadingMapContext', { defaultValue: 'Loading map context...' })
             : showAllOnMap
-              ? t('position.viewAllOnMap', { defaultValue: '查看所有人' })
+              ? t('position.viewAllOnMap', { defaultValue: 'View everyone' })
               : t('position.currentLocation', { defaultValue: 'Current location' })}
         </p>
       </header>
@@ -132,15 +164,72 @@ export function PositionMapStage({
           {clusteredPins.map((cluster) => {
             if (cluster.members.length <= 1) {
               const pin = cluster.members[0];
+              const pendingCount = pendingEventCountByResidentId?.[pin.residentId] ?? 0;
+              const isHovered = hoveredResidentId === pin.residentId;
+              const ariaSummary = `${pin.displayName}${pin.currentZoneName ? ` · ${pin.currentZoneName}` : ''}`;
               return (
                 <div
                   key={pin.residentId}
                   className="position-map-stage__pin position-map-stage__pin--current"
                   style={{ left: `${pin.point.leftPercent}%`, top: `${pin.point.topPercent}%` }}
-                  aria-hidden
+                  role="button"
+                  tabIndex={0}
+                  aria-label={ariaSummary}
+                  onMouseEnter={() => setHoveredResidentId(pin.residentId)}
+                  onMouseLeave={() =>
+                    setHoveredResidentId((current) => (current === pin.residentId ? null : current))
+                  }
+                  onFocus={() => setHoveredResidentId(pin.residentId)}
+                  onBlur={() =>
+                    setHoveredResidentId((current) => (current === pin.residentId ? null : current))
+                  }
                 >
                   <span className="position-map-stage__pin-label">{pin.displayName}</span>
                   <span className={`position-map-stage__pin-dot position-map-stage__pin-dot--${pin.truthState}`} />
+                  {isHovered ? (
+                    <div className="position-map-stage__pin-tooltip" role="tooltip">
+                      <strong>{pin.displayName}</strong>
+                      <p>
+                        {pin.currentZoneName ?? t('position.zoneUnknown', { defaultValue: 'Unknown zone' })}
+                      </p>
+                      <div className="position-map-stage__pin-tooltip-badges">
+                        <span
+                          className={
+                            pin.riskLevel === 'critical'
+                              ? 'position-map-stage__pin-tooltip-badge--critical'
+                              : pin.riskLevel === 'warning'
+                                ? 'position-map-stage__pin-tooltip-badge--warning'
+                                : ''
+                          }
+                        >
+                          {t(`position.risk.${pin.riskLevel}`, { defaultValue: pin.riskLevel })}
+                        </span>
+                        <span
+                          className={
+                            pin.freshnessLevel === 'stale'
+                              ? 'position-map-stage__pin-tooltip-badge--stale'
+                              : ''
+                          }
+                        >
+                          {t(`position.freshness.${pin.freshnessLevel}`, {
+                            defaultValue: pin.freshnessLevel
+                          })}
+                        </span>
+                        <span>
+                          {t(`position.truth.${pin.truthState}`, { defaultValue: pin.truthState })}
+                        </span>
+                      </div>
+                      <p>{formatPinTooltipAge(pin.lastSeenAgeMs, t)}</p>
+                      {pendingCount > 0 ? (
+                        <p className="position-map-stage__pin-tooltip-pending">
+                          {t('position.tooltip.pendingEvents', {
+                            count: pendingCount,
+                            defaultValue: `${pendingCount} pending event(s)`
+                          })}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               );
             }

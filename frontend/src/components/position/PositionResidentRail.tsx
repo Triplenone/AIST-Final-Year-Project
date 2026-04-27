@@ -193,7 +193,7 @@ export function PositionResidentRail({
           onClick={onShowAllOnMap}
           aria-pressed={showAllOnMap}
         >
-          {t('position.viewAllOnMap', { defaultValue: '查看所有人' })}
+          {t('position.viewAllOnMap', { defaultValue: 'View everyone' })}
         </button>
       </header>
 

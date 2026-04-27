@@ -25,31 +25,82 @@ Backend loads `.env` via `backend/backend/app/config.py`.
 ```bash
 cd backend/backend
 pip install -r requirements.txt
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Verify:
 
 - `GET http://localhost:8000/health`
 - `GET http://localhost:8000/docs`
+- The frontend dev server proxies `/api/*`, `/sim/*`, and `/health` to this backend, so the backend can stay bound to localhost for LAN and tunnel demos.
 
 ## Frontend (primary UI)
 
-### Configure backend base URL
+### Backend routing
 
-Frontend backend URL is hard-coded (no `import.meta.env` in this repo):
+Frontend API calls use same-origin paths configured in:
 
 - `frontend/src/constants/backend.ts`
+
+During local development, Vite proxies those paths to `http://127.0.0.1:8000` via:
+
+- `frontend/vite.config.ts`
 
 ### Install + run
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0
 ```
 
 Open `http://localhost:5173`.
+
+For phones or other devices on the same Wi-Fi/LAN, open the computer's LAN address, for example `http://192.168.48.18:5173`. The page and API use this one frontend URL; no device needs to access port `8000` directly.
+
+For devices on a different Wi-Fi/network, expose only the frontend dev server through a temporary HTTPS tunnel:
+
+```bash
+winget install --id Cloudflare.cloudflared
+cloudflared tunnel --url http://127.0.0.1:5173
+```
+
+Use the generated `https://*.trycloudflare.com` URL on the remote device. Vite is configured to allow that tunnel hostname and proxy API calls back to the local backend.
+
+### Optional: custom public domain
+
+To use `smartcare2026.com` instead of a temporary `trycloudflare.com` URL, the domain must be registered and controlled in Cloudflare first. Current repo-side Vite config already allows:
+
+- `smartcare2026.com`
+- `www.smartcare2026.com`
+
+Tested tunnel setup:
+
+```bash
+npx wrangler login
+npx wrangler tunnel create smartcare2026
+npx wrangler tunnel run smartcare2026
+```
+
+Current tunnel ID:
+
+```text
+babedbb3-a829-4d58-8102-9acc3016f72d
+```
+
+Cloudflare tunnel ingress is configured for:
+
+- `smartcare2026.com` -> `http://127.0.0.1:5173`
+- `www.smartcare2026.com` -> `http://127.0.0.1:5173`
+
+Required DNS after the domain exists in the Cloudflare account:
+
+```text
+smartcare2026.com      CNAME babedbb3-a829-4d58-8102-9acc3016f72d.cfargotunnel.com
+www.smartcare2026.com  CNAME babedbb3-a829-4d58-8102-9acc3016f72d.cfargotunnel.com
+```
+
+If the domain is not registered, not added as a Cloudflare zone, or the account lacks zone/DNS permissions, the tunnel can be healthy but `https://smartcare2026.com` will not resolve.
 
 ### Optional: frontend scripts (verified in `frontend/package.json`)
 

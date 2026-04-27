@@ -2764,6 +2764,9 @@ tbody tr:focus-within {
   position: absolute;
   inset: 0;
   background: rgba(15, 23, 42, 0.55);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
 }
 
 .auth-modal__dialog {
@@ -2886,6 +2889,16 @@ tbody tr:focus-within {
   position: absolute;
   inset: 0;
   background: rgba(15, 23, 42, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.fall-alert-modal__header,
+.fall-alert-modal__lede,
+.fall-alert-modal__actions {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .fall-alert-modal__dialog {

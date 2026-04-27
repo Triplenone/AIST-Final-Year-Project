@@ -16,18 +16,23 @@ import { PositionDecisionPanel } from '../components/position/PositionDecisionPa
 import { PositionMapStage } from '../components/position/PositionMapStage';
 import { PositionResidentRail } from '../components/position/PositionResidentRail';
 import { PositionSummaryBar } from '../components/position/PositionSummaryBar';
+import { eventApi } from '../services/api';
+import type { BackendEvent } from '../types/backend';
 import type { FallAlertDetailRow } from '../types/fall-alert';
 import { buildFallAlertRowsFromPositionResidents } from '../utils/fall-alert-rows';
 
+export type PositionPageRole = 'guest' | 'caregiver' | 'admin';
+
 type PositionPageProps = {
   onSosOrFallDetected?: (items: FallAlertDetailRow[]) => void;
+  userRole?: PositionPageRole;
 };
 
 function initialRegistry(): PositionResidentRegistryEntry[] {
   return POSITION_RESIDENT_REGISTRY.map((entry) => ({ ...entry }));
 }
 
-export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
+export function PositionPage({ onSosOrFallDetected, userRole = 'guest' }: PositionPageProps) {
   const { t } = useTranslation();
   const [registry, setRegistry] = useState<PositionResidentRegistryEntry[]>(initialRegistry);
   const [snapshot, setSnapshot] = useState<PositionCommandCenterSnapshot | null>(null);
@@ -38,8 +43,28 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
   const [residentActivity, setResidentActivity] = useState<PositionResidentActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllOnMap, setShowAllOnMap] = useState(false);
+  const [pendingEventsByResident, setPendingEventsByResident] = useState<Record<string, BackendEvent[]>>({});
+  const [actionLoadingEventId, setActionLoadingEventId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const previousAlertRef = useRef(false);
   const activityRequestSequenceRef = useRef(0);
+
+  /** 拉取所有未处理事件，按 related_user_id 分桶；residentId 在 adapter 中等于 String(user_id)。 */
+  const refreshPendingEvents = useCallback(async () => {
+    try {
+      // 与项目其他地方一致：axios 响应拦截器已返回 response.data，但类型未细化，强制为 BackendEvent[]。
+      const events = (await eventApi.list({ event_status: 'unhandled', limit: 200 })) as unknown as BackendEvent[];
+      const next: Record<string, BackendEvent[]> = {};
+      for (const ev of events) {
+        const key = String(ev.related_user_id);
+        if (!next[key]) next[key] = [];
+        next[key].push(ev);
+      }
+      setPendingEventsByResident(next);
+    } catch {
+      // 安静失败：未处理事件查询不影响主面板渲染。
+    }
+  }, []);
 
   /** 每次执行均重新拉取设备→用户展示名，便于在后台修改用户名后定位页自动更新。 */
   const refreshSnapshot = useCallback(async () => {
@@ -80,12 +105,44 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
 
   useEffect(() => {
     void refreshSnapshot();
+    void refreshPendingEvents();
     const intervalId = window.setInterval(() => {
       void refreshSnapshot();
+      void refreshPendingEvents();
     }, 10_000);
 
     return () => window.clearInterval(intervalId);
-  }, [refreshSnapshot]);
+  }, [refreshPendingEvents, refreshSnapshot]);
+
+  const handleSubmitEventAction = useCallback(
+    async (eventId: number, status: 'confirmed' | 'resolved' | 'false_alarm', remark: string) => {
+      setActionLoadingEventId(eventId);
+      setActionError(null);
+      try {
+        await eventApi.handle(eventId, status, undefined, remark || undefined);
+        await refreshPendingEvents();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to update event.';
+        setActionError(msg);
+      } finally {
+        setActionLoadingEventId(null);
+      }
+    },
+    [refreshPendingEvents]
+  );
+
+  const pendingEventCountByResidentId = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const [residentId, list] of Object.entries(pendingEventsByResident)) {
+      result[residentId] = list.length;
+    }
+    return result;
+  }, [pendingEventsByResident]);
+
+  const selectedResidentPendingEvents = useMemo(() => {
+    if (!selectedResidentId) return [];
+    return pendingEventsByResident[selectedResidentId] ?? [];
+  }, [pendingEventsByResident, selectedResidentId]);
 
   useEffect(() => {
     if (!selectedResidentId && residentActivity) {
@@ -200,6 +257,7 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
           showAllOnMap={showAllOnMap}
           surfaceState={viewModel.surfaceStates.map}
           recordError={viewModel.selectedResidentRecordError}
+          pendingEventCountByResidentId={pendingEventCountByResidentId}
         />
       </div>
 
@@ -213,7 +271,13 @@ export function PositionPage({ onSosOrFallDetected }: PositionPageProps) {
           partialFailureCount={viewModel.partialFailureCount}
           onRefresh={() => {
             void refreshSnapshot();
+            void refreshPendingEvents();
           }}
+          pendingEvents={selectedResidentPendingEvents}
+          actionLoadingEventId={actionLoadingEventId}
+          actionError={actionError}
+          canHandle={userRole === 'caregiver' || userRole === 'admin'}
+          onSubmitEventAction={handleSubmitEventAction}
         />
       </aside>
     </section>
