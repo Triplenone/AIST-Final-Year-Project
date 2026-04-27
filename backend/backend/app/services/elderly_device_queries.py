@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Dict, List
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.device import Device
 from app.models.user_status import UserStatus
@@ -30,12 +31,18 @@ def devices_by_elderly_user_ids(db: Session, user_ids: List[int]) -> Dict[int, L
         if uid is not None and uid in acc:
             acc[uid][dev.device_id] = dev
 
-    rows = (
-        db.query(UserStatus.user_id, UserStatus.device_id)
-        .filter(UserStatus.user_id.in_(user_ids))
-        .distinct()
-        .all()
-    )
+    try:
+        rows = (
+            db.query(UserStatus.user_id, UserStatus.device_id)
+            .filter(UserStatus.user_id.in_(user_ids))
+            .distinct()
+            .all()
+        )
+    except SQLAlchemyError as exc:
+        # Some local datasets do not include `user_status` yet.
+        # Degrade gracefully to device.elderly_user_id binding instead of failing the API.
+        print(f"Warning: user_status linkage skipped in devices_by_elderly_user_ids: {exc}")
+        rows = []
 
     missing_by_user: Dict[int, List[int]] = defaultdict(list)
     for uid, did in rows:

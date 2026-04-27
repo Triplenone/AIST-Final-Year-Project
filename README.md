@@ -170,14 +170,6 @@ More: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
 - Milestones schedule: `Initial_Report_Grp_10.pdf` p.35 (Section 5.2)
 - Roles: `Initial_Report_Grp_10.pdf` pp.36–38 (Section 5.3)
 
-## AI-assisted development
-
-Cursor plan artifacts used as working notes (with human verification against code/routes):
-- `C:\\Users\\user\\.cursor\\plans\\dashboard_map_&_geofence_79d7c0ae.plan.md`
-- `C:\\Users\\user\\.cursor\\plans\\indoor_map_demo_update_26aafa99.plan.md`
-- `C:\\Users\\user\\.cursor\\plans\\demo_exit_polygons_3609eb22.plan.md`
-- `C:\\Users\\user\\.cursor\\plans\\ui_optimization_plan_2b703f14.plan.md`
-
 ## Where to add meeting notes / log sheets
 
 No meeting/chat logs were found in the repo. Suggested location:

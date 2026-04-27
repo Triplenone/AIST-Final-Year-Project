@@ -4,9 +4,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from datetime import datetime
+import math
+import re
 from app.database import get_db
+from app.config import settings
+from app.db.mongo import COLLECTION_RAW_UPSTREAM
 from app.models.user import User
 from app.models.event import Event
 from app.models.location_zone import LocationZone
@@ -16,8 +20,167 @@ from app.models.device_data_log import DeviceDataLog
 from app.schemas.resident import ResidentResponse, ResidentVitals
 from app.schemas.device_data_log import DeviceDataLogResponse
 from app.services.mongo_resident_sensor_vitals import load_mongo_sensor_vitals_for_users
+from app.services.mongo_raw_upstream import get_sync_mongo_db
+from app.services.elderly_device_queries import devices_by_elderly_user_ids
 
 router = APIRouter()
+
+
+def _reverse_device_map() -> Dict[int, str]:
+    return {value: key for key, value in settings.device_id_map.items()}
+
+
+def _candidate_ids_for_device(dev: Device, reverse_map: Dict[int, str]) -> List[str]:
+    out: List[str] = [str(dev.device_id)]
+    if dev.mac_address:
+        out.append(str(dev.mac_address).strip())
+    ext = reverse_map.get(dev.device_id)
+    if ext:
+        out.append(str(ext))
+    return list(dict.fromkeys([item for item in out if item]))
+
+
+def _to_finite_float(value: Any) -> Optional[float]:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(parsed):
+        return None
+    return parsed
+
+
+def _extract_mongo_location(doc: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    payload = doc.get("payload") if isinstance(doc.get("payload"), dict) else {}
+    location = payload.get("location") if isinstance(payload.get("location"), dict) else {}
+    if not location and isinstance(doc.get("location"), dict):
+        location = doc.get("location")
+    if not isinstance(location, dict):
+        return None
+
+    current = location.get("current") if isinstance(location.get("current"), dict) else {}
+    if not current:
+        return None
+
+    x = _to_finite_float(current.get("x"))
+    y = _to_finite_float(current.get("y"))
+    if x is None or y is None:
+        return None
+
+    location_name = current.get("name")
+    location_name = location_name.strip() if isinstance(location_name, str) else None
+    if location_name == "":
+        location_name = None
+
+    zone_id = current.get("location_zone_id")
+    if zone_id is None:
+        zone_id = current.get("zone_id")
+    if zone_id is None:
+        zone_id = current.get("locationZoneId")
+
+    return {
+        "location_name": location_name,
+        "location_zone_id": zone_id,
+        "server_received_at": doc.get("server_received_at"),
+    }
+
+
+def _normalize_room_label(raw_room: str, user_id: int) -> str:
+    """
+    Normalize placeholder test-room labels for UI display.
+    Rule: test-roomXX / test_roomXX -> room{user_id}
+    """
+    room = (raw_room or "").strip()
+    if not room:
+        return room
+    if re.fullmatch(r"test[-_]room\d+", room, flags=re.IGNORECASE):
+        return f"room{user_id}"
+    return room
+
+
+def load_mongo_latest_locations_for_users(db: Session, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+    """
+    Return latest valid Mongo location per user, keyed by user_id.
+    Falls back through all mapped device-id candidates so it still works when
+    upstream writes either external ESP32 IDs or MySQL numeric IDs.
+    """
+    if not user_ids:
+        return {}
+
+    devices_per_user = devices_by_elderly_user_ids(db, user_ids)
+    if not any(devices_per_user.values()):
+        return {}
+
+    reverse_map = _reverse_device_map()
+    candidate_ids_by_user: Dict[int, Set[str]] = {}
+    candidate_to_users: Dict[str, Set[int]] = {}
+    mysql_ids: Set[int] = set()
+
+    for uid in user_ids:
+        for dev in devices_per_user.get(uid) or []:
+            mysql_ids.add(int(dev.device_id))
+            for candidate in _candidate_ids_for_device(dev, reverse_map):
+                candidate_ids_by_user.setdefault(uid, set()).add(candidate)
+                candidate_to_users.setdefault(candidate, set()).add(uid)
+
+    if not candidate_to_users and not mysql_ids:
+        return {}
+
+    query_parts: List[Dict[str, Any]] = []
+    if candidate_to_users:
+        cands = sorted(candidate_to_users.keys())
+        query_parts.append({"device_id": {"$in": cands} if len(cands) > 1 else cands[0]})
+    if mysql_ids:
+        mids = sorted(mysql_ids)
+        query_parts.append({"mysql_device_id": {"$in": mids} if len(mids) > 1 else mids[0]})
+
+    query: Dict[str, Any]
+    if len(query_parts) == 1:
+        query = query_parts[0]
+    else:
+        query = {"$or": query_parts}
+
+    try:
+        coll = get_sync_mongo_db()[COLLECTION_RAW_UPSTREAM]
+        cursor = coll.find(query).sort("server_received_at", -1).limit(2000)
+    except Exception as exc:
+        print(f"Warning: Mongo location fallback skipped: {exc}")
+        return {}
+
+    unresolved: Set[int] = set(candidate_ids_by_user.keys())
+    out: Dict[int, Dict[str, Any]] = {}
+
+    for doc in cursor:
+        if not unresolved:
+            break
+
+        location = _extract_mongo_location(doc)
+        if not location:
+            continue
+
+        matched_users: Set[int] = set()
+        did = doc.get("device_id")
+        if did is not None:
+            did_str = str(did).strip()
+            if did_str:
+                matched_users.update(candidate_to_users.get(did_str, set()))
+
+        mysql_device_id = doc.get("mysql_device_id")
+        if mysql_device_id is not None:
+            try:
+                mysql_device_id_int = int(mysql_device_id)
+            except (TypeError, ValueError):
+                mysql_device_id_int = None
+            if mysql_device_id_int is not None:
+                matched_users.update(candidate_to_users.get(str(mysql_device_id_int), set()))
+
+        for uid in list(matched_users):
+            if uid not in unresolved:
+                continue
+            out[uid] = location
+            unresolved.discard(uid)
+
+    return out
 
 
 def _apply_mongo_sensor_vitals(
@@ -117,11 +280,14 @@ def get_last_seen_info(db: Session, user_id: int) -> Tuple[Optional[str], Option
             location_zone_id = latest_location_event.location_zone_id
 
     if not location_zone_id:
-        latest_status = db.query(UserStatus).filter(
-            UserStatus.user_id == user_id
-        ).order_by(UserStatus.status_timestamp.desc()).first()
-        if latest_status and latest_status.location_zone_id:
-            location_zone_id = latest_status.location_zone_id
+        try:
+            latest_status = db.query(UserStatus).filter(
+                UserStatus.user_id == user_id
+            ).order_by(UserStatus.status_timestamp.desc()).first()
+            if latest_status and latest_status.location_zone_id:
+                location_zone_id = latest_status.location_zone_id
+        except Exception as e:
+            print(f"Warning: user_status fallback skipped in get_last_seen_info: {e}")
 
     if location_zone_id:
         location = db.query(LocationZone).filter(
@@ -141,13 +307,16 @@ def get_resident_room(db: Session, user_id: int) -> str:
     _, last_seen_location = get_last_seen_info(db, user_id)
     if last_seen_location:
         return last_seen_location
-    latest_status = db.query(UserStatus).options(
-        joinedload(UserStatus.device)
-    ).filter(
-        UserStatus.user_id == user_id
-    ).order_by(UserStatus.status_timestamp.desc()).first()
-    if latest_status and latest_status.device and latest_status.device.deploy_location:
-        return latest_status.device.deploy_location
+    try:
+        latest_status = db.query(UserStatus).options(
+            joinedload(UserStatus.device)
+        ).filter(
+            UserStatus.user_id == user_id
+        ).order_by(UserStatus.status_timestamp.desc()).first()
+        if latest_status and latest_status.device and latest_status.device.deploy_location:
+            return latest_status.device.deploy_location
+    except Exception as e:
+        print(f"Warning: user_status room fallback skipped: {e}")
     return "Unknown"
 
 
@@ -303,6 +472,12 @@ def get_residents(
             mongo_vitals_map = load_mongo_sensor_vitals_for_users(db, user_ids)
         except Exception as e:
             print(f"Warning: Mongo vitals merge skipped: {e}")
+
+        mongo_locations_by_user: Dict[int, Dict[str, Any]] = {}
+        try:
+            mongo_locations_by_user = load_mongo_latest_locations_for_users(db, user_ids)
+        except Exception as e:
+            print(f"Warning: Mongo location fallback skipped: {e}")
         
         # 构建响应
         residents = []
@@ -396,9 +571,29 @@ def get_residents(
                 loc_zone_id = user_status.location_zone_id
             if loc_zone_id and loc_zone_id in locations:
                 last_seen_location = locations[loc_zone_id].name
+            if not last_seen_location:
+                mongo_location = mongo_locations_by_user.get(user_id)
+                if mongo_location:
+                    mongo_zone_id = mongo_location.get("location_zone_id")
+                    if mongo_zone_id is not None:
+                        try:
+                            mongo_zone_id = int(mongo_zone_id)
+                        except (TypeError, ValueError):
+                            mongo_zone_id = None
+                    if mongo_zone_id and mongo_zone_id in locations:
+                        last_seen_location = locations[mongo_zone_id].name
+                    elif mongo_location.get("location_name"):
+                        last_seen_location = str(mongo_location.get("location_name"))
+                    if not last_seen_at and mongo_location.get("server_received_at"):
+                        server_received_at = mongo_location.get("server_received_at")
+                        if isinstance(server_received_at, datetime):
+                            last_seen_at = server_received_at.isoformat()
             
             # 获取房间：优先位置名，再回退 device.deploy_location
-            room = last_seen_location or (device_deploy_location or "Unknown")
+            room = _normalize_room_label(
+                last_seen_location or (device_deploy_location or "Unknown"),
+                user_id,
+            )
             
             residents.append(ResidentResponse(
                 id=str(user.user_id),
@@ -456,11 +651,15 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     room = get_resident_room(db, user.user_id)
     
     # 获取用户状态和设备信息
-    user_status = db.query(UserStatus).options(
-        joinedload(UserStatus.device)
-    ).filter(
-        UserStatus.user_id == user.user_id
-    ).order_by(UserStatus.status_timestamp.desc()).first()
+    try:
+        user_status = db.query(UserStatus).options(
+            joinedload(UserStatus.device)
+        ).filter(
+            UserStatus.user_id == user.user_id
+        ).order_by(UserStatus.status_timestamp.desc()).first()
+    except Exception as e:
+        print(f"Warning: user_status detail lookup skipped: {e}")
+        user_status = None
 
     fallback_device = db.query(Device).filter(
         Device.elderly_user_id == user.user_id
@@ -514,6 +713,36 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     vitals, heart_rate, blood_oxygen = _apply_mongo_sensor_vitals(
         user.user_id, mongo_vitals_map, vitals, heart_rate, blood_oxygen
     )
+
+    if not last_seen_location:
+        try:
+            mongo_locations = load_mongo_latest_locations_for_users(db, [user.user_id])
+        except Exception as e:
+            print(f"Warning: Mongo location fallback skipped: {e}")
+            mongo_locations = {}
+        mongo_location = mongo_locations.get(user.user_id)
+        if mongo_location:
+            mongo_zone_id = mongo_location.get("location_zone_id")
+            zone_name = None
+            if mongo_zone_id is not None:
+                try:
+                    mongo_zone_id = int(mongo_zone_id)
+                except (TypeError, ValueError):
+                    mongo_zone_id = None
+            if mongo_zone_id is not None:
+                zone = db.query(LocationZone).filter(
+                    LocationZone.location_zone_id == mongo_zone_id
+                ).first()
+                if zone:
+                    zone_name = zone.name
+            last_seen_location = zone_name or mongo_location.get("location_name") or last_seen_location
+            if not last_seen_at and mongo_location.get("server_received_at"):
+                server_received_at = mongo_location.get("server_received_at")
+                if isinstance(server_received_at, datetime):
+                    last_seen_at = server_received_at.isoformat()
+
+    if (not room or room == "Unknown") and last_seen_location:
+        room = last_seen_location
     
     return ResidentResponse(
         id=str(user.user_id),

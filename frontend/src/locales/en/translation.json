@@ -50,7 +50,7 @@
     "sensors": "Sensors",
     "system": "System",
     "refresh": "Refresh",
-    "viewAllOnMap": "View everyone",
+    "viewAllOnMap": "View all residents",
     "actions": {
       "title": "Pending events",
       "confirm": "Confirm",
@@ -154,7 +154,6 @@
         "room": "Room",
         "status": "Status",
         "lastSeen": "Last seen",
-        "vitals": "Vitals",
         "device": "Device",
         "updated": "Updated"
       },

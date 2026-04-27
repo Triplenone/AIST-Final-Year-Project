@@ -156,7 +156,6 @@
         "room": "房号",
         "status": "状态",
         "lastSeen": "最后出现",
-        "vitals": "生命体征",
         "device": "设备",
         "updated": "更新时间"
       },

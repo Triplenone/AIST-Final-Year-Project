@@ -134,36 +134,6 @@ export const ResidentsAdmin = () => {
     [locale, t]
   );
 
-  const describeVitals = useCallback(
-    (resident: BackendResident) => {
-      const hr = resident.vitals?.hr ?? resident.heart_rate;
-      const spo2 = resident.vitals?.spo2 ?? resident.blood_oxygen;
-      const temperature = resident.vitals?.temperature ?? resident.body_temperature;
-      const bpSystolic = resident.vitals?.bp_systolic;
-      const bpDiastolic = resident.vitals?.bp_diastolic;
-      const parts: string[] = [];
-
-      if (hr !== null && hr !== undefined) {
-        parts.push(t('residents.vitals.hr', { value: hr }));
-      }
-      if (spo2 !== null && spo2 !== undefined) {
-        parts.push(t('residents.vitals.spo2', { value: spo2 }));
-      }
-      if (temperature !== null && temperature !== undefined) {
-        parts.push(t('residents.vitals.temp', { value: Number(temperature).toFixed(1) }));
-      }
-      if (bpSystolic !== null && bpSystolic !== undefined && bpDiastolic !== null && bpDiastolic !== undefined) {
-        parts.push(t('residents.vitals.bp', { systolic: bpSystolic, diastolic: bpDiastolic }));
-      }
-
-      if (!parts.length) {
-        return t('admin.residents.vitalsUnknown');
-      }
-      return parts.join(' · ');
-    },
-    [t]
-  );
-
   const describeDevicePrimary = useCallback(
     (resident: BackendResident) => {
       if (resident.device_id) {
@@ -197,7 +167,9 @@ export const ResidentsAdmin = () => {
     setError(null);
     try {
       const data = await residentApi.list({ limit: 500 });
-      setResidents(data);
+      // `api` interceptor returns response.data directly; keep a fallback for mixed typings.
+      const rows = Array.isArray(data) ? data : (data as { data?: BackendResident[] }).data ?? [];
+      setResidents(rows);
       setLastUpdated(new Date().toISOString());
     } catch (err) {
       const fallback = t('admin.residents.error');
@@ -396,14 +368,13 @@ export const ResidentsAdmin = () => {
                   <th>{t('admin.residents.columns.room')}</th>
                   <th>{t('admin.residents.columns.status')}</th>
                   <th>{t('admin.residents.columns.lastSeen')}</th>
-                  <th>{t('admin.residents.columns.vitals')}</th>
                   <th>{t('admin.residents.columns.device')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="empty-placeholder">
+                    <td colSpan={6} className="empty-placeholder">
                       {t('admin.residents.noData')}
                     </td>
                   </tr>
@@ -440,9 +411,6 @@ export const ResidentsAdmin = () => {
                             {resident.last_seen_location ?? t('admin.residents.lastSeenUnknown')}
                           </span>
                         </div>
-                      </td>
-                      <td>
-                        <span className="residents-workspace__cell-copy">{describeVitals(resident)}</span>
                       </td>
                       <td>
                         <div className="residents-workspace__stack">

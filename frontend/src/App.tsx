@@ -1183,6 +1183,9 @@ export default function App() {
           />
         );
       case 'admin':
+        if (session?.role !== 'admin') {
+          return <Navigate to="/" replace />;
+        }
         return (
           <div className="route-stack">
             <AdminSection activeTab={adminActiveTab} onTabChange={setAdminActiveTab} />
