@@ -58,6 +58,14 @@ What it does (repo evidence):
 
 Code: `frontend/src/App.tsx` + `frontend/src/shared/resident-live-store.tsx`
 
+### 6) Optional: ITP4458 campus mini-project demo
+
+- Open `http://localhost:5173/campus`
+- The page demonstrates the ITP4458 flow: smartwatch sensing -> BLE / Wi-Fi / MQTT communication -> backend / Mongo upstream -> dashboard visualization.
+- The campus map is loaded from `frontend/src/assets/campus-map.png`.
+- The smartwatch marker is a frontend overlay only; the base map image remains clean.
+- The page falls back to demo data when the backend is offline.
+
 ## Expected update timing (repo evidence)
 
 - Residents snapshot polling: every **10s** (`frontend/src/shared/resident-live-store.tsx`)

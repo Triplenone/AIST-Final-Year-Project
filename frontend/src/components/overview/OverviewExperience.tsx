@@ -430,10 +430,22 @@ export function OverviewExperience({
         </div>
       </motion.section>
 
-      <div className="overview-flycare-hint">
-        <NavLink to="/flycare" aria-label={t('layout.nav.flycare')}>
-          {t('layout.nav.flycare')}
-        </NavLink>
+      <div className="overview-entry-row">
+        <article className="campus-entry campus-entry--bottom-left">
+          <div>
+            <strong>Campus</strong>
+            <p>Smart campus navigation and emergency alert demo</p>
+          </div>
+          <NavLink to="/campus" aria-label="Open Campus">
+            Open Campus
+          </NavLink>
+        </article>
+
+        <div className="overview-flycare-hint">
+          <NavLink to="/flycare" aria-label={t('layout.nav.flycare')}>
+            {t('layout.nav.flycare')}
+          </NavLink>
+        </div>
       </div>
     </div>
   );

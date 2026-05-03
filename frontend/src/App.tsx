@@ -59,6 +59,7 @@ type DashboardPageKey =
   | 'location'
   | 'position'
   | 'flycare'
+  | 'campus'
   | 'operations'
   | 'family'
   | 'admin';
@@ -113,6 +114,9 @@ const FamilyPage = lazy(() =>
 const FlyCarePage = lazy(() =>
   import('./pages/FlyCarePage').then((module) => ({ default: module.FlyCarePage }))
 );
+const CampusPage = lazy(() =>
+  import('./pages/CampusPage').then((module) => ({ default: module.CampusPage }))
+);
 
 const INDOOR_ZONES = ['Bedroom 1', 'Bedroom 2', 'Bathroom', 'Common Lounge'];
 const SIM_STATUSES: Resident['status'][] = ['high', 'followUp', 'stable'];
@@ -131,6 +135,8 @@ const resolveDashboardPage = (pathname: string): DashboardPageKey => {
       return 'position';
     case '/flycare':
       return 'flycare';
+    case '/campus':
+      return 'campus';
     case '/operations':
       return 'operations';
     case '/family':
@@ -1139,7 +1145,7 @@ export default function App() {
     }
 
     // 訪客 (未登入) 不可直接以 URL 進入非 overview 頁面。
-    if (!session && activePage !== 'overview') {
+    if (!session && activePage !== 'overview' && activePage !== 'campus') {
       return <Navigate to="/" replace />;
     }
 
@@ -1158,6 +1164,8 @@ export default function App() {
         );
       case 'flycare':
         return <FlyCarePage onSosOrFallDetected={openFallAlertModal} />;
+      case 'campus':
+        return <CampusPage />;
       case 'residents':
         return (
           <section className="route-surface">

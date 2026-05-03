@@ -1,0 +1,327 @@
+.campus-page {
+  display: grid;
+  gap: 1.1rem;
+  width: 100%;
+}
+
+.campus-hero,
+.campus-status-card,
+.campus-map-card,
+.campus-info-panel,
+.campus-activity-card {
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(14px);
+}
+
+.campus-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: end;
+  padding: clamp(1.2rem, 2.4vw, 2rem);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(160deg, rgba(255, 252, 247, 0.92), rgba(237, 246, 244, 0.76));
+}
+
+:root[data-theme='dark'] .campus-hero {
+  background: linear-gradient(160deg, rgba(10, 18, 27, 0.92), rgba(13, 30, 36, 0.72));
+}
+
+.campus-hero__copy {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 54rem;
+}
+
+.campus-hero__course {
+  margin: 0;
+  color: var(--accent-strong);
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.campus-hero h2 {
+  margin: 0;
+  max-width: 16ch;
+  font-size: clamp(2.05rem, 4vw, 4rem);
+  line-height: 0.98;
+}
+
+.campus-hero__subtitle,
+.campus-hero__description {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.campus-hero__subtitle {
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.campus-hero__description {
+  max-width: 42rem;
+}
+
+.campus-protocol-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  max-width: 22rem;
+}
+
+.campus-protocol-badges span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.1rem;
+  padding: 0.42rem 0.72rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(29, 95, 116, 0.18);
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+:root[data-theme='dark'] .campus-protocol-badges span {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(143, 214, 239, 0.16);
+}
+
+.campus-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.campus-status-card {
+  display: grid;
+  gap: 0.45rem;
+  min-height: 7.4rem;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme='dark'] .campus-status-card,
+:root[data-theme='dark'] .campus-map-card,
+:root[data-theme='dark'] .campus-info-panel,
+:root[data-theme='dark'] .campus-activity-card {
+  background: rgba(12, 22, 32, 0.82);
+}
+
+.campus-status-card span,
+.campus-section-heading p,
+.campus-info-list dt {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.campus-status-card strong {
+  align-self: end;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  line-height: 1;
+}
+
+.campus-status-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.campus-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(19rem, 0.58fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.campus-map-card,
+.campus-info-panel,
+.campus-activity-card {
+  padding: clamp(1rem, 1.6vw, 1.25rem);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.campus-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.campus-section-heading h3 {
+  margin: 0.15rem 0 0;
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  line-height: 1;
+}
+
+.campus-section-heading span {
+  max-width: 16rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.campus-section-heading--compact {
+  margin-bottom: 0.75rem;
+}
+
+.campus-map-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(16, 23, 34, 0.1);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+:root[data-theme='dark'] .campus-map-frame {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(241, 245, 249, 0.94);
+}
+
+.campus-map-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.campus-live-marker {
+  position: absolute;
+  left: var(--marker-x);
+  top: var(--marker-y);
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: #1d5f74;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 4px rgba(29, 95, 116, 0.16);
+  transform: translate(-50%, -50%);
+}
+
+.campus-map-waiting {
+  position: absolute;
+  inset: auto 1rem 1rem;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 23, 34, 0.76);
+  color: #fff;
+  font-size: 0.82rem;
+}
+
+.campus-info-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.campus-info-list div {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.72rem 0.78rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+:root[data-theme='dark'] .campus-info-list div {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.campus-info-list dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.campus-activity-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.campus-activity-list li {
+  position: relative;
+  padding: 0.72rem 0.78rem 0.72rem 2.05rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(16, 23, 34, 0.08);
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--text-secondary);
+}
+
+.campus-activity-list li::before {
+  content: '';
+  position: absolute;
+  left: 0.85rem;
+  top: 1.1rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-secondary);
+}
+
+:root[data-theme='dark'] .campus-activity-list li {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 1050px) {
+  .campus-hero,
+  .campus-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .campus-protocol-badges {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .campus-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .campus-page {
+    gap: 0.85rem;
+  }
+
+  .campus-hero,
+  .campus-map-card,
+  .campus-info-panel,
+  .campus-activity-card {
+    padding: 1rem;
+  }
+
+  .campus-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .campus-section-heading {
+    flex-direction: column;
+  }
+
+  .campus-section-heading span {
+    max-width: none;
+    text-align: left;
+  }
+}
