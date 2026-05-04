@@ -7,6 +7,8 @@ import '../styles/campus-page.css';
 type CampusLocation = {
   xPercent: number;
   yPercent: number;
+  x?: number;
+  y?: number;
 };
 
 type CampusData = {
@@ -24,7 +26,7 @@ type CampusData = {
 };
 
 type CampusViewData = CampusData & {
-  dataSource: 'fallback' | 'live';
+  dataSource: 'fallback' | 'live' | 'stale';
 };
 
 type MarkerStyle = CSSProperties & {
@@ -52,6 +54,12 @@ const campusFallback = {
 } satisfies CampusData;
 
 const protocolBadges = ['BLE Beacon', 'Wi-Fi', 'MQTT', 'Dashboard'];
+const CAMPUS_DEVICE_ID = 'ESP32_0000E03948D4DB1C';
+const CAMPUS_DEVICE_ALIASES = [CAMPUS_DEVICE_ID, 'ESP32_000040FA7AD4DB1C'] as const;
+const CAMPUS_MAP_WIDTH = 12;
+const CAMPUS_MAP_HEIGHT = 16;
+const CAMPUS_POLL_INTERVAL_MS = 5000;
+const STALE_AFTER_MS = 30000;
 
 const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
 
@@ -123,38 +131,83 @@ const createCampusFallback = (): CampusViewData => ({
   dataSource: 'fallback'
 });
 
-const timestampToIso = (timestamp: unknown): string | null => {
+const timestampToMs = (timestamp: unknown): number | null => {
+  if (timestamp instanceof Date) {
+    const parsedDate = timestamp.getTime();
+    return Number.isNaN(parsedDate) ? null : parsedDate;
+  }
+
+  if (typeof timestamp === 'string' && timestamp.trim()) {
+    const parsedDate = Date.parse(timestamp);
+    if (Number.isFinite(parsedDate)) return parsedDate;
+  }
+
   const numeric = typeof timestamp === 'number' ? timestamp : typeof timestamp === 'string' ? Number(timestamp) : NaN;
   if (!Number.isFinite(numeric)) return null;
-  const milliseconds = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+  return numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+};
+
+const timestampToIso = (timestamp: unknown): string | null => {
+  const milliseconds = timestampToMs(timestamp);
+  if (milliseconds == null) return null;
   const parsed = new Date(milliseconds);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const inferCampusZone = (x?: number, y?: number): string => {
+  if (x == null || y == null) return campusFallback.currentZone;
+  if (y >= 10 && x < 4) return 'Classroom A';
+  if (y >= 10 && x >= 4 && x < 8) return 'Computer Lab';
+  if (y >= 10 && x >= 8) return 'Library / Study Area';
+  if (y >= 5 && y < 10) return 'Central Corridor';
+  if (y < 5 && x < 4) return 'Student Lounge';
+  if (y < 5 && x >= 4 && x < 8) return 'Main Entrance';
+  if (y < 5 && x >= 8) return 'Emergency Exit';
+  return 'Campus Area';
 };
 
 const readCampusLocation = (location: Record<string, unknown> | null): CampusLocation | null => {
   if (!location) return null;
 
-  const x =
+  const xPercent =
     readNumber(location, [
       ['current', 'xPercent'],
       ['current', 'x_percent'],
       ['xPercent'],
-      ['x_percent'],
-      ['current', 'x'],
-      ['x']
+      ['x_percent']
     ]) ?? null;
-  const y =
+  const yPercent =
     readNumber(location, [
       ['current', 'yPercent'],
       ['current', 'y_percent'],
       ['yPercent'],
-      ['y_percent'],
+      ['y_percent']
+    ]) ?? null;
+  const x = readNumber(location, [
+      ['current', 'x'],
+      ['x']
+    ]) ?? null;
+  const y = readNumber(location, [
       ['current', 'y'],
       ['y']
     ]) ?? null;
 
+  if (xPercent != null && yPercent != null) {
+    return {
+      xPercent: clampPercent(xPercent),
+      yPercent: clampPercent(yPercent),
+      x,
+      y
+    };
+  }
+
   if (x == null || y == null) return null;
-  return { xPercent: clampPercent(x), yPercent: clampPercent(y) };
+  return {
+    xPercent: clampPercent((x / CAMPUS_MAP_WIDTH) * 100),
+    yPercent: clampPercent((y / CAMPUS_MAP_HEIGHT) * 100),
+    x,
+    y
+  };
 };
 
 const buildCampusDataFromLive = (latest: MongoUpstreamLatest): CampusViewData | null => {
@@ -163,9 +216,13 @@ const buildCampusDataFromLive = (latest: MongoUpstreamLatest): CampusViewData | 
   const location = getSectionData(latest, 'location');
   const sos = getSectionData(latest, 'sos');
   const system = getSectionData(latest, 'system');
+  const campusLocation = readCampusLocation(location);
   const beaconList = getNested(location, ['beacons']);
   const beaconCount =
     readNumber(location, [
+      ['current', 'beaconCount'],
+      ['current', 'beacon_count'],
+      ['current', 'beacons_detected'],
       ['beaconCount'],
       ['beacon_count'],
       ['beacons_detected'],
@@ -173,6 +230,9 @@ const buildCampusDataFromLive = (latest: MongoUpstreamLatest): CampusViewData | 
     ]) ?? (Array.isArray(beaconList) ? beaconList.length : campusFallback.beaconCount);
   const signalQuality =
     readString(location, [
+      ['current', 'quality'],
+      ['current', 'signalQuality'],
+      ['current', 'signal_quality'],
       ['quality'],
       ['signalQuality'],
       ['signal_quality'],
@@ -190,7 +250,7 @@ const buildCampusDataFromLive = (latest: MongoUpstreamLatest): CampusViewData | 
       ['zone'],
       ['zone_name'],
       ['location_name']
-    ]) ?? campusFallback.currentZone;
+    ]) ?? inferCampusZone(campusLocation?.x, campusLocation?.y);
   const battery =
     readNumber(system, [
       ['battery', 'level'],
@@ -204,6 +264,10 @@ const buildCampusDataFromLive = (latest: MongoUpstreamLatest): CampusViewData | 
       ['is_active'],
       ['sos_active'],
       ['pressed']
+    ]) ??
+    readBoolean(latest, [
+      ['sos_active'],
+      ['sosActive']
     ]) ?? campusFallback.sosActive;
   const status =
     readString(system, [
@@ -213,6 +277,9 @@ const buildCampusDataFromLive = (latest: MongoUpstreamLatest): CampusViewData | 
     ]) ?? campusFallback.status;
   const sosState = sosActive ? 'SOS Active' : 'Normal';
   const lastSeen = latest.server_received_at ?? timestampToIso(latest.timestamp) ?? new Date().toISOString();
+  const lastSeenMs = timestampToMs(latest.server_received_at) ?? timestampToMs(latest.timestamp);
+  const isStale = lastSeenMs == null || Date.now() - lastSeenMs > STALE_AFTER_MS;
+  const connectionStatus = isStale ? 'Stale Mongo upstream' : 'Live Mongo upstream';
 
   return {
     deviceId: latest.device_id != null ? String(latest.device_id) : campusFallback.deviceId,
@@ -221,18 +288,35 @@ const buildCampusDataFromLive = (latest: MongoUpstreamLatest): CampusViewData | 
     battery,
     sosActive,
     lastSeen,
-    location: readCampusLocation(location),
+    location: campusLocation,
     beaconCount,
     signalQuality,
-    connectionStatus: 'Live Mongo upstream',
+    connectionStatus,
     recentEvents: [
       `Location updated near ${currentZone}`,
       `BLE beacon signal quality: ${signalQuality}`,
       `SOS state: ${sosState}`,
-      'Dashboard updated from live Mongo upstream'
+      isStale ? 'Dashboard showing stale Mongo upstream data' : 'Dashboard updated from live Mongo upstream'
     ],
-    dataSource: 'live'
+    dataSource: isStale ? 'stale' : 'live'
   };
+};
+
+const fetchLatestCampusData = async (): Promise<CampusViewData | null> => {
+  for (const deviceId of CAMPUS_DEVICE_ALIASES) {
+    try {
+      const latest = (await mongoUpstreamApi.getLatest({
+        device_id: deviceId,
+        exclude_data_type: 'flight'
+      })) as MongoUpstreamLatest;
+      const liveData = buildCampusDataFromLive(latest);
+      if (liveData) return liveData;
+    } catch {
+      // Try the next known CampusWatch device ID before falling back to demo data.
+    }
+  }
+
+  return null;
 };
 
 const formatDateTime = (value: string): string => {
@@ -254,23 +338,20 @@ export function CampusPage() {
     let cancelled = false;
 
     const loadLatest = async () => {
-      try {
-        const latest = (await mongoUpstreamApi.getLatest({ exclude_data_type: 'flight' })) as MongoUpstreamLatest;
-        const liveData = buildCampusDataFromLive(latest);
-        if (!cancelled && liveData) {
-          setCampusData(liveData);
-        }
-      } catch {
-        if (!cancelled) {
-          setCampusData(createCampusFallback());
-        }
+      const liveData = await fetchLatestCampusData();
+      if (!cancelled) {
+        setCampusData(liveData ?? createCampusFallback());
       }
     };
 
     void loadLatest();
+    const intervalId = window.setInterval(() => {
+      void loadLatest();
+    }, CAMPUS_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, []);
 
