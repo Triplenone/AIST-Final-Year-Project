@@ -37,7 +37,12 @@
 static const char* WIFI_SSID = "No";
 static const char* WIFI_PASSWORD = "77777777";
 
-static const char* MQTT_HOST = "192.168.0.203";
+static const char* MQTT_HOSTS[] = {
+  "172.20.10.3",
+  "192.168.0.203",
+  "192.168.137.1"
+};
+static const int MQTT_HOST_COUNT = sizeof(MQTT_HOSTS) / sizeof(MQTT_HOSTS[0]);
 static const uint16_t MQTT_PORT = 1883;
 
 static const char* DEVICE_ID = "ESP32_0000E03948D4DB1C";
@@ -66,6 +71,7 @@ static const char* TARGET_NAME = "Bedroom";
 struct Beacon {
   const char* mac;
   const char* name;
+  const char* zone;
   float x;
   float y;
   int rssi;
@@ -73,9 +79,9 @@ struct Beacon {
 };
 
 Beacon beacons[] = {
-  {"20:a7:16:61:02:42", "Campus Beacon A", 2.0, 14.0, -100, false},
-  {"20:a7:16:61:02:2a", "Campus Beacon B", 10.0, 14.0, -100, false},
-  {"20:a7:16:61:02:03", "Campus Beacon C", 6.0, 2.0, -100, false}
+  {"20:a7:16:61:02:42", "Campus Beacon A", "Classroom A", 2.0, 14.0, -100, false},
+  {"20:a7:16:61:02:2a", "Campus Beacon B", "Library / Study Area", 10.0, 14.0, -100, false},
+  {"20:a7:16:61:02:03", "Campus Beacon C", "Main Entrance", 6.0, 2.0, -100, false}
 };
 
 static const int BEACON_COUNT = sizeof(beacons) / sizeof(beacons[0]);
@@ -90,6 +96,8 @@ float locAccuracy = 0.0;
 int locBeaconCount = 0;
 String locQuality = "unknown";
 String nearestBeacon = "";
+String nearestBeaconName = "";
+String nearestBeaconZone = "";
 int nearestRssi = -100;
 
 bool sosActive = false;
@@ -153,6 +161,8 @@ class ScanCB : public BLEAdvertisedDeviceCallbacks {
         if (rssi > nearestRssi) {
           nearestRssi = rssi;
           nearestBeacon = mac;
+          nearestBeaconName = beacons[i].name;
+          nearestBeaconZone = beacons[i].zone;
         }
 
         Serial.printf("Beacon matched: %s RSSI=%d\n", mac.c_str(), rssi);
@@ -174,6 +184,8 @@ void initBLE() {
 void scanLocation() {
   locBeaconCount = 0;
   nearestBeacon = "";
+  nearestBeaconName = "";
+  nearestBeaconZone = "";
   nearestRssi = -100;
 
   for (int i = 0; i < BEACON_COUNT; i++) {
@@ -250,17 +262,26 @@ void connectWiFi() {
 }
 
 void connectMQTT() {
-  mqtt.setServer(MQTT_HOST, MQTT_PORT);
-  mqtt.setBufferSize(2048);
+  mqtt.setBufferSize(4096);
 
   while (!mqtt.connected()) {
-    String clientId = String("EmergencyWatch-") + DEVICE_ID + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-    Serial.printf("MQTT connecting to %s:%u\n", MQTT_HOST, MQTT_PORT);
+    for (int i = 0; i < MQTT_HOST_COUNT && !mqtt.connected(); i++) {
+      const char* host = MQTT_HOSTS[i];
+      mqtt.setServer(host, MQTT_PORT);
 
-    if (mqtt.connect(clientId.c_str())) {
-      Serial.println("MQTT OK");
-    } else {
-      Serial.printf("MQTT failed state=%d. Retry in 2s\n", mqtt.state());
+      String clientId = String("EmergencyWatch-") + DEVICE_ID + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+      Serial.printf("MQTT connecting to %s:%u\n", host, MQTT_PORT);
+
+      if (mqtt.connect(clientId.c_str())) {
+        Serial.printf("MQTT OK host=%s\n", host);
+      } else {
+        Serial.printf("MQTT failed host=%s state=%d\n", host, mqtt.state());
+        delay(600);
+      }
+    }
+
+    if (!mqtt.connected()) {
+      Serial.println("MQTT all hosts failed. Retry in 2s");
       delay(2000);
     }
   }
@@ -292,6 +313,26 @@ void fillPayload(JsonDocument& doc, const char* dataType) {
   current["beacon_count"] = locBeaconCount;
   current["map_width"] = MAP_W;
   current["map_height"] = MAP_H;
+
+  JsonArray detectedBeacons = location["beacons"].to<JsonArray>();
+  for (int i = 0; i < BEACON_COUNT; i++) {
+    if (!beacons[i].found) continue;
+
+    JsonObject item = detectedBeacons.add<JsonObject>();
+    item["mac"] = beacons[i].mac;
+    item["name"] = beacons[i].name;
+    item["zone"] = beacons[i].zone;
+    item["x"] = beacons[i].x;
+    item["y"] = beacons[i].y;
+    item["rssi"] = beacons[i].rssi;
+    item["detected"] = true;
+  }
+
+  JsonObject nearest = location["nearest_beacon"].to<JsonObject>();
+  nearest["mac"] = nearestBeacon;
+  nearest["name"] = nearestBeaconName;
+  nearest["zone"] = nearestBeaconZone;
+  nearest["rssi"] = nearestRssi;
 
   JsonObject target = location["target"].to<JsonObject>();
   target["x"] = TARGET_X;
@@ -346,7 +387,7 @@ void fillPayload(JsonDocument& doc, const char* dataType) {
 void publishDoc(const char* topic, JsonDocument& doc) {
   ensureNetwork();
 
-  char out[2048];
+  char out[4096];
   size_t len = serializeJson(doc, out, sizeof(out));
   bool ok = mqtt.publish(topic, out, len);
 
@@ -355,7 +396,7 @@ void publishDoc(const char* topic, JsonDocument& doc) {
 }
 
 void publishStatus() {
-  StaticJsonDocument<2048> doc;
+  StaticJsonDocument<4096> doc;
   fillPayload(doc, "status_update");
   publishDoc(TOPIC_STATUS, doc);
 }
@@ -365,7 +406,7 @@ void publishSOS() {
   sosTriggeredAt = millis();
   sosTriggerCount++;
 
-  StaticJsonDocument<2048> doc;
+  StaticJsonDocument<4096> doc;
   fillPayload(doc, "sos");
   doc["sos"]["active"] = true;
   doc["sos"]["trigger_method"] = "button";
@@ -375,7 +416,7 @@ void publishSOS() {
 }
 
 void publishFall() {
-  StaticJsonDocument<2048> doc;
+  StaticJsonDocument<4096> doc;
   fillPayload(doc, "fall");
 
   JsonObject fall = doc["fall_detection"];

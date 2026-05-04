@@ -204,6 +204,7 @@
   position: absolute;
   left: var(--marker-x);
   top: var(--marker-y);
+  z-index: 3;
   width: 0.72rem;
   height: 0.72rem;
   border-radius: 999px;
@@ -211,6 +212,32 @@
   border: 2px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 0 0 4px rgba(29, 95, 116, 0.16);
   transform: translate(-50%, -50%);
+}
+
+.campus-beacon-marker {
+  position: absolute;
+  left: var(--beacon-x);
+  top: var(--beacon-y);
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 1.18rem;
+  height: 1.18rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  background: #f59e0b;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18), 0 0.35rem 0.9rem rgba(15, 23, 42, 0.2);
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+}
+
+.campus-beacon-marker--detected {
+  background: #0f766e;
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.22), 0 0.35rem 0.9rem rgba(15, 23, 42, 0.24);
 }
 
 .campus-map-waiting {

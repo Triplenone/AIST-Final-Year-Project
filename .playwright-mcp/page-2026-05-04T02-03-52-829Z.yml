@@ -1,0 +1,141 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e10]:
+          - generic [ref=e11]: Proactive Guardian Care
+          - paragraph [ref=e12]: Smart Wearable Safety System for Elderly Homes
+        - generic [ref=e14]: Live Care Workspace
+      - navigation "Primary navigation" [ref=e15]:
+        - link "Overview" [ref=e16] [cursor=pointer]:
+          - /url: /
+    - region "Smart Campus Indoor Navigation and Emergency Alert" [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - paragraph [ref=e21]: ITP4458 Wireless Technologies
+          - heading "Smart Campus Indoor Navigation and Emergency Alert" [level=2] [ref=e22]
+          - paragraph [ref=e23]: BLE-assisted smartwatch demo for classroom and campus scenarios
+          - paragraph [ref=e24]: A lightweight campus adaptation of the wearable safety and location system.
+        - generic "Wireless protocol and dashboard flow" [ref=e25]:
+          - generic [ref=e26]: BLE Beacon
+          - generic [ref=e27]: Wi-Fi
+          - generic [ref=e28]: MQTT
+          - generic [ref=e29]: Dashboard
+      - list [ref=e30]:
+        - listitem [ref=e31]:
+          - generic [ref=e32]: Device Status
+          - strong [ref=e33]: online
+          - paragraph [ref=e34]: Live Mongo upstream
+        - listitem [ref=e35]:
+          - generic [ref=e36]: Current Zone
+          - strong [ref=e37]: Computer Lab
+          - paragraph [ref=e38]: 2 BLE beacons
+        - listitem [ref=e39]:
+          - generic [ref=e40]: Battery
+          - strong [ref=e41]: 60%
+          - paragraph [ref=e42]: ESP32-S3 smartwatch
+        - listitem [ref=e43]:
+          - generic [ref=e44]: SOS State
+          - strong [ref=e45]: Normal
+          - paragraph [ref=e46]: No active SOS request
+      - generic [ref=e47]:
+        - region "Current BLE-estimated position" [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - paragraph [ref=e51]: Campus floor plan
+              - heading "Current BLE-estimated position" [level=3] [ref=e52]
+            - generic [ref=e53]: Watch and beacon markers are rendered as frontend overlays only.
+          - generic [ref=e54]:
+            - img "Clean campus floor-plan map" [ref=e55]
+            - generic "Configured BLE beacon Campus Beacon A at Classroom A" [ref=e56]: A
+            - generic "Configured BLE beacon Campus Beacon B at Library / Study Area" [ref=e57]: B
+            - generic "Configured BLE beacon Campus Beacon C at Main Entrance" [ref=e58]: C
+            - generic "Beacon-based estimated position near Computer Lab" [ref=e59]
+        - complementary "Campus smartwatch live information" [ref=e60]:
+          - generic [ref=e62]:
+            - paragraph [ref=e63]: Live / fallback data
+            - heading "Smartwatch signal" [level=3] [ref=e64]
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - term [ref=e67]: Device ID
+              - definition [ref=e68]: ESP32_0000E03948D4DB1C
+            - generic [ref=e69]:
+              - term [ref=e70]: Last Seen
+              - definition [ref=e71]: 2026年5月04日 上午10:03
+            - generic [ref=e72]:
+              - term [ref=e73]: Data Age
+              - definition [ref=e74]: 6s ago
+            - generic [ref=e75]:
+              - term [ref=e76]: Estimated Zone
+              - definition [ref=e77]: Computer Lab
+            - generic [ref=e78]:
+              - term [ref=e79]: BLE Beacon Count
+              - definition [ref=e80]: "2"
+            - generic [ref=e81]:
+              - term [ref=e82]: Signal Quality
+              - definition [ref=e83]: low
+            - generic [ref=e84]:
+              - term [ref=e85]: SOS State
+              - definition [ref=e86]: Normal
+            - generic [ref=e87]:
+              - term [ref=e88]: Battery
+              - definition [ref=e89]: 60%
+            - generic [ref=e90]:
+              - term [ref=e91]: Connection Status
+              - definition [ref=e92]: Live Mongo upstream
+          - generic [ref=e94]:
+            - paragraph [ref=e95]: BLE Beacon Positions
+            - heading "Beacon signals" [level=3] [ref=e96]
+          - list [ref=e97]:
+            - listitem [ref=e98]: Detected 2 beacons, but beacon details were not included in the payload.
+            - listitem [ref=e99]:
+              - strong [ref=e100]: Campus Beacon A
+              - text: "- 20:a7:16:61:02:42 - Classroom A - reference x=2, y=14"
+            - listitem [ref=e101]:
+              - strong [ref=e102]: Campus Beacon B
+              - text: "- 20:a7:16:61:02:2a - Library / Study Area - reference x=10, y=14"
+            - listitem [ref=e103]:
+              - strong [ref=e104]: Campus Beacon C
+              - text: "- 20:a7:16:61:02:03 - Main Entrance - reference x=6, y=2"
+      - region "Wireless demo timeline" [ref=e105]:
+        - generic [ref=e107]:
+          - paragraph [ref=e108]: Recent activity
+          - heading "Wireless demo timeline" [level=3] [ref=e109]
+        - list [ref=e110]:
+          - listitem [ref=e111]: Location updated near Computer Lab
+          - listitem [ref=e112]: Detected 2 BLE beacons
+          - listitem [ref=e113]: "Nearest beacon: not provided by payload"
+          - listitem [ref=e114]: "SOS state: Normal"
+          - listitem [ref=e115]: Dashboard updated from Live Mongo upstream
+    - generic "Quick actions":
+      - button "Show controls" [ref=e116]: +
+  - alertdialog "A fall-type alert has occurred. Please respond." [ref=e117]:
+    - generic [ref=e119]:
+      - banner [ref=e120]:
+        - heading "A fall-type alert has occurred. Please respond." [level=2] [ref=e121]
+        - button "Close" [ref=e122] [cursor=pointer]: ×
+      - paragraph [ref=e123]: The table lists the alerting device, bound user, current location, and trigger time. Multiple devices may appear at once.
+      - table [ref=e125]:
+        - rowgroup [ref=e126]:
+          - row "Device ID Bound user Current location Trigger time Type" [ref=e127]:
+            - columnheader "Device ID" [ref=e128]
+            - columnheader "Bound user" [ref=e129]
+            - columnheader "Current location" [ref=e130]
+            - columnheader "Trigger time" [ref=e131]
+            - columnheader "Type" [ref=e132]
+        - rowgroup [ref=e133]:
+          - row "1 CHAN TAI MAN Nurse station May 4, 2026, 09:56:31 AM Fall" [ref=e134]:
+            - cell "1" [ref=e135]
+            - cell "CHAN TAI MAN" [ref=e136]
+            - cell "Nurse station" [ref=e137]
+            - cell "May 4, 2026, 09:56:31 AM" [ref=e138]
+            - cell "Fall" [ref=e139]
+          - row "1 CHAN TAI MAN Nurse station May 4, 2026, 09:35:45 AM Fall" [ref=e140]:
+            - cell "1" [ref=e141]
+            - cell "CHAN TAI MAN" [ref=e142]
+            - cell "Nurse station" [ref=e143]
+            - cell "May 4, 2026, 09:35:45 AM" [ref=e144]
+            - cell "Fall" [ref=e145]
+      - generic [ref=e146]:
+        - button "Close" [ref=e147] [cursor=pointer]
+        - button "Go to handle" [ref=e148] [cursor=pointer]

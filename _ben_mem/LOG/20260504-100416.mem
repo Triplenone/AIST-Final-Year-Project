@@ -1,0 +1,14 @@
+V.mem.ts=2026-05-04T10:04:16+08:00
+V.repo.branch=4458
+R.scope=campus-watch-beacon-overlay-hotfix
+R.protect=[FlyCarePage.tsx,PositionPage.tsx,AI,backend-schema,route-contract]
+V.frontend.campus.changed=[frontend/src/pages/CampusPage.tsx,frontend/src/styles/campus-page.css]
+V.frontend.campus.docs=docs/campus-watch-emergency-upstream.md
+V.frontend.campus.beacon_reference_overlay=[CampusBeaconA:2x14,CampusBeaconB:10x14,CampusBeaconC:6x2]
+V.frontend.campus.beacon_overlay_type=frontend-only-map-overlay
+V.frontend.campus.beacon_selection=prefer-live-primary-with-beacon-signal-within-30s
+V.frontend.campus.browser_snapshot=beacon-markers-A-B-C-visible
+V.frontend.build=ok
+V.frontend.lint=ok
+V.frontend.route_smoke=[/campus:200,/flycare:200,/position:200]
+V.protected.flycare_position_ai_touched=0

@@ -1,0 +1,14 @@
+V.mem.ts=2026-05-04T04:44:11+08:00
+R.scope=local-runtime-start
+V.runtime.local.branch=main
+V.runtime.local.backend=ok:http://127.0.0.1:8000
+V.runtime.local.frontend=ok:http://127.0.0.1:5173
+V.runtime.local.services=[MySQL80:Running,MongoDB:Running,mosquitto:Running]
+V.runtime.local.ports=[5173:true,8000:true,3306:true,27017:true,1883:true]
+V.runtime.local.backend_health=200
+V.runtime.local.backend_docs=200
+V.runtime.local.frontend_http=200
+V.runtime.local.mongo_ping=ok
+V.runtime.local.mysql_ping=ok
+V.runtime.local.backend_reload=skipped-winerror5-namedpipe
+B.runtime.local.docker=daemon-unavailable
