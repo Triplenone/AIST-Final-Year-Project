@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   getPositionZoneDisplayForResident,
+  type PositionMapProfile,
   type PositionActivityState,
   type PositionActivityItem,
   type PositionNextActionCode,
@@ -19,6 +20,7 @@ type PositionDecisionPanelProps = {
   recordError: string | null;
   partialFailureCount: number;
   onRefresh: () => void;
+  mapProfile?: PositionMapProfile;
 };
 
 const nextActionLabelKey: Record<PositionNextActionCode, string> = {
@@ -150,7 +152,8 @@ export function PositionDecisionPanel({
   loadError,
   recordError,
   partialFailureCount,
-  onRefresh
+  onRefresh,
+  mapProfile = 'indoor'
 }: PositionDecisionPanelProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
@@ -250,7 +253,7 @@ export function PositionDecisionPanel({
             <dl className="position-decision-panel__metrics">
               <div>
                 <dt>{t('position.currentLocation', { defaultValue: 'Current zone' })}</dt>
-                <dd>{getPositionZoneDisplayForResident(resident, t)}</dd>
+                <dd>{getPositionZoneDisplayForResident(resident, t, mapProfile)}</dd>
               </div>
               <div>
                 <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>

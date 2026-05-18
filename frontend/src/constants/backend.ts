@@ -1,13 +1,25 @@
 // 後端端點設定 (Backend endpoint configuration)
-// 集中管理，方便切換環境 (Centralised to switch environments easily)
+// - Vite 開發（5173 / preview 4173）→ 同 host 的 :8000
+// - 由 FastAPI static 或 Cloudflare Tunnel 同源提供時 → 使用當前 origin（不帶 :8000）
 
-// 後端基底網址 (Backend base URL)：
-// - 本機開啟前端（localhost:5173）時 -> http://localhost:8000
-// - 區網設備開啟前端（例如 192.168.x.x:5173）時 -> http://192.168.x.x:8000
-const isBrowser = typeof window !== 'undefined';
-const backendProtocol = isBrowser ? window.location.protocol : 'http:';
-const backendHost = isBrowser ? window.location.hostname : 'localhost';
-export const BACKEND_BASE_URL = `${backendProtocol}//${backendHost}:8000`;
+const DEV_VITE_PORTS = new Set(['5173', '4173']);
+
+function resolveBackendBaseUrl(): string {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:8000';
+  }
+
+  const { protocol, hostname, port } = window.location;
+
+  if (DEV_VITE_PORTS.has(port)) {
+    return `${protocol}//${hostname}:8000`;
+  }
+
+  const origin = window.location.origin;
+  return origin.endsWith('/') ? origin.slice(0, -1) : origin;
+}
+
+export const BACKEND_BASE_URL = resolveBackendBaseUrl();
 
 // FastAPI REST prefix (TestStage-FYP style)
 export const API_BASE_URL = `${BACKEND_BASE_URL}/api/v1`;

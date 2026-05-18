@@ -1,7 +1,8 @@
 # Generated Static Output
 
-這個目錄在源碼 repo 中只保留占位與說明，不手工維護打包產物。
-
-- 開發模式：請從 `frontend/` 啟動 Vite
-- release 模式：請使用 `scripts/build_release.ps1`，它會建立前端 build，並把輸出放進 release 包中的 `backend/backend/static`
+- 開發：在 `frontend/` 執行 `npm run dev`（API 仍指向同 host 的 `:8000`）
+- 單端口 / Cloudflare Tunnel：在 repo 根目錄執行  
+  `cd frontend && npm run build:static`  
+  然後只啟動 `uvicorn`（8000）+ `cloudflared tunnel --url http://127.0.0.1:8000`，用 Tunnel URL 打開瀏覽器
+- 正式交付包：使用 `scripts/build_release.ps1`
 

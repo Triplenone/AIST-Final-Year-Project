@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:static": "vite build && powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/sync_static_to_backend.ps1",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run"

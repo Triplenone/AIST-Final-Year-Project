@@ -2,6 +2,7 @@ import {
   getPositionZoneFromCoords,
   getPositionZoneLabelKey,
   getPositionZoneDisplayForResident,
+  type PositionMapProfile,
   type PositionResidentViewModel
 } from '../adapters/position-command-center';
 import i18n from '../i18n';
@@ -115,7 +116,8 @@ export async function fetchFallAlertBackendLookups(
 /** 定位页：从当前触发 SOS / 确认跌倒 的住民视图构建弹窗行 */
 export function buildFallAlertRowsFromPositionResidents(
   residents: PositionResidentViewModel[],
-  t: (key: string, opts?: Record<string, unknown>) => string
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  mapProfile: PositionMapProfile = 'indoor'
 ): FallAlertDetailRow[] {
   return residents.map((resident, index) => {
     const kinds: FallAlertKind[] = [];
@@ -126,7 +128,7 @@ export function buildFallAlertRowsFromPositionResidents(
       id: `${resident.deviceId}-${triggeredAtIso}-${index}`,
       deviceId: resident.deviceId,
       boundUser: resident.displayName,
-      location: getPositionZoneDisplayForResident(resident, t),
+      location: getPositionZoneDisplayForResident(resident, t, mapProfile),
       triggeredAtIso,
       kinds
     };

@@ -1,38 +1,35 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Placeholder configuration. Replace aliases/endpoints once the PWA is implemented.
+/** Same-origin static deploy: drop crossorigin on scripts to avoid stale CORS/cache issues. */
+function stripCrossoriginAttribute(): Plugin {
+  return {
+    name: 'strip-crossorigin-attribute',
+    transformIndexHtml(html) {
+      return html.replace(/\s+crossorigin/g, '');
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), stripCrossoriginAttribute()],
   build: {
     rollupOptions: {
       output: {
+        // Only split heavy map/chart libs (lazy routes). Keep one vendor chunk so React
+        // hooks are never read from a separate chunk with an undefined React binding.
         manualChunks(id) {
           if (!id.includes('node_modules')) {
             return undefined;
           }
-
-          if (id.includes('react-leaflet') || id.includes('leaflet')) {
+          const moduleId = id.replace(/\\/g, '/');
+          if (moduleId.includes('/leaflet/') || moduleId.includes('/react-leaflet/')) {
             return 'vendor-maps';
           }
-
-          if (id.includes('recharts')) {
+          if (moduleId.includes('/recharts/') || moduleId.includes('/d3-')) {
             return 'vendor-charts';
           }
-
-          if (id.includes('framer-motion')) {
-            return 'vendor-motion';
-          }
-
-          if (id.includes('i18next') || id.includes('react-i18next')) {
-            return 'vendor-i18n';
-          }
-
-          if (id.includes('react-router-dom') || id.includes('react-dom') || id.includes('\\react\\') || id.includes('/react/')) {
-            return 'vendor-react';
-          }
-
-          return 'vendor-misc';
+          return 'vendor';
         }
       }
     }

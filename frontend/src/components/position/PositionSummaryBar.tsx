@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   getPositionZoneDisplayForResident,
+  type PositionMapProfile,
   type PositionFreshnessLevel,
   type PositionPriorityReasonCode,
   type PositionRiskLevel,
@@ -17,6 +18,7 @@ type PositionSummaryBarProps = {
   surfaceState: PositionSurfaceState;
   recordError: string | null;
   variant?: 'standalone' | 'sidebar';
+  mapProfile?: PositionMapProfile;
 };
 
 const truthLabelKey: Record<PositionTruthState, string> = {
@@ -93,10 +95,11 @@ function formatMetric(value: number | null, suffix: string): string {
 
 function getZoneLabel(
   resident: PositionResidentViewModel | null,
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: (key: string, options?: Record<string, unknown>) => string,
+  mapProfile: PositionMapProfile
 ): string {
   if (!resident) return t('position.noSelection', { defaultValue: 'No resident selected' });
-  return getPositionZoneDisplayForResident(resident, t);
+  return getPositionZoneDisplayForResident(resident, t, mapProfile);
 }
 
 function getOperatorError(
@@ -116,7 +119,8 @@ export function PositionSummaryBar({
   fetchedAt,
   surfaceState,
   recordError,
-  variant = 'standalone'
+  variant = 'standalone',
+  mapProfile = 'indoor'
 }: PositionSummaryBarProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
@@ -152,7 +156,7 @@ export function PositionSummaryBar({
       {
         key: 'current-zone',
         label: t('position.currentLocation', { defaultValue: 'Current zone' }),
-        value: getZoneLabel(resident, t),
+        value: getZoneLabel(resident, t, mapProfile),
         toneClass: 'position-summary-bar__text'
       },
       {
@@ -180,7 +184,7 @@ export function PositionSummaryBar({
         toneClass: 'position-summary-bar__text'
       }
     ],
-    [fetchedAt, locale, resident, t]
+    [fetchedAt, locale, mapProfile, resident, t]
   );
 
   const riskSupportText =

@@ -8,6 +8,7 @@ from app.api.routes import (
     devices,
     events,
     family_summary,
+    flycare_admin,
     kpi,
     locations,
     mongo_upstream,
@@ -44,4 +45,9 @@ api_router.include_router(
     family_summary.router,
     prefix="/family-summary",
     tags=["family-summary"],
+)
+api_router.include_router(
+    flycare_admin.router,
+    prefix="/flycare-admin",
+    tags=["flycare-admin"],
 )

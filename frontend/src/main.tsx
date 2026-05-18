@@ -5,7 +5,16 @@ import { BrowserRouter } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import './i18n';
 import App from './App';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ResidentLiveProvider } from './shared/resident-live-store';
+
+async function unregisterLegacyServiceWorkers() {
+  if (!('serviceWorker' in navigator)) return;
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations.map((registration) => registration.unregister()));
+}
+
+void unregisterLegacyServiceWorkers();
 
 const container = document.getElementById('root');
 if (!container) {
@@ -14,7 +23,8 @@ if (!container) {
 
 ReactDOM.createRoot(container).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <AppErrorBoundary>
+      <BrowserRouter>
       <Suspense
         fallback={
           <div className="app-loading" role="status" aria-live="polite">
@@ -26,6 +36,7 @@ ReactDOM.createRoot(container).render(
           <App />
         </ResidentLiveProvider>
       </Suspense>
-    </BrowserRouter>
+      </BrowserRouter>
+    </AppErrorBoundary>
   </React.StrictMode>
 );

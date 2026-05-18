@@ -3,7 +3,7 @@
   --ambient-header-offset: clamp(5.25rem, 5.6vw, 6rem);
   --ambient-header-width: min(1640px, calc(100% - 2rem));
   --ambient-stage-width: min(1240px, 100%);
-  --ambient-flycare-header-offset: clamp(5rem, 5.35vw, 5.7rem);
+  --ambient-flycare-header-offset: clamp(3.35rem, 3.6vw, 3.75rem);
   padding-top: var(--ambient-shell-frame-top);
 }
 
@@ -72,11 +72,11 @@
   right: 0;
   width: 100%;
   margin-bottom: 0;
-  padding: 0.68rem 0 0.58rem;
+  padding: 0.38rem 0 0.34rem;
   z-index: 55;
   background: linear-gradient(180deg, rgba(9, 16, 25, 0.94), rgba(9, 17, 24, 0.84));
   border-bottom-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
 }
 
 .ambient-header::after {
@@ -121,12 +121,17 @@
 .ambient-header--flycare .ambient-header__brand {
   justify-content: center;
   width: 100%;
+  min-width: 0;
 }
 
 .ambient-header--flycare .ambient-header__brand-lockup {
   justify-content: center;
-  gap: clamp(0.9rem, 1.1vw, 1.18rem);
+  gap: clamp(0.52rem, 0.75vw, 0.72rem);
   align-items: center;
+}
+
+.ambient-header--flycare .ambient-header__nav {
+  display: none;
 }
 
 .ambient-header--dense-nav .ambient-header__inner {
@@ -137,25 +142,28 @@
 
 .ambient-header--flycare .ambient-header__mark {
   color: rgba(248, 241, 229, 0.98);
-  font-size: clamp(1.28rem, 0.65vw + 1.05rem, 2rem);
-  line-height: 1.03;
+  font-size: clamp(0.98rem, 0.35vw + 0.88rem, 1.22rem);
+  line-height: 1.05;
   font-weight: 600;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.16);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.14);
+  text-align: center;
 }
 
 .ambient-header--flycare .ambient-header__tagline {
-  color: rgba(240, 232, 221, 0.88);
-  font-size: clamp(0.86rem, 0.12vw + 0.8rem, 1rem);
-  line-height: 1.28;
-  max-width: 32ch;
+  color: rgba(240, 232, 221, 0.82);
+  font-size: clamp(0.68rem, 0.08vw + 0.64rem, 0.78rem);
+  line-height: 1.2;
+  max-width: min(42ch, calc(100vw - 2rem));
+  text-align: center;
 }
 
 .ambient-header--flycare .ambient-header__copy {
-  gap: 0.25rem;
+  gap: 0.12rem;
+  align-items: center;
 }
 
 .ambient-header--flycare .ambient-header__brand-copy {
-  max-width: min(26rem, calc(100vw - 8.5rem));
+  max-width: min(34rem, calc(100vw - 4.5rem));
 }
 
 .ambient-header__brand {
@@ -191,8 +199,8 @@
 }
 
 .ambient-header__brand-mark-wrap--flycare {
-  padding: 0.15rem 0.38rem;
-  border-radius: 1rem;
+  padding: 0.1rem 0.28rem;
+  border-radius: 0.82rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 243, 236, 0.34));
   border: 1px solid rgba(16, 23, 34, 0.08);
   box-shadow: 0 12px 24px rgba(16, 23, 34, 0.08);
@@ -212,8 +220,8 @@
 }
 
 .ambient-header__brand-mark--flycare {
-  height: clamp(2rem, 2.15vw, 2.3rem);
-  max-width: min(6.2rem, 18vw);
+  height: clamp(1.28rem, 1.35vw, 1.48rem);
+  max-width: min(4.2rem, 14vw);
 }
 
 :root[data-theme='dark'] .ambient-header__brand-mark-wrap--flycare {
@@ -1621,7 +1629,7 @@
   .app-background {
     --ambient-shell-frame-top: 0.5rem;
     --ambient-header-offset: 7.55rem;
-    --ambient-flycare-header-offset: 5.2rem;
+    --ambient-flycare-header-offset: 3.5rem;
   }
 
   .app-shell--ambient {
@@ -1680,7 +1688,7 @@
   }
 
   .ambient-header--flycare {
-    padding: 0.54rem 0 0.46rem;
+    padding: 0.32rem 0 0.28rem;
   }
 
   .ambient-header--flycare .ambient-header__inner {
@@ -1688,27 +1696,28 @@
   }
 
   .ambient-header--flycare .ambient-header__brand-lockup {
-    width: min(100%, 28rem);
-    gap: 0.72rem;
+    width: auto;
+    max-width: min(100%, 22rem);
+    gap: 0.48rem;
   }
 
   .ambient-header--flycare .ambient-header__brand-mark--flycare {
-    height: 1.96rem;
-    max-width: min(5.15rem, 30vw);
+    height: 1.22rem;
+    max-width: min(3.6rem, 24vw);
   }
 
   .ambient-header--flycare .ambient-header__brand-copy {
-    max-width: min(18.75rem, calc(100vw - 5.9rem));
+    max-width: min(20rem, calc(100vw - 3.5rem));
   }
 
   .ambient-header--flycare .ambient-header__mark {
-    font-size: clamp(1.08rem, 0.7rem + 1.35vw, 1.34rem);
-    line-height: 1.05;
+    font-size: clamp(0.92rem, 0.55rem + 1.1vw, 1.08rem);
+    line-height: 1.06;
   }
 
   .ambient-header--flycare .ambient-header__tagline {
-    font-size: 0.84rem;
-    line-height: 1.22;
+    font-size: 0.68rem;
+    line-height: 1.18;
   }
 
   .ambient-header--route-position {

@@ -485,6 +485,42 @@ async def get_vitals_history_for_user(
     return {"page": page, "page_size": page_size, "total": total, "items": items}
 
 
+@router.post("/flight", response_model=Dict[str, Any])
+async def ingest_flight_upstream(data: Dict[str, Any]):
+    """
+    直接写入航班上行（与 MQTT 主题 flycare/flight 等效）。
+    Postman 可用 HTTP POST 测试，无需 MQTT Broker。
+    """
+    from app.services.mongo_raw_upstream import save_raw_upstream
+
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object")
+
+    payload = dict(data)
+    payload["data_type"] = "flight"
+    if payload.get("device_id") is None:
+        raise HTTPException(
+            status_code=400,
+            detail="device_id is required (e.g. ESP32_0000E03948D4DB1C)",
+        )
+    if payload.get("timestamp") is None:
+        payload["timestamp"] = datetime.now(timezone.utc).timestamp()
+
+    try:
+        await save_raw_upstream(payload)
+    except Exception as exc:
+        raise _mongo_unavailable(exc) from exc
+
+    return {
+        "status": "ok",
+        "message": "Flight document inserted into MongoDB raw upstream.",
+        "device_id": str(payload.get("device_id")),
+        "data_type": "flight",
+        "db_name": settings.MONGO_DB_NAME,
+        "collection": COLLECTION_RAW_UPSTREAM,
+    }
+
+
 @router.get("/flight/latest", response_model=Dict[str, Any])
 async def get_latest_flight(
     device_id: Optional[str] = Query(None, description="Filter flight data by external device ID"),
@@ -501,8 +537,8 @@ async def get_latest_flight(
         return {
             "found": False,
             "message": (
-                "No flight upstream data found. Publish to MQTT or POST /data-reception/flight "
-                "with an optional device_id."
+                "No flight upstream data found. Publish to MQTT topic flycare/flight "
+                "or POST /api/v1/mongo-upstream/flight with device_id."
             ),
         }
 

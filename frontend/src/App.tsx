@@ -88,6 +88,7 @@ const NAV_ITEMS: ReadonlyArray<{
   { key: 'overview', to: '/', labelKey: 'layout.nav.overview' },
   { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents' },
   { key: 'position', to: '/position', labelKey: 'layout.nav.position' },
+  { key: 'flycare', to: '/flycare', labelKey: 'layout.nav.flycare' },
   { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations' },
   { key: 'family', to: '/family', labelKey: 'layout.nav.family' },
   { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin' }

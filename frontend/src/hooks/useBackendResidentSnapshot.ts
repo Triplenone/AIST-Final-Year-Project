@@ -28,7 +28,7 @@ export const useBackendResidentSnapshot = (): UseBackendResidentSnapshotResult =
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch residents';
       setError(message);
-      throw err;
+      return [];
     } finally {
       setLoading(false);
     }

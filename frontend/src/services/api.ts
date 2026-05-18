@@ -279,4 +279,52 @@ export const mongoUpstreamApi = {
     api.get<MongoVitalsHistoryResponse>(`/mongo-upstream/vitals/user/${userId}/history`, { params }),
 };
 
+export type FlyCareFlightPreset = {
+  device_id: string;
+  mysql_device_id?: number;
+  elderly_user_id?: number | null;
+  passengerName?: string | null;
+  deploy_location?: string | null;
+};
+
+export type FlightPublishPayload = {
+  device_id: string;
+  mysql_device_id?: number;
+  passengerName: string;
+  flightNumber: string;
+  gate?: string;
+  flightTime?: string;
+  departureAirport?: string;
+  arrivalAirport?: string;
+  seatNumber?: string;
+  publish_mqtt: boolean;
+  save_mongo: boolean;
+};
+
+export type FlyCarePresetsResponse = {
+  items: FlyCareFlightPreset[];
+  mqtt_topic: string;
+};
+
+export type FlyCareMqttStatus = {
+  connected?: boolean;
+  broker?: string;
+  port?: number;
+  topic?: string;
+};
+
+export type FlyCarePublishResult = {
+  status: string;
+  payload?: Record<string, unknown>;
+  mqtt?: { ok: boolean; topic?: string; broker?: string };
+  mongo?: { ok: boolean; db_name?: string; collection?: string };
+};
+
+export const flycareAdminApi = {
+  getPresets: () => api.get<FlyCarePresetsResponse>('/flycare-admin/presets'),
+  getMqttStatus: () => api.get<FlyCareMqttStatus>('/flycare-admin/mqtt/status'),
+  publishFlight: (data: FlightPublishPayload) =>
+    api.post<FlyCarePublishResult>('/flycare-admin/flight/publish', data),
+};
+
 export default api;

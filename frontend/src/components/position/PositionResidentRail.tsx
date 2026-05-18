@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import {
   getPositionZoneDisplayForResident,
-  type PositionFreshnessLevel,
-  type PositionPriorityReasonCode,
+  type PositionMapProfile,
   type PositionSurfaceState,
   type PositionResidentViewModel
 } from '../../adapters/position-command-center';
@@ -24,6 +23,7 @@ type PositionResidentRailProps = {
   partialFailureCount: number;
   onShowAllOnMap: () => void;
   onSelectResident: (residentId: string) => void;
+  mapProfile?: PositionMapProfile;
 };
 
 const truthLabelKey: Record<PositionResidentViewModel['truthState'], string> = {
@@ -36,48 +36,6 @@ const truthDefaultLabel: Record<PositionResidentViewModel['truthState'], string>
   online: 'Online',
   stale: 'Stale',
   offline: 'Offline'
-};
-
-const riskLabelKey: Record<PositionResidentViewModel['riskLevel'], string> = {
-  stable: 'position.risk.stable',
-  warning: 'position.risk.warning',
-  critical: 'position.risk.critical'
-};
-
-const riskDefaultLabel: Record<PositionResidentViewModel['riskLevel'], string> = {
-  stable: 'Stable',
-  warning: 'Warning',
-  critical: 'Critical'
-};
-
-const freshnessLabelKey: Record<PositionFreshnessLevel, string> = {
-  live: 'position.freshness.live',
-  delayed: 'position.freshness.delayed',
-  stale: 'position.freshness.stale'
-};
-
-const freshnessDefaultLabel: Record<PositionFreshnessLevel, string> = {
-  live: 'Live',
-  delayed: 'Delayed',
-  stale: 'Stale'
-};
-
-const priorityReasonLabelKey: Record<PositionPriorityReasonCode, string> = {
-  'critical-sos': 'position.priorityReason.criticalSos',
-  'critical-fall': 'position.priorityReason.criticalFall',
-  'warning-vitals': 'position.priorityReason.warningVitals',
-  'warning-offline': 'position.priorityReason.warningOffline',
-  'stale-data': 'position.priorityReason.staleData',
-  'stable-monitoring': 'position.priorityReason.stableMonitoring'
-};
-
-const priorityReasonDefaultLabel: Record<PositionPriorityReasonCode, string> = {
-  'critical-sos': 'SOS needs response',
-  'critical-fall': 'Confirmed fall needs response',
-  'warning-vitals': 'Vitals need review',
-  'warning-offline': 'Device link needs review',
-  'stale-data': 'Data is stale',
-  'stable-monitoring': 'Stable monitoring'
 };
 
 function formatAgeLabel(ageMs: number | null, t: (key: string, options?: Record<string, unknown>) => string): string {
@@ -106,9 +64,10 @@ function formatAgeLabel(ageMs: number | null, t: (key: string, options?: Record<
 
 function getZoneLabel(
   resident: PositionResidentViewModel,
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: (key: string, options?: Record<string, unknown>) => string,
+  mapProfile: PositionMapProfile
 ): string {
-  return getPositionZoneDisplayForResident(resident, t);
+  return getPositionZoneDisplayForResident(resident, t, mapProfile);
 }
 
 function getOperatorError(
@@ -139,7 +98,8 @@ export function PositionResidentRail({
   loadError,
   partialFailureCount,
   onShowAllOnMap,
-  onSelectResident
+  onSelectResident,
+  mapProfile = 'indoor'
 }: PositionResidentRailProps) {
   const { t } = useTranslation();
   const summaryItems = useMemo(
@@ -149,19 +109,9 @@ export function PositionResidentRail({
         key: 'online',
         label: t('position.summary.online', { defaultValue: 'Online' }),
         value: surfaceState === 'loading' ? '—' : counts.online
-      },
-      {
-        key: 'stale',
-        label: t('position.summary.stale', { defaultValue: 'Stale' }),
-        value: surfaceState === 'loading' ? '—' : counts.stale
-      },
-      {
-        key: 'offline',
-        label: t('position.summary.offline', { defaultValue: 'Offline' }),
-        value: surfaceState === 'loading' ? '—' : counts.offline
       }
     ],
-    [counts.offline, counts.online, counts.stale, counts.total, surfaceState, t]
+    [counts.online, counts.total, surfaceState, t]
   );
 
   return (
@@ -172,20 +122,17 @@ export function PositionResidentRail({
             {t('position.railEyebrow', { defaultValue: 'Resident Rail' })}
           </p>
           <h2>{t('position.userList', { defaultValue: 'Resident list' })}</h2>
-          <p className="position-command-center__muted">
-            {surfaceState === 'loading'
-              ? t('position.loadingResidents', {
-                  defaultValue: 'Loading resident snapshot...'
-                })
-              : surfaceState === 'empty'
-                ? t('position.noResidentsConfigured', {
-                    defaultValue: 'No resident configured for Position.'
+          {surfaceState === 'loading' || surfaceState === 'empty' ? (
+            <p className="position-command-center__muted">
+              {surfaceState === 'loading'
+                ? t('position.loadingResidents', {
+                    defaultValue: 'Loading resident snapshot...'
                   })
-                : t('position.usersOnline', {
-                    count: counts.online,
-                    defaultValue: `${counts.online} user(s) online`
+                : t('position.noResidentsConfigured', {
+                    defaultValue: 'No resident configured for Position.'
                   })}
-          </p>
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
@@ -211,7 +158,10 @@ export function PositionResidentRail({
         </p>
       ) : null}
 
-      <dl className="position-resident-rail__summary" aria-label={t('position.railSummary', { defaultValue: 'Resident state summary' })}>
+      <dl
+        className="position-resident-rail__summary position-resident-rail__summary--compact"
+        aria-label={t('position.railSummary', { defaultValue: 'Resident state summary' })}
+      >
         {summaryItems.map((item) => (
           <div key={item.key} className="position-resident-rail__summary-item">
             <dt>{item.label}</dt>
@@ -220,7 +170,11 @@ export function PositionResidentRail({
         ))}
       </dl>
 
-      <ul className="position-resident-rail__list" role="list" aria-label={t('position.userList', { defaultValue: 'Resident list' })}>
+      <ul
+        className="position-resident-rail__list position-resident-rail__list--compact"
+        role="list"
+        aria-label={t('position.userList', { defaultValue: 'Resident list' })}
+      >
         {surfaceState === 'loading' ? (
           <li className="position-command-center__state-card position-command-center__state-card--loading">
             <strong>{t('position.loadingResidents', { defaultValue: 'Loading resident snapshot...' })}</strong>
@@ -250,7 +204,7 @@ export function PositionResidentRail({
                 <li key={resident.residentId}>
                   <button
                     type="button"
-                    className={`position-resident-rail__item${isSelected ? ' position-resident-rail__item--selected' : ''}${selectedToneClass}`}
+                    className={`position-resident-rail__item position-resident-rail__item--compact${isSelected ? ' position-resident-rail__item--selected' : ''}${selectedToneClass}`}
                     aria-pressed={isSelected}
                     onClick={() => onSelectResident(resident.residentId)}
                   >
@@ -263,26 +217,7 @@ export function PositionResidentRail({
                       </span>
                     </div>
 
-                    <p className="position-resident-rail__zone">{getZoneLabel(resident, t)}</p>
-
-                    <div className="position-resident-rail__signals">
-                      <span className={`position-risk-pill position-risk-pill--${resident.riskLevel}`}>
-                        {t(riskLabelKey[resident.riskLevel], {
-                          defaultValue: riskDefaultLabel[resident.riskLevel]
-                        })}
-                      </span>
-                      <span className={`position-freshness-pill position-freshness-pill--${resident.freshnessLevel}`}>
-                        {t(freshnessLabelKey[resident.freshnessLevel], {
-                          defaultValue: freshnessDefaultLabel[resident.freshnessLevel]
-                        })}
-                      </span>
-                    </div>
-
-                    <p className="position-resident-rail__reason">
-                      {t(priorityReasonLabelKey[resident.priorityReasonCode], {
-                        defaultValue: priorityReasonDefaultLabel[resident.priorityReasonCode]
-                      })}
-                    </p>
+                    <p className="position-resident-rail__zone">{getZoneLabel(resident, t, mapProfile)}</p>
 
                     {resident.recordError ? (
                       <p className="position-resident-rail__error">

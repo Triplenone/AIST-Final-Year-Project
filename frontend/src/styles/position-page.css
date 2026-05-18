@@ -202,6 +202,10 @@
   padding: 1.15rem;
 }
 
+.position-resident-rail:has(.position-resident-rail__list--compact) {
+  padding: 0.92rem 0.95rem 1rem;
+}
+
 .position-resident-rail__header {
   display: flex;
   justify-content: space-between;
@@ -271,6 +275,13 @@
   border: 1px solid rgba(148, 163, 184, 0.14);
 }
 
+.position-resident-rail__summary--compact {
+  gap: 0.38rem;
+  margin: 0.5rem 0 0.72rem;
+  padding: 0.28rem;
+  border-radius: 14px;
+}
+
 .position-resident-rail__summary-item {
   padding: 0.72rem 0.82rem 0.78rem;
   border-radius: 16px;
@@ -279,11 +290,25 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
 }
 
+.position-resident-rail__summary--compact .position-resident-rail__summary-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.42rem 0.58rem 0.46rem;
+  border-radius: 11px;
+}
+
 .position-resident-rail__summary-item dt {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: rgba(15, 23, 42, 0.46);
+}
+
+.position-resident-rail__summary--compact .position-resident-rail__summary-item dt {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
 }
 
 .position-resident-rail__summary-item dd {
@@ -294,6 +319,13 @@
   color: var(--text-primary);
 }
 
+.position-resident-rail__summary--compact .position-resident-rail__summary-item dd {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
 .position-resident-rail__list {
   list-style: none;
   margin: 0;
@@ -301,6 +333,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.62rem;
+}
+
+.position-resident-rail__list--compact {
+  gap: 0.42rem;
 }
 
 .position-resident-rail__item {
@@ -333,6 +369,57 @@
     background-color 0.18s ease,
     box-shadow 0.18s ease,
     opacity 0.18s ease;
+}
+
+.position-resident-rail__item--compact {
+  padding: 0.52rem 0.62rem 0.5rem 0.88rem;
+  border-radius: 13px;
+}
+
+.position-resident-rail__item--compact::before {
+  top: 0.5rem;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  width: 2px;
+}
+
+.position-resident-rail__item--compact .position-resident-rail__item-top {
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.position-resident-rail__item--compact .position-resident-rail__name {
+  font-size: 0.88rem;
+  font-weight: 680;
+  line-height: 1.2;
+}
+
+.position-resident-rail__item--compact .position-state-pill {
+  font-size: 0.64rem;
+  padding: 0.18rem 0.42rem;
+  min-height: 1.35rem;
+}
+
+.position-resident-rail__item--compact .position-resident-rail__zone {
+  margin: 0.28rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 560;
+  line-height: 1.25;
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.position-resident-rail__item--compact .position-resident-rail__item-bottom {
+  margin-top: 0.22rem;
+  justify-content: flex-start;
+}
+
+.position-resident-rail__item--compact .position-resident-rail__meta {
+  font-size: 0.7rem;
+}
+
+.position-resident-rail__item--compact .position-resident-rail__error {
+  margin: 0.22rem 0 0;
+  font-size: 0.72rem;
 }
 
 .position-resident-rail__item:hover,
@@ -1434,12 +1521,12 @@
     flex-direction: column;
   }
 
-  .position-resident-rail__summary {
+  .position-resident-rail__summary--compact {
     grid-template-columns: 1fr 1fr;
   }
 
-  .position-resident-rail__summary-item {
-    padding-inline: 0.76rem;
+  .position-resident-rail__summary--compact .position-resident-rail__summary-item {
+    padding-inline: 0.5rem;
   }
 
   .position-summary-bar__item {
@@ -1475,4 +1562,44 @@
   .position-decision-panel__section {
     padding: 0.92rem 0.9rem 0.96rem;
   }
+}
+
+.flycare-command-center__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.flycare-flight-panel {
+  padding: 1.1rem 1.15rem 1.2rem;
+}
+
+.flycare-flight-panel__header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.flycare-flight-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0.85rem 0 0;
+}
+
+.flycare-flight-panel__grid dt {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #64748b);
+}
+
+.flycare-flight-panel__grid dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.flycare-map-stage .position-map-stage__image {
+  object-fit: contain;
 }

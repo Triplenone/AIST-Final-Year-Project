@@ -6,6 +6,7 @@ import { LocationsAdmin } from './LocationsAdmin';
 import { EventsAdmin } from './EventsAdmin';
 import { DeviceLogsAdmin } from './DeviceLogsAdmin';
 import { ResidentsAdmin } from './ResidentsAdmin';
+import { FlyCareAdmin } from './FlyCareAdmin';
 
 type AdminTab =
   | 'users'
@@ -13,7 +14,8 @@ type AdminTab =
   | 'locations'
   | 'events'
   | 'logs'
-  | 'residents';
+  | 'residents'
+  | 'flycare';
 
 export const AdminSection = () => {
   const { t } = useTranslation();
@@ -25,7 +27,8 @@ export const AdminSection = () => {
     devices: t('admin.tabs.devices'),
     locations: t('admin.tabs.locations'),
     events: t('admin.tabs.events'),
-    logs: t('admin.tabs.logs')
+    logs: t('admin.tabs.logs'),
+    flycare: t('admin.tabs.flycare')
   };
 
   const tabMeta: Record<
@@ -86,10 +89,18 @@ export const AdminSection = () => {
       surface: 'Raw device stream',
       endpoint: '/api/v1/device-data-log',
       checklist: ['Check ingest totals', 'Validate fall-confirm fields', 'Watch auto-refresh before edit']
+    },
+    flycare: {
+      eyebrow: 'Airport simulation',
+      title: 'FlyCare flight publish',
+      note: 'Configure flight fields per tracked device and publish to MQTT for downstream ingest and FlyCare UI.',
+      surface: 'MQTT test harness',
+      endpoint: '/api/v1/flycare-admin',
+      checklist: ['Pick a preset device first', 'Confirm MQTT broker is connected', 'Publish then verify FlyCare panel']
     }
   };
 
-  const orderedTabs: AdminTab[] = ['events', 'residents', 'users', 'devices', 'locations', 'logs'];
+  const orderedTabs: AdminTab[] = ['events', 'residents', 'users', 'devices', 'locations', 'logs', 'flycare'];
   const activeMeta = tabMeta[activeTab];
 
   const renderActivePanel = () => {
@@ -98,6 +109,7 @@ export const AdminSection = () => {
     if (activeTab === 'locations') return <LocationsAdmin />;
     if (activeTab === 'events') return <EventsAdmin />;
     if (activeTab === 'logs') return <DeviceLogsAdmin />;
+    if (activeTab === 'flycare') return <FlyCareAdmin />;
     return <ResidentsAdmin />;
   };
 

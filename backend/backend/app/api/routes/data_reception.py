@@ -256,6 +256,14 @@ def receive_imu_data(
         raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 
+@router.get("/mqtt/status")
+def get_mqtt_status():
+    """MQTT 订阅状态（航班主题 flycare/flight 等）。"""
+    from app.services.mqtt_subscriber import get_mqtt_status as _mqtt_status
+
+    return _mqtt_status()
+
+
 @router.get("/status")
 def get_reception_status():
     """

@@ -1,5 +1,12 @@
+import {
+  getFlyCareZoneFromCoords,
+  getFlyCareZoneDisplay,
+  getFlyCareZoneLabelKey
+} from './flycare-map';
 import { deviceApi, locationApi, mongoUpstreamApi, userApi, type MongoUpstreamLatest } from '../services/api';
 import type { BackendDevice, BackendLocation, BackendUser } from '../types/backend';
+
+export type PositionMapProfile = 'indoor' | 'flycare';
 
 export type PositionTruthState = 'online' | 'stale' | 'offline';
 export type PositionFreshnessLevel = 'live' | 'delayed' | 'stale';
@@ -469,12 +476,33 @@ function getCoords(
 }
 
 export function getPositionZoneFromCoords(coords: PositionPoint | null): PositionZoneId | null {
+  return resolveZoneFromCoords(coords, 'indoor');
+}
+
+function resolveZoneFromCoords(
+  coords: PositionPoint | null,
+  mapProfile: PositionMapProfile
+): PositionZoneId | null {
   if (!coords) return null;
+  if (mapProfile === 'flycare') {
+    const flyZone = getFlyCareZoneFromCoords(coords);
+    return flyZone as PositionZoneId | null;
+  }
   const col = Math.min(POSITION_GRID_COLUMNS - 1, Math.max(0, Math.round(coords.x)));
   const row = Math.min(POSITION_GRID_ROWS - 1, Math.max(0, Math.round(coords.y)));
   const zoneId = POSITION_GRID_TO_ZONE[row]?.[col] ?? '';
   if (!zoneId || zoneId.trim() === '') return null;
   return zoneId as PositionZoneId;
+}
+
+function resolveZoneLabelKey(
+  zoneId: PositionZoneId | null,
+  mapProfile: PositionMapProfile
+): string | null {
+  if (mapProfile === 'flycare') {
+    return getFlyCareZoneLabelKey(zoneId);
+  }
+  return getPositionZoneLabelKey(zoneId);
 }
 
 export function getPositionZoneLabelKey(zoneId: PositionZoneId | null): string | null {
@@ -487,8 +515,17 @@ export function getPositionZoneLabelKey(zoneId: PositionZoneId | null): string |
  */
 export function getPositionZoneDisplayForResident(
   resident: Pick<PositionResidentViewModel, 'currentZoneId' | 'currentZoneLabelKey' | 'currentZoneName'>,
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: (key: string, options?: Record<string, unknown>) => string,
+  mapProfile: PositionMapProfile = 'indoor'
 ): string {
+  if (mapProfile === 'flycare') {
+    return getFlyCareZoneDisplay(
+      resident.currentZoneId,
+      resident.currentZoneLabelKey,
+      resident.currentZoneName,
+      t
+    );
+  }
   const name = resident.currentZoneName?.trim();
   if (name) return name;
   if (resident.currentZoneLabelKey) {
@@ -1089,12 +1126,15 @@ function normalizeHistoryDocuments(historyDocs: unknown[]): MongoUpstreamHistory
   });
 }
 
-function buildHistoryRecord(doc: MongoUpstreamHistoryDocument): PositionHistoryRecord {
+function buildHistoryRecord(
+  doc: MongoUpstreamHistoryDocument,
+  mapProfile: PositionMapProfile = 'indoor'
+): PositionHistoryRecord {
   const timestamp = toIsoTimestamp(doc.server_received_at ?? doc.timestamp ?? null);
   const currentCoords = getCoords(doc, 'current');
   const targetCoords = getCoords(doc, 'target');
-  const currentZoneId = getPositionZoneFromCoords(currentCoords);
-  const targetZoneId = getPositionZoneFromCoords(targetCoords);
+  const currentZoneId = resolveZoneFromCoords(currentCoords, mapProfile);
+  const targetZoneId = resolveZoneFromCoords(targetCoords, mapProfile);
   const currentZoneName = getCurrentZoneName(doc);
   const targetZoneName = getTargetZoneName(doc);
   const heartRate = getSensorMetric(doc, 'heart_rate', 'bpm');
@@ -1166,9 +1206,12 @@ function createActivityItem(
   };
 }
 
-export function buildPositionResidentActivity(historyDocs: unknown[]): PositionActivityItem[] {
+export function buildPositionResidentActivity(
+  historyDocs: unknown[],
+  mapProfile: PositionMapProfile = 'indoor'
+): PositionActivityItem[] {
   const records = normalizeHistoryDocuments(historyDocs)
-    .map(buildHistoryRecord)
+    .map((doc) => buildHistoryRecord(doc, mapProfile))
     .sort((a, b) => {
       const timeA = a.timestamp ? Date.parse(a.timestamp) : Number.NEGATIVE_INFINITY;
       const timeB = b.timestamp ? Date.parse(b.timestamp) : Number.NEGATIVE_INFINITY;
@@ -1268,7 +1311,8 @@ export function buildPositionResidentActivity(historyDocs: unknown[]): PositionA
 }
 
 export async function loadPositionResidentActivity(
-  deviceId: string
+  deviceId: string,
+  mapProfile: PositionMapProfile = 'indoor'
 ): Promise<PositionResidentActivitySnapshot> {
   try {
     const response = (await mongoUpstreamApi.list({
@@ -1280,7 +1324,7 @@ export async function loadPositionResidentActivity(
     return {
       deviceId,
       fetchedAt: new Date().toISOString(),
-      recentActivity: buildPositionResidentActivity(response?.items ?? []),
+      recentActivity: buildPositionResidentActivity(response?.items ?? [], mapProfile),
       loadError: null
     };
   } catch (error) {
@@ -1293,14 +1337,18 @@ export async function loadPositionResidentActivity(
   }
 }
 
-function buildResidentViewModel(record: PositionSnapshotRecord, now: number): PositionResidentViewModel {
+function buildResidentViewModel(
+  record: PositionSnapshotRecord,
+  now: number,
+  mapProfile: PositionMapProfile = 'indoor'
+): PositionResidentViewModel {
   const latestStatus = record.latestStatus;
   const currentCoords = getCoords(latestStatus, 'current');
   const targetCoords = getCoords(latestStatus, 'target');
-  const currentZoneId = getPositionZoneFromCoords(currentCoords);
-  const targetZoneId = getPositionZoneFromCoords(targetCoords);
-  const currentZoneLabelKey = getPositionZoneLabelKey(currentZoneId);
-  const targetZoneLabelKey = getPositionZoneLabelKey(targetZoneId);
+  const currentZoneId = resolveZoneFromCoords(currentCoords, mapProfile);
+  const targetZoneId = resolveZoneFromCoords(targetCoords, mapProfile);
+  const currentZoneLabelKey = resolveZoneLabelKey(currentZoneId, mapProfile);
+  const targetZoneLabelKey = resolveZoneLabelKey(targetZoneId, mapProfile);
   const upstreamCurrentZoneName = getCurrentZoneName(latestStatus);
   const currentZoneName = applyMysqlNameToCurrentZoneName(latestStatus, currentZoneId, upstreamCurrentZoneName);
   const targetZoneName = getTargetZoneName(latestStatus);
@@ -1420,9 +1468,11 @@ export function buildPositionCommandCenterViewModel(
     activityLoading?: boolean;
     /** snapshot 为空时用于占位行（须与 load 快照时使用的登记册一致）。 */
     emptyRegistry?: readonly PositionResidentRegistryEntry[];
+    mapProfile?: PositionMapProfile;
   } = {}
 ): PositionCommandCenterViewModel {
   const now = options.now ?? Date.now();
+  const mapProfile = options.mapProfile ?? 'indoor';
   const emptyFallback = options.emptyRegistry ?? POSITION_RESIDENT_REGISTRY;
   const records =
     snapshot?.records ??
@@ -1431,7 +1481,7 @@ export function buildPositionCommandCenterViewModel(
       latestStatus: null,
         error: null
       }));
-  const baseResidents = records.map((record) => buildResidentViewModel(record, now));
+  const baseResidents = records.map((record) => buildResidentViewModel(record, now, mapProfile));
   const residents = sortPositionResidents(
     applySelectedResidentActivity(baseResidents, options.selectedResidentActivity)
   );

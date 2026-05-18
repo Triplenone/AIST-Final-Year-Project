@@ -3,10 +3,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.api.routes import api_router
 from app.config import settings
@@ -54,13 +57,65 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 static_dir = Path(__file__).parent.parent / "static"
 
+_ASSET_SUFFIXES = (
+    ".js",
+    ".mjs",
+    ".css",
+    ".map",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".gif",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".json",
+)
+
+
+def _is_asset_like_path(path: str) -> bool:
+    normalized = path.strip("/").lower()
+    if normalized.startswith("assets/"):
+        return True
+    return any(normalized.endswith(ext) for ext in _ASSET_SUFFIXES)
+
+
+def _html_response(path: Path) -> FileResponse:
+    return FileResponse(
+        path,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+        },
+    )
+
+
+class StaticCacheMiddleware(BaseHTTPMiddleware):
+    """Avoid caching HTML as JS; allow long cache for hashed build assets."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif path in {"/", "/index.html"} or path.endswith(".html"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
+
+app.add_middleware(StaticCacheMiddleware)
+
 
 @app.get("/")
 def root():
     """Serve the built frontend when present, otherwise expose basic metadata."""
     index_path = static_dir / "index.html"
     if index_path.exists():
-        return FileResponse(index_path)
+        return _html_response(index_path)
     return {
         "message": settings.APP_NAME,
         "version": settings.APP_VERSION,
@@ -94,8 +149,6 @@ if static_dir.exists():
             or full_path.startswith("redoc")
             or full_path == "openapi.json"
         ):
-            from fastapi import HTTPException
-
             raise HTTPException(status_code=404, detail="Not found")
 
         if full_path.rstrip("/") == "health":
@@ -105,11 +158,12 @@ if static_dir.exists():
         if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
 
+        if _is_asset_like_path(full_path):
+            raise HTTPException(status_code=404, detail="Asset not found")
+
         index_path = static_dir / "index.html"
         if index_path.exists():
-            return FileResponse(index_path)
-
-        from fastapi import HTTPException
+            return _html_response(index_path)
 
         raise HTTPException(status_code=404, detail="Not found")
 

@@ -190,7 +190,10 @@ def _on_message(client, userdata, msg):
         data.setdefault("timestamp", time.time())
         try:
             run_sync_save_raw_upstream(data)
-            print(f"[mqtt] flycare flight saved: {data.get('flightNumber', 'N/A')}")
+            print(
+                f"[mqtt] flycare flight saved: device_id={data.get('device_id', 'MISSING')} "
+                f"flightNumber={data.get('flightNumber', 'N/A')}"
+            )
         except Exception as e:
             print(f"[mqtt] flycare mongo write failed: {e}")
         return
@@ -236,7 +239,7 @@ def start_mqtt():
         try:
             import paho.mqtt.client as mqtt
         except ImportError:
-            print("[mqtt] paho-mqtt not installed; subscriber skipped")
+            print("[mqtt] paho-mqtt not installed; subscriber skipped (pip install paho-mqtt)")
             return
         client_id = f"aist-backend-{uuid.uuid4().hex[:8]}"
         callback_api_version = getattr(mqtt, "CallbackAPIVersion", None)
@@ -258,12 +261,18 @@ def start_mqtt():
         try:
             client.connect(settings.MQTT_BROKER, settings.MQTT_PORT, keepalive=60)
         except Exception as e:
-            print(f"[mqtt] broker connect failed: {e}")
+            print(
+                f"[mqtt] broker connect failed: {settings.MQTT_BROKER}:{settings.MQTT_PORT} — {e}. "
+                "Flight MQTT will not be saved until connected."
+            )
             return
         client.loop_start()
         _client = client
         _started = True
-        print(f"[mqtt] started -> {settings.MQTT_BROKER}:{settings.MQTT_PORT}")
+        print(
+            f"[mqtt] started -> {settings.MQTT_BROKER}:{settings.MQTT_PORT} "
+            f"(flight topic: {FLIGHT_TOPIC})"
+        )
 
 
 def stop_mqtt():
