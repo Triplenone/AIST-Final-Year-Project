@@ -17,6 +17,8 @@ Do not replace these rows with nested metadata objects. Verification notes belon
 | `ESP32_00005CFA7AD4DB1C` | 3 | WONG KA MING | Existing mapping |
 | `ESP32_0000A022A443CA48` | 4 | HO CHI WAI | Verified in live Mongo upstream |
 | `ESP32_00009822A443CA48` | 5 | TANG WAI HAN | User-corrected ID; not found in live Mongo during implementation precheck |
+| `ESP32_00008C292A04A7AC` | 6 | test-user07 | user 6 already bound to device 3; bound to user 7 |
+| `ESP32_00009022A443CA48` | 7 | test-user09 | user 7 taken by device 6; user 8 taken by device 4; bound to user 9 |
 
 ## MQTT Topics
 

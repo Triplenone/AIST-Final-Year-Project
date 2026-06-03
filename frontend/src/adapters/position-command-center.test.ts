@@ -57,8 +57,10 @@ describe('position-command-center adapter', () => {
   it('tracks FlyCare device 4 and device 5 registry entries', () => {
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[4]).toBe('ESP32_0000A022A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[5]).toBe('ESP32_00009822A443CA48');
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[6]).toBe('ESP32_00008C292A04A7AC');
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[7]).toBe('ESP32_00009022A443CA48');
     expect(POSITION_RESIDENT_REGISTRY.map((entry) => entry.displayName)).toEqual(
-      expect.arrayContaining(['HO CHI WAI', 'TANG WAI HAN'])
+      expect.arrayContaining(['HO CHI WAI', 'TANG WAI HAN', 'test-user07', 'test-user09'])
     );
   });
 
