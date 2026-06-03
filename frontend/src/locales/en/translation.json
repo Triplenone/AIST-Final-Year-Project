@@ -111,6 +111,31 @@
       "security_check": "Security Check",
       "non_restricted_area": "Non-Restricted Area",
       "check_in_counter": "Check-in Counter"
+    },
+    "route": {
+      "current": "Current",
+      "security": "Security",
+      "immigration": "Immigration",
+      "gate": "Gate",
+      "status": "Route",
+      "available": "Security -> Immigration -> Gate",
+      "unavailable": "Route unavailable",
+      "noFlight": "No flight gate selected"
+    },
+    "markerTooltip": {
+      "area": "Area",
+      "event": "Event",
+      "eventTime": "Event time",
+      "handlingStatus": "Handling status",
+      "normal": "Normal",
+      "sos": "SOS",
+      "fall": "Fall",
+      "sosFall": "SOS + Fall",
+      "unknownArea": "Unknown area",
+      "unknownTime": "Unknown",
+      "activeNotLinked": "Active, not linked",
+      "noActiveEvent": "No active event",
+      "activeAlertCount": "Active alerts"
     }
   },
   "admin": {
@@ -129,7 +154,7 @@
     },
     "flycare": {
       "title": "FlyCare flight simulator",
-      "subtitle": "Configure flight fields and publish to MQTT (topic flycare/flight)",
+      "subtitle": "Configure flight fields and publish to per-device MQTT downlink",
       "formTitle": "Flight details",
       "presetLabel": "Device preset",
       "presetPlaceholder": "Select mapped device…",
@@ -149,7 +174,7 @@
       "saveMongoOnly": "Mongo only",
       "publishing": "Publishing…",
       "reset": "Reset form",
-      "hint": "Backend subscribes to {{topic}}. Use Mongo only if local MQTT loopback is unavailable.",
+      "hint": "Backend publishes to {{topic}}. Mongo only is a UI/demo fallback, not proof of smartwatch receipt.",
       "mqttStatus": "MQTT: {{state}} · {{broker}}:{{port}} · {{topic}}",
       "mqttConnected": "connected",
       "mqttDisconnected": "disconnected",
@@ -160,6 +185,8 @@
       "errorPublish": "Publish failed",
       "successMqtt": "Published to MQTT ({{topic}})",
       "successMongo": "Saved to Mongo",
+      "mqttFailed": "MQTT failed: {{error}}",
+      "mongoFailed": "Mongo failed: {{error}}",
       "successGeneric": "Done"
     },
     "residents": {

@@ -195,6 +195,8 @@ export const kpiApi = {
 export type MongoUpstreamLatest = {
   _id?: string;
   device_id?: string | number;
+  mysql_device_id?: number;
+  data_type?: string;
   timestamp?: number;
   server_received_at?: string;
   location?: Record<string, unknown>;
@@ -238,6 +240,7 @@ export type FlightLatestResponse = {
   found: boolean;
   _id?: string;
   device_id?: string;
+  mysql_device_id?: number;
   passengerName?: string;
   flightNumber?: string;
   gate?: string;
@@ -285,6 +288,7 @@ export type FlyCareFlightPreset = {
   elderly_user_id?: number | null;
   passengerName?: string | null;
   deploy_location?: string | null;
+  mqtt_topic?: string;
 };
 
 export type FlightPublishPayload = {
@@ -304,6 +308,7 @@ export type FlightPublishPayload = {
 export type FlyCarePresetsResponse = {
   items: FlyCareFlightPreset[];
   mqtt_topic: string;
+  downlink_topic_template?: string;
 };
 
 export type FlyCareMqttStatus = {
@@ -311,13 +316,14 @@ export type FlyCareMqttStatus = {
   broker?: string;
   port?: number;
   topic?: string;
+  subscribed_topics?: string[];
 };
 
 export type FlyCarePublishResult = {
   status: string;
   payload?: Record<string, unknown>;
-  mqtt?: { ok: boolean; topic?: string; broker?: string };
-  mongo?: { ok: boolean; db_name?: string; collection?: string };
+  mqtt?: { ok: boolean; topic?: string; broker?: string; error?: string | null; skipped?: boolean };
+  mongo?: { ok: boolean; db_name?: string; collection?: string; error?: string | null; skipped?: boolean; inserted_id?: string };
 };
 
 export const flycareAdminApi = {

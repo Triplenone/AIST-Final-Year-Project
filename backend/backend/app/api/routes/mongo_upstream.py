@@ -193,14 +193,17 @@ def _extract_current_location_from_doc(doc: Dict[str, Any]) -> Optional[Dict[str
         return None
     current = location.get("current") or {}
     if not isinstance(current, dict):
-        return None
+        current = {}
 
     x = _to_finite_float(current.get("x"))
     y = _to_finite_float(current.get("y"))
     if x is None or y is None:
+        x = _to_finite_float(location.get("x"))
+        y = _to_finite_float(location.get("y"))
+    if x is None or y is None:
         return None
 
-    name = current.get("name")
+    name = current.get("name") or location.get("name")
     if not isinstance(name, str):
         name = None
     elif not name.strip():
@@ -212,6 +215,9 @@ def _extract_current_location_from_doc(doc: Dict[str, Any]) -> Optional[Dict[str
         current.get("location_zone_id")
         or current.get("zone_id")
         or current.get("locationZoneId")
+        or location.get("location_zone_id")
+        or location.get("zone_id")
+        or location.get("locationZoneId")
     )
     return {
         "x": x,
@@ -488,7 +494,7 @@ async def get_vitals_history_for_user(
 @router.post("/flight", response_model=Dict[str, Any])
 async def ingest_flight_upstream(data: Dict[str, Any]):
     """
-    直接写入航班上行（与 MQTT 主题 flycare/flight 等效）。
+    直接写入航班上行（用于 UI/demo fallback，不代表 smartwatch 已收到下行）。
     Postman 可用 HTTP POST 测试，无需 MQTT Broker。
     """
     from app.services.mongo_raw_upstream import save_raw_upstream
@@ -537,7 +543,7 @@ async def get_latest_flight(
         return {
             "found": False,
             "message": (
-                "No flight upstream data found. Publish to MQTT topic flycare/flight "
+                "No flight upstream data found. Publish to MQTT topic smartwatch/{device_id}/flight "
                 "or POST /api/v1/mongo-upstream/flight with device_id."
             ),
         }

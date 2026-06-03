@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID,
   POSITION_RESIDENT_REGISTRY,
   buildPositionCommandCenterViewModel,
   buildPositionResidentActivity,
   getPositionZoneDisplayForResident,
   getZoneCommandState,
+  mergeUpstreamDocsForPosition,
   resolvePositionSelection,
   sortPositionResidents,
   type PositionResidentViewModel
@@ -52,6 +54,69 @@ function makeResident(
 }
 
 describe('position-command-center adapter', () => {
+  it('tracks FlyCare device 4 and device 5 registry entries', () => {
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[4]).toBe('ESP32_0000A022A443CA48');
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[5]).toBe('ESP32_00009822A443CA48');
+    expect(POSITION_RESIDENT_REGISTRY.map((entry) => entry.displayName)).toEqual(
+      expect.arrayContaining(['HO CHI WAI', 'TANG WAI HAN'])
+    );
+  });
+
+  it('preserves currentCoords from an earlier same-device location when heartbeat is newest', () => {
+    const merged = mergeUpstreamDocsForPosition([
+      {
+        _id: 'heartbeat-new',
+        device_id: 'device-1',
+        server_received_at: '2026-03-28T00:02:00.000Z',
+        data_type: 'heartbeat',
+        system: { battery: { level: 90 } }
+      },
+      {
+        _id: 'location-old',
+        device_id: 'device-1',
+        server_received_at: '2026-03-28T00:01:00.000Z',
+        data_type: 'location',
+        location: { current: { x: 4, y: 12, name: 'Security' } }
+      }
+    ]);
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:02:05.000Z',
+        loadError: null,
+        records: [{ resident, latestStatus: merged, error: null }]
+      },
+      { selectedResidentId: resident.residentId, now: Date.parse('2026-03-28T00:02:05.000Z'), mapProfile: 'flycare' }
+    );
+
+    expect(viewModel.selectedResident?.currentCoords).toEqual({ x: 4, y: 12 });
+    expect(viewModel.selectedResident?.battery).toBe(90);
+  });
+
+  it('reads fallback flat location.x/y coordinates', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:00:20.000Z',
+        loadError: null,
+        records: [
+          {
+            resident,
+            error: null,
+            latestStatus: {
+              device_id: resident.deviceId,
+              server_received_at: '2026-03-28T00:00:00.000Z',
+              location: { x: 5, y: 8, name: 'Immigration' }
+            } as never
+          }
+        ]
+      },
+      { selectedResidentId: resident.residentId, now: Date.parse('2026-03-28T00:00:20.000Z'), mapProfile: 'flycare' }
+    );
+
+    expect(viewModel.selectedResident?.currentCoords).toEqual({ x: 5, y: 8 });
+  });
+
   it('getPositionZoneDisplayForResident prefers non-empty currentZoneName over labelKey i18n', () => {
     const t = (key: string) => `i18n:${key}`;
     expect(

@@ -111,6 +111,31 @@
       "security_check": "安检",
       "non_restricted_area": "非禁区",
       "check_in_counter": "值机柜台"
+    },
+    "route": {
+      "current": "当前位置",
+      "security": "安检",
+      "immigration": "出入境",
+      "gate": "登机口",
+      "status": "路线",
+      "available": "安检 -> 出入境 -> 登机口",
+      "unavailable": "路线不可用",
+      "noFlight": "未选择航班登机口"
+    },
+    "markerTooltip": {
+      "area": "区域",
+      "event": "事件",
+      "eventTime": "事件时间",
+      "handlingStatus": "处理状态",
+      "normal": "正常",
+      "sos": "SOS",
+      "fall": "跌倒",
+      "sosFall": "SOS + 跌倒",
+      "unknownArea": "未知区域",
+      "unknownTime": "未知",
+      "activeNotLinked": "活跃，未关联事件",
+      "noActiveEvent": "无活跃事件",
+      "activeAlertCount": "活跃警报"
     }
   },
   "admin": {
@@ -131,7 +156,7 @@
     },
     "flycare": {
       "title": "FlyCare 航班测试",
-      "subtitle": "配置航班字段并发布到 MQTT（主题 flycare/flight）",
+      "subtitle": "配置航班字段并发布到每台设备的 MQTT 下行主题",
       "formTitle": "航班信息",
       "presetLabel": "设备预设",
       "presetPlaceholder": "从映射设备选择…",
@@ -151,7 +176,7 @@
       "saveMongoOnly": "仅写入 Mongo",
       "publishing": "发布中…",
       "reset": "清空表单",
-      "hint": "后端订阅主题 {{topic}}；若本机 MQTT 回环不可用，可使用「仅写入 Mongo」。",
+      "hint": "后端发布到 {{topic}}；仅写入 Mongo 只是 UI/演示 fallback，不代表手表已收到。",
       "mqttStatus": "MQTT：{{state}} · {{broker}}:{{port}} · {{topic}}",
       "mqttConnected": "已连接",
       "mqttDisconnected": "未连接",
@@ -162,6 +187,8 @@
       "errorPublish": "发布失败",
       "successMqtt": "已发布到 MQTT（{{topic}}）",
       "successMongo": "已写入 Mongo",
+      "mqttFailed": "MQTT 失败：{{error}}",
+      "mongoFailed": "Mongo 失败：{{error}}",
       "successGeneric": "操作成功"
     },
     "residents": {

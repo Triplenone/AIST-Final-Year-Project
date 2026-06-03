@@ -1,6 +1,6 @@
 """
 MQTT 订阅服务：订阅 ESP32 上行主题（与 MQTT-topic.txt 一致），将 JSON 写入 MongoDB。
-同时订阅航班信息主题 flycare/flight，用于模拟机场航班信息更新。
+同时保留 legacy 航班 loopback 主题 flycare/flight；primary 下行为 smartwatch/{device_id}/flight。
 """
 import json
 import re
@@ -27,9 +27,10 @@ UPLINK_TOPICS = [
     "smartwatch/+/light",
     "smartwatch/+/log",
     "smartwatch/+/heartbeat",
+    "smartwatch/+/vitals",
 ]
 
-# 航班信息主题：Postman 等客户端向此 topic 发布 JSON 即可模拟航班信息更新
+# Legacy 航班 loopback 主题；primary per-device 下行由 mqtt_publish.py 发布。
 FLIGHT_TOPIC = "flycare/flight"
 
 # topic 第三段后缀 -> 写入 Mongo 的 data_type
@@ -42,6 +43,7 @@ SUFFIX_TO_DATA_TYPE = {
     "light": "light",
     "log": "log",
     "heartbeat": "heartbeat",
+    "vitals": "vitals",
 }
 
 _client = None
@@ -82,7 +84,7 @@ def _is_fall_confirmed(data: dict) -> bool:
     return False
 
 
-def _create_unhandled_event_if_needed(data: dict) -> None:
+def _create_unhandled_event_if_needed(data: dict) -> dict:
     data_type = str(data.get("data_type", "")).strip().lower()
     target_event_type: EventType | None = None
 
@@ -91,21 +93,21 @@ def _create_unhandled_event_if_needed(data: dict) -> None:
     elif data_type == "fall" and _is_fall_confirmed(data):
         target_event_type = EventType.FALL
     else:
-        return
+        return {"ok": True, "created": False, "reason": "not_alert"}
 
     mysql_device_id = data.get("mysql_device_id")
     if mysql_device_id is None:
-        return
+        return {"ok": True, "created": False, "reason": "missing_mysql_device_id"}
     try:
         device_id = int(mysql_device_id)
     except (TypeError, ValueError):
-        return
+        return {"ok": True, "created": False, "reason": "invalid_mysql_device_id"}
 
     db: Session = SessionLocal()
     try:
         device = db.query(Device).filter(Device.device_id == device_id).first()
         if not device or not device.elderly_user_id:
-            return
+            return {"ok": True, "created": False, "reason": "device_or_user_missing"}
 
         dedupe_since = datetime.now() - timedelta(minutes=1)
         existing = (
@@ -119,7 +121,7 @@ def _create_unhandled_event_if_needed(data: dict) -> None:
             .first()
         )
         if existing:
-            return
+            return {"ok": True, "created": False, "reason": "deduped", "event_id": existing.event_id}
 
         event = Event(
             event_type=target_event_type,
@@ -139,9 +141,12 @@ def _create_unhandled_event_if_needed(data: dict) -> None:
         )
         db.add(event)
         db.commit()
+        db.refresh(event)
+        return {"ok": True, "created": True, "event_id": event.event_id}
     except Exception as exc:
         db.rollback()
         print(f"[mqtt] event create failed: {exc}")
+        return {"ok": False, "created": False, "error": str(exc)}
     finally:
         db.close()
 
@@ -188,14 +193,11 @@ def _on_message(client, userdata, msg):
     if msg.topic == FLIGHT_TOPIC:
         data["data_type"] = "flight"
         data.setdefault("timestamp", time.time())
-        try:
-            run_sync_save_raw_upstream(data)
-            print(
-                f"[mqtt] flycare flight saved: device_id={data.get('device_id', 'MISSING')} "
-                f"flightNumber={data.get('flightNumber', 'N/A')}"
-            )
-        except Exception as e:
-            print(f"[mqtt] flycare mongo write failed: {e}")
+        mongo_result = run_sync_save_raw_upstream(data)
+        print(
+            f"[mqtt] legacy flight topic={msg.topic} device_id={data.get('device_id', 'MISSING')} "
+            f"data_type=flight mongo={mongo_result}"
+        )
         return
 
     # 设备上行主题：smartwatch/<device_id>/<suffix>
@@ -208,7 +210,7 @@ def _on_message(client, userdata, msg):
         data["device_id"] = device_id_from_topic
         if mapped is not None:
             data["mysql_device_id"] = int(mapped)
-        data_type = SUFFIX_TO_DATA_TYPE.get(suffix, "status_update")
+        data_type = SUFFIX_TO_DATA_TYPE.get(suffix, suffix)
         incoming_data_type = data.get("data_type")
         if incoming_data_type and str(incoming_data_type).strip().lower() != data_type:
             print(
@@ -220,14 +222,17 @@ def _on_message(client, userdata, msg):
     else:
         data.setdefault("device_id", "UNKNOWN")
         data.setdefault("data_type", "status_update")
+    mongo_result = run_sync_save_raw_upstream(data)
     try:
-        run_sync_save_raw_upstream(data)
+        event_result = _create_unhandled_event_if_needed(data)
     except Exception as e:
-        print(f"[mqtt] mongo write failed: {e}")
-    try:
-        _create_unhandled_event_if_needed(data)
-    except Exception as e:
+        event_result = {"ok": False, "error": str(e)}
         print(f"[mqtt] event bridge failed: {e}")
+    print(
+        f"[mqtt] upstream topic={msg.topic} device_id={data.get('device_id')} "
+        f"mysql_device_id={data.get('mysql_device_id')} data_type={data.get('data_type')} "
+        f"mongo={mongo_result} event={event_result}"
+    )
 
 
 def start_mqtt():

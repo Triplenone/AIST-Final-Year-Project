@@ -17,6 +17,17 @@ export type FlyCareZoneDefinition = {
   labelKey: string;
 };
 
+export type FlyCareRouteWaypoint = {
+  id: 'current' | FlyCareZoneId;
+  point: PositionPoint;
+  labelKey: string;
+};
+
+export type FlyCareRoute = {
+  gateZoneId: 'boarding_gate_1' | 'boarding_gate_2';
+  waypoints: FlyCareRouteWaypoint[];
+};
+
 export const FLYCARE_GRID_COLUMNS = 12;
 export const FLYCARE_GRID_ROWS = 16;
 export const FLYCARE_MAP_PIXEL_WIDTH = 600;
@@ -109,6 +120,74 @@ export const FLYCARE_GRID_TO_ZONE: readonly (readonly string[])[] = [
   [' ', 'non_restricted_area', 'non_restricted_area', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'non_restricted_area', 'non_restricted_area', ' '],
   [' ', 'non_restricted_area', 'non_restricted_area', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'check_in_counter', 'non_restricted_area', 'non_restricted_area', ' ']
 ];
+
+const FLYCARE_ZONE_CENTER_FALLBACKS: Readonly<Record<'security_check' | 'immigration' | 'boarding_gate_1' | 'boarding_gate_2', PositionPoint>> = {
+  security_check: { x: 5, y: 12 },
+  immigration: { x: 5, y: 8 },
+  boarding_gate_1: { x: 4, y: 2 },
+  boarding_gate_2: { x: 8, y: 2 }
+};
+
+export function getFlyCareZoneCenter(zoneId: FlyCareZoneId): PositionPoint | null {
+  let minCol = Number.POSITIVE_INFINITY;
+  let maxCol = Number.NEGATIVE_INFINITY;
+  let minRow = Number.POSITIVE_INFINITY;
+  let maxRow = Number.NEGATIVE_INFINITY;
+
+  for (let row = 0; row < FLYCARE_GRID_TO_ZONE.length; row += 1) {
+    const cols = FLYCARE_GRID_TO_ZONE[row];
+    for (let col = 0; col < cols.length; col += 1) {
+      if (String(cols[col]).trim() !== zoneId) continue;
+      minCol = Math.min(minCol, col);
+      maxCol = Math.max(maxCol, col);
+      minRow = Math.min(minRow, row);
+      maxRow = Math.max(maxRow, row);
+    }
+  }
+
+  if (!Number.isFinite(minCol) || !Number.isFinite(minRow)) {
+    return FLYCARE_ZONE_CENTER_FALLBACKS[zoneId as keyof typeof FLYCARE_ZONE_CENTER_FALLBACKS] ?? null;
+  }
+
+  return {
+    x: Math.round((minCol + maxCol) / 2),
+    y: Math.round((minRow + maxRow) / 2)
+  };
+}
+
+export function getFlyCareGateTarget(gate: string | number | null | undefined): 'boarding_gate_1' | 'boarding_gate_2' | null {
+  const text = String(gate ?? '').trim().toUpperCase();
+  if (!text) return null;
+  if (/^(?:A|G)?(?:10|11)$/.test(text)) return 'boarding_gate_1';
+  if (/^(?:A|G)?12$/.test(text)) return 'boarding_gate_2';
+  const numeric = Number(text.replace(/^[A-Z]+/, ''));
+  if (Number.isFinite(numeric) && numeric >= 12) return 'boarding_gate_2';
+  return null;
+}
+
+export function getFlyCareMandatoryWaypoints(): FlyCareRouteWaypoint[] {
+  const security = getFlyCareZoneCenter('security_check') ?? FLYCARE_ZONE_CENTER_FALLBACKS.security_check;
+  const immigration = getFlyCareZoneCenter('immigration') ?? FLYCARE_ZONE_CENTER_FALLBACKS.immigration;
+  return [
+    { id: 'security_check', point: security, labelKey: 'flyCare.route.security' },
+    { id: 'immigration', point: immigration, labelKey: 'flyCare.route.immigration' }
+  ];
+}
+
+export function buildFlyCareRoute(current: PositionPoint | null, gate: string | number | null | undefined): FlyCareRoute | null {
+  if (!current) return null;
+  const gateZoneId = getFlyCareGateTarget(gate);
+  if (!gateZoneId) return null;
+  const gatePoint = getFlyCareZoneCenter(gateZoneId) ?? FLYCARE_ZONE_CENTER_FALLBACKS[gateZoneId];
+  return {
+    gateZoneId,
+    waypoints: [
+      { id: 'current', point: current, labelKey: 'flyCare.route.current' },
+      ...getFlyCareMandatoryWaypoints(),
+      { id: gateZoneId, point: gatePoint, labelKey: 'flyCare.route.gate' }
+    ]
+  };
+}
 
 export function getFlyCareZoneFromCoords(coords: PositionPoint | null): FlyCareZoneId | null {
   if (!coords) return null;

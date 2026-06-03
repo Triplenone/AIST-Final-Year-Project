@@ -19,6 +19,7 @@ _DATA_TYPE_ALIASES = {
     "light": "light",
     "log": "log",
     "heartbeat": "heartbeat",
+    "vitals": "vitals",
     "flight": "flight",
 }
 
@@ -48,9 +49,12 @@ def _normalize_data_type(data: Dict[str, Any]) -> str:
         raw = data.get(key)
         if raw is None:
             continue
-        normalized = _DATA_TYPE_ALIASES.get(str(raw).strip().lower())
+        raw_text = str(raw).strip().lower()
+        normalized = _DATA_TYPE_ALIASES.get(raw_text)
         if normalized:
             return normalized
+        if raw_text:
+            return raw_text
 
     # Fallback inference for common smartwatch payload structures.
     fall_detection = data.get("fall_detection") or {}
@@ -92,16 +96,19 @@ def get_sync_mongo_db():
     return _sync_mongo_client[settings.MONGO_DB_NAME]
 
 
-async def save_raw_upstream(data: Dict[str, Any]) -> None:
+async def save_raw_upstream(data: Dict[str, Any]) -> Dict[str, Any]:
     """Persist a raw upstream payload to the shared Mongo collection."""
     coll = get_mongo_db()[COLLECTION_RAW_UPSTREAM]
-    await coll.insert_one(_build_doc(data))
+    result = await coll.insert_one(_build_doc(data))
+    return {"ok": True, "inserted_id": str(result.inserted_id)}
 
 
-def run_sync_save_raw_upstream(data: Dict[str, Any]) -> None:
+def run_sync_save_raw_upstream(data: Dict[str, Any]) -> Dict[str, Any]:
     """Allow sync MQTT callbacks to persist raw payloads without crashing."""
     try:
         coll = get_sync_mongo_db()[COLLECTION_RAW_UPSTREAM]
-        coll.insert_one(_build_doc(data))
+        result = coll.insert_one(_build_doc(data))
+        return {"ok": True, "inserted_id": str(result.inserted_id)}
     except Exception as exc:
         print(f"[mongo_raw_upstream] write failed but skipped: {exc}")
+        return {"ok": False, "error": str(exc)}

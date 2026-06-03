@@ -772,6 +772,47 @@
   grid-template-rows: repeat(16, 1fr);
 }
 
+.flycare-map-stage__route-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flycare-map-stage__route-line {
+  fill: none;
+  stroke: #0f766e;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 2.4 1.4;
+  filter: drop-shadow(0 1.5px 2px rgba(15, 23, 42, 0.34));
+}
+
+.flycare-map-stage__waypoint-dot {
+  fill: #f8fafc;
+  stroke: #0f766e;
+  stroke-width: 0.62;
+}
+
+.flycare-map-stage__waypoint-dot--current {
+  fill: #dc2626;
+  stroke: #fff;
+}
+
+.flycare-map-stage__waypoint-label {
+  fill: #0f172a;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.86);
+  stroke-width: 0.85;
+  font-size: 2.4px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .position-map-stage__cell {
   border: none;
   background: transparent;
@@ -860,6 +901,126 @@
   opacity: 0.45;
 }
 
+.flycare-map-stage__pin {
+  cursor: default;
+  border: 0;
+  background: transparent;
+}
+
+.flycare-map-stage__pin:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.72);
+  outline-offset: 0.35rem;
+  border-radius: 999px;
+}
+
+.flycare-map-stage__pin .position-map-stage__pin-dot--normal {
+  background: #16a34a;
+  opacity: 1;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.94),
+    0 0 0 7px rgba(22, 163, 74, 0.2);
+}
+
+.position-map-stage__pin--alert {
+  z-index: 5;
+}
+
+.position-map-stage__pin-dot--alert,
+.position-map-stage__pin--alert .position-map-stage__pin-cluster-count {
+  position: relative;
+  background: #ef4444;
+  opacity: 1;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.96),
+    0 0 0 8px rgba(239, 68, 68, 0.2);
+  animation: flycareAlertPulse 1.05s ease-out infinite;
+}
+
+.position-map-stage__pin--alert-fall .position-map-stage__pin-dot--alert {
+  background: #ef4444;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.96),
+    0 0 0 8px rgba(239, 68, 68, 0.2);
+}
+
+@keyframes flycareAlertPulse {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.96),
+      0 0 0 4px rgba(239, 68, 68, 0.34);
+  }
+
+  70% {
+    transform: scale(1.15);
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.96),
+      0 0 0 14px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.96),
+      0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+
+.position-map-stage__pin-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.75rem);
+  z-index: 8;
+  display: grid;
+  min-width: 13rem;
+  max-width: 17rem;
+  gap: 0.28rem;
+  padding: 0.72rem 0.82rem;
+  border-radius: 0.9rem;
+  background: rgba(15, 23, 42, 0.94);
+  color: #f8fafc;
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.14);
+  font-size: 0.73rem;
+  line-height: 1.35;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 0.35rem);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.position-map-stage__pin-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -0.38rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: rgba(15, 23, 42, 0.94);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.position-map-stage__pin-tooltip span {
+  display: grid;
+  grid-template-columns: minmax(4.6rem, max-content) 1fr;
+  gap: 0.45rem;
+  align-items: baseline;
+}
+
+.position-map-stage__pin-tooltip strong {
+  color: #bfdbfe;
+  font-weight: 700;
+}
+
+.flycare-map-stage__pin:hover .position-map-stage__pin-tooltip,
+.flycare-map-stage__pin:focus-visible .position-map-stage__pin-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .position-map-stage__pin--cluster .position-map-stage__pin-cluster-count {
   min-width: 1.4rem;
   height: 1.4rem;
@@ -873,6 +1034,17 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.92);
+}
+
+.position-map-stage__cluster--normal .position-map-stage__pin-cluster-count {
+  background: #15803d;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.94),
+    0 0 0 7px rgba(22, 163, 74, 0.2);
+}
+
+.position-map-stage__cluster--alert .position-map-stage__pin-cluster-count {
+  background: #ef4444;
 }
 
 .position-map-stage__target-dot,

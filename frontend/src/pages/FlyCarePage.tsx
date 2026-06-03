@@ -17,11 +17,15 @@ import { FlyCareMapStage } from '../components/flycare/FlyCareMapStage';
 import { PositionDecisionPanel } from '../components/position/PositionDecisionPanel';
 import { PositionResidentRail } from '../components/position/PositionResidentRail';
 import { PositionSummaryBar } from '../components/position/PositionSummaryBar';
-import { mongoUpstreamApi, type FlightLatestResponse } from '../services/api';
+import { eventApi, mongoUpstreamApi, type FlightLatestResponse } from '../services/api';
+import type { BackendEvent } from '../types/backend';
 import type { FallAlertDetailRow } from '../types/fall-alert';
 import { buildFallAlertRowsFromPositionResidents } from '../utils/fall-alert-rows';
 
 const FLYCARE_MAP_PROFILE = 'flycare' as const;
+const FLYCARE_SNAPSHOT_REFRESH_MS = 2_000;
+const FLYCARE_FLIGHT_REFRESH_MS = 5_000;
+const FLYCARE_ALERT_EVENT_REFRESH_MS = 5_000;
 
 type FlyCarePageProps = {
   onSosOrFallDetected?: (items: FallAlertDetailRow[]) => void;
@@ -49,6 +53,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(null);
   const [pendingFlightUpdate, setPendingFlightUpdate] = useState<FlightInfo | null>(null);
   const [showFlightUpdateDrawer, setShowFlightUpdateDrawer] = useState(false);
+  const [flyCareAlertEvents, setFlyCareAlertEvents] = useState<BackendEvent[]>([]);
 
   const refreshSnapshot = useCallback(async () => {
     setLoading(true);
@@ -90,7 +95,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     void refreshSnapshot();
     const intervalId = window.setInterval(() => {
       void refreshSnapshot();
-    }, 10_000);
+    }, FLYCARE_SNAPSHOT_REFRESH_MS);
     return () => window.clearInterval(intervalId);
   }, [refreshSnapshot]);
 
@@ -188,9 +193,29 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     void fetchLatestFlight();
     const interval = setInterval(() => {
       void fetchLatestFlight();
-    }, 10_000);
+    }, FLYCARE_FLIGHT_REFRESH_MS);
     return () => clearInterval(interval);
   }, [fetchLatestFlight]);
+
+  const refreshActiveEventAlerts = useCallback(async () => {
+    try {
+      const [sosEvents, fallEvents] = await Promise.all([
+        eventApi.list({ event_type: 'sos', limit: 50 }),
+        eventApi.list({ event_type: 'fall', limit: 50 })
+      ]);
+      setFlyCareAlertEvents([...sosEvents, ...fallEvents]);
+    } catch {
+      setFlyCareAlertEvents([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshActiveEventAlerts();
+    const interval = setInterval(() => {
+      void refreshActiveEventAlerts();
+    }, FLYCARE_ALERT_EVENT_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [refreshActiveEventAlerts]);
 
   useEffect(() => {
     if (!onSosOrFallDetected) return;
@@ -277,6 +302,8 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
           showAllOnMap={showAllOnMap}
           surfaceState={viewModel.surfaceStates.map}
           recordError={viewModel.selectedResidentRecordError}
+          flightInfo={flightInfo}
+          alertEvents={flyCareAlertEvents}
         />
       </div>
 

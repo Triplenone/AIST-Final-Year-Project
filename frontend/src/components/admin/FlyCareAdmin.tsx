@@ -50,7 +50,7 @@ function toPayload(
 export const FlyCareAdmin = () => {
   const { t } = useTranslation();
   const [presets, setPresets] = useState<FlyCareFlightPreset[]>([]);
-  const [mqttTopic, setMqttTopic] = useState('flycare/flight');
+  const [mqttTopic, setMqttTopic] = useState('smartwatch/{device_id}/flight');
   const [mqttStatus, setMqttStatus] = useState<{
     connected?: boolean;
     broker?: string;
@@ -72,7 +72,7 @@ export const FlyCareAdmin = () => {
         flycareAdminApi.getMqttStatus()
       ]);
       setPresets(presetRes.items ?? []);
-      setMqttTopic(presetRes.mqtt_topic ?? 'flycare/flight');
+      setMqttTopic(presetRes.downlink_topic_template ?? 'smartwatch/{device_id}/flight');
       setMqttStatus({
         connected: mqttRes.connected,
         broker: mqttRes.broker,
@@ -106,6 +106,7 @@ export const FlyCareAdmin = () => {
     const preset = presets.find((item) => item.device_id === deviceId);
     if (!preset) return;
     setSelectedPresetKey(deviceId);
+    setMqttTopic(preset.mqtt_topic ?? `smartwatch/${preset.device_id}/flight`);
     setForm((current) => ({
       device_id: preset.device_id,
       mysql_device_id: preset.mysql_device_id != null ? String(preset.mysql_device_id) : '',
@@ -130,6 +131,10 @@ export const FlyCareAdmin = () => {
     return null;
   };
 
+  const selectedDownlinkTopic = form.device_id.trim()
+    ? `smartwatch/${form.device_id.trim()}/flight`
+    : mqttTopic;
+
   const runPublish = async (options: { publish_mqtt: boolean; save_mongo: boolean }) => {
     const validationError = validateForm();
     if (validationError) {
@@ -143,10 +148,14 @@ export const FlyCareAdmin = () => {
       const result = await flycareAdminApi.publishFlight(toPayload(form, options));
       const parts: string[] = [];
       if (result.mqtt?.ok) {
-        parts.push(t('admin.flycare.successMqtt', { topic: result.mqtt.topic ?? mqttTopic }));
+        parts.push(t('admin.flycare.successMqtt', { topic: result.mqtt.topic ?? selectedDownlinkTopic }));
+      } else if (result.mqtt && !result.mqtt.skipped && result.mqtt.error) {
+        parts.push(t('admin.flycare.mqttFailed', { error: result.mqtt.error }));
       }
       if (result.mongo?.ok) {
         parts.push(t('admin.flycare.successMongo'));
+      } else if (result.mongo && !result.mongo.skipped && result.mongo.error) {
+        parts.push(t('admin.flycare.mongoFailed', { error: result.mongo.error }));
       }
       setSuccess(parts.join(' · ') || t('admin.flycare.successGeneric'));
     } catch (err) {
@@ -174,7 +183,7 @@ export const FlyCareAdmin = () => {
               state: mqttConnected ? t('admin.flycare.mqttConnected') : t('admin.flycare.mqttDisconnected'),
               broker: mqttStatus?.broker ?? '—',
               port: mqttStatus?.port ?? '—',
-              topic: mqttTopic
+              topic: selectedDownlinkTopic
             })}
           </span>
           <button type="button" className="ghost" onClick={() => void load()} disabled={loading}>
@@ -308,7 +317,7 @@ export const FlyCareAdmin = () => {
             </button>
           </div>
         </form>
-        <p className="muted flycare-admin-hint">{t('admin.flycare.hint', { topic: mqttTopic })}</p>
+        <p className="muted flycare-admin-hint">{t('admin.flycare.hint', { topic: selectedDownlinkTopic })}</p>
       </div>
     </div>
   );

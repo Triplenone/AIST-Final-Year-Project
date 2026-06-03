@@ -12,7 +12,7 @@ from app.database import SessionLocal
 from app.models.device import Device
 from app.models.user import User
 from app.services.mongo_raw_upstream import save_raw_upstream
-from app.services.mqtt_publish import publish_flight_payload
+from app.services.mqtt_publish import build_flycare_flight_topic, publish_flight_payload
 from app.services.mqtt_subscriber import FLIGHT_TOPIC, get_mqtt_status
 
 router = APIRouter()
@@ -28,7 +28,7 @@ class FlightPublishBody(BaseModel):
     departureAirport: Optional[str] = None
     arrivalAirport: Optional[str] = None
     seatNumber: Optional[str] = None
-    publish_mqtt: bool = Field(True, description="Publish to MQTT topic flycare/flight")
+    publish_mqtt: bool = Field(True, description="Publish to MQTT topic smartwatch/{device_id}/flight")
     save_mongo: bool = Field(
         False,
         description="Also write Mongo directly (use when MQTT loopback is unavailable)",
@@ -80,58 +80,71 @@ def list_flight_presets() -> Dict[str, Any]:
                     "elderly_user_id": elderly_user_id,
                     "passengerName": passenger_name,
                     "deploy_location": device.deploy_location if device else None,
+                    "mqtt_topic": build_flycare_flight_topic(mongo_id),
                 }
             )
     finally:
         db.close()
 
-    return {"items": presets, "mqtt_topic": FLIGHT_TOPIC}
+    return {
+        "items": presets,
+        "mqtt_topic": FLIGHT_TOPIC,
+        "downlink_topic_template": settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE,
+    }
 
 
 @router.post("/flight/publish")
 async def publish_flight(body: FlightPublishBody):
     payload = _build_flight_payload(body)
-    mqtt_result: Optional[Dict[str, Any]] = None
-    mongo_result: Optional[Dict[str, Any]] = None
+    mqtt_result: Dict[str, Any] = {
+        "ok": False,
+        "topic": build_flycare_flight_topic(payload["device_id"]),
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": None,
+        "skipped": not body.publish_mqtt,
+    }
+    mongo_result: Dict[str, Any] = {
+        "ok": False,
+        "error": None,
+        "skipped": not body.save_mongo,
+        "db_name": settings.MONGO_DB_NAME,
+        "collection": "device_raw_upstream",
+    }
 
     if body.publish_mqtt:
         try:
-            publish_flight_payload(payload)
-            mqtt_result = {
-                "ok": True,
-                "topic": FLIGHT_TOPIC,
-                "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
-            }
+            mqtt_result = {**mqtt_result, **publish_flight_payload(payload), "skipped": False}
         except Exception as exc:
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "message": "MQTT publish failed",
-                    "error": str(exc),
-                    "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
-                    "topic": FLIGHT_TOPIC,
-                    "hint": "Check broker settings or enable save_mongo to ingest without MQTT.",
-                },
-            ) from exc
+            mqtt_result.update({"ok": False, "error": str(exc), "skipped": False})
 
     if body.save_mongo:
         try:
-            await save_raw_upstream(payload)
+            saved = await save_raw_upstream(payload)
             mongo_result = {
                 "ok": True,
+                "error": None,
+                "skipped": False,
                 "db_name": settings.MONGO_DB_NAME,
                 "collection": "device_raw_upstream",
+                "inserted_id": saved.get("inserted_id"),
             }
         except Exception as exc:
-            raise HTTPException(
-                status_code=503,
-                detail={"message": "Mongo ingest failed", "error": str(exc)},
-            ) from exc
+            mongo_result.update({"ok": False, "error": str(exc), "skipped": False})
 
     if not body.publish_mqtt and not body.save_mongo:
         raise HTTPException(
             status_code=400,
             detail="Enable publish_mqtt and/or save_mongo.",
+        )
+    if not mqtt_result["ok"] and not mongo_result["ok"]:
+        raise HTTPException(
+            status_code=502 if body.publish_mqtt else 503,
+            detail={
+                "message": "Flight publish failed",
+                "payload": payload,
+                "mqtt": mqtt_result,
+                "mongo": mongo_result,
+            },
         )
 
     return {

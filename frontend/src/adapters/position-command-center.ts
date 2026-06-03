@@ -3,7 +3,14 @@ import {
   getFlyCareZoneDisplay,
   getFlyCareZoneLabelKey
 } from './flycare-map';
-import { deviceApi, locationApi, mongoUpstreamApi, userApi, type MongoUpstreamLatest } from '../services/api';
+import {
+  deviceApi,
+  locationApi,
+  mongoUpstreamApi,
+  userApi,
+  type MongoLatestValidLocationResponse,
+  type MongoUpstreamLatest
+} from '../services/api';
 import type { BackendDevice, BackendLocation, BackendUser } from '../types/backend';
 
 export type PositionMapProfile = 'indoor' | 'flycare';
@@ -190,7 +197,7 @@ export const POSITION_MAP_PIXEL_HEIGHT = 800;
 export const POSITION_ACTIVITY_PAGE_SIZE = 12;
 
 /** 定位页跟踪的 MySQL `device.device_id` 列表（与 Mongo 上行通过下方映射关联）。 */
-export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [1, 2, 3];
+export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [1, 2, 3, 4, 5];
 
 /**
  * MySQL 设备 id → Mongo `device_raw_upstream` 顶层 `device_id` 字符串。
@@ -199,7 +206,9 @@ export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [1, 2, 3];
 export const POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID: Readonly<Record<number, string>> = {
   1: 'ESP32_0000E03948D4DB1C',
   2: 'ESP32_0000C422A443CA48',
-  3: 'ESP32_00005CFA7AD4DB1C'
+  3: 'ESP32_00005CFA7AD4DB1C',
+  4: 'ESP32_0000A022A443CA48',
+  5: 'ESP32_00009822A443CA48'
 };
 
 export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[] = [
@@ -217,6 +226,16 @@ export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[
     residentId: 'TestUser03',
     displayName: 'test-user03',
     deviceId: 'ESP32_00005CFA7AD4DB1C'
+  },
+  {
+    residentId: 'TestUser04',
+    displayName: 'HO CHI WAI',
+    deviceId: 'ESP32_0000A022A443CA48'
+  },
+  {
+    residentId: 'TestUser05',
+    displayName: 'TANG WAI HAN',
+    deviceId: 'ESP32_00009822A443CA48'
   }
 ];
 
@@ -874,6 +893,48 @@ function isLatestDocument(data: unknown): data is MongoUpstreamLatest {
   );
 }
 
+function isLatestLocationResponse(data: unknown): data is MongoLatestValidLocationResponse {
+  return Boolean(
+    data &&
+      typeof data === 'object' &&
+      (data as MongoLatestValidLocationResponse).found === true &&
+      (data as MongoLatestValidLocationResponse).device_id != null &&
+      (data as MongoLatestValidLocationResponse).x != null &&
+      (data as MongoLatestValidLocationResponse).y != null
+  );
+}
+
+function latestLocationResponseToDoc(location: MongoLatestValidLocationResponse): MongoUpstreamLatest {
+  return {
+    _id: location._id,
+    device_id: location.device_id,
+    mysql_device_id: location.mysql_device_id,
+    data_type: 'location',
+    server_received_at: location.server_received_at,
+    location: {
+      current: {
+        x: location.x,
+        y: location.y,
+        name: location.location_name ?? undefined,
+        location_zone_id: location.location_zone_id ?? undefined
+      }
+    },
+    payload: {
+      device_id: location.device_id,
+      mysql_device_id: location.mysql_device_id,
+      data_type: 'location',
+      location: {
+        current: {
+          x: location.x,
+          y: location.y,
+          name: location.location_name ?? undefined,
+          location_zone_id: location.location_zone_id ?? undefined
+        }
+      }
+    }
+  };
+}
+
 function normalizeError(error: unknown): string {
   return error instanceof Error ? error.message : 'Request failed';
 }
@@ -901,7 +962,7 @@ function mergeSensorSectionsFromDocs(docs: MongoUpstreamLatest[]): Record<string
 }
 
 /** 用最新一条为骨架，合并其它文档中的 sensors，避免只查 status_update 时漏掉 heartbeat 上的体征。 */
-function mergeUpstreamDocsForPosition(docs: MongoUpstreamLatest[]): MongoUpstreamLatest | null {
+export function mergeUpstreamDocsForPosition(docs: MongoUpstreamLatest[]): MongoUpstreamLatest | null {
   const valid = docs.filter(isLatestDocument);
   if (valid.length === 0) return null;
   const sortedDesc = [...valid].sort(
@@ -913,6 +974,17 @@ function mergeUpstreamDocsForPosition(docs: MongoUpstreamLatest[]): MongoUpstrea
   const mergedSensors = mergeSensorSectionsFromDocs(sortedDesc);
   if (mergedSensors) {
     primary.sensors = mergedSensors as MongoUpstreamLatest['sensors'];
+  }
+  const latestLocationDoc = sortedDesc.find((doc) => getCoords(doc, 'current') != null);
+  if (latestLocationDoc) {
+    const location = getSectionData(latestLocationDoc, 'location');
+    if (location) {
+      primary.location = location as MongoUpstreamLatest['location'];
+      primary.payload = {
+        ...(primary.payload ?? {}),
+        location
+      };
+    }
   }
   return primary;
 }
@@ -1081,13 +1153,16 @@ export async function loadPositionCommandCenterSnapshot(
           mongoUpstreamApi.getLatest({ device_id: deviceId, exclude_data_type: 'flight' }),
           mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'status_update' }),
           mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'heartbeat' }),
-          mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'vitals' })
+          mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'vitals' }),
+          mongoUpstreamApi.getLatestValidLocation(deviceId)
         ]);
         const docs: MongoUpstreamLatest[] = [];
         for (const r of settled) {
           if (r.status !== 'fulfilled') continue;
           const value = r.value as unknown;
-          if (isLatestDocument(value)) {
+          if (isLatestLocationResponse(value)) {
+            docs.push(latestLocationResponseToDoc(value));
+          } else if (isLatestDocument(value)) {
             docs.push(value);
           }
         }

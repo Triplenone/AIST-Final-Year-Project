@@ -258,7 +258,7 @@ def receive_imu_data(
 
 @router.get("/mqtt/status")
 def get_mqtt_status():
-    """MQTT 订阅状态（航班主题 flycare/flight 等）。"""
+    """MQTT 订阅状态（含 smartwatch 上行与 legacy flycare/flight loopback）。"""
     from app.services.mqtt_subscriber import get_mqtt_status as _mqtt_status
 
     return _mqtt_status()

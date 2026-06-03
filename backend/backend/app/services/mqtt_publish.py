@@ -5,12 +5,11 @@ import uuid
 from typing import Any, Dict
 
 from app.config import settings
-from app.services.mqtt_subscriber import FLIGHT_TOPIC
 
 _PUBLISH_TIMEOUT_SEC = 8
 
 
-def publish_json(topic: str, payload: Dict[str, Any], *, qos: int = 1) -> None:
+def publish_json(topic: str, payload: Dict[str, Any], *, qos: int = 1) -> Dict[str, Any]:
     try:
         import paho.mqtt.client as mqtt
     except ImportError as exc:
@@ -50,7 +49,21 @@ def publish_json(topic: str, payload: Dict[str, Any], *, qos: int = 1) -> None:
     if info is None or info.rc != mqtt.MQTT_ERR_SUCCESS:
         rc = info.rc if info is not None else "unknown"
         raise RuntimeError(f"MQTT publish failed rc={rc}")
+    return {
+        "ok": True,
+        "topic": topic,
+        "qos": qos,
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": None,
+    }
 
 
-def publish_flight_payload(payload: Dict[str, Any], *, qos: int = 1) -> None:
-    publish_json(FLIGHT_TOPIC, payload, qos=qos)
+def build_flycare_flight_topic(device_id: str) -> str:
+    return settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE.format(device_id=str(device_id).strip())
+
+
+def publish_flight_payload(payload: Dict[str, Any], *, qos: int = 1) -> Dict[str, Any]:
+    device_id = str(payload.get("device_id") or "").strip()
+    if not device_id:
+        raise ValueError("payload.device_id is required for FlyCare flight downlink")
+    return publish_json(build_flycare_flight_topic(device_id), payload, qos=qos)
