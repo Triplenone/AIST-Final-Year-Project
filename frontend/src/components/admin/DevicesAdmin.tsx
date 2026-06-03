@@ -4,6 +4,15 @@ import type { BackendDevice, BackendUser } from '../../types/backend';
 
 type FormState = Partial<BackendDevice>;
 
+const emptyDeviceForm: FormState = {
+  device_type: '',
+  model_desc: '',
+  elderly_user_id: null,
+  current_status: 'offline',
+  battery_level: undefined,
+  deploy_location: '',
+};
+
 // 設備管理 (Devices admin) – 對應 /api/v1/devices
 export const DevicesAdmin = () => {
   const [devices, setDevices] = useState<BackendDevice[]>([]);
@@ -12,14 +21,7 @@ export const DevicesAdmin = () => {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<BackendDevice | null>(null);
   const [keyword, setKeyword] = useState('');
-  const [form, setForm] = useState<FormState>({
-    device_type: '',
-    model_desc: '',
-    elderly_user_id: undefined,
-    current_status: 'offline',
-    battery_level: undefined,
-    deploy_location: '',
-  });
+  const [form, setForm] = useState<FormState>(emptyDeviceForm);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,6 +52,30 @@ export const DevicesAdmin = () => {
     );
   }, [devices, keyword]);
 
+  const usersById = useMemo(() => {
+    return new Map(users.map((user) => [user.user_id, user]));
+  }, [users]);
+
+  const userBindingCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const device of devices) {
+      const userId = device.elderly_user_id;
+      if (userId != null) {
+        counts.set(userId, (counts.get(userId) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [devices]);
+
+  const formatBoundUser = useCallback(
+    (userId?: number | null) => {
+      if (userId == null) return '-';
+      const user = usersById.get(userId);
+      return user ? `${userId} - ${user.name}` : `${userId} - unknown user`;
+    },
+    [usersById]
+  );
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
@@ -59,14 +85,7 @@ export const DevicesAdmin = () => {
         await deviceApi.create(form);
       }
       setEditing(null);
-      setForm({
-        device_type: '',
-        model_desc: '',
-        elderly_user_id: undefined,
-        current_status: 'offline',
-        battery_level: undefined,
-        deploy_location: '',
-      });
+      setForm(emptyDeviceForm);
       await load();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '操作失敗 (Operation failed)';
@@ -79,7 +98,7 @@ export const DevicesAdmin = () => {
     setForm({
       device_type: d.device_type,
       model_desc: d.model_desc,
-      elderly_user_id: d.elderly_user_id ?? undefined,
+      elderly_user_id: d.elderly_user_id ?? null,
       current_status: d.current_status ?? 'offline',
       battery_level: d.battery_level ?? undefined,
       deploy_location: d.deploy_location ?? '',
@@ -132,7 +151,12 @@ export const DevicesAdmin = () => {
               <td>{d.device_id}</td>
               <td>{d.model_desc || d.device_type}</td>
               <td>{d.current_status}</td>
-              <td>{d.elderly_user_id ?? '-'}</td>
+              <td>
+                {formatBoundUser(d.elderly_user_id)}
+                {d.elderly_user_id != null && (userBindingCounts.get(d.elderly_user_id) ?? 0) > 1 ? (
+                  <span className="admin-inline-warning"> duplicate</span>
+                ) : null}
+              </td>
               <td>{d.battery_level ?? '-'}</td>
               <td>{d.deploy_location ?? '-'}</td>
               <td>
@@ -170,7 +194,7 @@ export const DevicesAdmin = () => {
             <select
               value={form.elderly_user_id ?? ''}
               onChange={(e) =>
-                setForm({ ...form, elderly_user_id: e.target.value ? Number(e.target.value) : undefined })
+                setForm({ ...form, elderly_user_id: e.target.value ? Number(e.target.value) : null })
               }
             >
               <option value="">未綁定 (None)</option>
@@ -219,14 +243,7 @@ export const DevicesAdmin = () => {
                 className="ghost"
                 onClick={() => {
                   setEditing(null);
-                  setForm({
-                    device_type: '',
-                    model_desc: '',
-                    elderly_user_id: undefined,
-                    current_status: 'offline',
-                    battery_level: undefined,
-                    deploy_location: '',
-                  });
+                  setForm(emptyDeviceForm);
                 }}
               >
                 取消 (Cancel)

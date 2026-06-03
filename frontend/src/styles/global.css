@@ -177,6 +177,12 @@ body,
   text-align: left;
 }
 
+.admin-inline-warning {
+  color: #b42318;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
 .admin-form {
   margin-top: 16px;
   padding: 12px;
