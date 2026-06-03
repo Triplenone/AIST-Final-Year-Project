@@ -17,8 +17,20 @@ Do not replace these rows with nested metadata objects. Verification notes belon
 | `ESP32_00005CFA7AD4DB1C` | 3 | WONG KA MING | Existing mapping |
 | `ESP32_0000A022A443CA48` | 4 | HO CHI WAI | Verified in live Mongo upstream |
 | `ESP32_00009822A443CA48` | 5 | TANG WAI HAN | User-corrected ID; not found in live Mongo during implementation precheck |
-| `ESP32_00008C292A04A7AC` | 6 | test-user07 | user 6 already bound to device 3; bound to user 7 |
-| `ESP32_00009022A443CA48` | 7 | test-user09 | user 7 taken by device 6; user 8 taken by device 4; bound to user 9 |
+| `ESP32_00008C292A04A7AC` | 6 | MA KA WAI | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
+| `ESP32_00009022A443CA48` | 7 | YIP MAN LING | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
+
+## MySQL Migration
+
+After importing the base MySQL dump, run the tracked migrations so every local repo has the same FlyCare device/user seed data:
+
+```powershell
+cd E:\flycare
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_register_esp32_devices_6_7.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql"
+```
+
+Do not keep FlyCare user/device binding changes only in a local MySQL instance. If a binding affects the UI or demo data, add an idempotent migration under `database/mysql/migrations/` and update this mapping table.
 
 ## MQTT Topics
 
