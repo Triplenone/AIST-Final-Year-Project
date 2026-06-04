@@ -12,7 +12,11 @@ from app.database import SessionLocal
 from app.models.device import Device
 from app.models.user import User
 from app.services.mongo_raw_upstream import save_raw_upstream
-from app.services.mqtt_publish import build_flycare_flight_topic, publish_flight_payload
+from app.services.mqtt_publish import (
+    build_flight_mqtt_downlink,
+    build_flycare_flight_topic,
+    publish_flight_downlink,
+)
 from app.services.mqtt_subscriber import FLIGHT_TOPIC, get_mqtt_status
 
 router = APIRouter()
@@ -28,6 +32,18 @@ class FlightPublishBody(BaseModel):
     departureAirport: Optional[str] = None
     arrivalAirport: Optional[str] = None
     seatNumber: Optional[str] = None
+    airline: Optional[str] = None
+    destination: Optional[str] = None
+    scheduled_departure: Optional[str] = None
+    estimated_departure: Optional[str] = None
+    boarding_time: Optional[str] = None
+    boarding_gate: Optional[str] = None
+    status: Optional[str] = "scheduled"
+    delay_minutes: Optional[int] = 0
+    delay_reason: Optional[str] = None
+    gate_changed: Optional[bool] = False
+    terminal: Optional[str] = None
+    checkin_counter: Optional[str] = None
     publish_mqtt: bool = Field(True, description="Publish to MQTT topic smartwatch/{device_id}/flight")
     save_mongo: bool = Field(
         False,
@@ -35,21 +51,61 @@ class FlightPublishBody(BaseModel):
     )
 
 
+def _normalize_hhmm(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if "T" in text:
+        text = text.split("T", 1)[1]
+    if " " in text:
+        text = text.split(" ", 1)[1]
+    return text[:5] if len(text) >= 5 and text[2] == ":" else text
+
+
+def _flight_info_from_body(body: FlightPublishBody) -> Dict[str, Any]:
+    scheduled = _normalize_hhmm(body.scheduled_departure or body.flightTime)
+    estimated = _normalize_hhmm(body.estimated_departure) or scheduled
+    boarding = _normalize_hhmm(body.boarding_time)
+    gate = (body.boarding_gate or body.gate or "").strip() or None
+    return {
+        "flight_number": body.flightNumber.strip(),
+        "airline": (body.airline or "").strip() or None,
+        "departure_airport": (body.departureAirport or "").strip() or None,
+        "destination": (body.destination or body.arrivalAirport or "").strip() or None,
+        "seat_number": (body.seatNumber or "").strip() or None,
+        "scheduled_departure": scheduled,
+        "estimated_departure": estimated,
+        "boarding_time": boarding,
+        "boarding_gate": gate,
+        "status": (body.status or "scheduled").strip(),
+        "delay_minutes": 0 if body.delay_minutes is None else int(body.delay_minutes),
+        "delay_reason": (body.delay_reason or "").strip() or None,
+        "gate_changed": False if body.gate_changed is None else bool(body.gate_changed),
+        "terminal": (body.terminal or "").strip() or None,
+        "checkin_counter": (body.checkin_counter or "").strip() or None,
+    }
+
+
 def _build_flight_payload(body: FlightPublishBody) -> Dict[str, Any]:
     mapped_mysql = settings.device_id_map.get(body.device_id.strip())
     mysql_device_id = body.mysql_device_id if body.mysql_device_id is not None else mapped_mysql
+    flight_info = _flight_info_from_body(body)
     return {
         "device_id": body.device_id.strip(),
         "mysql_device_id": mysql_device_id,
         "data_type": "flight",
         "timestamp": datetime.now(timezone.utc).timestamp(),
+        "command_type": "flight_info",
+        "flight_info": flight_info,
         "passengerName": body.passengerName.strip(),
         "flightNumber": body.flightNumber.strip(),
-        "gate": (body.gate or "").strip() or None,
-        "flightTime": (body.flightTime or "").strip() or None,
-        "departureAirport": (body.departureAirport or "").strip() or None,
-        "arrivalAirport": (body.arrivalAirport or "").strip() or None,
-        "seatNumber": (body.seatNumber or "").strip() or None,
+        "gate": flight_info.get("boarding_gate"),
+        "flightTime": flight_info.get("scheduled_departure"),
+        "departureAirport": flight_info.get("departure_airport"),
+        "arrivalAirport": flight_info.get("destination"),
+        "seatNumber": flight_info.get("seat_number"),
     }
 
 
@@ -96,12 +152,15 @@ def list_flight_presets() -> Dict[str, Any]:
 @router.post("/flight/publish")
 async def publish_flight(body: FlightPublishBody):
     payload = _build_flight_payload(body)
+    flight_info = payload["flight_info"]
+    mqtt_payload = build_flight_mqtt_downlink(flight_info)
     mqtt_result: Dict[str, Any] = {
         "ok": False,
         "topic": build_flycare_flight_topic(payload["device_id"]),
         "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
         "error": None,
         "skipped": not body.publish_mqtt,
+        "payload": mqtt_payload,
     }
     mongo_result: Dict[str, Any] = {
         "ok": False,
@@ -113,7 +172,12 @@ async def publish_flight(body: FlightPublishBody):
 
     if body.publish_mqtt:
         try:
-            mqtt_result = {**mqtt_result, **publish_flight_payload(payload), "skipped": False}
+            mqtt_result = {
+                **mqtt_result,
+                **publish_flight_downlink(payload["device_id"], flight_info),
+                "skipped": False,
+                "payload": mqtt_payload,
+            }
         except Exception as exc:
             mqtt_result.update({"ok": False, "error": str(exc), "skipped": False})
 
@@ -150,6 +214,7 @@ async def publish_flight(body: FlightPublishBody):
     return {
         "status": "ok",
         "payload": payload,
+        "mqtt_payload": mqtt_payload,
         "mqtt": mqtt_result,
         "mongo": mongo_result,
     }

@@ -11,6 +11,7 @@
 
 #define MQTT_TOPIC_NAVIGATION "smartwatch/%s/navigation"    // 下行 - 导航
 #define MQTT_TOPIC_FLIGHT "smartwatch/%s/flight"            // 下行 - 航班
+// Payload: {"command_type":"flight_info","flight_info":{"flight_number":"CA1234","departure_airport":"HKG","destination":"Beijing","seat_number":"21C",...}}
 #define MQTT_TOPIC_ALERT "smartwatch/%s/alert"              // 下行 - 警报
 #define MQTT_TOPIC_VOICE "smartwatch/%s/voice"              // 下行 - 语音
 #define MQTT_TOPIC_DOOR_CTRL "smartwatch/%s/door_control"   // 下行 - 门禁控制

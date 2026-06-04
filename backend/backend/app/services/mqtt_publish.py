@@ -62,8 +62,33 @@ def build_flycare_flight_topic(device_id: str) -> str:
     return settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE.format(device_id=str(device_id).strip())
 
 
+def build_flight_mqtt_downlink(flight_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Build smartwatch flight downlink body for topic smartwatch/{device_id}/flight."""
+    return {
+        "command_type": "flight_info",
+        "flight_info": dict(flight_info),
+    }
+
+
+def publish_flight_downlink(
+    device_id: str,
+    flight_info: Dict[str, Any],
+    *,
+    qos: int = 1,
+) -> Dict[str, Any]:
+    device_id = str(device_id or "").strip()
+    if not device_id:
+        raise ValueError("device_id is required for FlyCare flight downlink")
+    mqtt_payload = build_flight_mqtt_downlink(flight_info)
+    return publish_json(build_flycare_flight_topic(device_id), mqtt_payload, qos=qos)
+
+
 def publish_flight_payload(payload: Dict[str, Any], *, qos: int = 1) -> Dict[str, Any]:
+    """Backward-compatible wrapper when payload already contains flight_info."""
     device_id = str(payload.get("device_id") or "").strip()
     if not device_id:
         raise ValueError("payload.device_id is required for FlyCare flight downlink")
-    return publish_json(build_flycare_flight_topic(device_id), payload, qos=qos)
+    flight_info = payload.get("flight_info")
+    if isinstance(flight_info, dict):
+        return publish_flight_downlink(device_id, flight_info, qos=qos)
+    raise ValueError("payload.flight_info is required for FlyCare flight downlink")

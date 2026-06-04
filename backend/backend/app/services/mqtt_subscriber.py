@@ -15,7 +15,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.device import Device
 from app.models.event import Event, EventStatus, EventType
-from app.services.mongo_raw_upstream import run_sync_save_raw_upstream
+from app.services.mongo_raw_upstream import enrich_flight_downlink_payload, run_sync_save_raw_upstream
 
 # MQTT-topic：设备上行主题
 UPLINK_TOPICS = [
@@ -32,6 +32,7 @@ UPLINK_TOPICS = [
 
 # Legacy 航班 loopback 主题；primary per-device 下行由 mqtt_publish.py 发布。
 FLIGHT_TOPIC = "flycare/flight"
+FLIGHT_DOWNLINK_TOPIC = "smartwatch/+/flight"
 
 # topic 第三段后缀 -> 写入 Mongo 的 data_type
 SUFFIX_TO_DATA_TYPE = {
@@ -159,7 +160,11 @@ def _on_connect(client, userdata, flags, rc):
     for topic in UPLINK_TOPICS:
         client.subscribe(topic)
     client.subscribe(FLIGHT_TOPIC)
-    print(f"[mqtt] subscribed topics={len(UPLINK_TOPICS)}+1 flight={FLIGHT_TOPIC}")
+    client.subscribe(FLIGHT_DOWNLINK_TOPIC)
+    print(
+        f"[mqtt] subscribed topics={len(UPLINK_TOPICS)}+2 "
+        f"flight={FLIGHT_TOPIC} downlink={FLIGHT_DOWNLINK_TOPIC}"
+    )
 
 
 def _on_message(client, userdata, msg):
@@ -189,6 +194,17 @@ def _on_message(client, userdata, msg):
     if not isinstance(data, dict):
         data = {"payload": data}
 
+    parts = msg.topic.split("/")
+    if len(parts) >= 3 and parts[0] == "smartwatch" and parts[2].lower() == "flight":
+        device_id_from_topic = parts[1]
+        flight_doc = enrich_flight_downlink_payload(data, device_id_from_topic)
+        mongo_result = run_sync_save_raw_upstream(flight_doc)
+        print(
+            f"[mqtt] flight downlink topic={msg.topic} device_id={device_id_from_topic} "
+            f"flight_number={flight_doc.get('flightNumber')} mongo={mongo_result}"
+        )
+        return
+
     # 航班信息主题：直接写入 Mongo，带 data_type=flight 与 timestamp
     if msg.topic == FLIGHT_TOPIC:
         data["data_type"] = "flight"
@@ -201,7 +217,6 @@ def _on_message(client, userdata, msg):
         return
 
     # 设备上行主题：smartwatch/<device_id>/<suffix>
-    parts = msg.topic.split("/")
     if len(parts) >= 3:
         device_id_from_topic = parts[1]
         suffix = parts[2].lower()
@@ -305,5 +320,5 @@ def get_mqtt_status():
         "connected": connected,
         "broker": settings.MQTT_BROKER,
         "port": settings.MQTT_PORT,
-        "subscribed_topics": UPLINK_TOPICS.copy() + [FLIGHT_TOPIC],
+        "subscribed_topics": UPLINK_TOPICS.copy() + [FLIGHT_TOPIC, FLIGHT_DOWNLINK_TOPIC],
     }

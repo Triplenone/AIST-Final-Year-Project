@@ -3,10 +3,17 @@ import { useTranslation } from 'react-i18next';
 import airportImage from '../../img/FlyCare.png';
 import {
   buildFlyCareRoute,
+  FLYCARE_MAP_PIXEL_HEIGHT,
+  FLYCARE_MAP_PIXEL_WIDTH,
+  FLYCARE_SHOW_GRID_OVERLAY,
   flyCareGridIndicesToPixelPercent,
+  getFlyCareRouteFailureReason,
+  type FlyCareRouteFailureReason,
   getFlyCareZoneDisplay,
   getFlyCareZoneFromCoords,
-  getFlyCareZoneLabelKey
+  getFlyCareZoneLabelKey,
+  normalizeFlyCareMapCoords,
+  resolveFlyCarePinLabelSide
 } from '../../adapters/flycare-map';
 import {
   getPositionZoneDisplayForResident,
@@ -16,7 +23,11 @@ import {
 } from '../../adapters/position-command-center';
 import { POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID } from '../../adapters/position-command-center';
 import type { BackendEvent, EventStatus } from '../../types/backend';
-import type { FlightInfo } from './FlyCareFlightPanel';
+import {
+  FlyCareGridCalibrationPanel,
+  FlyCareGridOverlay,
+  useFlyCareGridCalibrationState
+} from './FlyCareGridOverlay';
 
 type FlyCareAlertKind = 'sos' | 'fall';
 
@@ -45,11 +56,54 @@ type FlyCareMapStageProps = {
   resident: PositionResidentViewModel | null;
   mapResidents: PositionResidentViewModel[];
   showAllOnMap: boolean;
+  selectedResidentId: string | null;
+  residentGateById: ReadonlyMap<string, string | null>;
   surfaceState: PositionSurfaceState;
   recordError: string | null;
-  flightInfo: FlightInfo | null;
   alertEvents: readonly BackendEvent[];
 };
+
+function flyCareRoutePointsToSvg(routePoints: readonly { x: number; y: number }[]): string {
+  return routePoints
+    .map((point) => {
+      const pixel = flyCareGridIndicesToPixelPercent(point);
+      const x = (pixel.leftPercent / 100) * FLYCARE_MAP_PIXEL_WIDTH;
+      const y = (pixel.topPercent / 100) * FLYCARE_MAP_PIXEL_HEIGHT;
+      return `${x},${y}`;
+    })
+    .join(' ');
+}
+
+function flyCareRouteFailureLabel(
+  reason: FlyCareRouteFailureReason,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  context?: { gate?: string | null; coords?: { x: number; y: number } | null }
+): string {
+  switch (reason) {
+    case 'missing_gate':
+      return t('flyCare.routeFailure.missingGate', { defaultValue: 'No boarding gate available for map navigation.' });
+    case 'unsupported_gate':
+      return t('flyCare.routeFailure.unsupportedGate', {
+        defaultValue: 'Boarding gate is not Gate 10 or Gate 11 on this map.'
+      });
+    case 'already_at_gate':
+      return t('flyCare.routeFailure.alreadyAtGate', {
+        defaultValue:
+          'Resident is already at Gate {{gate}} anchor cell ({{col}}, {{row}}). No navigation line is drawn.',
+        gate: context?.gate ?? '—',
+        col: context?.coords?.x ?? '—',
+        row: context?.coords?.y ?? '—'
+      });
+    case 'no_path':
+      return t('flyCare.routeFailure.noPath', {
+        defaultValue: 'No walkable route to the gate (check obstacle cells or location). Grid: ({{col}}, {{row}}).',
+        col: context?.coords?.x ?? '—',
+        row: context?.coords?.y ?? '—'
+      });
+    default:
+      return t('flyCare.routeFailure.unknown', { defaultValue: 'Navigation route unavailable.' });
+  }
+}
 
 const ALERT_FRESHNESS_MS = 300_000;
 
@@ -257,12 +311,14 @@ export function FlyCareMapStage({
   resident,
   mapResidents,
   showAllOnMap,
+  selectedResidentId,
+  residentGateById,
   surfaceState,
   recordError,
-  flightInfo,
   alertEvents
 }: FlyCareMapStageProps) {
   const { t } = useTranslation();
+  const gridCalibration = useFlyCareGridCalibrationState();
   const normalizedAlertEvents = normalizeFlyCareAlertEvents(alertEvents);
   const activeDeviceIdSet = new Set(
     normalizedAlertEvents
@@ -274,7 +330,6 @@ export function FlyCareMapStage({
       .filter((event) => event.eventStatus === 'unhandled' && event.residentId != null)
       .map((event) => String(event.residentId))
   );
-  const route = buildFlyCareRoute(resident?.currentCoords ?? null, flightInfo?.gate);
   const hasMapResidents = mapResidents.length > 0;
   const effectiveSurfaceState =
     showAllOnMap && hasMapResidents && (surfaceState === 'empty' || surfaceState === 'error' || surfaceState === 'partial-error')
@@ -297,6 +352,24 @@ export function FlyCareMapStage({
       };
     })
     .filter((item): item is NonNullable<typeof item> => item != null);
+  const navRoutes = residentPinRows
+    .map((pin) => {
+      const gate = residentGateById.get(pin.residentId) ?? null;
+      const route = buildFlyCareRoute({ x: pin.x, y: pin.y }, gate);
+      if (!route) return null;
+      return {
+        residentId: pin.residentId,
+        route,
+        svgPoints: flyCareRoutePointsToSvg(route.pathPoints)
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item != null);
+  const selectedPin = residentPinRows.find((pin) => pin.residentId === selectedResidentId) ?? residentPinRows[0] ?? null;
+  const selectedGate = selectedPin ? residentGateById.get(selectedPin.residentId) ?? null : null;
+  const selectedRouteFailureReason =
+    selectedPin && !navRoutes.some((route) => route.residentId === selectedPin.residentId)
+      ? getFlyCareRouteFailureReason({ x: selectedPin.x, y: selectedPin.y }, selectedGate)
+      : null;
   const clusteredPins = Array.from(
     residentPinRows.reduce<Map<string, typeof residentPinRows>>((acc, pin) => {
       const key = `${Math.round(pin.x)}:${Math.round(pin.y)}`;
@@ -375,36 +448,34 @@ export function FlyCareMapStage({
             className="position-map-stage__image"
           />
 
-          {route ? (
-            <svg className="flycare-map-stage__route-overlay" viewBox="0 0 100 100" aria-hidden>
-              <polyline
-                className="flycare-map-stage__route-line"
-                points={route.waypoints
-                  .map((waypoint) => {
-                    const point = flyCareGridIndicesToPixelPercent(waypoint.point);
-                    return `${point.leftPercent.toFixed(2)},${point.topPercent.toFixed(2)}`;
-                  })
-                  .join(' ')}
-              />
-              {route.waypoints.map((waypoint, index) => {
-                const point = flyCareGridIndicesToPixelPercent(waypoint.point);
+          {FLYCARE_SHOW_GRID_OVERLAY ? (
+            <FlyCareGridOverlay
+              grid={gridCalibration.editableGrid}
+              onGridChange={gridCalibration.setEditableGrid}
+              selectedCell={gridCalibration.selectedCell}
+              onSelectCell={gridCalibration.setSelectedCell}
+            />
+          ) : null}
+
+          {navRoutes.length > 0 ? (
+            <svg
+              className="flycare-map-stage__route-overlay"
+              viewBox={`0 0 ${FLYCARE_MAP_PIXEL_WIDTH} ${FLYCARE_MAP_PIXEL_HEIGHT}`}
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              {navRoutes.map((navRoute) => {
+                const isSelected =
+                  navRoute.residentId === selectedResidentId || (!showAllOnMap && navRoutes.length === 1);
                 return (
-                  <g key={`${waypoint.id}-${index}`} className="flycare-map-stage__waypoint">
-                    <circle
-                      className={`flycare-map-stage__waypoint-dot flycare-map-stage__waypoint-dot--${waypoint.id}`}
-                      cx={point.leftPercent}
-                      cy={point.topPercent}
-                      r={1.35}
-                    />
-                    <text
-                      className="flycare-map-stage__waypoint-label"
-                      x={point.leftPercent}
-                      y={Math.max(4, point.topPercent - 2)}
-                      textAnchor="middle"
-                    >
-                      {t(waypoint.labelKey, { defaultValue: waypoint.id === 'current' ? 'Current' : waypoint.id })}
-                    </text>
-                  </g>
+                  <polyline
+                    key={navRoute.residentId}
+                    className={`flycare-map-stage__route-line${isSelected ? ' flycare-map-stage__route-line--selected' : ' flycare-map-stage__route-line--secondary'}`}
+                    points={navRoute.svgPoints}
+                    fill="none"
+                    strokeLinecap="butt"
+                    strokeLinejoin="miter"
+                  />
                 );
               })}
             </svg>
@@ -415,17 +486,18 @@ export function FlyCareMapStage({
               const pin = cluster.members[0];
               const hasAlert = pin.hasAlert;
               const alertKind = pin.tooltipState.alertKinds.includes('sos') ? 'sos' : pin.tooltipState.alertKinds.includes('fall') ? 'fall' : 'event';
+              const labelSide = resolveFlyCarePinLabelSide({ leftPercent: pin.point.leftPercent });
               return (
                 <div
                   key={pin.residentId}
-                  className={`position-map-stage__pin position-map-stage__pin--current flycare-map-stage__pin${hasAlert ? ` position-map-stage__pin--alert position-map-stage__pin--alert-${alertKind}` : ''}`}
+                  className={`position-map-stage__pin position-map-stage__pin--current flycare-map-stage__pin flycare-map-stage__pin--label-${labelSide}${hasAlert ? ` position-map-stage__pin--alert position-map-stage__pin--alert-${alertKind}` : ''}`}
                   style={{ left: `${pin.point.leftPercent}%`, top: `${pin.point.topPercent}%` }}
                   aria-label={pin.tooltipState.ariaLabel}
                   role="button"
                   tabIndex={0}
                 >
-                  <span className="position-map-stage__pin-label">{pin.displayName}</span>
                   <span className={`position-map-stage__pin-dot position-map-stage__pin-dot--${pin.truthState} ${hasAlert ? 'position-map-stage__pin-dot--alert' : 'position-map-stage__pin-dot--normal'}`} />
+                  <span className="position-map-stage__pin-label">{pin.displayName}</span>
                   <MarkerTooltip state={pin.tooltipState} />
                 </div>
               );
@@ -460,6 +532,15 @@ export function FlyCareMapStage({
             </div>
           ) : null}
         </div>
+
+        {FLYCARE_SHOW_GRID_OVERLAY ? (
+          <FlyCareGridCalibrationPanel
+            grid={gridCalibration.editableGrid}
+            onGridChange={gridCalibration.setEditableGrid}
+            selectedCell={gridCalibration.selectedCell}
+            onSelectCell={gridCalibration.setSelectedCell}
+          />
+        ) : null}
       </div>
 
       <div className="position-map-stage__command">
@@ -503,17 +584,32 @@ export function FlyCareMapStage({
                   })}
                 </dd>
               </div>
-              <div>
-                <dt>{t('flyCare.route.status', { defaultValue: 'Route' })}</dt>
-                <dd>
-                  {route
-                    ? t('flyCare.route.available', { defaultValue: 'Security -> Immigration -> Gate' })
-                    : flightInfo?.gate
-                      ? t('flyCare.route.unavailable', { defaultValue: 'Route unavailable' })
-                      : t('flyCare.route.noFlight', { defaultValue: 'No flight gate selected' })}
-                </dd>
-              </div>
+              {resident.currentCoords ? (
+                <div>
+                  <dt>{t('flyCare.gridCell', { defaultValue: 'Grid cell' })}</dt>
+                  <dd>
+                    {(() => {
+                      const snapped =
+                        normalizeFlyCareMapCoords(resident.currentCoords) ?? resident.currentCoords;
+                      return `(${snapped.x}, ${snapped.y})`;
+                    })()}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
+            {selectedRouteFailureReason ? (
+              <p className="position-command-center__muted flycare-map-stage__route-hint">
+                {flyCareRouteFailureLabel(selectedRouteFailureReason, t, {
+                  gate: selectedGate,
+                  coords: selectedPin
+                    ? normalizeFlyCareMapCoords({ x: selectedPin.x, y: selectedPin.y }) ?? {
+                        x: selectedPin.x,
+                        y: selectedPin.y
+                      }
+                    : null
+                })}
+              </p>
+            ) : null}
           </>
         ) : null}
       </div>

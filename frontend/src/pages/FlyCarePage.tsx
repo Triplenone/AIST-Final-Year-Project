@@ -21,6 +21,7 @@ import { eventApi, mongoUpstreamApi, type FlightLatestResponse } from '../servic
 import type { BackendEvent } from '../types/backend';
 import type { FallAlertDetailRow } from '../types/fall-alert';
 import { buildFallAlertRowsFromPositionResidents } from '../utils/fall-alert-rows';
+import { resolveFlightPassengerName, extractFlightGateFromLatestResponse } from '../utils/flycare-flight';
 
 const FLYCARE_MAP_PROFILE = 'flycare' as const;
 const FLYCARE_SNAPSHOT_REFRESH_MS = 2_000;
@@ -46,6 +47,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   const [residentActivity, setResidentActivity] = useState<PositionResidentActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllOnMap, setShowAllOnMap] = useState(false);
+  const [residentGateById, setResidentGateById] = useState<Map<string, string | null>>(() => new Map());
   const previousAlertRef = useRef(false);
   const activityRequestSequenceRef = useRef(0);
   const lastConfirmedFlightIdRef = useRef<string | null>(null);
@@ -163,9 +165,12 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
         return;
       }
       const flightPayload: FlightInfo = {
-        passengerName: res.passengerName,
+        passengerName: resolveFlightPassengerName(res.passengerName, deviceId, {
+          selectedResident: viewModel.selectedResident,
+          registry
+        }),
         flightNumber: res.flightNumber,
-        gate: res.gate,
+        gate: extractFlightGateFromLatestResponse(res, deviceId) ?? undefined,
         flightTime: res.flightTime,
         departureAirport: res.departureAirport,
         arrivalAirport: res.arrivalAirport,
@@ -187,7 +192,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
       setFlightInfo(null);
       lastConfirmedFlightIdRef.current = null;
     }
-  }, [flightInfo, viewModel.selectedResident?.deviceId]);
+  }, [flightInfo, registry, viewModel.selectedResident, viewModel.selectedResident?.deviceId]);
 
   useEffect(() => {
     void fetchLatestFlight();
@@ -199,10 +204,12 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
 
   const refreshActiveEventAlerts = useCallback(async () => {
     try {
-      const [sosEvents, fallEvents] = await Promise.all([
+      const [sosRes, fallRes] = await Promise.all([
         eventApi.list({ event_type: 'sos', limit: 50 }),
         eventApi.list({ event_type: 'fall', limit: 50 })
       ]);
+      const sosEvents = sosRes as unknown as BackendEvent[];
+      const fallEvents = fallRes as unknown as BackendEvent[];
       setFlyCareAlertEvents([...sosEvents, ...fallEvents]);
     } catch {
       setFlyCareAlertEvents([]);
@@ -238,6 +245,52 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     }
     return viewModel.selectedResident?.currentCoords ? [viewModel.selectedResident] : [];
   }, [showAllOnMap, viewModel.residents, viewModel.selectedResident]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (mapResidents.length === 0) {
+      setResidentGateById(new Map());
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadMapResidentGates = async () => {
+      const entries = await Promise.all(
+        mapResidents.map(async (resident) => {
+          try {
+            const res = (await mongoUpstreamApi.getLatestFlight(resident.deviceId)) as unknown as FlightLatestResponse;
+            const gate = extractFlightGateFromLatestResponse(res, resident.deviceId);
+            return [resident.residentId, gate] as const;
+          } catch {
+            return [resident.residentId, null] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      setResidentGateById(new Map(entries));
+    };
+
+    void loadMapResidentGates();
+    const interval = setInterval(() => {
+      void loadMapResidentGates();
+    }, FLYCARE_FLIGHT_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [mapResidents, snapshot?.fetchedAt]);
+
+  const effectiveResidentGateById = useMemo(() => {
+    const merged = new Map(residentGateById);
+    const selected = viewModel.selectedResident;
+    const panelGate = flightInfo?.gate?.trim();
+    if (selected?.residentId && panelGate && !merged.get(selected.residentId)) {
+      merged.set(selected.residentId, panelGate);
+    }
+    return merged;
+  }, [flightInfo?.gate, residentGateById, viewModel.selectedResident]);
 
   const handleSelectResident = useCallback((residentId: string) => {
     setShowAllOnMap(false);
@@ -300,9 +353,10 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
           resident={viewModel.selectedResident}
           mapResidents={mapResidents}
           showAllOnMap={showAllOnMap}
+          selectedResidentId={viewModel.selectedResidentId}
+          residentGateById={effectiveResidentGateById}
           surfaceState={viewModel.surfaceStates.map}
           recordError={viewModel.selectedResidentRecordError}
-          flightInfo={flightInfo}
           alertEvents={flyCareAlertEvents}
         />
       </div>

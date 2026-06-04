@@ -60,7 +60,36 @@ Primary FlyCare flight downlink topic:
 smartwatch/{device_id}/flight
 ```
 
+The backend MQTT subscriber also listens on `smartwatch/+/flight` and writes received downlink JSON into Mongo (`data_type=flight`). This loopback lets Admin **Publish to MQTT** update the FlyCare page without enabling **Mongo only** / **MQTT + save Mongo**.
+
 `backend/backend/app/services/MQTT-topic.txt` defines the same downlink pattern as `smartwatch/%s/flight`. The repo firmware folder is only a PlatformIO scaffold and contains no `.ino` / `.cpp` MQTT subscribe implementation, so smartwatch flight receive handling is pending firmware confirmation.
+
+Flight downlink JSON on `smartwatch/{device_id}/flight`:
+
+```json
+{
+  "command_type": "flight_info",
+  "flight_info": {
+    "flight_number": "CA1234",
+    "airline": "Air China",
+    "departure_airport": "Hong Kong",
+    "destination": "Beijing",
+    "seat_number": "21C",
+    "scheduled_departure": "14:30",
+    "estimated_departure": "14:45",
+    "boarding_time": "14:00",
+    "boarding_gate": "A12",
+    "status": "boarding",
+    "delay_minutes": 15,
+    "delay_reason": "Weather conditions",
+    "gate_changed": true,
+    "terminal": "T3",
+    "checkin_counter": "C12-C18"
+  }
+}
+```
+
+`POST /api/v1/flycare-admin/flight/publish` maps existing admin form fields into `flight_info` (for example `flightNumber` -> `flight_number`, `departureAirport` -> `departure_airport`, `arrivalAirport` -> `destination`, `seatNumber` -> `seat_number`, `gate` -> `boarding_gate`, `flightTime` -> `scheduled_departure`). Optional body fields can override: `airline`, `destination`, `scheduled_departure`, `estimated_departure`, `boarding_time`, `boarding_gate`, `status`, `delay_minutes`, `delay_reason`, `gate_changed`, `terminal`, `checkin_counter`.
 
 `save_mongo=true` in `POST /api/v1/flycare-admin/flight/publish` is only a UI/demo fallback that writes `data_type=flight` into Mongo for the selected `device_id`. It is not proof that the smartwatch received the MQTT command.
 

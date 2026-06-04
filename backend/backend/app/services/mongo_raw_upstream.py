@@ -71,6 +71,29 @@ def _normalize_data_type(data: Dict[str, Any]) -> str:
     return "status_update"
 
 
+def enrich_flight_downlink_payload(data: Dict[str, Any], device_id: str) -> Dict[str, Any]:
+    """Normalize smartwatch flight downlink JSON for Mongo + FlyCare UI reads."""
+    out = dict(data)
+    out["device_id"] = str(device_id).strip()
+    out["data_type"] = "flight"
+    out.setdefault("timestamp", datetime.now(timezone.utc).timestamp())
+
+    flight_info = out.get("flight_info")
+    if isinstance(flight_info, dict):
+        out.setdefault("command_type", out.get("command_type") or "flight_info")
+        out.setdefault("flightNumber", flight_info.get("flight_number"))
+        out.setdefault("gate", flight_info.get("boarding_gate"))
+        out.setdefault("flightTime", flight_info.get("scheduled_departure"))
+        out.setdefault("departureAirport", flight_info.get("departure_airport"))
+        out.setdefault("arrivalAirport", flight_info.get("destination"))
+        out.setdefault("seatNumber", flight_info.get("seat_number"))
+
+    mysql_device_id = _resolve_mysql_device_id(out, out["device_id"])
+    if mysql_device_id is not None:
+        out["mysql_device_id"] = mysql_device_id
+    return out
+
+
 def _build_doc(data: Dict[str, Any]) -> Dict[str, Any]:
     device_id = data.get("device_id")
     if device_id is None:

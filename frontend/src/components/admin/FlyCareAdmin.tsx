@@ -8,23 +8,71 @@ type FlightFormState = {
   mysql_device_id: string;
   passengerName: string;
   flightNumber: string;
-  gate: string;
-  flightTime: string;
+  airline: string;
   departureAirport: string;
-  arrivalAirport: string;
+  destination: string;
   seatNumber: string;
+  scheduled_departure: string;
+  estimated_departure: string;
+  boarding_time: string;
+  boarding_gate: string;
+  status: string;
+  delay_minutes: string;
+  delay_reason: string;
+  gate_changed: boolean;
+  terminal: string;
+  checkin_counter: string;
 };
+
+const FLIGHT_STATUS_OPTIONS = ['scheduled', 'boarding', 'delayed', 'cancelled'] as const;
+
+function formatHhmm(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function addMinutes(date: Date, minutes: number): Date {
+  return new Date(date.getTime() + minutes * 60_000);
+}
+
+function defaultScheduleTimes(): Pick<FlightFormState, 'scheduled_departure' | 'estimated_departure' | 'boarding_time'> {
+  const scheduledDate = addMinutes(new Date(), 60);
+  const scheduled = formatHhmm(scheduledDate);
+  return {
+    scheduled_departure: scheduled,
+    estimated_departure: scheduled,
+    boarding_time: formatHhmm(addMinutes(scheduledDate, -50))
+  };
+}
+
+const defaultFlightFields = (): Omit<
+  FlightFormState,
+  'device_id' | 'mysql_device_id' | 'passengerName'
+> => ({
+  flightNumber: 'CA1234',
+  airline: 'Air China',
+  departureAirport: 'HKG',
+  destination: 'Beijing',
+  seatNumber: '21C',
+  ...defaultScheduleTimes(),
+  boarding_gate: '11',
+  status: 'scheduled',
+  delay_minutes: '15',
+  delay_reason: 'Weather conditions',
+  gate_changed: true,
+  terminal: 'T3',
+  checkin_counter: 'C12-C18'
+});
 
 const emptyForm = (): FlightFormState => ({
   device_id: '',
   mysql_device_id: '',
   passengerName: '',
-  flightNumber: '',
-  gate: '',
-  flightTime: '',
-  departureAirport: 'HKG',
-  arrivalAirport: '',
-  seatNumber: ''
+  ...defaultFlightFields(),
+  delay_minutes: '0',
+  delay_reason: '',
+  gate_changed: false
 });
 
 function toPayload(
@@ -32,16 +80,33 @@ function toPayload(
   options: { publish_mqtt: boolean; save_mongo: boolean }
 ): FlightPublishPayload {
   const mysqlId = form.mysql_device_id.trim();
+  const delayRaw = form.delay_minutes.trim();
+  const scheduled = form.scheduled_departure.trim();
+  const destination = form.destination.trim();
+  const boardingGate = form.boarding_gate.trim();
+
   return {
     device_id: form.device_id.trim(),
     mysql_device_id: mysqlId ? Number(mysqlId) : undefined,
     passengerName: form.passengerName.trim(),
     flightNumber: form.flightNumber.trim(),
-    gate: form.gate.trim() || undefined,
-    flightTime: form.flightTime.trim() || undefined,
+    airline: form.airline.trim() || undefined,
     departureAirport: form.departureAirport.trim() || undefined,
-    arrivalAirport: form.arrivalAirport.trim() || undefined,
+    arrivalAirport: destination || undefined,
+    destination: destination || undefined,
     seatNumber: form.seatNumber.trim() || undefined,
+    flightTime: scheduled || undefined,
+    scheduled_departure: scheduled || undefined,
+    estimated_departure: form.estimated_departure.trim() || undefined,
+    boarding_time: form.boarding_time.trim() || undefined,
+    gate: boardingGate || undefined,
+    boarding_gate: boardingGate || undefined,
+    status: form.status.trim() || undefined,
+    delay_minutes: delayRaw ? Number(delayRaw) : undefined,
+    delay_reason: form.delay_reason.trim() || undefined,
+    gate_changed: form.gate_changed,
+    terminal: form.terminal.trim() || undefined,
+    checkin_counter: form.checkin_counter.trim() || undefined,
     publish_mqtt: options.publish_mqtt,
     save_mongo: options.save_mongo
   };
@@ -108,19 +173,14 @@ export const FlyCareAdmin = () => {
     setSelectedPresetKey(deviceId);
     setMqttTopic(preset.mqtt_topic ?? `smartwatch/${preset.device_id}/flight`);
     setForm((current) => ({
+      ...current,
       device_id: preset.device_id,
       mysql_device_id: preset.mysql_device_id != null ? String(preset.mysql_device_id) : '',
-      passengerName: preset.passengerName ?? '',
-      flightNumber: current.flightNumber || 'CX888',
-      gate: current.gate || '12',
-      flightTime: current.flightTime || new Date().toISOString().slice(0, 16).replace('T', ' '),
-      departureAirport: current.departureAirport || 'HKG',
-      arrivalAirport: current.arrivalAirport || 'TPE',
-      seatNumber: current.seatNumber || '32A'
+      passengerName: preset.passengerName ?? current.passengerName
     }));
   };
 
-  const updateField = (key: keyof FlightFormState, value: string) => {
+  const updateField = <K extends keyof FlightFormState>(key: K, value: FlightFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
@@ -128,6 +188,9 @@ export const FlyCareAdmin = () => {
     if (!form.device_id.trim()) return t('admin.flycare.validationDeviceId');
     if (!form.passengerName.trim()) return t('admin.flycare.validationPassenger');
     if (!form.flightNumber.trim()) return t('admin.flycare.validationFlightNumber');
+    if (form.delay_minutes.trim() && Number.isNaN(Number(form.delay_minutes.trim()))) {
+      return t('admin.flycare.validationDelayMinutes');
+    }
     return null;
   };
 
@@ -174,7 +237,6 @@ export const FlyCareAdmin = () => {
         <div>
           <h3>{t('admin.flycare.title')}</h3>
           <p className="muted">{t('admin.flycare.subtitle')}</p>
-
         </div>
         <div className="flycare-admin-status">
           <span className={`flycare-admin-status__dot ${mqttConnected ? 'is-on' : 'is-off'}`} />
@@ -204,86 +266,164 @@ export const FlyCareAdmin = () => {
             void runPublish({ publish_mqtt: true, save_mongo: false });
           }}
         >
-          <label>
-            {t('admin.flycare.presetLabel')}
-            <select
-              value={selectedPresetKey}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value) applyPreset(value);
-              }}
-            >
-              <option value="">{t('admin.flycare.presetPlaceholder')}</option>
-              {presetOptions.map((opt) => (
-                <option key={opt.key} value={opt.key}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t('admin.flycare.deviceId')}
-            <input
-              value={form.device_id}
-              onChange={(e) => updateField('device_id', e.target.value)}
-              placeholder="ESP32_..."
-              required
-            />
-          </label>
-          <label>
-            {t('admin.flycare.mysqlDeviceId')}
-            <input
-              value={form.mysql_device_id}
-              onChange={(e) => updateField('mysql_device_id', e.target.value)}
-              placeholder="1"
-            />
-          </label>
-          <label>
-            {t('admin.flycare.passengerName')}
-            <input
-              value={form.passengerName}
-              onChange={(e) => updateField('passengerName', e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            {t('admin.flycare.flightNumber')}
-            <input
-              value={form.flightNumber}
-              onChange={(e) => updateField('flightNumber', e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            {t('admin.flycare.gate')}
-            <input value={form.gate} onChange={(e) => updateField('gate', e.target.value)} />
-          </label>
-          <label>
-            {t('admin.flycare.flightTime')}
-            <input
-              value={form.flightTime}
-              onChange={(e) => updateField('flightTime', e.target.value)}
-              placeholder="2026-05-18 14:30"
-            />
-          </label>
-          <label>
-            {t('admin.flycare.departureAirport')}
-            <input
-              value={form.departureAirport}
-              onChange={(e) => updateField('departureAirport', e.target.value)}
-            />
-          </label>
-          <label>
-            {t('admin.flycare.arrivalAirport')}
-            <input
-              value={form.arrivalAirport}
-              onChange={(e) => updateField('arrivalAirport', e.target.value)}
-            />
-          </label>
-          <label>
-            {t('admin.flycare.seatNumber')}
-            <input value={form.seatNumber} onChange={(e) => updateField('seatNumber', e.target.value)} />
-          </label>
+          <fieldset className="flycare-admin-form__section">
+            <legend>{t('admin.flycare.sectionDevice')}</legend>
+            <label>
+              {t('admin.flycare.presetLabel')}
+              <select
+                value={selectedPresetKey}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value) applyPreset(value);
+                }}
+              >
+                <option value="">{t('admin.flycare.presetPlaceholder')}</option>
+                {presetOptions.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t('admin.flycare.deviceId')}
+              <input
+                value={form.device_id}
+                onChange={(e) => updateField('device_id', e.target.value)}
+                placeholder="ESP32_..."
+                required
+              />
+            </label>
+            <label>
+              {t('admin.flycare.mysqlDeviceId')}
+              <input
+                value={form.mysql_device_id}
+                onChange={(e) => updateField('mysql_device_id', e.target.value)}
+                placeholder="1"
+              />
+            </label>
+            <label>
+              {t('admin.flycare.passengerName')}
+              <input
+                value={form.passengerName}
+                onChange={(e) => updateField('passengerName', e.target.value)}
+                required
+              />
+            </label>
+          </fieldset>
+
+          <fieldset className="flycare-admin-form__section">
+            <legend>{t('admin.flycare.sectionFlight')}</legend>
+            <label>
+              {t('admin.flycare.flightNumber')}
+              <input
+                value={form.flightNumber}
+                onChange={(e) => updateField('flightNumber', e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              {t('admin.flycare.airline')}
+              <input value={form.airline} onChange={(e) => updateField('airline', e.target.value)} />
+            </label>
+            <label>
+              {t('admin.flycare.departureAirport')}
+              <input
+                value={form.departureAirport}
+                onChange={(e) => updateField('departureAirport', e.target.value)}
+              />
+            </label>
+            <label>
+              {t('admin.flycare.destination')}
+              <input value={form.destination} onChange={(e) => updateField('destination', e.target.value)} />
+            </label>
+            <label>
+              {t('admin.flycare.seatNumber')}
+              <input value={form.seatNumber} onChange={(e) => updateField('seatNumber', e.target.value)} />
+            </label>
+          </fieldset>
+
+          <fieldset className="flycare-admin-form__section">
+            <legend>{t('admin.flycare.sectionSchedule')}</legend>
+            <label>
+              {t('admin.flycare.scheduledDeparture')}
+              <input
+                value={form.scheduled_departure}
+                onChange={(e) => updateField('scheduled_departure', e.target.value)}
+                placeholder="14:30"
+              />
+            </label>
+            <label>
+              {t('admin.flycare.estimatedDeparture')}
+              <input
+                value={form.estimated_departure}
+                onChange={(e) => updateField('estimated_departure', e.target.value)}
+                placeholder="14:45"
+              />
+            </label>
+            <label>
+              {t('admin.flycare.boardingTime')}
+              <input
+                value={form.boarding_time}
+                onChange={(e) => updateField('boarding_time', e.target.value)}
+                placeholder="14:00"
+              />
+            </label>
+          </fieldset>
+
+          <fieldset className="flycare-admin-form__section">
+            <legend>{t('admin.flycare.sectionGateStatus')}</legend>
+            <label>
+              {t('admin.flycare.boardingGate')}
+              <input
+                value={form.boarding_gate}
+                onChange={(e) => updateField('boarding_gate', e.target.value)}
+              />
+            </label>
+            <label>
+              {t('admin.flycare.terminal')}
+              <input value={form.terminal} onChange={(e) => updateField('terminal', e.target.value)} />
+            </label>
+            <label>
+              {t('admin.flycare.checkinCounter')}
+              <input
+                value={form.checkin_counter}
+                onChange={(e) => updateField('checkin_counter', e.target.value)}
+              />
+            </label>
+            <label>
+              {t('admin.flycare.status')}
+              <select value={form.status} onChange={(e) => updateField('status', e.target.value)}>
+                {FLIGHT_STATUS_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {t(`admin.flycare.statusOptions.${option}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t('admin.flycare.delayMinutes')}
+              <input
+                type="number"
+                min={0}
+                value={form.delay_minutes}
+                onChange={(e) => updateField('delay_minutes', e.target.value)}
+              />
+            </label>
+            <label>
+              {t('admin.flycare.delayReason')}
+              <input value={form.delay_reason} onChange={(e) => updateField('delay_reason', e.target.value)} />
+            </label>
+            <label className="flycare-admin-form__checkbox">
+              <input
+                type="checkbox"
+                checked={form.gate_changed}
+                onChange={(e) => updateField('gate_changed', e.target.checked)}
+              />
+              <span>{t('admin.flycare.gateChanged')}</span>
+            </label>
+          </fieldset>
+
           <div className="admin-form__actions">
             <button type="submit" disabled={publishing}>
               {publishing ? t('admin.flycare.publishing') : t('admin.flycare.publishMqtt')}
@@ -322,4 +462,3 @@ export const FlyCareAdmin = () => {
     </div>
   );
 };
-

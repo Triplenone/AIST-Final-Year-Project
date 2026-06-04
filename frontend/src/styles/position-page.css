@@ -772,47 +772,6 @@
   grid-template-rows: repeat(16, 1fr);
 }
 
-.flycare-map-stage__route-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.flycare-map-stage__route-line {
-  fill: none;
-  stroke: #0f766e;
-  stroke-width: 1.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 2.4 1.4;
-  filter: drop-shadow(0 1.5px 2px rgba(15, 23, 42, 0.34));
-}
-
-.flycare-map-stage__waypoint-dot {
-  fill: #f8fafc;
-  stroke: #0f766e;
-  stroke-width: 0.62;
-}
-
-.flycare-map-stage__waypoint-dot--current {
-  fill: #dc2626;
-  stroke: #fff;
-}
-
-.flycare-map-stage__waypoint-label {
-  fill: #0f172a;
-  paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.86);
-  stroke-width: 0.85;
-  font-size: 2.4px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
 .position-map-stage__cell {
   border: none;
   background: transparent;
@@ -905,6 +864,43 @@
   cursor: default;
   border: 0;
   background: transparent;
+  max-width: none;
+  pointer-events: auto;
+}
+
+.flycare-map-stage__pin--label-left,
+.flycare-map-stage__pin--label-right {
+  display: block;
+  width: 0;
+  height: 0;
+}
+
+.flycare-map-stage__pin--label-left .position-map-stage__pin-dot,
+.flycare-map-stage__pin--label-right .position-map-stage__pin-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.flycare-map-stage__pin .position-map-stage__pin-label {
+  position: absolute;
+  top: 50%;
+  white-space: nowrap;
+  max-width: min(11rem, 42vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+  transform: translateY(-50%);
+}
+
+.flycare-map-stage__pin--label-right .position-map-stage__pin-label {
+  left: calc(0.4rem + 0.42rem);
+}
+
+.flycare-map-stage__pin--label-left .position-map-stage__pin-label {
+  right: calc(0.4rem + 0.42rem);
+  left: auto;
 }
 
 .flycare-map-stage__pin:focus-visible {
@@ -1774,4 +1770,203 @@
 
 .flycare-map-stage .position-map-stage__image {
   object-fit: contain;
+}
+
+.flycare-map-stage__route-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flycare-map-stage__route-line {
+  stroke: rgba(37, 99, 235, 0.55);
+  stroke-width: 4;
+}
+
+.flycare-map-stage__route-line--selected {
+  stroke: rgba(29, 78, 216, 0.92);
+  stroke-width: 5;
+}
+
+.flycare-map-stage__route-line--secondary {
+  stroke: rgba(37, 99, 235, 0.35);
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+}
+
+.flycare-map-stage__grid-overlay {
+  z-index: 4;
+  pointer-events: auto;
+}
+
+.flycare-map-stage__grid-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 0.48rem;
+  line-height: 1.05;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.72);
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.95), 0 0 1px rgba(255, 255, 255, 0.98);
+}
+
+.flycare-map-stage__grid-cell:hover,
+.flycare-map-stage__grid-cell:focus-visible {
+  z-index: 1;
+  outline: 2px solid rgba(37, 99, 235, 0.5);
+  outline-offset: -2px;
+  filter: brightness(1.04);
+}
+
+.flycare-map-stage .flycare-map-stage__grid-cell.position-map-stage__cell:hover,
+.flycare-map-stage .flycare-map-stage__grid-cell.position-map-stage__cell:focus-visible {
+  background-color: transparent;
+}
+
+.flycare-map-stage__grid-cell--selected {
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.65);
+}
+
+.flycare-map-stage__grid-coord {
+  font-size: 0.44rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  opacity: 0.82;
+}
+
+.flycare-map-stage__grid-zone {
+  font-size: 0.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.flycare-map-stage__grid-cell--void {
+  background: rgba(148, 163, 184, 0.03);
+  cursor: default;
+}
+
+.flycare-map-stage__grid-cell--boarding-gate-10 {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.flycare-map-stage__grid-cell--boarding-gate-11 {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.flycare-map-stage__grid-cell--restricted-area {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.flycare-map-stage__grid-cell--toilet {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.flycare-map-stage__grid-cell--immigration {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.flycare-map-stage__grid-cell--security-check {
+  background: rgba(236, 72, 153, 0.1);
+}
+
+.flycare-map-stage__grid-cell--non-restricted-area {
+  background: rgba(34, 197, 94, 0.07);
+}
+
+.flycare-map-stage__grid-cell--check-in-counter {
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.flycare-map-stage__grid-cell--customer-services {
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.flycare-map-stage__grid-toolbar {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(248, 250, 252, 0.92);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.flycare-map-stage__grid-toolbar-copy p {
+  margin: 0.35rem 0 0;
+  color: rgba(51, 65, 85, 0.92);
+  font-size: 0.86rem;
+}
+
+.flycare-map-stage__grid-toolbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  font-size: 0.84rem;
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.flycare-map-stage__grid-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.flycare-map-stage__grid-button {
+  border: 1px solid rgba(37, 99, 235, 0.42);
+  background: rgba(37, 99, 235, 0.92);
+  color: #fff;
+  border-radius: 0.55rem;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.flycare-map-stage__grid-button:hover,
+.flycare-map-stage__grid-button:focus-visible {
+  filter: brightness(1.05);
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 1px;
+}
+
+.flycare-map-stage__grid-button--ghost {
+  background: transparent;
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.flycare-map-stage__grid-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: rgba(51, 65, 85, 0.92);
+}
+
+.flycare-map-stage__grid-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.flycare-map-stage__grid-legend-swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.2rem;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  flex-shrink: 0;
 }

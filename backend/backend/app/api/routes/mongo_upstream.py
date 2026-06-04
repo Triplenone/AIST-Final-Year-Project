@@ -549,19 +549,22 @@ async def get_latest_flight(
         }
 
     payload = doc.get("payload") or doc
+    flight_info = payload.get("flight_info") if isinstance(payload.get("flight_info"), dict) else {}
     return {
         "found": True,
         "device_id": doc.get("device_id"),
         "mysql_device_id": doc.get("mysql_device_id"),
         "_id": str(doc["_id"]) if doc.get("_id") else None,
         "server_received_at": _to_iso_utc(doc.get("server_received_at")),
+        "command_type": payload.get("command_type"),
+        "flight_info": flight_info or None,
         "passengerName": payload.get("passengerName"),
-        "flightNumber": payload.get("flightNumber"),
-        "gate": payload.get("gate"),
-        "flightTime": payload.get("flightTime"),
-        "departureAirport": payload.get("departureAirport"),
-        "arrivalAirport": payload.get("arrivalAirport"),
-        "seatNumber": payload.get("seatNumber"),
+        "flightNumber": payload.get("flightNumber") or flight_info.get("flight_number"),
+        "gate": payload.get("gate") or flight_info.get("boarding_gate"),
+        "flightTime": payload.get("flightTime") or flight_info.get("scheduled_departure"),
+        "departureAirport": payload.get("departureAirport") or flight_info.get("departure_airport"),
+        "arrivalAirport": payload.get("arrivalAirport") or flight_info.get("destination"),
+        "seatNumber": payload.get("seatNumber") or flight_info.get("seat_number"),
     }
 
 

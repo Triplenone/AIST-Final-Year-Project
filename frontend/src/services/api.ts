@@ -301,6 +301,18 @@ export type FlightPublishPayload = {
   departureAirport?: string;
   arrivalAirport?: string;
   seatNumber?: string;
+  airline?: string;
+  destination?: string;
+  scheduled_departure?: string;
+  estimated_departure?: string;
+  boarding_time?: string;
+  boarding_gate?: string;
+  status?: string;
+  delay_minutes?: number;
+  delay_reason?: string;
+  gate_changed?: boolean;
+  terminal?: string;
+  checkin_counter?: string;
   publish_mqtt: boolean;
   save_mongo: boolean;
 };
@@ -322,7 +334,15 @@ export type FlyCareMqttStatus = {
 export type FlyCarePublishResult = {
   status: string;
   payload?: Record<string, unknown>;
-  mqtt?: { ok: boolean; topic?: string; broker?: string; error?: string | null; skipped?: boolean };
+  mqtt_payload?: Record<string, unknown>;
+  mqtt?: {
+    ok: boolean;
+    topic?: string;
+    broker?: string;
+    error?: string | null;
+    skipped?: boolean;
+    payload?: Record<string, unknown>;
+  };
   mongo?: { ok: boolean; db_name?: string; collection?: string; error?: string | null; skipped?: boolean; inserted_id?: string };
 };
 

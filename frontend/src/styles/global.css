@@ -242,6 +242,28 @@ body,
   font-size: 0.85rem;
 }
 
+.flycare-admin-form__section {
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.flycare-admin-form__section legend {
+  font-weight: 600;
+  padding: 0 0.35rem;
+}
+
+.flycare-admin-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.flycare-admin-form__checkbox input[type='checkbox'] {
+  width: auto;
+}
+
 .admin-loading {
   color: var(--accent);
   margin-bottom: 8px;
