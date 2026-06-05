@@ -59,8 +59,9 @@ describe('position-command-center adapter', () => {
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[5]).toBe('ESP32_00009822A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[6]).toBe('ESP32_00008C292A04A7AC');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[7]).toBe('ESP32_00009022A443CA48');
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[8]).toBe('ESP32_48CA43A42298');
     expect(POSITION_RESIDENT_REGISTRY.map((entry) => entry.displayName)).toEqual(
-      expect.arrayContaining(['HO CHI WAI', 'TANG WAI HAN', 'test-user07', 'test-user09'])
+      expect.arrayContaining(['HO CHI WAI', 'TANG WAI HAN', 'MA KA WAI', 'YIP MAN LING', 'NG WAI LUN'])
     );
   });
 

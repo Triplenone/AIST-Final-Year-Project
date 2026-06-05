@@ -28,6 +28,10 @@
     {
       "mongodb_device_id": "ESP32_00009022A443CA48",
       "mysql_device_id": 7
+    },
+    {
+      "mongodb_device_id": "ESP32_48CA43A42298",
+      "mysql_device_id": 8
     }
   ]
 }

@@ -241,6 +241,24 @@ export type FlightLatestResponse = {
   _id?: string;
   device_id?: string;
   mysql_device_id?: number;
+  command_type?: string;
+  flight_info?: {
+    flight_number?: string | null;
+    airline?: string | null;
+    departure_airport?: string | null;
+    destination?: string | null;
+    seat_number?: string | null;
+    scheduled_departure?: string | null;
+    estimated_departure?: string | null;
+    boarding_time?: string | null;
+    boarding_gate?: string | null;
+    status?: string | null;
+    delay_minutes?: number | null;
+    delay_reason?: string | null;
+    gate_changed?: boolean | null;
+    terminal?: string | null;
+    checkin_counter?: string | null;
+  } | null;
   passengerName?: string;
   flightNumber?: string;
   gate?: string;

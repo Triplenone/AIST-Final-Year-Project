@@ -9,7 +9,6 @@ import {
   getFlyCareZoneAnchorPoint,
   getFlyCareZoneCenter,
   getFlyCareZoneFromCoords,
-  isFlyCareNavSegmentVisible,
   isFlyCareOrthogonalSegmentWalkable,
   normalizeFlyCareMapCoords,
   resolveFlyCarePinLabelSide

@@ -46,6 +46,15 @@ describe('extractFlightGateFromLatestResponse', () => {
     ).toBe('10');
   });
 
+  it('falls back to nested MQTT flight_info boarding_gate', () => {
+    expect(
+      extractFlightGateFromLatestResponse(
+        { found: true, device_id: 'ESP32_A', flight_info: { boarding_gate: ' 11 ' } },
+        'ESP32_A'
+      )
+    ).toBe('11');
+  });
+
   it('rejects mismatched device_id', () => {
     expect(
       extractFlightGateFromLatestResponse({ found: true, device_id: 'ESP32_B', gate: '10' }, 'ESP32_A')

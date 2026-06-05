@@ -7,6 +7,9 @@ type FlightGateLatestResponse = {
   found?: boolean;
   device_id?: string;
   gate?: string | number | null;
+  flight_info?: {
+    boarding_gate?: string | number | null;
+  } | null;
 };
 
 /** Shared gate parsing for flight panel and map navigation. */
@@ -18,10 +21,11 @@ export function extractFlightGateFromLatestResponse(
   if (expectedDeviceId && res.device_id != null && res.device_id !== expectedDeviceId) {
     return null;
   }
-  if (res.gate == null || String(res.gate).trim() === '') {
+  const gate = res.gate ?? res.flight_info?.boarding_gate;
+  if (gate == null || String(gate).trim() === '') {
     return null;
   }
-  return String(res.gate).trim();
+  return String(gate).trim();
 }
 
 /**

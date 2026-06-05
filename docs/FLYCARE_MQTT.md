@@ -19,6 +19,7 @@ Do not replace these rows with nested metadata objects. Verification notes belon
 | `ESP32_00009822A443CA48` | 5 | TANG WAI HAN | User-corrected ID; not found in live Mongo during implementation precheck |
 | `ESP32_00008C292A04A7AC` | 6 | MA KA WAI | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
 | `ESP32_00009022A443CA48` | 7 | YIP MAN LING | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
+| `ESP32_48CA43A42298` | 8 | NG WAI LUN | Bound by `database/mysql/migrations/20260605_register_esp32_48ca43a42298.sql` |
 
 ## MySQL Migration
 
@@ -28,6 +29,7 @@ After importing the base MySQL dump, run the tracked migrations so every local r
 cd E:\flycare
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_register_esp32_devices_6_7.sql"
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260605_register_esp32_48ca43a42298.sql"
 ```
 
 Do not keep FlyCare user/device binding changes only in a local MySQL instance. If a binding affects the UI or demo data, add an idempotent migration under `database/mysql/migrations/` and update this mapping table.
@@ -90,6 +92,8 @@ Flight downlink JSON on `smartwatch/{device_id}/flight`:
 ```
 
 `POST /api/v1/flycare-admin/flight/publish` maps existing admin form fields into `flight_info` (for example `flightNumber` -> `flight_number`, `departureAirport` -> `departure_airport`, `arrivalAirport` -> `destination`, `seatNumber` -> `seat_number`, `gate` -> `boarding_gate`, `flightTime` -> `scheduled_departure`). Optional body fields can override: `airline`, `destination`, `scheduled_departure`, `estimated_departure`, `boarding_time`, `boarding_gate`, `status`, `delay_minutes`, `delay_reason`, `gate_changed`, `terminal`, `checkin_counter`.
+
+`flight_info` is the canonical ISS JSON shape. For UI compatibility, Mongo flight reads may also expose legacy flat fields such as `flightNumber`, `gate`, `flightTime`, `departureAirport`, `arrivalAirport`, and `seatNumber`. The FlyCare page resolves the map destination from `gate` first, then falls back to `flight_info.boarding_gate`.
 
 `save_mongo=true` in `POST /api/v1/flycare-admin/flight/publish` is only a UI/demo fallback that writes `data_type=flight` into Mongo for the selected `device_id`. It is not proof that the smartwatch received the MQTT command.
 
