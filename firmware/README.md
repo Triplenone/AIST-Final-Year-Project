@@ -122,9 +122,9 @@ PWR while picker open Cancel the destination picker without changing the active 
 PWR outside map       Keep the original screen on/off behavior
 ```
 
-Destination selection is map-scoped: PWR opens the picker only from the map page, SOS short click moves the highlighted destination while the picker is open, 5 seconds with no further picker input confirms the highlighted destination after at least one SOS picker click, and PWR cancels the picker without changing the active route. The SOS wheel/rotary is not used for FlyCare navigation.
+Destination selection is map-scoped: PWR opens the picker only from the map page, SOS short click moves the highlighted destination while the picker is open, 5 seconds with no further picker input confirms the highlighted destination after at least one SOS picker click, and PWR cancels the picker without changing the active route. Once a destination is committed by the picker, serial command, or flight sync, any pending picker auto-confirm state is cleared so stale highlights cannot overwrite the active route. The SOS wheel/rotary is not used for FlyCare navigation.
 
-Map display layout is intentionally bounded for the 240x320 watch screen: the lower half uses a fixed left route card and a fixed right destination card, long places are compacted (`Customer Services` -> `Customer Svc`) and fitted instead of overflowing, and BLE jitter redraws are throttled so the map does not repaint on tiny RSSI-driven movement. `NAV_DISPLAY_INTERVAL` is 4 seconds, with immediate redraw only when position movement is meaningful.
+Map display layout is intentionally bounded for the 240x310 active watch surface: the lower half uses a fixed left route card and a fixed right destination card, distance text has its own narrow column, and long places are compacted or split (`Customer Services` -> `Customer` / `Svc`, `Security Check` -> `Security` / `Check`) instead of overflowing. BLE jitter redraws are throttled so the map does not repaint on tiny RSSI-driven movement. `NAV_DISPLAY_INTERVAL` is 4 seconds, with immediate redraw only when position movement is meaningful.
 
 Flight JSON updates are connected to `FlightInfoManager`. When `boarding_gate` maps to a known destination, the same planner builds the active route:
 
@@ -143,7 +143,7 @@ You have arrived at Gate 10.
 If backend flight JSON says `Gate 11`, only Gate 11 can trigger the arrival reminder.
 Arrival popup uses the large dedicated `ARRIVED` layout, auto-closes after 5 seconds, and returns to the map page. Flight and arrival popups are rendered from a separate popup dirty flag so live BLE/MQTT updates do not repeatedly repaint the full popup surface.
 
-Flight display layout uses fixed destination/gate columns and a bounded delay panel at the bottom. Long airline, destination, gate, and delay reason text is fitted or wrapped inside its panel rather than drawing into the next column or off the bottom edge.
+Flight display layout uses fixed destination/gate columns, a top status bar that stays above the flight title, and a bounded delay panel kept above the rounded bottom edge. Long airline, destination, gate, and delay reason text is fitted or wrapped inside its panel rather than drawing into the next column or off the bottom edge.
 
 Alert sounds are queued before or alongside TTS for SOS, gate change, delay, boarding, final call, cancellation, on-time updates, and arrival. Missing alert sound files are logged and the firmware safely continues with TTS.
 

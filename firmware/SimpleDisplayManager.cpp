@@ -694,10 +694,10 @@ void SimpleDisplayManager::calculateMapViewByDirection(int& startX, int& startY,
 
 void SimpleDisplayManager::drawNavigationGuides(const NavDisplayInfo& navInfo) {
     const int panelTop = SCREEN_HEIGHT / 2;
-    const int leftX = 6;
+    const int leftX = 8;
     const int leftY = panelTop + 8;
-    const int leftW = 142;
-    const int leftH = 122;
+    const int leftW = 136;
+    const int leftH = 116;
 
     gfx->fillRoundRect(leftX, leftY, leftW, leftH, 8, 0x0841);
     gfx->drawRoundRect(leftX, leftY, leftW, leftH, 8, 0x3186);
@@ -711,26 +711,22 @@ void SimpleDisplayManager::drawNavigationGuides(const NavDisplayInfo& navInfo) {
     for (int i = 0; i < navInfo.stepCount && i < 3; i++) {
         const NavStep& step = navInfo.steps[i];
         bool active = (i == 0);
-        int rowY = leftY + 16 + i * 36;
+        int rowY = leftY + 16 + i * 34;
         String action = compactStepAction(step.instruction);
         String target = compactPlaceLabel(step.targetPoint.length() > 0 ? step.targetPoint : navInfo.targetGate);
+        String distanceText = String((int)round(step.distance)) + "m";
 
         drawStepIcon(gfx, leftX + 15, rowY + 7, i + 1, action, active);
 
         if (active) {
-            drawFittedText(gfx, leftX + 42, rowY - 3, action, 64, RGB565_WHITE, 2, 1);
-            gfx->setTextSize(1);
-            gfx->setTextColor(0x07FF);
-            gfx->setCursor(leftX + 112, rowY + 1);
-            gfx->printf("%.0fm", step.distance);
-            drawFittedText(gfx, leftX + 42, rowY + 18, target, 92, 0x528A, 1, 1);
+            int actionSize = action.length() <= 6 ? 2 : 1;
+            drawFittedText(gfx, leftX + 42, rowY - 3, action, 58, RGB565_WHITE, actionSize, 1);
+            drawFittedText(gfx, leftX + 102, rowY + 1, distanceText, 28, 0x07FF, 1, 1);
+            drawFittedText(gfx, leftX + 42, rowY + 18, target, 86, 0x528A, 1, 1);
         } else {
-            drawFittedText(gfx, leftX + 42, rowY, action, 58, RGB565_WHITE, 1, 1);
-            gfx->setTextSize(1);
-            gfx->setTextColor(0x07FF);
-            gfx->setCursor(leftX + 106, rowY);
-            gfx->printf("%.0fm", step.distance);
-            drawFittedText(gfx, leftX + 42, rowY + 13, target, 90, 0x528A, 1, 1);
+            drawFittedText(gfx, leftX + 42, rowY, action, 56, RGB565_WHITE, 1, 1);
+            drawFittedText(gfx, leftX + 102, rowY, distanceText, 28, 0x07FF, 1, 1);
+            drawFittedText(gfx, leftX + 42, rowY + 13, target, 86, 0x528A, 1, 1);
         }
     }
 }
@@ -783,6 +779,7 @@ void SimpleDisplayManager::drawDestinationPicker() {
 
 void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
     String gateLabel = SmartNavigationPlanner::normalizeLabel(gate);
+    String gateKey = SmartNavigationPlanner::normalizeKey(gate);
     String label = compactPlaceLabel(gateLabel);
     const int infoY = SCREEN_HEIGHT / 2;
     const int cardX = SCREEN_WIDTH - 86;
@@ -795,13 +792,23 @@ void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
 
     drawCenteredFittedText(gfx, cardX + 4, cardY + 10, cardW - 8, "DEST", 0x07E0, 1, 1);
 
-    if (label == "Customer Svc") {
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 40, cardW - 8, "Customer", RGB565_WHITE, 1, 1);
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 58, cardW - 8, "Svc", RGB565_WHITE, 2, 1);
+    if (gateKey == "GATE10" || gateKey == "GATE11") {
+        String gateNo = gateKey == "GATE10" ? "10" : "11";
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Gate", RGB565_WHITE, 1, 1);
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 55, cardW - 8, gateNo, RGB565_WHITE, 3, 2);
+    } else if (gateKey == "CUSTOMERSERVICES") {
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Customer", RGB565_WHITE, 1, 1);
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 56, cardW - 8, "Svc", RGB565_WHITE, 2, 1);
+    } else if (gateKey == "SECURITY") {
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Security", RGB565_WHITE, 1, 1);
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 56, cardW - 8, "Check", RGB565_WHITE, 2, 1);
+    } else if (gateKey == "CHECKIN") {
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Check", RGB565_WHITE, 2, 1);
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 62, cardW - 8, "In", RGB565_WHITE, 2, 1);
     } else if (label == "Immigration") {
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 44, cardW - 8, "Immigr.", RGB565_WHITE, 2, 1);
+        drawCenteredFittedText(gfx, cardX + 4, cardY + 48, cardW - 8, "Immigr.", RGB565_WHITE, 2, 1);
     } else {
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 48, cardW - 8, label, RGB565_WHITE, 3, 1);
+        drawCenteredFittedText(gfx, cardX + 3, cardY + 52, cardW - 6, label, RGB565_WHITE, 2, 1);
     }
 
     String distanceText = String((int)round(distance)) + " m";
@@ -983,10 +990,10 @@ void SimpleDisplayManager::drawFlightPage() {
                                flightDisplay, RGB565_WHITE, 2, 1);
 
         const int topY = 82;
-        const int leftX = 14;
-        const int rightX = 132;
-        const int leftW = 104;
-        const int rightW = 94;
+        const int leftX = 12;
+        const int rightX = 144;
+        const int leftW = 118;
+        const int rightW = 84;
 
         drawFittedText(gfx, leftX, topY, "DESTINATION", leftW, 0x528A, 1, 1);
         drawFittedText(gfx, leftX, topY + 18, compactPlaceLabel(flightInfo.destination), leftW, 0x07FF, 2, 1);
@@ -1013,17 +1020,17 @@ void SimpleDisplayManager::drawFlightPage() {
 
         if (flightInfo.delay_minutes > 0) {
             const int panelX = 8;
-            const int panelY = 248;
+            const int panelY = 236;
             const int panelW = SCREEN_WIDTH - 16;
-            const int panelH = 56;
+            const int panelH = 54;
             gfx->fillRoundRect(panelX, panelY, panelW, panelH, 8, RGB565_YELLOW);
             gfx->drawRoundRect(panelX, panelY, panelW, panelH, 8, 0xC600);
 
-            String delayLine = "Delay " + String(flightInfo.delay_minutes) + " min";
-            drawFittedText(gfx, panelX + 10, panelY + 8, delayLine, panelW - 20, RGB565_BLACK, 2, 1);
+            String delayLine = "DELAYED " + String(flightInfo.delay_minutes) + "m";
+            drawFittedText(gfx, panelX + 10, panelY + 7, delayLine, panelW - 20, RGB565_BLACK, 2, 1);
             if (flightInfo.delay_reason.length() > 0) {
-                drawWrappedText(gfx, panelX + 10, panelY + 31, panelW - 20,
-                                flightInfo.delay_reason, RGB565_BLACK, 1, 11, 2);
+                drawWrappedText(gfx, panelX + 10, panelY + 30, panelW - 20,
+                                flightInfo.delay_reason, RGB565_BLACK, 1, 10, 2);
             }
         }
 
@@ -1137,17 +1144,17 @@ void SimpleDisplayManager::clearFlightInfo() {
 }
 
 void SimpleDisplayManager::drawStatusBar() {
-    const int TOP_PADDING = 30, SIDE_PADDING = 10;
-    gfx->fillRect(SIDE_PADDING, 0, SCREEN_WIDTH - SIDE_PADDING * 2, 30, RGB565_BLACK);
-    drawWiFiIcon(SIDE_PADDING + 10, TOP_PADDING);
+    const int TOP_Y = 8, SIDE_PADDING = 10;
+    gfx->fillRect(SIDE_PADDING, 0, SCREEN_WIDTH - SIDE_PADDING * 2, 34, RGB565_BLACK);
+    drawWiFiIcon(SIDE_PADDING + 10, TOP_Y);
     
     char time_str[10];
     snprintf(time_str, sizeof(time_str), "%02d:%02d", hour, minute);
-    gfx->setCursor(SCREEN_WIDTH - 90 - SIDE_PADDING, TOP_PADDING);
+    gfx->setCursor(SCREEN_WIDTH - 90 - SIDE_PADDING, TOP_Y);
     gfx->setTextColor(RGB565_WHITE);
     gfx->setTextSize(2);
     gfx->print(time_str);
-    drawBatteryIcon(SCREEN_WIDTH - 30 - SIDE_PADDING, TOP_PADDING);
+    drawBatteryIcon(SCREEN_WIDTH - 30 - SIDE_PADDING, TOP_Y + 2);
 }
 
 void SimpleDisplayManager::drawWiFiIcon(int x, int y) {
@@ -1442,6 +1449,9 @@ bool SimpleDisplayManager::setSmartNavigationDestination(const String& destinati
     activeNavigationFromFlight = fromFlightInfo;
     arrivalPopupShown = false;
     arrivalPopupTarget = "";
+    destinationPickerActive = false;
+    destinationPickerIntentSeen = false;
+    destinationPickerLastActivity = 0;
     needRedraw = true;
 
     Serial.printf("[NAV] selected destination: %s (%s) @ %.1f,%.1f route=%d flight=%d\n",
