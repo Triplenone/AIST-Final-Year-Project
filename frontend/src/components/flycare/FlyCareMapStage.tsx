@@ -32,6 +32,8 @@ import {
 
 type FlyCareAlertKind = 'sos' | 'fall';
 
+const FLYCARE_MARKER_TONE_COUNT = 6;
+
 export type FlyCareLinkedAlertEvent = {
   eventId: number;
   eventType: FlyCareAlertKind;
@@ -191,6 +193,14 @@ function uniqueKinds(kinds: readonly FlyCareAlertKind[]): FlyCareAlertKind[] {
   return next;
 }
 
+function getFlyCareToneIndex(value: string): number {
+  let hash = 0;
+  for (const char of value) {
+    hash = (hash * 31 + char.charCodeAt(0)) % FLYCARE_MARKER_TONE_COUNT;
+  }
+  return Math.abs(hash);
+}
+
 function getEventLabel(
   kinds: readonly FlyCareAlertKind[],
   t: (key: string, options?: Record<string, unknown>) => string
@@ -347,6 +357,7 @@ export function FlyCareMapStage({
         fallConfirmed: item.fallConfirmed,
         tooltipState: buildFlyCareMarkerTooltipState(item, getLinkedEventsForResident(item, normalizedAlertEvents), t),
         hasAlert: shouldFlashFlyCareMarker(item, activeDeviceIdSet, activeResidentIdSet),
+        toneIndex: getFlyCareToneIndex(item.deviceId || item.residentId),
         x: item.currentCoords.x,
         y: item.currentCoords.y,
         point: flyCareGridIndicesToPixelPercent(item.currentCoords)
@@ -492,7 +503,7 @@ export function FlyCareMapStage({
               return (
                 <div
                   key={pin.residentId}
-                  className={`position-map-stage__pin position-map-stage__pin--current flycare-map-stage__pin flycare-map-stage__pin--label-${labelSide}${hasAlert ? ` position-map-stage__pin--alert position-map-stage__pin--alert-${alertKind}` : ''}`}
+                  className={`position-map-stage__pin position-map-stage__pin--current flycare-map-stage__pin flycare-map-stage__pin--label-${labelSide} flycare-map-stage__pin--tone-${pin.toneIndex}${hasAlert ? ` position-map-stage__pin--alert position-map-stage__pin--alert-${alertKind}` : ''}`}
                   style={{ left: `${pin.point.leftPercent}%`, top: `${pin.point.topPercent}%` }}
                   aria-label={pin.tooltipState.ariaLabel}
                   role="button"

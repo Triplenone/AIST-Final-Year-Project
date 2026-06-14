@@ -144,6 +144,49 @@ describe('position-command-center adapter', () => {
     expect(getPositionNavigationTargetDisplay(selectedResident)).toBe('Gate 10 · 2.83 m · southeast · ETA 2 min');
   });
 
+  it('does not expose a cleared FlyCare navigation target', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:02:05.000Z',
+        loadError: null,
+        records: [
+          {
+            resident,
+            latestStatus: {
+              _id: 'status-target-cleared',
+              device_id: resident.deviceId,
+              server_received_at: '2026-03-28T00:02:00.000Z',
+              data_type: 'status_update',
+              location: {
+                current: { x: 6.05, y: 3.85, name: 'Customer Services' },
+                target: {
+                  active: false,
+                  x: null,
+                  y: null,
+                  name: '',
+                  distance: 0,
+                  direction: 'none',
+                  eta: 0
+                }
+              }
+            } as never,
+            error: null
+          }
+        ]
+      },
+      { selectedResidentId: resident.residentId, now: Date.parse('2026-03-28T00:02:05.000Z'), mapProfile: 'flycare' }
+    );
+
+    const selectedResident = viewModel.selectedResident!;
+    expect(selectedResident.navigationTargetName).toBeNull();
+    expect(selectedResident.navigationDistanceMeters).toBeNull();
+    expect(selectedResident.navigationDirection).toBeNull();
+    expect(selectedResident.navigationEtaMinutes).toBeNull();
+    expect(selectedResident.targetCoords).toBeNull();
+    expect(getPositionNavigationTargetDisplay(selectedResident)).toBeNull();
+  });
+
   it('preserves older valid vitals when a newer status update reports invalid zero sensors', () => {
     const resident = POSITION_RESIDENT_REGISTRY[0];
     const merged = mergeUpstreamDocsForPosition([

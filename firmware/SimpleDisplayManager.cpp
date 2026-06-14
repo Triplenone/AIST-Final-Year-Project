@@ -759,10 +759,7 @@ void SimpleDisplayManager::drawDestinationPicker() {
         gfx->drawRoundRect(18, y, SCREEN_WIDTH - 36, itemHeight, 6, border);
         String displayLabel = destination.label;
         if (displayLabel == "Customer Services") displayLabel = "Customer Svc";
-        gfx->setCursor(28, y + 6);
-        gfx->setTextSize(displayLabel.length() > 12 ? 1 : 2);
-        gfx->setTextColor(RGB565_WHITE);
-        gfx->print(displayLabel);
+        drawFittedText(gfx, 28, y + 6, displayLabel, SCREEN_WIDTH - 56, RGB565_WHITE, 2, 1);
         gfx->setCursor(28, y + 21);
         gfx->setTextSize(1);
         gfx->setTextColor(zoneColor);
@@ -1517,6 +1514,15 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
             arrivalPopupTarget = expectedKey;
             String popupMessage = "You've arrived at " + targetLabel;
             String spokenMessage = "You have arrived at " + targetLabel + ".";
+            navigationPath.clear();
+            hasNavigationPath = false;
+            activeNavigationFromFlight = false;
+            activeArrivalKey = "";
+            activeArrivalLabel = "";
+            navManager->clear();
+            if (data_transmitter) {
+                data_transmitter->setNavigationActive(false);
+            }
             pageManager.setPage(PAGE_NAV);
             showPopup(POPUP_ARRIVAL, "Arrived", popupMessage);
             if (audioCommandQueue) {
@@ -1526,6 +1532,7 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
                 xQueueSend(audioCommandQueue, &tts_cmd, 0);
             }
             Serial.printf("[NAV] arrival popup shown: %s\n", popupMessage.c_str());
+            Serial.printf("[NAV] arrival route cleared: %s\n", targetLabel.c_str());
         }
     }
 

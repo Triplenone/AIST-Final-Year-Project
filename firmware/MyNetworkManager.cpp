@@ -147,6 +147,59 @@ static int buildWiFiCandidates(WiFiCandidate* candidates, int maxCandidates) {
     return count;
 }
 
+static void addBrokerCandidate(String brokers[], int& count, int maxCount, const String& host) {
+    String clean = host;
+    clean.trim();
+    if (clean.length() == 0) return;
+
+    for (int i = 0; i < count; i++) {
+        if (brokers[i] == clean) return;
+    }
+    if (count < maxCount) {
+        brokers[count++] = clean;
+    }
+}
+
+static void addBrokerCandidate(String brokers[], int& count, int maxCount, const char* host) {
+    if (!host) return;
+    addBrokerCandidate(brokers, count, maxCount, String(host));
+}
+
+static void buildMqttBrokerCandidates(String brokers[], int& count, int maxCount, const String& configuredServer) {
+    count = 0;
+    String ssid = WiFi.SSID();
+
+#if defined(MQTT_BROKER_MILLION1)
+#if defined(WIFI_SSID)
+    if (ssid == String(WIFI_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#if defined(WIFI_ALT1_SSID)
+    if (ssid == String(WIFI_ALT1_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#if defined(WIFI_ALT2_SSID)
+    if (ssid == String(WIFI_ALT2_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#endif
+
+#if defined(WIFI_FALLBACK_SSID) && defined(MQTT_BROKER_TRIPLE_NONE)
+    if (ssid == String(WIFI_FALLBACK_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_TRIPLE_NONE);
+#endif
+
+    addBrokerCandidate(brokers, count, maxCount, configuredServer);
+#if defined(MQTT_BROKER_MILLION1)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#if defined(MQTT_BROKER_TRIPLE_NONE)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_TRIPLE_NONE);
+#endif
+#if defined(MQTT_BROKER_FALLBACK_1)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_FALLBACK_1);
+#endif
+#if defined(MQTT_BROKER_FALLBACK_2)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_FALLBACK_2);
+#endif
+}
+
 static bool connectCandidate(const WiFiCandidate& candidate, int maxAttempts) {
     Serial.printf("\n[WiFi] Trying %s SSID: %s\n", candidate.label, candidate.ssid);
     WiFi.disconnect(false, false);
@@ -401,7 +454,15 @@ bool MyNetworkManager::connectMQTT() {
         return false;
     }
     
-    mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+    mqttClient.setKeepAlive(30);
+    mqttClient.setSocketTimeout(4);
+
+    String brokerCandidates[6];
+    int brokerCount = 0;
+    buildMqttBrokerCandidates(brokerCandidates, brokerCount, 6, String(MQTT_BROKER));
+    if (brokerCount <= 0) return false;
+    Serial.printf("[MQTT] SSID=%s broker candidates=%d\n", WiFi.SSID().c_str(), brokerCount);
+    mqttClient.setServer(brokerCandidates[0].c_str(), MQTT_PORT);
     
     String clientId = "ESP32-SmartWatch-" + String(random(0xffff), HEX);
     if (mqttClient.connect(clientId.c_str())) {
@@ -409,11 +470,29 @@ bool MyNetworkManager::connectMQTT() {
         Serial.println("MQTT连接成功!");
         
         // 订阅下行主题
-        String subscribeTopic = "smartwatch/+/command";
+        String subscribeTopic = String(MQTT_TOPIC_ROOT) + "/+/command";
         mqttClient.subscribe(subscribeTopic.c_str());
         return true;
     }
     
+    for (int i = 1; i < brokerCount; i++) {
+        String broker = brokerCandidates[i];
+        mqttClient.setServer(broker.c_str(), MQTT_PORT);
+        Serial.printf("[MQTT] fallback connecting %s:%d\n", broker.c_str(), MQTT_PORT);
+
+        String fallbackClientId = "ESP32-SmartWatch-" + String(random(0xffff), HEX);
+        if (mqttClient.connect(fallbackClientId.c_str())) {
+            mqttConnected = true;
+            Serial.printf("[MQTT] connected broker=%s\n", broker.c_str());
+
+            String subscribeTopic = String(MQTT_TOPIC_ROOT) + "/+/command";
+            mqttClient.subscribe(subscribeTopic.c_str());
+            return true;
+        }
+
+        Serial.printf("[MQTT] fallback failed broker=%s state=%d\n", broker.c_str(), mqttClient.state());
+    }
+
     mqttConnected = false;
     Serial.print("MQTT连接失败, rc=");
     Serial.println(mqttClient.state());

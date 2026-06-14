@@ -41,7 +41,9 @@ Device 8 accepts both `ESP32_000048CA43A42298` and the older local alias `ESP32_
 
 ## MQTT Topics
 
-Smartwatch uplink topics:
+Smartwatch uplink topics use `<MQTT_TOPIC_ROOT>/<device_id>/<suffix>`. Local LAN mode defaults to `smartwatch`; Cloud mode defaults to `flycare-demo-20260614/smartwatch`.
+
+Default local uplink topics:
 
 ```text
 smartwatch/+/status
@@ -61,7 +63,7 @@ Legacy loopback ingest topic retained for compatibility:
 flycare/flight
 ```
 
-Primary FlyCare flight downlink topic:
+Default local FlyCare flight downlink topic:
 
 ```text
 smartwatch/{device_id}/flight
@@ -73,11 +75,50 @@ For local Windows demos with a real ESP32 on Wi-Fi, Mosquitto must listen on the
 & 'C:\Program Files\Mosquitto\mosquitto.exe' -c E:\flycare\infra\mosquitto\local-windows.conf
 ```
 
-The ESP32 firmware should use the PC Wi-Fi/LAN IP as the MQTT broker host, currently `192.168.0.203` on this local setup, with port `1883`. Do not configure the ESP32 broker as `localhost` or `127.0.0.1`; that points back to the ESP32 itself, not this backend machine.
+The ESP32 firmware and backend must use the same MQTT broker host. For a local Windows demo, that host is the PC Wi-Fi/LAN IP, not `localhost` or `127.0.0.1`; those point back to the ESP32/backend process itself. If the PC changes network, the broker IP changes too.
 
-The backend MQTT subscriber also listens on `smartwatch/+/flight` and writes received downlink JSON into Mongo (`data_type=flight`). This loopback lets Admin **Publish to MQTT** update the FlyCare page without enabling **Mongo only** / **MQTT + save Mongo**.
+Use the endpoint helper before rebuilding firmware or restarting the backend:
 
-`backend/backend/app/services/MQTT-topic.txt` defines the same downlink pattern as `smartwatch/%s/flight`. The migrated Arduino firmware now lives under `firmware/` and subscribes to this downlink through `DataTransmitter` / `FlightInfoManager`; keep the broker host aligned between `backend/backend/.env` and `firmware/Config.h`.
+```powershell
+cd E:\flycare
+
+# Local LAN/hotspot mode: writes the current PC Wi-Fi IPv4 into backend .env and firmware Config.h.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 -Mode AutoLan
+
+# Offline demo mode: same as local LAN, but records that the PC is the required local backend/MQTT host.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 -Mode OfflineLan
+
+# Cloud MQTT mode: backend and watch may be on different Wi-Fi networks if both have internet access.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 -Mode Cloud
+```
+
+Local LAN/hotspot mode only works when the PC and watch are on the same SSID/subnet and the access point allows client-to-client traffic. If the PC is on a phone hotspot such as `MILLION1` but the watch is on another SSID such as `Triple-None`, a local broker on the PC is normally not reachable from the watch. In that case, either connect both devices to the same hotspot/LAN, or use Cloud MQTT / a private internet-reachable broker.
+
+For a fully offline demo, use one local network at a time:
+
+1. Connect the PC to `MILLION1` first when available; firmware tries `MILLION1` before all other SSIDs.
+2. Run `set_flycare_mqtt_endpoint.ps1 -Mode OfflineLan`, then restart the backend and upload the firmware.
+3. Confirm Mosquitto listens on `0.0.0.0:1883`, not only `127.0.0.1:1883`.
+4. Connect the watch to the same SSID/subnet as the PC. The watch cannot reach a PC-local broker from `Triple-None` while the PC is on `MILLION1`, unless those networks are bridged/routed.
+
+Firmware now keeps SSID-specific broker candidates. When connected to `MILLION1` or its aliases (`MILLION`, `MILLION 1`), it tries `MQTT_BROKER_MILLION1` first. When connected to `Triple-None`, it tries `MQTT_BROKER_TRIPLE_NONE` first. It then falls back to `MQTT_BROKER`, `MQTT_BROKER_FALLBACK_1`, and `MQTT_BROKER_FALLBACK_2`.
+
+If both demo SSIDs must work from one firmware build, collect the PC broker IP for each SSID and write both values before upload:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 `
+  -Mode OfflineLan `
+  -Million1BrokerHost 172.20.10.3 `
+  -TripleNoneBrokerHost <pc-ip-when-connected-to-Triple-None>
+```
+
+If the PC IP changes after switching hotspot/router, rerun the helper and re-upload firmware, or use a fixed travel router/static DHCP lease so the PC broker address stays stable.
+
+Cloud MQTT mode currently uses `broker.emqx.io:1883` unless `-BrokerHost` is supplied. Because that broker is public, Cloud mode also writes a private demo topic root, currently `flycare-demo-20260614/smartwatch`, into both backend and firmware. Do not subscribe to public `smartwatch/...` topics on a public broker because retained or external messages can create false dashboard events. Use a private authenticated broker for production or external demos with sensitive data.
+
+The backend MQTT subscriber also listens on `<MQTT_TOPIC_ROOT>/+/flight` and writes received downlink JSON into Mongo (`data_type=flight`). This loopback lets Admin **Publish to MQTT** update the FlyCare page without enabling **Mongo only** / **MQTT + save Mongo**.
+
+`backend/backend/app/services/MQTT-topic.txt` defines the same downlink pattern as `smartwatch/%s/flight`. The migrated Arduino firmware now lives under `firmware/` and subscribes to this downlink through `DataTransmitter` / `FlightInfoManager`; keep the broker host aligned between `backend/backend/.env` and `firmware/Config.h`. The endpoint helper updates both files together.
 
 Flight downlink JSON on `smartwatch/{device_id}/flight`:
 
@@ -108,7 +149,7 @@ Flight downlink JSON on `smartwatch/{device_id}/flight`:
 
 `flight_info` is the canonical ISS JSON shape. For UI compatibility, Mongo flight reads may also expose legacy flat fields such as `flightNumber`, `gate`, `flightTime`, `departureAirport`, `arrivalAirport`, and `seatNumber`. The FlyCare page resolves the map destination from `gate` first, then falls back to `flight_info.boarding_gate`.
 
-`save_mongo=true` in `POST /api/v1/flycare-admin/flight/publish` is only a UI/demo fallback that writes `data_type=flight` into Mongo for the selected `device_id`. It is not proof that the smartwatch received the MQTT command.
+Admin's primary FlyCare publish action sends the MQTT downlink and also writes Mongo (`publish_mqtt=true`, `save_mongo=true`) so the watch and dashboard update from the same operator action. The MQTT response `alias_results` is the watch-downlink proof; the Mongo write is the dashboard/popup proof. `save_mongo=true` by itself is only a UI/demo fallback and is not proof that the smartwatch received the MQTT command.
 
 ## Local Validation
 
@@ -187,7 +228,7 @@ Current local runtime:
 ```text
 Backend API:     http://127.0.0.1:8000
 Frontend Vite:   http://127.0.0.1:5173
-MQTT broker:     192.168.0.203:1883
+MQTT broker:     See `backend/backend/.env`, `firmware/Config.h`, and `logs/flycare-mqtt-endpoint.json`
 Watch serial:    COM5, ESP32_48CA43A42298 / ESP32_000048CA43A42298, MySQL device 8
 Fall detection:  intentionally disabled with ENABLE_FALL_DETECTION 0
 ```
@@ -196,7 +237,7 @@ Verified in the latest COM5 run and current firmware source:
 
 - Current stack proof in `logs/flycare-local-stack-status.json` from 2026-06-14 12:25:58 shows ports 1883, 3306, 5173, 8000, and 27017 listening, `/health=healthy`, and MQTT connected to `192.168.0.203:1883`. That check ran from a non-admin shell (`isAdmin=false`) and therefore confirmed existing services rather than restarting Windows services. Earlier elevated proof is available from 2026-06-13 19:23:31 with `isAdmin=true`.
 - BLE positioning is configured with 12 FlyCare beacon MAC records. Duplicate MACs intentionally share the same zone coordinates for Check-in, Gate 10, Gate 11, Toilet, Security Check, and Customer Services. Live scans report the subset currently nearby.
-- Navigation/arrival logic was serial-tested for Gate 10 and Gate 11 with the correct arrival message for the active destination.
+- Navigation/arrival logic was serial-tested for Gate 10 and Gate 11 with the correct arrival message for the active destination. Current firmware clears the active route and `navigation_active` telemetry state as soon as the ARRIVED popup is raised.
 - Flight downlink was published through `POST /api/v1/flycare-admin/flight/publish`, received by the watch, and stored in Mongo as `data_type=flight`. The focused capture `logs/flight-downlink-20260614-002657.log` shows `smartwatch/ESP32_48CA43A42298/flight`, `[Flight] telemetry target synced: Gate 10 @ (8.0, 1.8)`, and Gate 10 arrival/TTS evidence. A later local publish at 2026-06-14 12:30:02 fanned out CX910 to both canonical and alias watch topics with `estimated_departure=17:50`, `status=delayed`, `delay_minutes=15`, and `delay_reason=Live integration retest`; the FlyCare dashboard now renders those rich `flight_info` fields in the flight panel and drawer instead of only the legacy top-level fields.
 - SOS serial smoke (`SOSON` then `SOSOFF`) created an event and then cleared the latest SOS payload to `active=false`; the generated event was closed through the normal Event API as `false_alarm`.
 - Previous physical BOOT SOS generated event `199` with `trigger_method=Button`; latest SOS payload then cleared to `active=false`, and event `199` was handled as `false_alarm`. Current firmware changed the UX: SOS short click switches pages only when the destination picker is closed, moves destination selection while the picker is open, and SOS long press for 3 seconds toggles the SOS path.
@@ -212,8 +253,8 @@ Troubleshooting order:
 2. For destination selection, run `verify_flycare_watch.ps1 -RunNavMenuAutoConfirm -Seconds 10` after upload. The expected serial evidence is `[NAVTEST] picker opened`, `[NAVTEST] picker next destination`, `[NAV] auto confirm destination after SOS idle`, `[NAVTEST] picker auto-confirmed`, and `[NAV] selected destination`. Also run `NAVLIST` or `NAVDEST Security` to prove Security Check remains a selectable destination. On hardware, press PWR once on the map page to open the picker, press SOS once or more to move the highlighted destination, then stop for 5 seconds to confirm; press PWR again before auto-confirm to cancel.
 3. For heart rate, first validate physical contact: wear the watch tightly, clean the MAX3010x window, keep the wrist still for 20-30 seconds, then send `HRDEBUG` and `HRSENSOR` on COM5. Run `HRCAL` for a 10-second raw IR/red window or `HRSWEEP` for a repeatable `0x1F`/`0x3F`/`0x7F`/`0xFF` LED sweep. If `HRSENSOR` reports `part_id=0x15` and a plausible die temperature but IR never crosses `30000`, fix contact/window/hardware before changing BPM logic; if `saturated_pct` is high, reduce LED drive with `HRLED 0x1F` or improve placement; if signal remains too low even at `HRLED 0xFF`, inspect the sensor window, wrist contact geometry, cable/solder path, or MAX30102 module orientation; if contact is stable but `avg=0`, keep still longer and inspect beat detection.
 4. For SpO2, keep the same physical-contact checks. Live SpO2 is intentionally invalid until pulse-derived confidence is positive, so `spo2.valid=false` with `heart_rate.valid=false` is expected when MAX30102 contact is not established.
-5. For arrival accuracy, use `TESTARRIVAL Gate10` / `TESTARRIVAL Gate11` before moving hardware. If live arrival fires early or late, adjust only beacon coordinates/RSSI references first, then retest `/api/v1/mongo-upstream/location/latest?device_id=ESP32_48CA43A42298`.
+5. For arrival accuracy, use `TESTARRIVAL Gate10` / `TESTARRIVAL Gate11` before moving hardware. Confirm the serial log includes `[NAV] arrival route cleared` and that the next status payload has `location.target.active=false` with an empty target name. If live arrival fires early or late, adjust only beacon coordinates/RSSI references first, then retest `/api/v1/mongo-upstream/location/latest?device_id=ESP32_48CA43A42298`.
 6. For popup readability or flicker, use `TESTARRIVAL Gate10` and `SIMDELAY` on COM5, then check serial evidence in `logs/serial-ui-popup-smoke-*.log`. Source audit expects `popupNeedsRedraw`, `POPUP_ARRIVAL_AUTO_CLOSE_MS = 5000`, `ARRIVED`, `Route complete`, and no stale side-button confirm prompt.
 7. For map and flight page layout readability, test the longest labels after upload: run `verify_flycare_watch.ps1 -RunNavMenuAutoConfirm -Seconds 10` and confirm the target can become `Customer Services`, then send `PAGE 2`, `SIMDELAY`, and `REDRAW` on COM5. The watch should keep route steps inside the left card, the destination inside the right card, `Singapore` and `Gate 10` in separate flight columns, and the delay reason inside the bottom yellow panel.
-8. For flight sync, verify four points in order: backend MQTT status connected to `192.168.0.203:1883`, `POST /api/v1/flycare-admin/flight/publish` fan-out to canonical and alias topics, Mongo latest flight for the watch alias, and watch Serial `FlightInfoManager` parse output or focused `logs/flight-downlink-*.log` evidence. The `/flycare` panel should show scheduled time plus `estimated_departure`, `status`, `delay_minutes`, and `delay_reason`; if it only shows Gate/Flight Time, rerun `npm test -- src/utils/flycare-flight.test.ts` and inspect `frontend/src/utils/flycare-flight.ts`.
+8. For flight sync, verify four points in order: backend MQTT status reports the expected broker from `/api/v1/data-reception/mqtt/status`, `POST /api/v1/flycare-admin/flight/publish` fan-out to canonical and alias topics, Mongo latest flight for the watch alias, and watch Serial `FlightInfoManager` parse output or focused `logs/flight-downlink-*.log` evidence. The `/flycare` panel should show scheduled time plus `estimated_departure`, `status`, `delay_minutes`, and `delay_reason`; a new flight document should open the flight update drawer before staff confirmation. If it only shows Gate/Flight Time, rerun `npm test -- src/utils/flycare-flight.test.ts` and inspect `frontend/src/utils/flycare-flight.ts`.
 9. For stale UI rows, select the live `NG WAI LUN` row in `/flycare`. Older seeded users can still show stale cards because their historical Mongo documents remain in the local database.

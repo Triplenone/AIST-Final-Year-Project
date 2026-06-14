@@ -10,10 +10,10 @@ type FallAlertModalProps = {
 };
 
 function formatKinds(kinds: FallAlertKind[], translate: (key: string) => string): string {
-  if (!kinds.length) return '—';
+  if (!kinds.length) return 'Unknown';
   return kinds
     .map((k) => (k === 'sos' ? translate('fallAlert.kindSos') : translate('fallAlert.kindFall')))
-    .join(' · ');
+    .join(' / ');
 }
 
 export function FallAlertModal({ items, onGoToEvents, onClose }: FallAlertModalProps) {
@@ -52,8 +52,13 @@ export function FallAlertModal({ items, onGoToEvents, onClose }: FallAlertModalP
           <h2 id="fall-alert-title" className="fall-alert-modal__title">
             {t('fallAlert.message')}
           </h2>
-          <button type="button" className="fall-alert-modal__icon-close" onClick={onClose} aria-label={t('fallAlert.close')}>
-            ×
+          <button
+            type="button"
+            className="fall-alert-modal__icon-close"
+            onClick={onClose}
+            aria-label={t('fallAlert.close')}
+          >
+            X
           </button>
         </header>
 

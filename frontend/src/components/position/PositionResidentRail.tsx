@@ -26,6 +26,8 @@ type PositionResidentRailProps = {
   mapProfile?: PositionMapProfile;
 };
 
+const FLYCARE_RAIL_TONE_COUNT = 6;
+
 const truthLabelKey: Record<PositionResidentViewModel['truthState'], string> = {
   online: 'position.truth.online',
   stale: 'position.truth.stale',
@@ -87,6 +89,14 @@ function getOperatorError(
   }
 
   return error;
+}
+
+function getFlyCareRailToneIndex(value: string): number {
+  let hash = 0;
+  for (const char of value) {
+    hash = (hash * 31 + char.charCodeAt(0)) % FLYCARE_RAIL_TONE_COUNT;
+  }
+  return Math.abs(hash);
 }
 
 export function PositionResidentRail({
@@ -199,12 +209,16 @@ export function PositionResidentRail({
                     ? ' position-resident-rail__item--selected-warning'
                     : ' position-resident-rail__item--selected-stable'
                 : '';
+              const flyCareToneClass =
+                mapProfile === 'flycare'
+                  ? ` position-resident-rail__item--flycare-tone-${getFlyCareRailToneIndex(resident.deviceId || resident.residentId)}`
+                  : '';
 
               return (
                 <li key={resident.residentId}>
                   <button
                     type="button"
-                    className={`position-resident-rail__item position-resident-rail__item--compact${isSelected ? ' position-resident-rail__item--selected' : ''}${selectedToneClass}`}
+                    className={`position-resident-rail__item position-resident-rail__item--compact${isSelected ? ' position-resident-rail__item--selected' : ''}${selectedToneClass}${flyCareToneClass}`}
                     aria-pressed={isSelected}
                     onClick={() => onSelectResident(resident.residentId)}
                   >

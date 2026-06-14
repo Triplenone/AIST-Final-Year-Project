@@ -542,6 +542,7 @@ function getCoords(
   key: 'current' | 'target'
 ): PositionPoint | null {
   const location = getSectionData(data, 'location');
+  if (key === 'target' && !isNavigationTargetActive(location)) return null;
   let x = toFiniteNumber(getNestedValue(location, `${key}.x`));
   let y = toFiniteNumber(getNestedValue(location, `${key}.y`));
 
@@ -697,7 +698,13 @@ function getCurrentZoneName(data: MongoUpstreamLatest | MongoUpstreamHistoryDocu
 
 function getTargetZoneName(data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null): string | null {
   const location = getSectionData(data, 'location');
+  if (!isNavigationTargetActive(location)) return null;
   return normalizeText(getNestedValue(location, 'target.name'));
+}
+
+function isNavigationTargetActive(location: unknown): boolean {
+  const active = getNestedValue(location, 'target.active');
+  return active !== false && active !== 'false';
 }
 
 function getNavigationTargetMetric(
@@ -705,12 +712,14 @@ function getNavigationTargetMetric(
   key: 'distance' | 'eta'
 ): number | null {
   const location = getSectionData(data, 'location');
+  if (!isNavigationTargetActive(location)) return null;
   const value = toFiniteNumber(getNestedValue(location, `target.${key}`));
   return value != null && value >= 0 ? value : null;
 }
 
 function getNavigationTargetDirection(data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null): string | null {
   const location = getSectionData(data, 'location');
+  if (!isNavigationTargetActive(location)) return null;
   return normalizeText(getNestedValue(location, 'target.direction'));
 }
 

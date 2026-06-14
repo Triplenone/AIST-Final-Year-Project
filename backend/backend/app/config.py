@@ -74,7 +74,9 @@ class Settings(BaseSettings):
     MQTT_PORT: int = 1883
     MQTT_USER: str = ""
     MQTT_PASSWORD: str = ""
+    MQTT_TOPIC_ROOT: str = "smartwatch"
     FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE: str = "smartwatch/{device_id}/flight"
+    FLYCARE_LEGACY_FLIGHT_TOPIC: str = "flycare/flight"
 
     # MQTT / MongoDB string device_id -> MySQL device.device_id (optional override, merged after file)
     # Format: "ESP32_001:1,ESP32_002:2"

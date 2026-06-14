@@ -263,7 +263,7 @@ export const FlyCareAdmin = () => {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void runPublish({ publish_mqtt: true, save_mongo: false });
+            void runPublish({ publish_mqtt: true, save_mongo: true });
           }}
         >
           <fieldset className="flycare-admin-form__section">

@@ -287,7 +287,10 @@ export const mongoUpstreamApi = {
     api.get<MongoUpstreamLatest>('/mongo-upstream/latest', { params }),
   getLatestFlight: (deviceId?: string) =>
     api.get<FlightLatestResponse>('/mongo-upstream/flight/latest', {
-      params: deviceId ? { device_id: deviceId } : undefined,
+      params: {
+        ...(deviceId ? { device_id: deviceId } : {}),
+        _ts: Date.now(),
+      },
     }),
   getLatestValidLocation: (deviceId: string, params?: { scan_limit?: number }) =>
     api.get<MongoLatestValidLocationResponse>('/mongo-upstream/location/latest', {

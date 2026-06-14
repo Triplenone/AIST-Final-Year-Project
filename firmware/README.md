@@ -31,13 +31,41 @@ If Serial shows `auth=7 (WPA2/WPA3)` followed by disconnect reason `208 (ASSOC_C
 
 HTTP upload is disabled by default with `ENABLE_HTTP_UPLOAD 0` because local FlyCare currently receives watch telemetry through MQTT and `mongo-upstream`. To enable direct HTTP upload, run the backend on a LAN-reachable host, then set `ENABLE_HTTP_UPLOAD 1`.
 
-MQTT telemetry is sent to the same LAN broker used by the backend:
+MQTT telemetry is sent to the same broker used by the backend. Use the repo helper when the PC changes Wi-Fi or when switching between local LAN and cloud MQTT:
 
-```text
-192.168.0.203:1883
+```powershell
+cd E:\flycare
+
+# Use the current PC Wi-Fi IPv4 as the local broker/server endpoint.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 -Mode AutoLan
+
+# Use the PC as the fully offline local backend/MQTT host.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 -Mode OfflineLan
+
+# Use a public cloud MQTT broker for demos where the watch and PC are on different Wi-Fi networks.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 -Mode Cloud
 ```
 
-Primary watch topics use the `smartwatch/<device_id>/...` pattern. For the current ESP32-S3 watch this is expected to look like:
+Local LAN mode requires the watch and PC to be on the same SSID/subnet. If the PC is on `MILLION1` but the watch falls back to `Triple-None`, a broker on the PC is normally unreachable from the watch. Cloud MQTT mode works across different networks only when both sides have internet access. It uses a private demo topic root (`flycare-demo-20260614/smartwatch`) on the public broker so unrelated `smartwatch/...` retained messages are ignored. Use a private authenticated broker instead of the public demo broker for production.
+
+For the offline path, keep the PC and watch on the same local network. Firmware always tries `MILLION1` before `MILLION`, `MILLION 1`, and `Triple-None`; when MQTT connects it now prefers the broker configured for the connected SSID:
+
+```text
+MILLION1 / MILLION / MILLION 1 -> MQTT_BROKER_MILLION1
+Triple-None                   -> MQTT_BROKER_TRIPLE_NONE
+Fallback order                -> MQTT_BROKER, MQTT_BROKER_FALLBACK_1, MQTT_BROKER_FALLBACK_2
+```
+
+To make one firmware build work on both `MILLION1` and `Triple-None`, collect the PC IP on each SSID and write both broker hosts before upload:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 `
+  -Mode OfflineLan `
+  -Million1BrokerHost 172.20.10.3 `
+  -TripleNoneBrokerHost <pc-ip-when-connected-to-Triple-None>
+```
+
+Primary watch topics use the `<MQTT_TOPIC_ROOT>/<device_id>/...` pattern. In local mode the root is `smartwatch`; in Cloud mode the root is `flycare-demo-20260614/smartwatch`. For the current ESP32-S3 watch this is expected to look like in local mode:
 
 ```text
 smartwatch/ESP32_48CA43A42298/status
@@ -46,10 +74,10 @@ smartwatch/ESP32_48CA43A42298/heartbeat
 smartwatch/ESP32_48CA43A42298/sos
 ```
 
-Current local API path:
+Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:
 
 ```text
-http://192.168.0.203:8000/api/v1/data-reception/receive
+http://<pc-lan-ip>:8000/api/v1/data-reception/receive
 ```
 
 ## BLE positioning
@@ -124,6 +152,8 @@ PWR outside map       Keep the original screen on/off behavior
 
 Destination selection is map-scoped: PWR opens the picker only from the map page, SOS short click moves the highlighted destination while the picker is open, 5 seconds with no further picker input confirms the highlighted destination after at least one SOS picker click, and PWR cancels the picker without changing the active route. Once a destination is committed by the picker, serial command, or flight sync, any pending picker auto-confirm state is cleared so stale highlights cannot overwrite the active route. The SOS wheel/rotary is not used for FlyCare navigation.
 
+The destination picker fits labels by available pixel width rather than raw string length, so `Security Check` stays the same large size as the other standard destinations while longer labels still shrink safely when needed.
+
 Map display layout is intentionally bounded for the 240x310 active watch surface: the lower half uses a fixed left route card and a fixed right destination card, distance text has its own narrow column, and long places are compacted or split (`Customer Services` -> `Customer` / `Svc`, `Security Check` -> `Security` / `Check`) instead of overflowing. BLE jitter redraws are throttled so the map does not repaint on tiny RSSI-driven movement. `NAV_DISPLAY_INTERVAL` is 4 seconds, with immediate redraw only when position movement is meaningful.
 
 Flight JSON updates are connected to `FlightInfoManager`. When `boarding_gate` maps to a known destination, the same planner builds the active route:
@@ -141,7 +171,7 @@ You have arrived at Gate 10.
 ```
 
 If backend flight JSON says `Gate 11`, only Gate 11 can trigger the arrival reminder.
-Arrival popup uses the large dedicated `ARRIVED` layout, auto-closes after 5 seconds, and returns to the map page. Flight and arrival popups are rendered from a separate popup dirty flag so live BLE/MQTT updates do not repeatedly repaint the full popup surface.
+Arrival popup uses the large dedicated `ARRIVED` layout, auto-closes after 5 seconds, clears the active route plus `location.target.active`, and returns to the map page. Flight and arrival popups are rendered from a separate popup dirty flag so live BLE/MQTT updates do not repeatedly repaint the full popup surface.
 
 Flight display layout uses fixed destination/gate columns, a top status bar that stays above the flight title, and a bounded delay panel kept above the rounded bottom edge. Long airline, destination, gate, and delay reason text is fitted or wrapped inside its panel rather than drawing into the next column or off the bottom edge.
 

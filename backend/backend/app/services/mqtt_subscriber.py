@@ -18,21 +18,43 @@ from app.models.event import Event, EventStatus, EventType
 from app.services.mongo_raw_upstream import enrich_flight_downlink_payload, run_sync_save_raw_upstream
 
 # MQTT-topic：设备上行主题
-UPLINK_TOPICS = [
-    "smartwatch/+/status",
-    "smartwatch/+/location",
-    "smartwatch/+/sos",
-    "smartwatch/+/fall",
-    "smartwatch/+/door",
-    "smartwatch/+/light",
-    "smartwatch/+/log",
-    "smartwatch/+/heartbeat",
-    "smartwatch/+/vitals",
+UPLINK_SUFFIXES = [
+    "status",
+    "location",
+    "sos",
+    "fall",
+    "door",
+    "light",
+    "log",
+    "heartbeat",
+    "vitals",
 ]
 
 # Legacy 航班 loopback 主题；primary per-device 下行由 mqtt_publish.py 发布。
-FLIGHT_TOPIC = "flycare/flight"
-FLIGHT_DOWNLINK_TOPIC = "smartwatch/+/flight"
+FLIGHT_TOPIC = settings.FLYCARE_LEGACY_FLIGHT_TOPIC
+FLIGHT_DOWNLINK_TOPIC = settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE.format(device_id="+")
+
+
+def _topic_root() -> str:
+    return (settings.MQTT_TOPIC_ROOT or "smartwatch").strip("/")
+
+
+def _uplink_topic(suffix: str) -> str:
+    return f"{_topic_root()}/+/{suffix}"
+
+
+def _uplink_topics() -> list[str]:
+    return [_uplink_topic(suffix) for suffix in UPLINK_SUFFIXES]
+
+
+def _parse_device_topic(topic: str) -> tuple[str, str] | None:
+    root_parts = _topic_root().split("/")
+    parts = topic.split("/")
+    if len(parts) < len(root_parts) + 2:
+        return None
+    if parts[: len(root_parts)] != root_parts:
+        return None
+    return parts[len(root_parts)], parts[len(root_parts) + 1].lower()
 
 # topic 第三段后缀 -> 写入 Mongo 的 data_type
 SUFFIX_TO_DATA_TYPE = {
@@ -157,12 +179,12 @@ def _on_connect(client, userdata, flags, rc):
         print(f"[mqtt] connect failed rc={rc}")
         return
     print("[mqtt] connected")
-    for topic in UPLINK_TOPICS:
+    for topic in _uplink_topics():
         client.subscribe(topic)
     client.subscribe(FLIGHT_TOPIC)
     client.subscribe(FLIGHT_DOWNLINK_TOPIC)
     print(
-        f"[mqtt] subscribed topics={len(UPLINK_TOPICS)}+2 "
+        f"[mqtt] subscribed topics={len(UPLINK_SUFFIXES)}+2 "
         f"flight={FLIGHT_TOPIC} downlink={FLIGHT_DOWNLINK_TOPIC}"
     )
 
@@ -194,9 +216,9 @@ def _on_message(client, userdata, msg):
     if not isinstance(data, dict):
         data = {"payload": data}
 
-    parts = msg.topic.split("/")
-    if len(parts) >= 3 and parts[0] == "smartwatch" and parts[2].lower() == "flight":
-        device_id_from_topic = parts[1]
+    parsed_topic = _parse_device_topic(msg.topic)
+    if parsed_topic and parsed_topic[1] == "flight":
+        device_id_from_topic = parsed_topic[0]
         flight_doc = enrich_flight_downlink_payload(data, device_id_from_topic)
         mongo_result = run_sync_save_raw_upstream(flight_doc)
         print(
@@ -216,10 +238,9 @@ def _on_message(client, userdata, msg):
         )
         return
 
-    # 设备上行主题：smartwatch/<device_id>/<suffix>
-    if len(parts) >= 3:
-        device_id_from_topic = parts[1]
-        suffix = parts[2].lower()
+    # 设备上行主题：<MQTT_TOPIC_ROOT>/<device_id>/<suffix>
+    if parsed_topic:
+        device_id_from_topic, suffix = parsed_topic
         mapped = settings.device_id_map.get(device_id_from_topic)
         # 双写策略：保留外部设备 ID 到 `device_id`，并额外写入 `mysql_device_id`。
         data["device_id"] = device_id_from_topic
@@ -320,5 +341,5 @@ def get_mqtt_status():
         "connected": connected,
         "broker": settings.MQTT_BROKER,
         "port": settings.MQTT_PORT,
-        "subscribed_topics": UPLINK_TOPICS.copy() + [FLIGHT_TOPIC, FLIGHT_DOWNLINK_TOPIC],
+        "subscribed_topics": _uplink_topics() + [FLIGHT_TOPIC, FLIGHT_DOWNLINK_TOPIC],
     }

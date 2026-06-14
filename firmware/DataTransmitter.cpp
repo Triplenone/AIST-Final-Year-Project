@@ -6,6 +6,59 @@
 #include <esp_system.h>
 #include <ArduinoJson.h>
 
+static void addBrokerCandidate(String brokers[], int& count, int maxCount, const String& host) {
+    String clean = host;
+    clean.trim();
+    if (clean.length() == 0) return;
+
+    for (int i = 0; i < count; i++) {
+        if (brokers[i] == clean) return;
+    }
+    if (count < maxCount) {
+        brokers[count++] = clean;
+    }
+}
+
+static void addBrokerCandidate(String brokers[], int& count, int maxCount, const char* host) {
+    if (!host) return;
+    addBrokerCandidate(brokers, count, maxCount, String(host));
+}
+
+static void buildMqttBrokerCandidates(String brokers[], int& count, int maxCount, const String& configuredServer) {
+    count = 0;
+    String ssid = WiFi.SSID();
+
+#if defined(MQTT_BROKER_MILLION1)
+#if defined(WIFI_SSID)
+    if (ssid == String(WIFI_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#if defined(WIFI_ALT1_SSID)
+    if (ssid == String(WIFI_ALT1_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#if defined(WIFI_ALT2_SSID)
+    if (ssid == String(WIFI_ALT2_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#endif
+
+#if defined(WIFI_FALLBACK_SSID) && defined(MQTT_BROKER_TRIPLE_NONE)
+    if (ssid == String(WIFI_FALLBACK_SSID)) addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_TRIPLE_NONE);
+#endif
+
+    addBrokerCandidate(brokers, count, maxCount, configuredServer);
+#if defined(MQTT_BROKER_MILLION1)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_MILLION1);
+#endif
+#if defined(MQTT_BROKER_TRIPLE_NONE)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_TRIPLE_NONE);
+#endif
+#if defined(MQTT_BROKER_FALLBACK_1)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_FALLBACK_1);
+#endif
+#if defined(MQTT_BROKER_FALLBACK_2)
+    addBrokerCandidate(brokers, count, maxCount, MQTT_BROKER_FALLBACK_2);
+#endif
+}
+
 // ================ 构造函数 ================
 // 构造函数中修复 MAC 地址获取
 DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
@@ -99,6 +152,14 @@ bool DataTransmitter::ensureMQTTConnected() {
     if (!network || !network->isConnected()) return false;
     
     if (mqttClient.connected()) return true;
+
+    String brokerCandidates[6];
+    int brokerCount = 0;
+    buildMqttBrokerCandidates(brokerCandidates, brokerCount, 6, mqttServer);
+    if (brokerCount <= 0) return false;
+    Serial.printf("[MQTT] SSID=%s broker candidates=%d\n", WiFi.SSID().c_str(), brokerCount);
+    mqttServer = brokerCandidates[0];
+    mqttClient.setServer(mqttServer.c_str(), mqttPort);
     
     Serial.printf("连接 MQTT 服务器 %s:%d...\n", mqttServer.c_str(), mqttPort);
     
@@ -106,17 +167,40 @@ bool DataTransmitter::ensureMQTTConnected() {
     mqttClient.setBufferSize(10240);  // 10KB 缓冲区
     
     mqttClient.setKeepAlive(30);       // 30秒保活
+    mqttClient.setSocketTimeout(4);
     
     String clientId = "ESP32_" + String(random(0xffff), HEX) + "_" + String(getCurrentTimestamp() % 10000);
     
-    bool connected = mqttClient.connect(clientId.c_str());
+    bool connected = mqttUser.length() > 0
+        ? mqttClient.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
+        : mqttClient.connect(clientId.c_str());
     
     if (connected) {
         Serial.println("✅ MQTT 连接成功");
-        String subscribeTopic = "smartwatch/" + device_id + "/#";
+        String subscribeTopic = String(MQTT_TOPIC_PREFIX) + "/" + device_id + "/#";
         mqttClient.subscribe(subscribeTopic.c_str());
         return true;
     } else {
+        Serial.printf("[MQTT] connect failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
+        for (int i = 1; i < brokerCount; i++) {
+            mqttServer = brokerCandidates[i];
+            mqttClient.setServer(mqttServer.c_str(), mqttPort);
+            Serial.printf("[MQTT] fallback connecting %s:%d\n", mqttServer.c_str(), mqttPort);
+
+            String fallbackClientId = "ESP32_" + String(random(0xffff), HEX) + "_" + String(getCurrentTimestamp() % 10000);
+            bool fallbackConnected = mqttUser.length() > 0
+                ? mqttClient.connect(fallbackClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
+                : mqttClient.connect(fallbackClientId.c_str());
+
+            if (fallbackConnected) {
+                Serial.printf("[MQTT] connected broker=%s\n", mqttServer.c_str());
+                String subscribeTopic = String(MQTT_TOPIC_PREFIX) + "/" + device_id + "/#";
+                mqttClient.subscribe(subscribeTopic.c_str());
+                return true;
+            }
+
+            Serial.printf("[MQTT] fallback failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
+        }
         Serial.printf("❌ MQTT 连接失败, 状态码: %d\n", mqttClient.state());
         return false;
     }
@@ -300,11 +384,14 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
 // ================ 获取导航 JSON ================
 String DataTransmitter::getNavigationJSON() {
     String json = "{";
-    json += "\"x\":" + String(target_x, 2) + ",";
-    json += "\"y\":" + String(target_y, 2) + ",";
-    json += "\"name\":\"" + target_name + "\",";
+    json += "\"active\":";
+    json += navigation_active ? "true" : "false";
+    json += ",";
     
     if (navigation_active && ble_location) {
+        json += "\"x\":" + String(target_x, 2) + ",";
+        json += "\"y\":" + String(target_y, 2) + ",";
+        json += "\"name\":\"" + target_name + "\",";
         float distance = calculateDistanceToTarget();
         String direction = calculateDirectionToTarget();
         float bearing = atan2(target_y - ble_location->getLocation().y, 
@@ -315,6 +402,7 @@ String DataTransmitter::getNavigationJSON() {
         json += "\"bearing\":" + String(bearing, 1) + ",";
         json += "\"eta\":" + String((int)(distance / 1.4));
     } else {
+        json += "\"x\":null,\"y\":null,\"name\":\"\",";
         json += "\"distance\":0.0,\"direction\":\"none\",\"bearing\":0,\"eta\":0";
     }
     
@@ -358,6 +446,9 @@ String DataTransmitter::getAllDataJSON() {
     
     // target location
     json += "\"target\":{";
+    json += "\"active\":";
+    json += navigation_active ? "true" : "false";
+    json += ",";
     json += "\"x\":" + String(target_x, 2) + ",";
     json += "\"y\":" + String(target_y, 2) + ",";
     json += "\"name\":\"" + target_name + "\",";
@@ -565,6 +656,7 @@ void DataTransmitter::update() {
 
 // 计算到目标的距离
 float DataTransmitter::calculateDistanceToTarget() {
+    if (!navigation_active) return 0.0f;
     float dx = target_x - current_x;
     float dy = target_y - current_y;
     return sqrt(dx*dx + dy*dy);
@@ -572,6 +664,7 @@ float DataTransmitter::calculateDistanceToTarget() {
 
 // 计算到目标的方向
 String DataTransmitter::calculateDirectionToTarget() {
+    if (!navigation_active) return "none";
     float dx = target_x - current_x;
     float dy = target_y - current_y;
     float angle = atan2(dy, dx) * 180 / PI;
@@ -740,6 +833,11 @@ void DataTransmitter::setTargetPosition(float x, float y, const String& name) {
 // ================ 设置导航激活状态 ================
 void DataTransmitter::setNavigationActive(bool active) {
     navigation_active = active;
+    if (!active) {
+        target_x = 0.0f;
+        target_y = 0.0f;
+        target_name = "";
+    }
     Serial.printf("导航状态: %s\n", active ? "开启" : "关闭");
 }
 

@@ -1,22 +1,25 @@
 // MQTT 主题定义
-#define MQTT_TOPIC_PREFIX "smartwatch"
-#define MQTT_TOPIC_STATUS "smartwatch/%s/status"        // 上行 - 状态更新
-#define MQTT_TOPIC_LOCATION "smartwatch/%s/location"    // 上行 - 位置更新
-#define MQTT_TOPIC_SOS "smartwatch/%s/sos"              // 上行 - SOS
-#define MQTT_TOPIC_FALL "smartwatch/%s/fall"            // 上行 - 跌倒
-#define MQTT_TOPIC_DOOR "smartwatch/%s/door"            // 上行 - 门禁
-#define MQTT_TOPIC_LIGHT "smartwatch/%s/light"          // 上行 - 灯光
-#define MQTT_TOPIC_LOG "smartwatch/%s/log"              // 上行 - 日志
-#define MQTT_TOPIC_HEARTBEAT "smartwatch/%s/heartbeat"  // 上行 - 心跳
+#ifndef MQTT_TOPIC_ROOT
+#define MQTT_TOPIC_ROOT "smartwatch"
+#endif
+#define MQTT_TOPIC_PREFIX MQTT_TOPIC_ROOT
+#define MQTT_TOPIC_STATUS MQTT_TOPIC_PREFIX "/%s/status"        // 上行 - 状态更新
+#define MQTT_TOPIC_LOCATION MQTT_TOPIC_PREFIX "/%s/location"    // 上行 - 位置更新
+#define MQTT_TOPIC_SOS MQTT_TOPIC_PREFIX "/%s/sos"              // 上行 - SOS
+#define MQTT_TOPIC_FALL MQTT_TOPIC_PREFIX "/%s/fall"            // 上行 - 跌倒
+#define MQTT_TOPIC_DOOR MQTT_TOPIC_PREFIX "/%s/door"            // 上行 - 门禁
+#define MQTT_TOPIC_LIGHT MQTT_TOPIC_PREFIX "/%s/light"          // 上行 - 灯光
+#define MQTT_TOPIC_LOG MQTT_TOPIC_PREFIX "/%s/log"              // 上行 - 日志
+#define MQTT_TOPIC_HEARTBEAT MQTT_TOPIC_PREFIX "/%s/heartbeat"  // 上行 - 心跳
 
-#define MQTT_TOPIC_NAVIGATION "smartwatch/%s/navigation"    // 下行 - 导航
-#define MQTT_TOPIC_FLIGHT "smartwatch/%s/flight"            // 下行 - 航班
+#define MQTT_TOPIC_NAVIGATION MQTT_TOPIC_PREFIX "/%s/navigation"    // 下行 - 导航
+#define MQTT_TOPIC_FLIGHT MQTT_TOPIC_PREFIX "/%s/flight"            // 下行 - 航班
 // Payload: {"command_type":"flight_info","flight_info":{"flight_number":"CA1234","departure_airport":"HKG","destination":"Beijing","seat_number":"21C",...}}
-#define MQTT_TOPIC_ALERT "smartwatch/%s/alert"              // 下行 - 警报
-#define MQTT_TOPIC_VOICE "smartwatch/%s/voice"              // 下行 - 语音
-#define MQTT_TOPIC_DOOR_CTRL "smartwatch/%s/door_control"   // 下行 - 门禁控制
-#define MQTT_TOPIC_LIGHT_CTRL "smartwatch/%s/light_control" // 下行 - 灯光控制
-#define MQTT_TOPIC_SYSTEM "smartwatch/%s/system_command"    // 下行 - 系统命令
-#define MQTT_TOPIC_CONFIG "smartwatch/%s/config"             // 下行 - 配置更新
-#define MQTT_TOPIC_HEARTBEAT_RESP "smartwatch/%s/heartbeat"  // 下行 - 心跳响应
-#define MQTT_TOPIC_TEXT "smartwatch/%s/text"                 // 下行 - 文本消息
+#define MQTT_TOPIC_ALERT MQTT_TOPIC_PREFIX "/%s/alert"              // 下行 - 警报
+#define MQTT_TOPIC_VOICE MQTT_TOPIC_PREFIX "/%s/voice"              // 下行 - 语音
+#define MQTT_TOPIC_DOOR_CTRL MQTT_TOPIC_PREFIX "/%s/door_control"   // 下行 - 门禁控制
+#define MQTT_TOPIC_LIGHT_CTRL MQTT_TOPIC_PREFIX "/%s/light_control" // 下行 - 灯光控制
+#define MQTT_TOPIC_SYSTEM MQTT_TOPIC_PREFIX "/%s/system_command"    // 下行 - 系统命令
+#define MQTT_TOPIC_CONFIG MQTT_TOPIC_PREFIX "/%s/config"             // 下行 - 配置更新
+#define MQTT_TOPIC_HEARTBEAT_RESP MQTT_TOPIC_PREFIX "/%s/heartbeat"  // 下行 - 心跳响应
+#define MQTT_TOPIC_TEXT MQTT_TOPIC_PREFIX "/%s/text"                 // 下行 - 文本消息

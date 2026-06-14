@@ -72,10 +72,21 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   const flightRequestSequenceRef = useRef(0);
   const lastConfirmedFlightIdRef = useRef<string | null>(null);
   const pendingFlightIdRef = useRef<string | null>(null);
+  const dismissedFlightIdRef = useRef<string | null>(null);
+  const flightInfoRef = useRef<ResolvedFlightInfo | null>(null);
+  const pendingFlightUpdateRef = useRef<ResolvedFlightInfo | null>(null);
   const [flightInfo, setFlightInfo] = useState<ResolvedFlightInfo | null>(null);
   const [pendingFlightUpdate, setPendingFlightUpdate] = useState<ResolvedFlightInfo | null>(null);
   const [showFlightUpdateDrawer, setShowFlightUpdateDrawer] = useState(false);
   const [flyCareAlertEvents, setFlyCareAlertEvents] = useState<BackendEvent[]>([]);
+
+  useEffect(() => {
+    flightInfoRef.current = flightInfo;
+  }, [flightInfo]);
+
+  useEffect(() => {
+    pendingFlightUpdateRef.current = pendingFlightUpdate;
+  }, [pendingFlightUpdate]);
 
   const refreshSnapshot = useCallback(async () => {
     setLoading(true);
@@ -146,6 +157,18 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     }
   }, [selectedResidentId, viewModel.selectedResidentId]);
 
+  const selectedFlightDeviceId = viewModel.selectedResident?.deviceId ?? null;
+  const selectedFlightResident = useMemo(
+    () =>
+      selectedFlightDeviceId
+        ? {
+            deviceId: selectedFlightDeviceId,
+            displayName: viewModel.selectedResident?.displayName
+          }
+        : null,
+    [selectedFlightDeviceId, viewModel.selectedResident?.displayName]
+  );
+
   useEffect(() => {
     const deviceId = viewModel.selectedResident?.deviceId ?? null;
     if (!deviceId) {
@@ -171,11 +194,17 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   }, [snapshot?.fetchedAt, viewModel.selectedResident?.deviceId]);
 
   const fetchLatestFlight = useCallback(async () => {
-    const deviceId = viewModel.selectedResident?.deviceId;
+    const deviceId = selectedFlightDeviceId;
     if (!deviceId) {
       flightRequestSequenceRef.current += 1;
+      flightInfoRef.current = null;
+      pendingFlightUpdateRef.current = null;
       setFlightInfo(null);
+      setPendingFlightUpdate(null);
+      setShowFlightUpdateDrawer(false);
       lastConfirmedFlightIdRef.current = null;
+      pendingFlightIdRef.current = null;
+      dismissedFlightIdRef.current = null;
       return;
     }
     const requestId = flightRequestSequenceRef.current + 1;
@@ -186,32 +215,49 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
       const expectedMysqlDeviceId = resolveMysqlDeviceIdForMongoDevice(deviceId);
       const flightPayload = buildFlightInfoFromLatestResponse(res, deviceId, {
         expectedMysqlDeviceId,
-        selectedResident: viewModel.selectedResident,
+        selectedResident: selectedFlightResident,
         registry
       });
       if (!flightPayload) {
+        flightInfoRef.current = null;
+        pendingFlightUpdateRef.current = null;
         setFlightInfo(null);
+        setPendingFlightUpdate(null);
+        setShowFlightUpdateDrawer(false);
         lastConfirmedFlightIdRef.current = null;
+        pendingFlightIdRef.current = null;
+        dismissedFlightIdRef.current = null;
         return;
       }
       const docId = res._id ?? null;
       if (docId === lastConfirmedFlightIdRef.current) {
         return;
       }
-      if (flightInfo == null) {
-        setFlightInfo(flightPayload);
-        lastConfirmedFlightIdRef.current = docId;
+      if (docId != null && docId === pendingFlightIdRef.current) {
         return;
       }
+      if (docId != null && docId === dismissedFlightIdRef.current) {
+        return;
+      }
+      if (flightInfoRef.current == null) {
+        flightInfoRef.current = flightPayload;
+        setFlightInfo(flightPayload);
+        lastConfirmedFlightIdRef.current = docId;
+        dismissedFlightIdRef.current = null;
+        return;
+      }
+      pendingFlightUpdateRef.current = flightPayload;
       setPendingFlightUpdate(flightPayload);
       pendingFlightIdRef.current = docId;
       setShowFlightUpdateDrawer(true);
     } catch {
       if (flightRequestSequenceRef.current !== requestId) return;
-      setFlightInfo(null);
-      lastConfirmedFlightIdRef.current = null;
+      if (flightInfoRef.current == null) {
+        setFlightInfo(null);
+        lastConfirmedFlightIdRef.current = null;
+      }
     }
-  }, [flightInfo, registry, viewModel.selectedResident, viewModel.selectedResident?.deviceId]);
+  }, [registry, selectedFlightDeviceId, selectedFlightResident]);
 
   useEffect(() => {
     void fetchLatestFlight();
@@ -317,10 +363,13 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     flightRequestSequenceRef.current += 1;
     setShowAllOnMap(false);
     setSelectedResidentId(residentId);
+    flightInfoRef.current = null;
+    pendingFlightUpdateRef.current = null;
     setFlightInfo(null);
     setPendingFlightUpdate(null);
     lastConfirmedFlightIdRef.current = null;
     pendingFlightIdRef.current = null;
+    dismissedFlightIdRef.current = null;
     setShowFlightUpdateDrawer(false);
   }, []);
 
@@ -329,19 +378,29 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   }, []);
 
   const handleConfirmFlightUpdate = useCallback(() => {
-    if (pendingFlightUpdate) {
-      setFlightInfo({ ...pendingFlightUpdate });
+    const nextFlight = pendingFlightUpdateRef.current ?? pendingFlightUpdate;
+    if (nextFlight) {
+      const confirmed = { ...nextFlight };
+      flightInfoRef.current = confirmed;
+      setFlightInfo(confirmed);
       if (pendingFlightIdRef.current != null) {
         lastConfirmedFlightIdRef.current = pendingFlightIdRef.current;
       }
+      pendingFlightUpdateRef.current = null;
       setPendingFlightUpdate(null);
+      dismissedFlightIdRef.current = null;
       pendingFlightIdRef.current = null;
       setShowFlightUpdateDrawer(false);
     }
   }, [pendingFlightUpdate]);
 
   const handleCloseFlightUpdateDrawer = useCallback(() => {
+    if (pendingFlightIdRef.current != null) {
+      dismissedFlightIdRef.current = pendingFlightIdRef.current;
+    }
+    pendingFlightUpdateRef.current = null;
     setPendingFlightUpdate(null);
+    pendingFlightIdRef.current = null;
     setShowFlightUpdateDrawer(false);
   }, []);
 

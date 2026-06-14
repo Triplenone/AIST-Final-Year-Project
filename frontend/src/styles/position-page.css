@@ -892,6 +892,10 @@
   text-overflow: ellipsis;
   pointer-events: auto;
   transform: translateY(-50%);
+  border: 1px solid var(--flycare-watch-tone-border, rgba(255, 255, 255, 0.18));
+  box-shadow:
+    inset 3px 0 0 var(--flycare-watch-tone, #16a34a),
+    0 8px 18px rgba(15, 23, 42, 0.18);
 }
 
 .flycare-map-stage__pin--label-right .position-map-stage__pin-label {
@@ -910,11 +914,64 @@
 }
 
 .flycare-map-stage__pin .position-map-stage__pin-dot--normal {
-  background: #16a34a;
+  background: var(--flycare-watch-tone, #16a34a);
   opacity: 1;
   box-shadow:
     0 0 0 3px rgba(255, 255, 255, 0.94),
-    0 0 0 7px rgba(22, 163, 74, 0.2);
+    0 0 0 7px var(--flycare-watch-tone-ring, rgba(22, 163, 74, 0.2));
+}
+
+.flycare-map-stage__pin--tone-0,
+.position-resident-rail__item--flycare-tone-0 {
+  --flycare-watch-tone: #0ea5e9;
+  --flycare-watch-tone-ring: rgba(14, 165, 233, 0.22);
+  --flycare-watch-tone-border: rgba(14, 165, 233, 0.44);
+}
+
+.flycare-map-stage__pin--tone-1,
+.position-resident-rail__item--flycare-tone-1 {
+  --flycare-watch-tone: #14b8a6;
+  --flycare-watch-tone-ring: rgba(20, 184, 166, 0.22);
+  --flycare-watch-tone-border: rgba(20, 184, 166, 0.44);
+}
+
+.flycare-map-stage__pin--tone-2,
+.position-resident-rail__item--flycare-tone-2 {
+  --flycare-watch-tone: #f59e0b;
+  --flycare-watch-tone-ring: rgba(245, 158, 11, 0.22);
+  --flycare-watch-tone-border: rgba(245, 158, 11, 0.46);
+}
+
+.flycare-map-stage__pin--tone-3,
+.position-resident-rail__item--flycare-tone-3 {
+  --flycare-watch-tone: #8b5cf6;
+  --flycare-watch-tone-ring: rgba(139, 92, 246, 0.22);
+  --flycare-watch-tone-border: rgba(139, 92, 246, 0.44);
+}
+
+.flycare-map-stage__pin--tone-4,
+.position-resident-rail__item--flycare-tone-4 {
+  --flycare-watch-tone: #f43f5e;
+  --flycare-watch-tone-ring: rgba(244, 63, 94, 0.2);
+  --flycare-watch-tone-border: rgba(244, 63, 94, 0.42);
+}
+
+.flycare-map-stage__pin--tone-5,
+.position-resident-rail__item--flycare-tone-5 {
+  --flycare-watch-tone: #84cc16;
+  --flycare-watch-tone-ring: rgba(132, 204, 22, 0.2);
+  --flycare-watch-tone-border: rgba(132, 204, 22, 0.42);
+}
+
+.position-resident-rail__item--flycare-tone-0::before,
+.position-resident-rail__item--flycare-tone-1::before,
+.position-resident-rail__item--flycare-tone-2::before,
+.position-resident-rail__item--flycare-tone-3::before,
+.position-resident-rail__item--flycare-tone-4::before,
+.position-resident-rail__item--flycare-tone-5::before {
+  background: var(--flycare-watch-tone);
+  box-shadow: 0 0 0 0.16rem var(--flycare-watch-tone-ring);
+  opacity: 0.95;
 }
 
 .position-map-stage__pin--alert {
