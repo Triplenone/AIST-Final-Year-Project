@@ -113,7 +113,7 @@ export async function fetchFallAlertBackendLookups(
   }
 }
 
-/** 定位页：从当前触发 SOS / 确认跌倒 的住民视图构建弹窗行 */
+/** Position page: builds alert modal rows from current SOS or confirmed fall passenger views. */
 export function buildFallAlertRowsFromPositionResidents(
   residents: PositionResidentViewModel[],
   t: (key: string, opts?: Record<string, unknown>) => string,

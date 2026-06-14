@@ -98,7 +98,7 @@ function getZoneLabel(
   t: (key: string, options?: Record<string, unknown>) => string,
   mapProfile: PositionMapProfile
 ): string {
-  if (!resident) return t('position.noSelection', { defaultValue: 'No resident selected' });
+  if (!resident) return t('position.noSelection', { defaultValue: 'No passenger selected' });
   return getPositionZoneDisplayForResident(resident, t, mapProfile);
 }
 
@@ -108,7 +108,7 @@ function getOperatorError(
 ): string {
   if (!error || error.toLowerCase().includes('not found')) {
     return t('position.selectedResidentUnavailable', {
-      defaultValue: 'Selected resident snapshot unavailable.'
+      defaultValue: 'Selected passenger snapshot unavailable.'
     });
   }
   return error;
@@ -132,7 +132,7 @@ export function PositionSummaryBar({
         label: t('position.liveStatus', { defaultValue: 'Live status' }),
         value: resident
           ? t(truthLabelKey[resident.truthState], { defaultValue: truthDefaultLabel[resident.truthState] })
-          : t('position.noSelection', { defaultValue: 'No resident selected' }),
+          : t('position.noSelection', { defaultValue: 'No passenger selected' }),
         toneClass: resident ? `position-state-pill position-state-pill--${resident.truthState}` : 'position-state-pill position-state-pill--offline'
       },
       {
@@ -213,12 +213,12 @@ export function PositionSummaryBar({
     >
       <div className="position-summary-bar__identity">
         <p className="position-command-center__eyebrow">
-          {t('position.summaryEyebrow', { defaultValue: 'Selected resident' })}
+          {t('position.summaryEyebrow', { defaultValue: 'Selected passenger' })}
         </p>
-        <h1>{resident?.displayName ?? t('position.noSelection', { defaultValue: 'No resident selected' })}</h1>
+        <h1>{resident?.displayName ?? t('position.noSelection', { defaultValue: 'No passenger selected' })}</h1>
         <p className="position-command-center__muted">
           {surfaceState === 'loading'
-            ? t('position.loadingResidentContext', { defaultValue: 'Loading resident context...' })
+            ? t('position.loadingResidentContext', { defaultValue: 'Loading passenger context...' })
             : t('position.snapshotFetchedAt', {
                 defaultValue: `Snapshot fetched ${formatTimestamp(fetchedAt, locale)}`
               })}
@@ -228,29 +228,29 @@ export function PositionSummaryBar({
       {surfaceState === 'partial-error' ? (
         <p className="position-command-center__notice position-command-center__notice--warning">
           {t('position.partialResidentFailure', {
-            defaultValue: 'Some resident snapshots did not refresh.'
+            defaultValue: 'Some passenger snapshots did not refresh.'
           })}
         </p>
       ) : null}
 
       {surfaceState === 'error' ? (
         <div className="position-command-center__state-card position-command-center__state-card--error">
-          <strong>{t('position.selectedResidentUnavailable', { defaultValue: 'Selected resident snapshot unavailable.' })}</strong>
+          <strong>{t('position.selectedResidentUnavailable', { defaultValue: 'Selected passenger snapshot unavailable.' })}</strong>
           <p>{getOperatorError(recordError, t)}</p>
         </div>
       ) : null}
 
       {surfaceState === 'loading' ? (
         <div className="position-command-center__state-card position-command-center__state-card--loading">
-          <strong>{t('position.loadingResidentContext', { defaultValue: 'Loading resident context...' })}</strong>
+          <strong>{t('position.loadingResidentContext', { defaultValue: 'Loading passenger context...' })}</strong>
           <p>{t('position.loadingResidentContextHint', { defaultValue: 'Status, risk, and freshness are pending from upstream.' })}</p>
         </div>
       ) : null}
 
       {surfaceState === 'empty' ? (
         <div className="position-command-center__state-card">
-          <strong>{t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
-          <p>{t('position.noSelectionHint', { defaultValue: 'Choose a resident from the rail to inspect Position context.' })}</p>
+          <strong>{t('position.noSelection', { defaultValue: 'No passenger selected' })}</strong>
+          <p>{t('position.noSelectionHint', { defaultValue: 'Choose a passenger from the rail to inspect Position context.' })}</p>
         </div>
       ) : null}
 

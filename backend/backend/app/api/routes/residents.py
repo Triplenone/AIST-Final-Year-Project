@@ -1,5 +1,5 @@
 """
-住民API路由（聚合User/Event/Device数据）
+乘客API路由（聚合User/Event/Device数据）
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ from app.schemas.resident import ResidentResponse, ResidentVitals
 from app.schemas.device_data_log import DeviceDataLogResponse
 from app.services.mongo_resident_sensor_vitals import load_mongo_sensor_vitals_for_users
 from app.services.mongo_raw_upstream import get_sync_mongo_db
-from app.services.elderly_device_queries import devices_by_elderly_user_ids
+from app.services.passenger_device_queries import devices_by_passenger_user_ids
 
 router = APIRouter()
 
@@ -107,7 +107,7 @@ def load_mongo_latest_locations_for_users(db: Session, user_ids: List[int]) -> D
     if not user_ids:
         return {}
 
-    devices_per_user = devices_by_elderly_user_ids(db, user_ids)
+    devices_per_user = devices_by_passenger_user_ids(db, user_ids)
     if not any(devices_per_user.values()):
         return {}
 
@@ -222,7 +222,7 @@ def _apply_mongo_sensor_vitals(
 
 
 def calculate_resident_status(db: Session, user_id: int) -> str:
-    """根据最新事件计算住民状态"""
+    """根据最新事件计算乘客状态"""
     latest_event = db.query(Event).filter(
         Event.related_user_id == user_id
     ).order_by(Event.event_timestamp.desc()).first()
@@ -303,7 +303,7 @@ def get_last_seen_info(db: Session, user_id: int) -> Tuple[Optional[str], Option
 
 
 def get_resident_room(db: Session, user_id: int) -> str:
-    """获取住民房间（从最新位置或默认位置）"""
+    """获取乘客房间（从最新位置或默认位置）"""
     _, last_seen_location = get_last_seen_info(db, user_id)
     if last_seen_location:
         return last_seen_location
@@ -326,7 +326,7 @@ def get_residents(
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db)
 ):
-    """获取住民列表（聚合User/Event/Device数据）"""
+    """获取乘客列表（聚合User/Event/Device数据）"""
     try:
         # 只获取elderly角色的用户
         users = db.query(User).filter(
@@ -631,11 +631,11 @@ def get_residents(
 
 @router.get("/{resident_id}", response_model=ResidentResponse)
 def get_resident(resident_id: str, db: Session = Depends(get_db)):
-    """根据ID获取住民详情"""
+    """根据ID获取乘客详情"""
     try:
         user_id = int(resident_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="无效的住民ID")
+        raise HTTPException(status_code=400, detail="无效的乘客ID")
     
     user = db.query(User).filter(
         User.user_id == user_id,
@@ -643,7 +643,7 @@ def get_resident(resident_id: str, db: Session = Depends(get_db)):
     ).first()
     
     if not user:
-        raise HTTPException(status_code=404, detail="住民不存在")
+        raise HTTPException(status_code=404, detail="乘客不存在")
     
     status = calculate_resident_status(db, user.user_id)
     vitals = get_resident_vitals(db, user.user_id)
@@ -779,27 +779,27 @@ def get_resident_device_data_logs(
     db: Session = Depends(get_db)
 ):
     """
-    获取住民关联设备的数据日志
+    获取乘客关联设备的数据日志
     
-    - **resident_id**: 住民ID
+    - **resident_id**: 乘客ID
     - **skip**: 跳过记录数（分页）
     - **limit**: 返回记录数（分页）
     """
     try:
         user_id = int(resident_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="无效的住民ID")
+        raise HTTPException(status_code=400, detail="无效的乘客ID")
     
-    # 验证住民是否存在
+    # 验证乘客是否存在
     user = db.query(User).filter(
         User.user_id == user_id,
         User.role_type == 'elderly'
     ).first()
     
     if not user:
-        raise HTTPException(status_code=404, detail="住民不存在")
+        raise HTTPException(status_code=404, detail="乘客不存在")
     
-    # 获取住民关联的设备ID
+    # 获取乘客关联的设备ID
     devices = db.query(Device).filter(
         Device.elderly_user_id == user_id
     ).all()

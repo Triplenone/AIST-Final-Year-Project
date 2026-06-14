@@ -106,7 +106,7 @@ export const deviceDataLogApi = {
     api.get<Record<string, unknown>>('/device-data-log/statistics/overview', { params }),
 };
 
-// 住民 API (Resident APIs)
+// Passenger API (legacy /residents routes)
 export const residentApi = {
   list: (params?: Record<string, unknown>) => api.get<BackendResident[]>('/residents/', { params }),
   get: (id: string | number) => api.get<BackendResident>(`/residents/${id}`),

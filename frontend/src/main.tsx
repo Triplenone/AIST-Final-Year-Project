@@ -28,7 +28,7 @@ ReactDOM.createRoot(container).render(
       <Suspense
         fallback={
           <div className="app-loading" role="status" aria-live="polite">
-            Loading SmartCare dashboard…
+            Loading FlyCare dashboard...
           </div>
         }
       >

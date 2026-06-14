@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db.mongo import COLLECTION_RAW_UPSTREAM
 from app.models.device import Device
-from app.services.elderly_device_queries import VITALS_UPSTREAM_DATA_TYPES, devices_by_elderly_user_ids
+from app.services.passenger_device_queries import VITALS_UPSTREAM_DATA_TYPES, devices_by_passenger_user_ids
 from app.services.mongo_raw_upstream import get_sync_mongo_db
 from app.services.sensor_vitals_extract import extract_hr_spo2_from_upstream_doc
 
@@ -40,7 +40,7 @@ def load_mongo_sensor_vitals_for_users(
     if not user_ids:
         return {}
 
-    devices_per_user = devices_by_elderly_user_ids(db, user_ids)
+    devices_per_user = devices_by_passenger_user_ids(db, user_ids)
     if not any(devices_per_user.values()):
         return {}
 
@@ -99,7 +99,11 @@ def load_mongo_sensor_vitals_for_users(
         for uid in device_to_users.get(did_str, []):
             if uid not in users_need:
                 continue
-            out[uid] = (hr, spo2)
-            users_need.discard(uid)
+            existing_hr, existing_spo2 = out.get(uid, (None, None))
+            next_hr = existing_hr if existing_hr is not None else hr
+            next_spo2 = existing_spo2 if existing_spo2 is not None else spo2
+            out[uid] = (next_hr, next_spo2)
+            if next_hr is not None and next_spo2 is not None:
+                users_need.discard(uid)
 
     return out

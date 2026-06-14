@@ -11,7 +11,7 @@ class DeviceBase(BaseModel):
     """设备基础模型"""
     device_type: Optional[str] = Field(None, max_length=50, description="设备类型")
     model_desc: Optional[str] = Field(None, max_length=100, description="型号描述")
-    elderly_user_id: Optional[int] = Field(None, description="关联的老人用户ID")
+    elderly_user_id: Optional[int] = Field(None, description="关联的乘客用户ID")
     mac_address: Optional[str] = Field(None, max_length=20, description="MAC地址")
     current_status: DeviceStatus = Field(DeviceStatus.OFFLINE, description="当前状态")
     battery_level: Optional[int] = Field(None, ge=0, le=100, description="电池电量")

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { deviceApi, userApi } from '../../services/api';
 import type { BackendDevice, BackendUser } from '../../types/backend';
 
@@ -10,10 +10,10 @@ const emptyDeviceForm: FormState = {
   elderly_user_id: null,
   current_status: 'offline',
   battery_level: undefined,
-  deploy_location: '',
+  deploy_location: ''
 };
 
-// 設備管理 (Devices admin) – 對應 /api/v1/devices
+// Device admin still writes the legacy backend field elderly_user_id.
 export const DevicesAdmin = () => {
   const [devices, setDevices] = useState<BackendDevice[]>([]);
   const [users, setUsers] = useState<BackendUser[]>([]);
@@ -31,7 +31,7 @@ export const DevicesAdmin = () => {
       setDevices(dev);
       setUsers(usr);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '無法取得設備 (Failed to fetch devices)';
+      const msg = err instanceof Error ? err.message : 'Failed to fetch devices';
       setError(msg);
     } finally {
       setLoading(false);
@@ -44,11 +44,12 @@ export const DevicesAdmin = () => {
 
   const filtered = useMemo(() => {
     if (!keyword) return devices;
+    const needle = keyword.toLowerCase();
     return devices.filter(
       (d) =>
-        d.model_desc?.toLowerCase().includes(keyword.toLowerCase()) ||
-        d.device_type?.toLowerCase().includes(keyword.toLowerCase()) ||
-        d.deploy_location?.toLowerCase().includes(keyword.toLowerCase())
+        d.model_desc?.toLowerCase().includes(needle) ||
+        d.device_type?.toLowerCase().includes(needle) ||
+        d.deploy_location?.toLowerCase().includes(needle)
     );
   }, [devices, keyword]);
 
@@ -76,7 +77,7 @@ export const DevicesAdmin = () => {
     [usersById]
   );
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     try {
       if (editing) {
@@ -88,7 +89,7 @@ export const DevicesAdmin = () => {
       setForm(emptyDeviceForm);
       await load();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '操作失敗 (Operation failed)';
+      const msg = err instanceof Error ? err.message : 'Operation failed';
       setError(msg);
     }
   };
@@ -101,17 +102,17 @@ export const DevicesAdmin = () => {
       elderly_user_id: d.elderly_user_id ?? null,
       current_status: d.current_status ?? 'offline',
       battery_level: d.battery_level ?? undefined,
-      deploy_location: d.deploy_location ?? '',
+      deploy_location: d.deploy_location ?? ''
     });
   };
 
   const handleDelete = async (d: BackendDevice) => {
-    if (!window.confirm(`確認刪除設備 ${d.model_desc || d.device_type}?`)) return;
+    if (!window.confirm(`Delete device ${d.model_desc || d.device_type}?`)) return;
     try {
       await deviceApi.delete(d.device_id);
       await load();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '刪除失敗 (Delete failed)';
+      const msg = err instanceof Error ? err.message : 'Delete failed';
       setError(msg);
     }
   };
@@ -120,29 +121,29 @@ export const DevicesAdmin = () => {
     <div className="admin-card">
       <header className="admin-card__header">
         <div>
-          <h3>設備管理 (Devices)</h3>
-          <p className="muted">對應 /api/v1/devices</p>
+          <h3>Devices</h3>
+          <p className="muted">Mapped to /api/v1/devices</p>
         </div>
         <input
-          placeholder="搜尋名稱/型號/位置 (search device)"
+          placeholder="Search name, model, or location"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
         />
       </header>
 
       {error && <div className="admin-error">{error}</div>}
-      {loading ? <div className="admin-loading">載入中 (Loading)...</div> : null}
+      {loading ? <div className="admin-loading">Loading...</div> : null}
 
       <table className="admin-table">
         <thead>
           <tr>
             <th>ID</th>
-            <th>型號/描述 (Model)</th>
-            <th>狀態 (Status)</th>
-            <th>老人 ID</th>
-            <th>電量 (Battery)</th>
-            <th>位置 (Deploy)</th>
-            <th>操作</th>
+            <th>Model</th>
+            <th>Status</th>
+            <th>Passenger/User ID</th>
+            <th>Battery</th>
+            <th>Deploy location</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -160,9 +161,9 @@ export const DevicesAdmin = () => {
               <td>{d.battery_level ?? '-'}</td>
               <td>{d.deploy_location ?? '-'}</td>
               <td>
-                <button onClick={() => handleEdit(d)}>編輯</button>
+                <button onClick={() => handleEdit(d)}>Edit</button>
                 <button className="danger" onClick={() => void handleDelete(d)}>
-                  刪除
+                  Delete
                 </button>
               </td>
             </tr>
@@ -171,10 +172,10 @@ export const DevicesAdmin = () => {
       </table>
 
       <div className="admin-form">
-        <h4>{editing ? '編輯設備 (Edit Device)' : '新增設備 (Add Device)'}</h4>
+        <h4>{editing ? 'Edit Device' : 'Add Device'}</h4>
         <form onSubmit={handleSubmit}>
           <label>
-            型號/描述 (Model)
+            Model
             <input
               value={form.model_desc ?? ''}
               onChange={(e) => setForm({ ...form, model_desc: e.target.value })}
@@ -182,7 +183,7 @@ export const DevicesAdmin = () => {
             />
           </label>
           <label>
-            類型 (Type)
+            Type
             <input
               value={form.device_type ?? ''}
               onChange={(e) => setForm({ ...form, device_type: e.target.value })}
@@ -190,14 +191,14 @@ export const DevicesAdmin = () => {
             />
           </label>
           <label>
-            綁定老人 (Elderly user id)
+            Bound passenger (legacy user id)
             <select
               value={form.elderly_user_id ?? ''}
               onChange={(e) =>
                 setForm({ ...form, elderly_user_id: e.target.value ? Number(e.target.value) : null })
               }
             >
-              <option value="">未綁定 (None)</option>
+              <option value="">None</option>
               {users
                 .filter((u) => u.role_type === 'elderly')
                 .map((u) => (
@@ -208,7 +209,7 @@ export const DevicesAdmin = () => {
             </select>
           </label>
           <label>
-            狀態 (Status)
+            Status
             <select
               value={form.current_status ?? 'offline'}
               onChange={(e) => setForm({ ...form, current_status: e.target.value as BackendDevice['current_status'] })}
@@ -219,7 +220,7 @@ export const DevicesAdmin = () => {
             </select>
           </label>
           <label>
-            電量 (Battery)
+            Battery
             <input
               type="number"
               value={form.battery_level ?? ''}
@@ -229,14 +230,14 @@ export const DevicesAdmin = () => {
             />
           </label>
           <label>
-            佈署位置 (Deploy location)
+            Deploy location
             <input
               value={form.deploy_location ?? ''}
               onChange={(e) => setForm({ ...form, deploy_location: e.target.value })}
             />
           </label>
           <div className="admin-form__actions">
-            <button type="submit">{editing ? '更新 (Update)' : '新增 (Create)'}</button>
+            <button type="submit">{editing ? 'Update' : 'Create'}</button>
             {editing && (
               <button
                 type="button"
@@ -246,7 +247,7 @@ export const DevicesAdmin = () => {
                   setForm(emptyDeviceForm);
                 }}
               >
-                取消 (Cancel)
+                Cancel
               </button>
             )}
           </div>

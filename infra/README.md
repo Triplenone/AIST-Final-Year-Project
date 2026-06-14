@@ -6,7 +6,7 @@ This folder contains **docker-compose scaffolding** and TLS helper scripts for a
 
 | File | Purpose |
 |------|---------|
-| `docker-compose.dev.yml` | Defines MQTT (Mosquitto), a Postgres/Timescale DB, MinIO, a frontend container, and a backend build stub. |
+| `docker-compose.dev.yml` | Defines MQTT (Mosquitto), a Postgres/Timescale DB placeholder named `flycare_scaffold`, MinIO, a frontend container, and a backend build stub. |
 | `mkcert-dev-certs.sh` | Generates Mosquitto TLS certs using `mkcert`. |
 | `mosquitto/mosquitto.conf` | Mosquitto listeners/config. |
 | `sql/000_init.sql` | Placeholder SQL. |

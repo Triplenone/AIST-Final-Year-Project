@@ -5,6 +5,7 @@ import {
   POSITION_RESIDENT_REGISTRY,
   buildPositionCommandCenterViewModel,
   buildPositionResidentActivity,
+  getPositionNavigationTargetDisplay,
   getPositionZoneDisplayForResident,
   getZoneCommandState,
   mergeUpstreamDocsForPosition,
@@ -34,6 +35,10 @@ function makeResident(
     targetZoneId: overrides.targetZoneId ?? null,
     targetZoneLabelKey: overrides.targetZoneLabelKey ?? null,
     targetZoneName: overrides.targetZoneName ?? null,
+    navigationTargetName: overrides.navigationTargetName ?? null,
+    navigationDistanceMeters: overrides.navigationDistanceMeters ?? null,
+    navigationDirection: overrides.navigationDirection ?? null,
+    navigationEtaMinutes: overrides.navigationEtaMinutes ?? null,
     currentCoords: overrides.currentCoords ?? null,
     targetCoords: overrides.targetCoords ?? null,
     heartRate: overrides.heartRate ?? null,
@@ -59,7 +64,7 @@ describe('position-command-center adapter', () => {
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[5]).toBe('ESP32_00009822A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[6]).toBe('ESP32_00008C292A04A7AC');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[7]).toBe('ESP32_00009022A443CA48');
-    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[8]).toBe('ESP32_48CA43A42298');
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[8]).toBe('ESP32_000048CA43A42298');
     expect(POSITION_RESIDENT_REGISTRY.map((entry) => entry.displayName)).toEqual(
       expect.arrayContaining(['HO CHI WAI', 'TANG WAI HAN', 'MA KA WAI', 'YIP MAN LING', 'NG WAI LUN'])
     );
@@ -96,6 +101,87 @@ describe('position-command-center adapter', () => {
     expect(viewModel.selectedResident?.battery).toBe(90);
   });
 
+  it('exposes FlyCare navigation target details from location.target', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:02:05.000Z',
+        loadError: null,
+        records: [
+          {
+            resident,
+            latestStatus: {
+              _id: 'status-target',
+              device_id: resident.deviceId,
+              server_received_at: '2026-03-28T00:02:00.000Z',
+              data_type: 'status_update',
+              location: {
+                current: { x: 6.05, y: 3.85, name: 'Customer Services' },
+                target: {
+                  x: 8,
+                  y: 1.8,
+                  name: 'Gate 10',
+                  distance: 2.83,
+                  direction: 'southeast',
+                  eta: 2
+                }
+              }
+            } as never,
+            error: null
+          }
+        ]
+      },
+      { selectedResidentId: resident.residentId, now: Date.parse('2026-03-28T00:02:05.000Z'), mapProfile: 'flycare' }
+    );
+
+    const selectedResident = viewModel.selectedResident!;
+    expect(selectedResident.targetZoneName).toBeNull();
+    expect(selectedResident.navigationTargetName).toBe('Gate 10');
+    expect(selectedResident.navigationDistanceMeters).toBe(2.83);
+    expect(selectedResident.navigationDirection).toBe('southeast');
+    expect(selectedResident.navigationEtaMinutes).toBe(2);
+    expect(selectedResident.zoneCommandState).toBe('target-pending');
+    expect(getPositionNavigationTargetDisplay(selectedResident)).toBe('Gate 10 · 2.83 m · southeast · ETA 2 min');
+  });
+
+  it('preserves older valid vitals when a newer status update reports invalid zero sensors', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const merged = mergeUpstreamDocsForPosition([
+      {
+        _id: 'status-new',
+        device_id: resident.deviceId,
+        server_received_at: '2026-03-28T00:02:00.000Z',
+        data_type: 'status_update',
+        sensors: {
+          heart_rate: { valid: false, bpm: 0 },
+          spo2: { valid: false, percentage: 0 }
+        }
+      },
+      {
+        _id: 'vitals-old',
+        device_id: resident.deviceId,
+        server_received_at: '2026-03-28T00:01:00.000Z',
+        data_type: 'vitals',
+        sensors: {
+          heart_rate: { valid: true, bpm: 83 },
+          spo2: { valid: true, percentage: 98 }
+        }
+      }
+    ]);
+
+    const viewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:02:05.000Z',
+        loadError: null,
+        records: [{ resident, latestStatus: merged, error: null }]
+      },
+      { selectedResidentId: resident.residentId, now: Date.parse('2026-03-28T00:02:05.000Z') }
+    );
+
+    expect(viewModel.selectedResident?.heartRate).toBe(83);
+    expect(viewModel.selectedResident?.spo2).toBe(98);
+  });
+
   it('reads fallback flat location.x/y coordinates', () => {
     const resident = POSITION_RESIDENT_REGISTRY[0];
     const viewModel = buildPositionCommandCenterViewModel(
@@ -120,6 +206,45 @@ describe('position-command-center adapter', () => {
     expect(viewModel.selectedResident?.currentCoords).toEqual({ x: 5, y: 8 });
   });
 
+  it('ignores legacy MySQL or payload location names on FlyCare map', () => {
+    const resident = POSITION_RESIDENT_REGISTRY[0];
+    const viewModel = buildPositionCommandCenterViewModel(
+      {
+        fetchedAt: '2026-03-28T00:00:20.000Z',
+        loadError: null,
+        records: [
+          {
+            resident,
+            error: null,
+            latestStatus: {
+              device_id: resident.deviceId,
+              server_received_at: '2026-03-28T00:00:00.000Z',
+              location: {
+                current: {
+                  x: 1,
+                  y: 1,
+                  name: 'Security checkpoint',
+                  location_zone_id: 3
+                }
+              }
+            } as never
+          }
+        ]
+      },
+      { selectedResidentId: resident.residentId, now: Date.parse('2026-03-28T00:00:20.000Z'), mapProfile: 'flycare' }
+    );
+
+    expect(viewModel.selectedResident?.currentZoneId).toBe('toilet');
+    expect(viewModel.selectedResident?.currentZoneName).toBeNull();
+    expect(
+      getPositionZoneDisplayForResident(
+        viewModel.selectedResident!,
+        (key) => `i18n:${key}`,
+        'flycare'
+      )
+    ).toBe('i18n:flyCare.zone.toilet');
+  });
+
   it('getPositionZoneDisplayForResident prefers non-empty currentZoneName over labelKey i18n', () => {
     const t = (key: string) => `i18n:${key}`;
     expect(
@@ -127,11 +252,11 @@ describe('position-command-center adapter', () => {
         {
           currentZoneId: 'bedroom',
           currentZoneLabelKey: 'position.zone.bedroom',
-          currentZoneName: 'Bedroom'
+          currentZoneName: 'Gate area'
         },
         t
       )
-    ).toBe('Bedroom');
+    ).toBe('Gate area');
   });
 
   it('getPositionZoneDisplayForResident falls back to labelKey when name is absent', () => {
@@ -161,7 +286,7 @@ describe('position-command-center adapter', () => {
             device_id: resident.deviceId,
             server_received_at: { $date: '2026-03-28T00:00:00.000Z' },
             location: {
-              current: { x: 5, y: 13, name: 'Bedroom' }
+              current: { x: 5, y: 13, name: 'Gate area' }
             },
             sensors: {
               heart_rate: { valid: true, bpm: 82 },
@@ -195,7 +320,7 @@ describe('position-command-center adapter', () => {
             device_id: resident.deviceId,
             server_received_at: '2026-03-28T00:00:00.000Z',
             location: {
-              current: { x: 5, y: 13, name: 'Bedroom' }
+              current: { x: 5, y: 13, name: 'Gate area' }
             },
             sensors: {
               heart_rate: 88,
@@ -257,7 +382,7 @@ describe('position-command-center adapter', () => {
           latestStatus: {
             device_id: resident.deviceId,
             server_received_at: '2026-03-28T00:00:00.000Z',
-            location: { current: { x: 5, y: 13, name: 'Bedroom' } },
+            location: { current: { x: 5, y: 13, name: 'Gate area' } },
             sensors: {},
             payload: {
               sensors: {
@@ -279,8 +404,11 @@ describe('position-command-center adapter', () => {
     expect(viewModel.selectedResident?.spo2).toBe(98);
   });
 
-  it('reads 0 from payload.sensors even when valid is false', () => {
-    const resident = POSITION_RESIDENT_REGISTRY[0];
+  it('falls back to last known vitals when payload.sensors reports invalid zero values', () => {
+    const resident = {
+      ...POSITION_RESIDENT_REGISTRY[0],
+      lastKnownVitals: { heartRate: 83, spo2: 98 }
+    };
     const snapshot = {
       fetchedAt: '2026-03-28T00:00:20.000Z',
       loadError: null,
@@ -308,8 +436,9 @@ describe('position-command-center adapter', () => {
       now: Date.parse('2026-03-28T00:00:20.000Z')
     });
 
-    expect(viewModel.selectedResident?.heartRate).toBe(0);
-    expect(viewModel.selectedResident?.spo2).toBe(0);
+    expect(viewModel.selectedResident?.heartRate).toBe(83);
+    expect(viewModel.selectedResident?.spo2).toBe(98);
+    expect(viewModel.selectedResident?.priorityReasonCode).toBe('stable-monitoring');
   });
 
   it('uses emptyRegistry when snapshot is null', () => {

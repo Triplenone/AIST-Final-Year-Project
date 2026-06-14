@@ -16,7 +16,7 @@ export type SimulatorCommand =
   | { action: 'delete'; id: string }
   | { action: 'addCustom'; resident: CustomResidentPayload };
 
-// 將指令送給 Service Worker，讓開發者能觸發連發或新增住民。
+// 將指令送給 Service Worker，讓開發者能觸發連發或新增乘客。
 export const sendSimulatorMessage = async (payload: SimulatorCommand): Promise<boolean> => {
   if (!('serviceWorker' in navigator)) {
     return false;

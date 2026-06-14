@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import {
+  getPositionNavigationTargetDisplay,
   getPositionZoneDisplayForResident,
   type PositionMapProfile,
   type PositionActivityState,
@@ -68,7 +69,7 @@ const nextActionDefaultLabel: Record<PositionNextActionCode, string> = {
   'continue-monitoring': 'Continue monitoring',
   'verify-upstream': 'Verify upstream freshness',
   'verify-device-link': 'Verify device link',
-  'escalate-care': 'Escalate to care team'
+  'escalate-care': 'Escalate to assistance team'
 };
 
 const priorityReasonDefaultLabel: Record<PositionPriorityReasonCode, string> = {
@@ -172,6 +173,7 @@ export function PositionDecisionPanel({
       : resident?.truthState === 'offline' || resident?.freshnessLevel === 'stale' || resident?.riskLevel === 'warning'
         ? ' position-decision-panel__hero--attention'
         : ' position-decision-panel__hero--stable';
+  const navigationTargetDisplay = resident ? getPositionNavigationTargetDisplay(resident) : null;
 
   return (
     <section className="position-command-center__surface position-decision-panel">
@@ -190,7 +192,7 @@ export function PositionDecisionPanel({
       {surfaceState === 'partial-error' ? (
         <p className="position-command-center__notice position-command-center__notice--warning">
           {t('position.partialResidentFailure', {
-            defaultValue: `${partialFailureCount} resident snapshot(s) failed to refresh.`
+            defaultValue: `${partialFailureCount} passenger snapshot(s) failed to refresh.`
           })}
         </p>
       ) : null}
@@ -198,7 +200,7 @@ export function PositionDecisionPanel({
       {surfaceState === 'loading' ? (
         <div className="position-command-center__state-card position-command-center__state-card--loading">
           <strong>{t('position.loadingDecisionPanel', { defaultValue: 'Loading decision panel...' })}</strong>
-          <p>{t('position.loadingDecisionPanelHint', { defaultValue: 'Selected resident context, actions, and activity are pending from upstream.' })}</p>
+          <p>{t('position.loadingDecisionPanelHint', { defaultValue: 'Selected passenger context, actions, and activity are pending from upstream.' })}</p>
         </div>
       ) : null}
 
@@ -214,12 +216,12 @@ export function PositionDecisionPanel({
           <strong>
             {resident
               ? t('position.noDeviceData', { defaultValue: 'No device upstream data yet' })
-              : t('position.noSelection', { defaultValue: 'No resident selected' })}
+              : t('position.noSelection', { defaultValue: 'No passenger selected' })}
           </strong>
           <p>
             {resident
               ? t('position.noDeviceDataHint', { defaultValue: 'Decision details will appear after the device reports Position data.' })
-              : t('position.noSelectionHint', { defaultValue: 'Choose a resident from the rail to inspect command context.' })}
+              : t('position.noSelectionHint', { defaultValue: 'Choose a passenger from the rail to inspect command context.' })}
           </p>
         </div>
       ) : null}
@@ -256,11 +258,16 @@ export function PositionDecisionPanel({
                 <dd>{getPositionZoneDisplayForResident(resident, t, mapProfile)}</dd>
               </div>
               <div>
-                <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>
+                <dt>
+                  {navigationTargetDisplay
+                    ? t('position.navigationTargetLabel', { defaultValue: 'Navigation target' })
+                    : t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}
+                </dt>
                 <dd>
-                  {t(zoneCommandLabelKey[resident.zoneCommandState], {
-                    defaultValue: zoneCommandDefaultLabel[resident.zoneCommandState]
-                  })}
+                  {navigationTargetDisplay ??
+                    t(zoneCommandLabelKey[resident.zoneCommandState], {
+                      defaultValue: zoneCommandDefaultLabel[resident.zoneCommandState]
+                    })}
                 </dd>
               </div>
               <div>
@@ -318,7 +325,7 @@ export function PositionDecisionPanel({
                   {getOperatorError(
                     resident.activityBlockedReason,
                     t('position.activityUnavailableHint', {
-                      defaultValue: 'Activity history could not be loaded for the selected resident.'
+                      defaultValue: 'Activity history could not be loaded for the selected passenger.'
                     }),
                     t
                   )}

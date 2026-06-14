@@ -7,11 +7,12 @@ import {
   deviceApi,
   locationApi,
   mongoUpstreamApi,
+  residentApi,
   userApi,
   type MongoLatestValidLocationResponse,
   type MongoUpstreamLatest
 } from '../services/api';
-import type { BackendDevice, BackendLocation, BackendUser } from '../types/backend';
+import type { BackendDevice, BackendLocation, BackendResident, BackendUser } from '../types/backend';
 
 export type PositionMapProfile = 'indoor' | 'flycare';
 
@@ -65,6 +66,10 @@ export type PositionResidentRegistryEntry = {
   residentId: string;
   displayName: string;
   deviceId: string;
+  lastKnownVitals?: {
+    heartRate?: number | null;
+    spo2?: number | null;
+  };
 };
 
 export type PositionZoneDefinition = {
@@ -118,6 +123,10 @@ export type PositionResidentViewModel = {
   targetZoneId: PositionZoneId | null;
   targetZoneLabelKey: string | null;
   targetZoneName: string | null;
+  navigationTargetName: string | null;
+  navigationDistanceMeters: number | null;
+  navigationDirection: string | null;
+  navigationEtaMinutes: number | null;
   currentCoords: PositionPoint | null;
   targetCoords: PositionPoint | null;
   heartRate: number | null;
@@ -211,7 +220,7 @@ export const POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID: Readonly<Record<number, strin
   5: 'ESP32_00009822A443CA48',
   6: 'ESP32_00008C292A04A7AC',
   7: 'ESP32_00009022A443CA48',
-  8: 'ESP32_48CA43A42298'
+  8: 'ESP32_000048CA43A42298'
 };
 
 export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[] = [
@@ -253,7 +262,7 @@ export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[
   {
     residentId: '15',
     displayName: 'NG WAI LUN',
-    deviceId: 'ESP32_48CA43A42298'
+    deviceId: 'ESP32_000048CA43A42298'
   }
 ];
 
@@ -261,12 +270,44 @@ function clonePositionRegistryFallback(): PositionResidentRegistryEntry[] {
   return POSITION_RESIDENT_REGISTRY.map((entry) => ({ ...entry }));
 }
 
+function readPositiveMetric(...candidates: unknown[]): number | null {
+  for (const candidate of candidates) {
+    const value = toFiniteNumber(candidate);
+    if (value != null && value > 0) return Math.round(value);
+  }
+  return null;
+}
+
+function resolveBackendResidentVitals(
+  resident: BackendResident
+): PositionResidentRegistryEntry['lastKnownVitals'] | undefined {
+  const heartRate = readPositiveMetric(resident.vitals?.hr, resident.heart_rate);
+  const spo2 = readPositiveMetric(resident.vitals?.spo2, resident.blood_oxygen);
+  if (heartRate == null && spo2 == null) return undefined;
+  return { heartRate, spo2 };
+}
+
+async function loadResidentVitalsByUserId(): Promise<Map<string, PositionResidentRegistryEntry['lastKnownVitals']>> {
+  try {
+    const rows = (await residentApi.list({ limit: 500 })) as unknown as BackendResident[];
+    const out = new Map<string, PositionResidentRegistryEntry['lastKnownVitals']>();
+    for (const row of rows) {
+      const vitals = resolveBackendResidentVitals(row);
+      if (vitals) out.set(String(row.id), vitals);
+    }
+    return out;
+  } catch {
+    return new Map();
+  }
+}
+
 /**
- * 从后端加载「设备 → 绑定老人」：展示名与 MySQL `user.name` 一致（如 test-user04）；`residentId` 为 `user_id` 字符串。
+ * 从后端加载「设备 → 绑定乘客」：展示名与 MySQL `user.name` 一致（如 test-user04）；`residentId` 为 `user_id` 字符串。
  * 失败或未绑定时回退到 {@link POSITION_RESIDENT_REGISTRY}。
  */
 export async function resolvePositionResidentRegistry(): Promise<PositionResidentRegistryEntry[]> {
   const out: PositionResidentRegistryEntry[] = [];
+  const residentVitalsByUserId = await loadResidentVitalsByUserId();
 
   try {
     for (let index = 0; index < POSITION_TRACKED_MYSQL_DEVICE_IDS.length; index += 1) {
@@ -288,10 +329,12 @@ export async function resolvePositionResidentRegistry(): Promise<PositionResiden
         try {
           const user = (await userApi.get(uid)) as unknown as BackendUser;
           const displayName = (user.name && user.name.trim()) || `User ${uid}`;
+          const lastKnownVitals = residentVitalsByUserId.get(String(user.user_id));
           out.push({
             residentId: String(user.user_id),
             displayName,
-            deviceId: mongoDeviceId
+            deviceId: mongoDeviceId,
+            ...(lastKnownVitals ? { lastKnownVitals } : {})
           });
         } catch {
           out.push({
@@ -580,6 +623,33 @@ export function getPositionZoneDisplayForResident(
   return t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
 }
 
+function formatNavigationMetric(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toFixed(2).replace(/\.?0+$/, '');
+}
+
+export function getPositionNavigationTargetDisplay(
+  resident: Pick<
+    PositionResidentViewModel,
+    'navigationTargetName' | 'navigationDistanceMeters' | 'navigationDirection' | 'navigationEtaMinutes'
+  >
+): string | null {
+  const targetName = resident.navigationTargetName?.trim();
+  if (!targetName) return null;
+
+  const parts = [targetName];
+  if (resident.navigationDistanceMeters != null) {
+    parts.push(`${formatNavigationMetric(resident.navigationDistanceMeters)} m`);
+  }
+  if (resident.navigationDirection) {
+    parts.push(resident.navigationDirection);
+  }
+  if (resident.navigationEtaMinutes != null) {
+    parts.push(`ETA ${formatNavigationMetric(resident.navigationEtaMinutes)} min`);
+  }
+  return parts.join(' · ');
+}
+
 function humanizeZoneId(zoneId: PositionZoneId | null): string | null {
   if (!zoneId) return null;
   return zoneId
@@ -630,6 +700,20 @@ function getTargetZoneName(data: MongoUpstreamLatest | MongoUpstreamHistoryDocum
   return normalizeText(getNestedValue(location, 'target.name'));
 }
 
+function getNavigationTargetMetric(
+  data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null,
+  key: 'distance' | 'eta'
+): number | null {
+  const location = getSectionData(data, 'location');
+  const value = toFiniteNumber(getNestedValue(location, `target.${key}`));
+  return value != null && value >= 0 ? value : null;
+}
+
+function getNavigationTargetDirection(data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null): string | null {
+  const location = getSectionData(data, 'location');
+  return normalizeText(getNestedValue(location, 'target.direction'));
+}
+
 function parsePositiveIntLocation(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -667,8 +751,12 @@ function getMysqlLocationZoneIdFromUpstream(
 function applyMysqlNameToCurrentZoneName(
   latestStatus: MongoUpstreamLatest | null,
   positionZoneId: PositionZoneId | null,
-  upstreamName: string | null
+  upstreamName: string | null,
+  mapProfile: PositionMapProfile = 'indoor'
 ): string | null {
+  if (mapProfile === 'flycare') {
+    return null;
+  }
   const map = getMysqlLocationZoneNamesMap();
   const mysqlId = getMysqlLocationZoneIdFromUpstream(latestStatus, positionZoneId);
   if (mysqlId != null && map && map.has(mysqlId)) {
@@ -685,11 +773,22 @@ function firstNonNegativeNumber(...candidates: unknown[]): number | null {
   return null;
 }
 
+function isExplicitInvalidFlag(value: unknown): boolean {
+  return value === false || value === 'false' || value === 0 || value === '0';
+}
+
+function isMetricBlockExplicitlyInvalid(block: unknown): boolean {
+  const o = asObjectRecord(block);
+  if (!o) return false;
+  return isExplicitInvalidFlag(o.valid ?? o.is_valid ?? o.isValid);
+}
+
 function readHeartRateLikeBlock(block: unknown): number | null {
   if (block == null) return null;
   if (typeof block !== 'object' || Array.isArray(block)) {
     return firstNonNegativeNumber(block);
   }
+  if (isMetricBlockExplicitlyInvalid(block)) return null;
   const o = block as Record<string, unknown>;
   return firstNonNegativeNumber(o.bpm, o.value, o.reading, o.hr, o.heart_rate);
 }
@@ -699,6 +798,7 @@ function readSpo2LikeBlock(block: unknown): number | null {
   if (typeof block !== 'object' || Array.isArray(block)) {
     return firstNonNegativeNumber(block);
   }
+  if (isMetricBlockExplicitlyInvalid(block)) return null;
   const o = block as Record<string, unknown>;
   return firstNonNegativeNumber(o.percentage, o.percent, o.value, o.reading, o.spo2);
 }
@@ -714,33 +814,47 @@ function getSensorMetric(
 
   if (sensorKey === 'heart_rate') {
     if (sensors) {
+      const heartRateBlock = sensors.heart_rate ?? sensors.heartRate;
       const fromBlock =
         readHeartRateLikeBlock(sensors.heart_rate) ?? readHeartRateLikeBlock(sensors.heartRate);
       if (fromBlock != null) return Math.round(fromBlock);
-      const legacy = toFiniteNumber(getNestedValue(sensors, `${sensorKey}.${valueKey}`));
+      const legacy = isMetricBlockExplicitlyInvalid(heartRateBlock)
+        ? null
+        : toFiniteNumber(getNestedValue(sensors, `${sensorKey}.${valueKey}`));
       if (legacy != null && legacy >= 0) return Math.round(legacy);
     }
     if (vitals) {
+      const heartRateBlock = vitals.heart_rate ?? vitals.HeartRate;
+      const nestedHeartRate = isMetricBlockExplicitlyInvalid(heartRateBlock)
+        ? null
+        : getNestedValue(vitals, 'heart_rate.bpm');
       const fromVitals =
         readHeartRateLikeBlock(vitals.heart_rate) ??
         readHeartRateLikeBlock(vitals.HeartRate) ??
-        firstNonNegativeNumber(vitals.hr, getNestedValue(vitals, 'heart_rate.bpm'));
+        firstNonNegativeNumber(vitals.hr, nestedHeartRate);
       if (fromVitals != null) return Math.round(fromVitals);
     }
     return null;
   }
 
   if (sensors) {
+    const spo2Block = sensors.spo2 ?? sensors.SpO2;
     const fromBlock = readSpo2LikeBlock(sensors.spo2) ?? readSpo2LikeBlock(sensors.SpO2);
     if (fromBlock != null) return Math.round(fromBlock);
-    const legacy = toFiniteNumber(getNestedValue(sensors, `${sensorKey}.${valueKey}`));
+    const legacy = isMetricBlockExplicitlyInvalid(spo2Block)
+      ? null
+      : toFiniteNumber(getNestedValue(sensors, `${sensorKey}.${valueKey}`));
     if (legacy != null && legacy >= 0) return Math.round(legacy);
   }
   if (vitals) {
+    const spo2Block = vitals.spo2 ?? vitals.SpO2;
+    const nestedSpo2 = isMetricBlockExplicitlyInvalid(spo2Block)
+      ? null
+      : getNestedValue(vitals, 'spo2.percentage');
     const fromVitals =
       readSpo2LikeBlock(vitals.spo2) ??
       readSpo2LikeBlock(vitals.SpO2) ??
-      firstNonNegativeNumber(getNestedValue(vitals, 'spo2.percentage'));
+      firstNonNegativeNumber(nestedSpo2);
     if (fromVitals != null) return Math.round(fromVitals);
   }
   return null;
@@ -961,6 +1075,17 @@ function cloneUpstreamDoc(doc: MongoUpstreamLatest): MongoUpstreamLatest {
   return JSON.parse(JSON.stringify(doc)) as MongoUpstreamLatest;
 }
 
+function shouldKeepExistingMetricSensor(key: string, existing: unknown, next: unknown): boolean {
+  if (!isMetricBlockExplicitlyInvalid(next)) return false;
+  if (key === 'heart_rate' || key === 'heartRate') {
+    return readHeartRateLikeBlock(existing) != null;
+  }
+  if (key === 'spo2' || key === 'SpO2') {
+    return readSpo2LikeBlock(existing) != null;
+  }
+  return false;
+}
+
 /** 合并多条上行中的 sensors（时间新的覆盖同名键），用于定位页同时展示位置与心率/血氧。 */
 function mergeSensorSectionsFromDocs(docs: MongoUpstreamLatest[]): Record<string, unknown> | null {
   if (docs.length === 0) return null;
@@ -969,11 +1094,14 @@ function mergeSensorSectionsFromDocs(docs: MongoUpstreamLatest[]): Record<string
       (parsePositionTimestamp(a.server_received_at) ?? 0) -
       (parsePositionTimestamp(b.server_received_at) ?? 0)
   );
-  let merged: Record<string, unknown> = {};
+  const merged: Record<string, unknown> = {};
   for (const doc of sortedAsc) {
     const s = getSectionData(doc, 'sensors');
     if (s && typeof s === 'object') {
-      merged = { ...merged, ...s };
+      for (const [key, value] of Object.entries(s)) {
+        if (shouldKeepExistingMetricSensor(key, merged[key], value)) continue;
+        merged[key] = value;
+      }
     }
   }
   return Object.keys(merged).length > 0 ? merged : null;
@@ -1065,7 +1193,8 @@ function hasZoneResolution(resident: PositionResidentViewModel | null): boolean 
       resident.currentZoneId ||
       resident.targetZoneId ||
       resident.currentZoneName ||
-      resident.targetZoneName
+      resident.targetZoneName ||
+      resident.navigationTargetName
   );
 }
 
@@ -1228,8 +1357,8 @@ function buildHistoryRecord(
   const targetCoords = getCoords(doc, 'target');
   const currentZoneId = resolveZoneFromCoords(currentCoords, mapProfile);
   const targetZoneId = resolveZoneFromCoords(targetCoords, mapProfile);
-  const currentZoneName = getCurrentZoneName(doc);
-  const targetZoneName = getTargetZoneName(doc);
+  const currentZoneName = mapProfile === 'flycare' ? null : getCurrentZoneName(doc);
+  const targetZoneName = mapProfile === 'flycare' ? null : getTargetZoneName(doc);
   const heartRate = getSensorMetric(doc, 'heart_rate', 'bpm');
   const spo2 = getSensorMetric(doc, 'spo2', 'percentage');
   const fall = normalizeFallState(doc);
@@ -1443,13 +1572,23 @@ function buildResidentViewModel(
   const currentZoneLabelKey = resolveZoneLabelKey(currentZoneId, mapProfile);
   const targetZoneLabelKey = resolveZoneLabelKey(targetZoneId, mapProfile);
   const upstreamCurrentZoneName = getCurrentZoneName(latestStatus);
-  const currentZoneName = applyMysqlNameToCurrentZoneName(latestStatus, currentZoneId, upstreamCurrentZoneName);
-  const targetZoneName = getTargetZoneName(latestStatus);
+  const currentZoneName = applyMysqlNameToCurrentZoneName(
+    latestStatus,
+    currentZoneId,
+    upstreamCurrentZoneName,
+    mapProfile
+  );
+  const targetZoneName = mapProfile === 'flycare' ? null : getTargetZoneName(latestStatus);
+  const navigationTargetName = getTargetZoneName(latestStatus);
+  const navigationDistanceMeters = getNavigationTargetMetric(latestStatus, 'distance');
+  const navigationDirection = getNavigationTargetDirection(latestStatus);
+  const navigationEtaMinutes = getNavigationTargetMetric(latestStatus, 'eta');
   const lastSeenAt = toIsoTimestamp(latestStatus?.server_received_at ?? null);
   const lastSeenMs = parsePositionTimestamp(latestStatus?.server_received_at ?? null);
   const lastSeenAgeMs = lastSeenMs == null ? null : Math.max(0, now - lastSeenMs);
-  const heartRate = getSensorMetric(latestStatus, 'heart_rate', 'bpm');
-  const spo2 = getSensorMetric(latestStatus, 'spo2', 'percentage');
+  const heartRate =
+    getSensorMetric(latestStatus, 'heart_rate', 'bpm') ?? record.resident.lastKnownVitals?.heartRate ?? null;
+  const spo2 = getSensorMetric(latestStatus, 'spo2', 'percentage') ?? record.resident.lastKnownVitals?.spo2 ?? null;
   const battery = getBatteryLevel(latestStatus);
   const sosState = toBoolean(getNestedValue(getSectionData(latestStatus, 'sos'), 'active'));
   const fall = normalizeFallState(latestStatus);
@@ -1488,7 +1627,7 @@ function buildResidentViewModel(
     truthState,
     sosState,
     fallConfirmed: fall.confirmed,
-    hasTargetZone: Boolean(targetZoneId || targetZoneName)
+    hasTargetZone: Boolean(targetZoneId || targetZoneName || navigationTargetName || targetCoords)
   });
 
   return {
@@ -1509,6 +1648,10 @@ function buildResidentViewModel(
     targetZoneId,
     targetZoneLabelKey,
     targetZoneName,
+    navigationTargetName,
+    navigationDistanceMeters,
+    navigationDirection,
+    navigationEtaMinutes,
     currentCoords,
     targetCoords,
     heartRate,

@@ -10,7 +10,7 @@
 
 - FlyCare route shell uses `frontend/src/assets/brand/texture-airport-exact-full.svg` as the shell background texture
 - FlyCare right-panel header badge uses `frontend/src/assets/brand/flycare-badge-exact-crop.svg`
-- FlyCare header mark is still the shared SmartCare mark from `frontend/src/assets/brand/smartcare-mark-exact-full.svg`
+- FlyCare header mark is still the shared legacy mark from `frontend/src/assets/brand/FlyCare.png`
 - FlyCare center map base is `frontend/src/img/FlyCare.png`
 - the shell texture and badge are both injected from `frontend/src/styles/app-shell.css`
 - `frontend/src/pages/FlyCarePage.tsx` still owns workflow logic, map grid, polling, and drawer behavior

@@ -75,9 +75,9 @@ const CAREGIVER_PRIMARY_RESIDENT: Record<string, { slug: string; fallbackDisplay
 };
 
 const STORAGE_KEYS = {
-  accounts: 'smartcare-react-accounts',
-  session: 'smartcare-react-session',
-  theme: 'smartcare-theme'
+  accounts: 'flycare-react-accounts',
+  session: 'flycare-react-session',
+  theme: 'flycare-theme'
 } as const;
 
 const NAV_ITEMS: ReadonlyArray<{
@@ -113,7 +113,7 @@ const FlyCarePage = lazy(() =>
   import('./pages/FlyCarePage').then((module) => ({ default: module.FlyCarePage }))
 );
 
-const INDOOR_ZONES = ['Bedroom 1', 'Bedroom 2', 'Bathroom', 'Common Lounge'];
+const INDOOR_ZONES = ['Gate 10', 'Gate 11', 'Toilet', 'Customer Services'];
 const SIM_STATUSES: Resident['status'][] = ['high', 'followUp', 'stable'];
 
 const hasWindow = () => typeof window !== 'undefined';
@@ -173,31 +173,31 @@ const ROUTE_BRIEF_COPY = {
       chip: 'Shift brief',
       summaryQueue: 'Open queue',
       summaryEscalations: 'Escalations',
-      summaryFalls: 'Fall watch',
+      summaryFalls: 'SOS watch',
       summarySync: 'Last brief',
       mainTitle: 'Alert queue',
       mainNote: 'Signal-ranked issues requiring operator follow-up.',
       asideTitle: 'Shift focus',
-      asideNote: 'Residents most likely to need escalation in the next round.',
+      asideNote: 'Passengers most likely to need escalation in the next round.',
       coverageTitle: 'Coverage snapshot',
-      coverageNote: 'Keep the queue short and verify the next handoff before notifying family.',
-      coverageResidents: 'Active residents',
+      coverageNote: 'Keep the queue short and verify the next handoff before notifying assistance contacts.',
+      coverageResidents: 'Active passengers',
       coveragePriority: 'Priority watch',
       coverageSync: 'Briefed at',
-      emptyResidents: 'No residents need escalation right now.'
+      emptyResidents: 'No passengers need escalation right now.'
     },
     family: {
-      chip: 'Communication brief',
+      chip: 'Assistance brief',
       summaryUpdates: 'Share-ready updates',
-      summaryStable: 'Stable residents',
+      summaryStable: 'Stable passengers',
       summaryFollowUps: 'Priority follow-ups',
       summarySync: 'Updated at',
-      mainTitle: 'Family-ready updates',
+      mainTitle: 'Assistance-ready updates',
       mainNote: 'Short notes that can be relayed without opening the full chart.',
       asideTitle: 'Outreach queue',
-      asideNote: 'Residents whose families may need proactive context.',
+      asideNote: 'Passengers whose assistance contacts may need proactive context.',
       coverageTitle: 'Communication pulse',
-      coverageNote: 'Reassure first, escalate only when the resident signal changes.',
+      coverageNote: 'Reassure first, escalate only when the passenger signal changes.',
       coverageResidents: 'Stable now',
       coveragePriority: 'Needs context',
       coverageSync: 'Updated at',
@@ -209,15 +209,15 @@ const ROUTE_BRIEF_COPY = {
       chip: '\u503c\u73ed\u7b80\u62a5',
       summaryQueue: '\u5f85\u5904\u7406',
       summaryEscalations: '\u9700\u5347\u7ea7',
-      summaryFalls: '\u8dcc\u5012\u76d1\u63a7',
+      summaryFalls: 'SOS\u76d1\u63a7',
       summarySync: '\u6700\u540e\u7b80\u62a5',
       mainTitle: '\u8b66\u62a5\u961f\u5217',
       mainNote: '\u6309\u4fe1\u53f7\u4f18\u5148\u7ea7\u6392\u5217\uff0c\u7528\u4e8e\u5feb\u901f\u8ddf\u8fdb\u3002',
       asideTitle: '\u73ed\u6b21\u5173\u6ce8',
       asideNote: '\u4e0b\u4e00\u8f6e\u6700\u53ef\u80fd\u9700\u8981\u5347\u7ea7\u5904\u7406\u7684\u5bf9\u8c61\u3002',
       coverageTitle: '\u8986\u76d6\u5feb\u7167',
-      coverageNote: '\u4fdd\u6301\u961f\u5217\u7b80\u77ed\uff0c\u5e76\u5728\u901a\u77e5\u5bb6\u5c5e\u524d\u5148\u5b8c\u6210\u4ea4\u63a5\u786e\u8ba4\u3002',
-      coverageResidents: '\u5728\u7ebf\u5c45\u6c11',
+      coverageNote: '\u4fdd\u6301\u961f\u5217\u7b80\u77ed\uff0c\u5e76\u5728\u901a\u77e5\u534f\u52a9\u8054\u7cfb\u4eba\u524d\u5148\u5b8c\u6210\u4ea4\u63a5\u786e\u8ba4\u3002',
+      coverageResidents: '\u5728\u7ebf\u4e58\u5ba2',
       coveragePriority: '\u91cd\u70b9\u76d1\u770b',
       coverageSync: '\u7b80\u62a5\u65f6\u95f4',
       emptyResidents: '\u5f53\u524d\u6ca1\u6709\u9700\u8981\u5347\u7ea7\u7684\u5bf9\u8c61\u3002'
@@ -225,19 +225,19 @@ const ROUTE_BRIEF_COPY = {
     family: {
       chip: '\u6c9f\u901a\u7b80\u62a5',
       summaryUpdates: '\u53ef\u5bf9\u5916\u66f4\u65b0',
-      summaryStable: '\u7a33\u5b9a\u5c45\u6c11',
+      summaryStable: '\u7a33\u5b9a\u4e58\u5ba2',
       summaryFollowUps: '\u91cd\u70b9\u8ddf\u8fdb',
       summarySync: '\u66f4\u65b0\u65f6\u95f4',
-      mainTitle: '\u5bb6\u5c5e\u66f4\u65b0',
-      mainNote: '\u4e0d\u7528\u6253\u5f00\u5b8c\u6574\u6863\u6848\u4e5f\u80fd\u76f4\u63a5\u4f20\u8fbe\u7684\u77ed\u8981\u8bf4\u660e\u3002',
+      mainTitle: '\u534f\u52a9\u8054\u7cfb\u4eba\u66f4\u65b0',
+      mainNote: '\u4e0d\u7528\u6253\u5f00\u5b8c\u6574\u884c\u7a0b\u4e5f\u80fd\u76f4\u63a5\u4f20\u8fbe\u7684\u77ed\u8981\u8bf4\u660e\u3002',
       asideTitle: '\u6c9f\u901a\u961f\u5217',
-      asideNote: '\u5bb6\u5c5e\u53ef\u80fd\u9700\u8981\u63d0\u524d\u83b7\u5f97\u80cc\u666f\u8bf4\u660e\u7684\u5bf9\u8c61\u3002',
+      asideNote: '\u534f\u52a9\u8054\u7cfb\u4eba\u53ef\u80fd\u9700\u8981\u63d0\u524d\u83b7\u5f97\u80cc\u666f\u8bf4\u660e\u7684\u4e58\u5ba2\u3002',
       coverageTitle: '\u6c9f\u901a\u8109\u640f',
-      coverageNote: '\u5148\u505a\u5b89\u629a\uff0c\u53ea\u5728\u4fe1\u53f7\u53d8\u5316\u65f6\u518d\u5347\u7ea7\u6c9f\u901a\u3002',
+      coverageNote: '\u5148\u786e\u8ba4\u72b6\u6001\uff0c\u53ea\u5728\u4e58\u5ba2\u4fe1\u53f7\u53d8\u5316\u65f6\u518d\u5347\u7ea7\u6c9f\u901a\u3002',
       coverageResidents: '\u7a33\u5b9a\u4e2d',
       coveragePriority: '\u9700\u80cc\u666f\u8bf4\u660e',
       coverageSync: '\u66f4\u65b0\u65f6\u95f4',
-      emptyResidents: '\u5f53\u524d\u6ca1\u6709\u9700\u8981\u4e3b\u52a8\u6c9f\u901a\u7684\u5bf9\u8c61\u3002'
+      emptyResidents: '\u5f53\u524d\u6ca1\u6709\u9700\u8981\u4e3b\u52a8\u6c9f\u901a\u7684\u4e58\u5ba2\u3002'
     }
   },
   'zh-HK': {
@@ -245,15 +245,15 @@ const ROUTE_BRIEF_COPY = {
       chip: '\u503c\u73ed\u7c21\u5831',
       summaryQueue: '\u5f85\u8655\u7406',
       summaryEscalations: '\u9700\u5347\u7d1a',
-      summaryFalls: '\u8dcc\u5012\u76e3\u63a7',
+      summaryFalls: 'SOS\u76e3\u63a7',
       summarySync: '\u6700\u5f8c\u7c21\u5831',
       mainTitle: '\u8b66\u793a\u4f47\u5217',
       mainNote: '\u6309\u4fe1\u865f\u512a\u5148\u7d1a\u6392\u5217\uff0c\u4f9b\u7576\u73ed\u5feb\u901f\u8ddf\u9032\u3002',
       asideTitle: '\u73ed\u6b21\u95dc\u6ce8',
       asideNote: '\u4e0b\u4e00\u8f2a\u6700\u53ef\u80fd\u9700\u8981\u5347\u7d1a\u8655\u7406\u7684\u5c0d\u8c61\u3002',
       coverageTitle: '\u8986\u84cb\u5feb\u7167',
-      coverageNote: '\u4fdd\u6301\u4f47\u5217\u7c21\u77ed\uff0c\u4e26\u5728\u901a\u77e5\u5bb6\u5c6c\u524d\u5148\u5b8c\u6210\u4ea4\u63a5\u78ba\u8a8d\u3002',
-      coverageResidents: '\u5728\u7dda\u4f4f\u6236',
+      coverageNote: '\u4fdd\u6301\u4f47\u5217\u7c21\u77ed\uff0c\u4e26\u5728\u901a\u77e5\u5354\u52a9\u806f\u7d61\u4eba\u524d\u5148\u5b8c\u6210\u4ea4\u63a5\u78ba\u8a8d\u3002',
+      coverageResidents: '\u5728\u7dda\u4e58\u5ba2',
       coveragePriority: '\u91cd\u9ede\u76e3\u770b',
       coverageSync: '\u7c21\u5831\u6642\u9593',
       emptyResidents: '\u76ee\u524d\u6c92\u6709\u9700\u8981\u5347\u7d1a\u7684\u5c0d\u8c61\u3002'
@@ -261,19 +261,19 @@ const ROUTE_BRIEF_COPY = {
     family: {
       chip: '\u6e9d\u901a\u7c21\u5831',
       summaryUpdates: '\u53ef\u5c0d\u5916\u66f4\u65b0',
-      summaryStable: '\u7a69\u5b9a\u4f4f\u6236',
+      summaryStable: '\u7a69\u5b9a\u4e58\u5ba2',
       summaryFollowUps: '\u91cd\u9ede\u8ddf\u9032',
       summarySync: '\u66f4\u65b0\u6642\u9593',
-      mainTitle: '\u5bb6\u5c6c\u66f4\u65b0',
-      mainNote: '\u7121\u9808\u6253\u958b\u5b8c\u6574\u6a94\u6848\uff0c\u4ea6\u80fd\u76f4\u63a5\u50b3\u9054\u7684\u77ed\u8981\u8aaa\u660e\u3002',
+      mainTitle: '\u5354\u52a9\u806f\u7d61\u4eba\u66f4\u65b0',
+      mainNote: '\u7121\u9808\u6253\u958b\u5b8c\u6574\u884c\u7a0b\uff0c\u4ea6\u80fd\u76f4\u63a5\u50b3\u9054\u7684\u77ed\u8981\u8aaa\u660e\u3002',
       asideTitle: '\u6e9d\u901a\u4f47\u5217',
-      asideNote: '\u5bb6\u5c6c\u53ef\u80fd\u9700\u8981\u9810\u5148\u7372\u5f97\u80cc\u666f\u8aaa\u660e\u7684\u5c0d\u8c61\u3002',
+      asideNote: '\u5354\u52a9\u806f\u7d61\u4eba\u53ef\u80fd\u9700\u8981\u9810\u5148\u7372\u5f97\u80cc\u666f\u8aaa\u660e\u7684\u4e58\u5ba2\u3002',
       coverageTitle: '\u6e9d\u901a\u8108\u640f',
-      coverageNote: '\u5148\u505a\u5b89\u64ab\uff0c\u53ea\u5728\u4fe1\u865f\u8b8a\u5316\u6642\u624d\u5347\u7d1a\u6e9d\u901a\u3002',
+      coverageNote: '\u5148\u78ba\u8a8d\u72c0\u614b\uff0c\u53ea\u5728\u4e58\u5ba2\u4fe1\u865f\u8b8a\u5316\u6642\u624d\u5347\u7d1a\u6e9d\u901a\u3002',
       coverageResidents: '\u7a69\u5b9a\u4e2d',
       coveragePriority: '\u9700\u80cc\u666f\u8aaa\u660e',
       coverageSync: '\u66f4\u65b0\u6642\u9593',
-      emptyResidents: '\u76ee\u524d\u6c92\u6709\u9700\u8981\u4e3b\u52d5\u6e9d\u901a\u7684\u5c0d\u8c61\u3002'
+      emptyResidents: '\u76ee\u524d\u6c92\u6709\u9700\u8981\u4e3b\u52d5\u6e9d\u901a\u7684\u4e58\u5ba2\u3002'
     }
   }
 } as const;
@@ -1035,7 +1035,7 @@ export default function App() {
           <section className="route-brief__panel route-brief__panel--primary">
             <div className="route-brief__panel-header">
               <div>
-                <p className="route-brief__panel-eyebrow">Family</p>
+                <p className="route-brief__panel-eyebrow">Assistance</p>
                 <h3>{copy.mainTitle}</h3>
               </div>
               <span className="route-brief__panel-tag">{t('insights.subtitle')}</span>
@@ -1061,7 +1061,7 @@ export default function App() {
             <section className="route-brief__panel route-brief__panel--secondary">
               <div className="route-brief__panel-header">
                 <div>
-                  <p className="route-brief__panel-eyebrow">Family</p>
+                  <p className="route-brief__panel-eyebrow">Assistance</p>
                   <h3>{copy.asideTitle}</h3>
                 </div>
               </div>
@@ -1091,7 +1091,7 @@ export default function App() {
             <section className="route-brief__panel route-brief__panel--compact">
               <div className="route-brief__panel-header">
                 <div>
-                  <p className="route-brief__panel-eyebrow">Family</p>
+                  <p className="route-brief__panel-eyebrow">Assistance</p>
                   <h3>{copy.coverageTitle}</h3>
                 </div>
               </div>
@@ -1135,7 +1135,7 @@ export default function App() {
           <section className="route-surface">
             <div className="route-surface__header">
               <div>
-                <p className="route-surface__eyebrow">Residents</p>
+                <p className="route-surface__eyebrow">Passengers</p>
                 <h2>{t('layout.nav.residents')}</h2>
               </div>
               <span className="route-surface__chip">{t('admin.residents.subtitle')}</span>

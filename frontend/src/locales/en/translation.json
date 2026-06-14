@@ -6,20 +6,20 @@
     "loading": "Loading..."
   },
   "layout": {
-    "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
+    "title": "FlyCare Command Dashboard",
+    "subtitle": "Smart Wearable Safety System for Airport Assistance",
     "nav": {
       "aria": "Primary navigation",
       "overview": "Overview",
-      "residents": "Residents",
+      "residents": "Passengers",
       "location": "Location",
       "position": "Indoor positioning",
       "flycare": "FlyCare",
       "operations": "Operations",
-      "family": "Family engagement",
+      "family": "Assistance updates",
       "admin": "Admin"
     },
-    "footer": "© 2024 SmartCare Collaborative — Built for compassionate teams",
+    "footer": "© 2024 FlyCare Collaborative - Built for airport assistance teams",
     "flycareBrand": "Smart FlyCare System"
   },
   "position": {
@@ -50,16 +50,16 @@
     "sensors": "Sensors",
     "system": "System",
     "refresh": "Refresh",
-    "viewAllOnMap": "View all residents",
+    "viewAllOnMap": "View all passengers",
     "zone": {
-      "door1": "Door 1",
-      "door2": "Door 2",
-      "nurse_station": "Nurse station",
-      "activity_room": "Activity room",
-      "rehabilitation_room": "Rehabilitation room",
-      "central_common_area": "Central common area",
+      "door1": "Check-in entry",
+      "door2": "Gate exit",
+      "nurse_station": "Security checkpoint",
+      "activity_room": "Customer services",
+      "rehabilitation_room": "Immigration",
+      "central_common_area": "Main concourse",
       "toilet": "Toilet",
-      "bedroom": "Bedroom"
+      "bedroom": "Gate area"
     }
   },
   "flyCare": {
@@ -96,9 +96,16 @@
     "flightNumber": "Flight number",
     "flightGate": "Gate",
     "flightTime": "Flight time",
+    "flightEstimatedDeparture": "Estimated departure",
+    "flightBoardingTime": "Boarding time",
+    "flightStatus": "Flight status",
+    "flightDelay": "Delay",
+    "flightAirline": "Airline",
     "flightDeparture": "Departure airport",
     "flightArrival": "Arrival airport",
     "flightSeat": "Seat number",
+    "flightTerminal": "Terminal",
+    "flightCheckinCounter": "Check-in counter",
     "flightUpdateTitle": "Flight update",
     "flightUpdateConfirm": "Confirm",
     "simulateFlightUpdate": "Simulate flight update",
@@ -160,15 +167,15 @@
   "admin": {
     "title": "System Admin",
     "subtitle": "Direct access to TestStage-FYP backend resources",
-    "detailsTitle": "Proactive Guardian Care Details",
-    "detailsSubtitle": "System Admin dashboard for Smart Wearable Safety System for Elderly Homes",
+    "detailsTitle": "FlyCare System Details",
+    "detailsSubtitle": "System Admin dashboard for airport wearable safety operations",
     "tabs": {
       "users": "Users",
       "devices": "Devices",
       "locations": "Locations",
       "events": "Events",
     "logs": "Device logs",
-      "residents": "Residents",
+      "residents": "Passengers",
       "flycare": "FlyCare"
     },
     "flycare": {
@@ -229,34 +236,34 @@
       "successGeneric": "Done"
     },
     "residents": {
-      "title": "Resident directory",
+      "title": "Passenger directory",
       "subtitle": "Synced from /api/v1/residents",
-      "searchPlaceholder": "Search by name or room",
+      "searchPlaceholder": "Search by name or zone",
       "statusFilterLabel": "Status",
       "allStatuses": "All statuses",
       "refresh": "Refresh",
       "lastUpdated": "Updated {{time}}",
       "columns": {
         "id": "ID",
-        "name": "Resident",
-        "room": "Room",
+        "name": "Passenger",
+        "room": "Zone",
         "status": "Status",
         "lastSeen": "Last seen",
         "device": "Device",
         "updated": "Updated"
       },
-      "noData": "No residents found.",
+      "noData": "No passengers found.",
       "lastSeenUnknown": "Unknown",
       "deviceUnknown": "Unassigned",
       "vitalsUnknown": "Waiting for vitals",
-      "error": "Unable to fetch residents. Try again."
+      "error": "Unable to fetch passengers. Try again."
     }
   },
   "auth": {
     "guestName": "Guest",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "signInTitle": "Sign in to SmartCare",
+    "signInTitle": "Sign in to FlyCare",
     "signUpTitle": "Create an account",
     "username": "Username",
     "password": "Password",
@@ -269,7 +276,7 @@
     "toSignIn": "Back to sign in",
     "roles": {
       "guest": "Guest",
-      "caregiver": "Caregiver",
+      "caregiver": "Assistant",
       "admin": "Admin"
     },
     "errors": {
@@ -305,22 +312,22 @@
   },
   "hero": {
     "eyebrow": "Progressive web app prototype",
-    "title": "A gentler control room for SmartCare staff",
-    "description": "Preview the upcoming React experience while the classic dashboard stays live in production.",
+    "title": "A command room for FlyCare staff",
+    "description": "Monitor wearable location, vitals, flight updates, and SOS events from the FlyCare branch.",
     "lastUpdated": "Last updated {{time}}"
   },
   "stats": {
     "wellbeing": {
       "title": "Wellbeing score",
-      "description": "Average resident wellbeing taken from wearable summaries."
+      "description": "Average passenger wellbeing taken from wearable summaries."
     },
     "alertsResolved": {
       "title": "Alerts resolved",
-      "description": "Escalations closed by the care team in the past shift."
+      "description": "Escalations closed by the assistance team in the past shift."
     },
     "responseTime": {
       "title": "Average response time",
-      "description": "Minutes from alert raised to the first bedside check.",
+      "description": "Minutes from alert raised to the first staff check.",
       "unit": "min"
     },
     "delta": {
@@ -332,15 +339,15 @@
     }
   },
   "charts": {
-    "title": "Care activity snapshots",
-    "subtitle": "Live visual summaries of resident status, zone activity, and alerts.",
+    "title": "Passenger activity snapshots",
+    "subtitle": "Live visual summaries of passenger status, zone activity, and alerts.",
     "status": {
-      "title": "Resident status mix",
-      "subtitle": "Status distribution for active residents."
+      "title": "Passenger status mix",
+      "subtitle": "Status distribution for active passengers."
     },
     "zones": {
       "title": "Zone occupancy",
-      "subtitle": "Residents grouped by last seen location."
+      "subtitle": "Passengers grouped by last seen location."
     },
     "alerts": {
       "title": "Alert activity",
@@ -356,15 +363,15 @@
     "stable": "Stable"
   },
   "residents": {
-    "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
+    "title": "FlyCare Passenger Operations",
+    "subtitle": "Smart Wearable Safety System for Airport Assistance",
     "filters": {
-      "aria": "Filter residents by status"
+      "aria": "Filter passengers by status"
     },
-    "tableCaption": "Resident vital signs and status",
+    "tableCaption": "Passenger vital signs and status",
     "columns": {
-      "name": "Resident",
-      "room": "Room",
+      "name": "Passenger",
+      "room": "Zone",
       "lastCheck": "Last check-in",
       "vitals": "Vitals",
       "status": "Status",
@@ -381,7 +388,7 @@
       "subtitle": "Latest history for {{name}}",
       "close": "Close panel"
     },
-    "empty": "No residents match this filter right now.",
+    "empty": "No passengers match this filter right now.",
     "status": {
       "stable": "Stable",
       "followUp": "Follow-up needed",
@@ -401,19 +408,19 @@
       "waiting": "Awaiting first round"
     },
     "edit": {
-      "title": "Edit resident details",
-      "name": "Resident name",
-      "room": "Room",
+      "title": "Edit passenger details",
+      "name": "Passenger name",
+      "room": "Zone",
       "status": "Status",
       "lastSeenAt": "Last seen time",
       "lastSeenLocation": "Last seen location",
       "cancel": "Cancel",
       "save": "Save changes",
-      "delete": "Delete resident",
+      "delete": "Delete passenger",
       "confirmDelete": "Remove {{name}} from the simulator? This action cannot be undone.",
       "errors": {
-        "requiredName": "Enter a resident name.",
-        "requiredRoom": "Enter a room number."
+        "requiredName": "Enter a passenger name.",
+        "requiredRoom": "Enter a zone."
       }
     },
     "live": {
@@ -428,7 +435,7 @@
   },
   "location": {
     "title": "Location overview",
-    "subtitle": "Indoor floorplan (classroom demo).",
+    "subtitle": "Airport indoor floorplan.",
     "refresh": "Refresh map data",
     "map": {
       "aria": "Location map",
@@ -436,10 +443,10 @@
       "zone": "Zone"
     },
     "zones": {
-      "bedroom1": "Bedroom 1",
-      "bedroom2": "Bedroom 2",
-      "bathroom": "Bathroom",
-      "commonLounge": "Common lounge",
+      "bedroom1": "Gate 10",
+      "bedroom2": "Gate 11",
+      "bathroom": "Toilet",
+      "commonLounge": "Customer services",
       "unknown": "Unknown zone"
     },
     "legend": {
@@ -447,21 +454,21 @@
       "indoorZones": "Indoor zones",
       "safeZone": "Safe zones",
       "alerts": "Active events",
-      "residents": "Residents"
+      "residents": "Passengers"
     },
     "occupancy": {
       "title": "Zone occupancy",
-      "subtitle": "Residents grouped by last seen location.",
+      "subtitle": "Passengers grouped by last seen location.",
       "aria": "Zone occupancy list",
-      "empty": "No residents currently in this zone."
+      "empty": "No passengers currently in this zone."
     },
     "events": {
       "status": "Status",
       "time": "Time",
       "types": {
         "fall": "Fall",
-        "bed_exit": "Bed exit",
-        "bathroom_retention": "Bathroom retention",
+        "bed_exit": "Gate departure",
+        "bathroom_retention": "Toilet assistance",
         "geofence_breach": "Geofence breach",
         "sos": "SOS",
         "vital_signs_abnormal": "Vitals abnormal"
@@ -491,15 +498,15 @@
     "title": "Recent alerts",
     "subtitle": "Most urgent updates from the day",
     "items": {
-      "fall": "Fall detected in the west wing corridor.",
-      "heartRate": "Mrs. Singh reports elevated heart rate.",
+      "fall": "SOS event reported near the main concourse.",
+      "heartRate": "Passenger vital signs need review.",
       "wearable": "Wearable ID #A52 battery is below 10%.",
       "ota": "New firmware ready for OTA deployment."
     },
     "generated": {
       "fall": "Potential fall detected for {{name}} in {{location}}.",
-      "highStatus": "{{name}} requires urgent review in room {{room}}.",
-      "followUp": "Schedule follow-up check for {{name}} in room {{room}}.",
+      "highStatus": "{{name}} requires urgent review in zone {{room}}.",
+      "followUp": "Schedule follow-up check for {{name}} in zone {{room}}.",
       "stale": "No new round for {{name}} — last seen {{duration}} ago.",
       "lowSpo2": "{{name}} SpO₂ dropped to {{spo2}}%.",
       "highHr": "{{name}} heart rate reached {{hr}} bpm.",
@@ -512,19 +519,19 @@
     "info": "Info"
   },
   "insights": {
-    "title": "Care insights",
-    "subtitle": "Suggested follow-ups from the care team",
+    "title": "Assistance insights",
+    "subtitle": "Suggested follow-ups from the assistance team",
     "items": {
-      "hydration": "Keep hydration reminders active for wing C.",
-      "nightRounds": "Add extra night rounds for Mrs. Chen.",
-      "physiotherapy": "Coordinate PT follow-up for Mr. Lee.",
-      "familyFeedback": "Log family visit feedback for Ms. Lopez."
+      "hydration": "Keep passenger check-in reminders active for Gate 10.",
+      "nightRounds": "Add an extra boarding readiness check for delayed flights.",
+      "physiotherapy": "Coordinate mobility assistance at security.",
+      "familyFeedback": "Log assistance feedback for the selected passenger."
     },
     "generated": {
-      "focusHigh": "Assign rapid response to {{name}} in room {{room}}.",
-      "followUp": "Plan follow-up visit for {{name}} in room {{room}}.",
+      "focusHigh": "Assign rapid response to {{name}} in zone {{room}}.",
+      "followUp": "Plan follow-up check for {{name}} in zone {{room}}.",
       "hydration": "Queue hydration reminder for {{name}} (last seen {{duration}} ago).",
-      "familyUpdate": "Share stable progress update with {{name}}'s family.",
+      "familyUpdate": "Share stable progress update with {{name}}'s assistance contact.",
       "location": "Check on {{name}} around {{location}} during next rounds."
     }
   },
@@ -554,21 +561,21 @@
     },
     "dataset": {
       "title": "Simulator dataset",
-      "addCustom": "Add custom resident",
-      "hideForm": "Hide custom resident form",
-      "submit": "Add resident",
+      "addCustom": "Add custom passenger",
+      "hideForm": "Hide custom passenger form",
+      "submit": "Add passenger",
       "pending": "Adding…",
-      "success": "Resident added to the simulation.",
+      "success": "Passenger added to the simulation.",
       "reset": "Reset form",
       "errors": {
-        "name": "Enter a resident name.",
-        "room": "Enter a room number.",
-        "generic": "Could not add this resident. Try again."
+        "name": "Enter a passenger name.",
+        "room": "Enter a zone.",
+        "generic": "Could not add this passenger. Try again."
       }
     },
     "actions": {
-      "clearAll": "Clear all residents",
-      "confirmClearAll": "Clear the entire resident directory? This only affects the demo data."
+      "clearAll": "Clear all passengers",
+      "confirmClearAll": "Clear the entire passenger directory? This only affects the demo data."
     }
   },
   "devPanel": {
@@ -576,7 +583,7 @@
     "title": "Simulator controls",
     "refresh": "Single update",
     "burst": "Burst ×10",
-    "spawn": "Spawn new resident",
+    "spawn": "Spawn new passenger",
     "clear": "Clear additions",
     "hide": "Hide",
     "show": "Show simulator controls",
@@ -585,28 +592,28 @@
     "error": "Service worker not ready"
   },
   "family": {
-    "title": "Family briefing",
-    "note": "Portrait-first resident cards keep room context ready for a quick family update.",
-    "refresh": "Refresh residents",
-    "gridAria": "Family resident cards",
+    "title": "Assistance briefing",
+    "note": "Passenger cards keep airport context ready for a quick assistance update.",
+    "refresh": "Refresh passengers",
+    "gridAria": "Passenger assistance cards",
     "avatarAlt": "{{name}} avatar",
-    "roomLabel": "Room",
-    "roomUnknown": "Room pending",
-    "loadingTitle": "Loading resident cards",
-    "loadingBody": "Fetching the latest resident roster for the family workspace.",
-    "emptyTitle": "No residents to show",
-    "emptyBody": "The family workspace will populate when residents are available from the backend.",
-    "errorTitle": "Family workspace unavailable",
-    "errorFallback": "Unable to load the resident roster.",
+    "roomLabel": "Zone",
+    "roomUnknown": "Zone pending",
+    "loadingTitle": "Loading passenger cards",
+    "loadingBody": "Fetching the latest passenger roster for the assistance workspace.",
+    "emptyTitle": "No passengers to show",
+    "emptyBody": "The assistance workspace will populate when passengers are available from the backend.",
+    "errorTitle": "Assistance workspace unavailable",
+    "errorFallback": "Unable to load the passenger roster.",
     "summary": {
       "title": "Today's summary",
-      "residentLabel": "Selected resident",
-      "promptTitle": "Select a resident",
-      "promptBody": "Choose a resident card to load today's family summary.",
+      "residentLabel": "Selected passenger",
+      "promptTitle": "Select a passenger",
+      "promptBody": "Choose a passenger card to load today's assistance summary.",
       "loadingTitle": "Loading today's summary",
       "loadingBody": "Fetching the latest placeholder summary from the backend.",
       "emptyTitle": "No summary available yet",
-      "emptyBody": "The backend returned no summary for this resident today.",
+      "emptyBody": "The backend returned no summary for this passenger today.",
       "unavailableTitle": "Summary service unavailable",
       "unavailableBody": "Today's summary is temporarily unavailable. Please try again later.",
       "errorTitle": "Unable to load summary",
@@ -620,7 +627,7 @@
     },
     "briefing": {
       "heroEyebrow": "Today's briefing",
-      "roleFallback": "Resident",
+      "roleFallback": "Passenger",
       "vitals": {
         "title": "Vitals snapshot",
         "heartRate": "Heart rate",
@@ -628,9 +635,9 @@
         "respiration": "Respiration"
       },
       "activities": {
-        "title": "Daily activities",
-        "breakfastCompleted": "Breakfast completed",
-        "middayWalk": "Midday walk · 15 min"
+        "title": "Travel activity",
+        "breakfastCompleted": "Check-in completed",
+        "middayWalk": "Gate walk · 15 min"
       },
       "mood": {
         "title": "Mood check",
@@ -638,13 +645,13 @@
         "attention": "Needs attention"
       },
       "notes": {
-        "title": "Care notes",
-        "placeholder": "Add caregiver notes for the next family update..."
+        "title": "Assistance notes",
+        "placeholder": "Add operator notes for the next assistance update..."
       }
     },
     "vitalsHistory": {
       "title": "Vitals history",
-      "residentLabel": "Selected resident",
+      "residentLabel": "Selected passenger",
       "rangeTitle": "Time range",
       "loadingTitle": "Loading vitals history",
       "loadingBody": "Checking whether the backend vitals history endpoint is ready.",
@@ -654,7 +661,7 @@
       "unavailableBody": "Vitals history is not yet available. Waiting for backend update.",
       "errorTitle": "Unable to load vitals history",
       "invalidResidentIdTitle": "Cannot load vitals history",
-      "invalidResidentIdBody": "The resident identifier must be a numeric user ID (same as user.user_id in the database). The current value cannot be used with the history API.",
+      "invalidResidentIdBody": "The passenger identifier must be a numeric user ID (same as user.user_id in the database). The current value cannot be used with the history API.",
       "noReading": "--",
       "columns": {
         "recordedAt": "Recorded",

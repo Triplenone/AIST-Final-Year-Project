@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import mapImage from '../../img/ElderlyCare.png';
+import mapImage from '../../img/FlyCare.png';
 import {
   gridIndicesToPixelPercent,
   type PositionSurfaceState,
@@ -36,7 +36,7 @@ function getOperatorError(
 ): string {
   if (!error || error.toLowerCase().includes('not found')) {
     return t('position.selectedResidentUnavailable', {
-      defaultValue: 'Selected resident snapshot unavailable.'
+      defaultValue: 'Selected passenger snapshot unavailable.'
     });
   }
   return error;
@@ -87,11 +87,11 @@ export function PositionMapStage({
   const mapEmptyCopy =
     showAllOnMap
       ? t('position.noOnlineResidentsOnMap', {
-          defaultValue: 'No online residents with location data right now.'
+          defaultValue: 'No online passengers with location data right now.'
         })
       : resident == null
       ? t('position.noSelectionHint', {
-          defaultValue: 'Choose a resident from the rail to inspect Position context.'
+          defaultValue: 'Choose a passenger from the rail to inspect Position context.'
         })
       : resident.hasData
         ? t('position.zoneResolutionUnavailable', {
@@ -112,7 +112,7 @@ export function PositionMapStage({
           {effectiveSurfaceState === 'loading'
             ? t('position.loadingMapContext', { defaultValue: 'Loading map context...' })
             : showAllOnMap
-              ? t('position.viewAllOnMap', { defaultValue: '查看所有人' })
+              ? t('position.viewAllOnMap', { defaultValue: 'View all on map' })
               : t('position.currentLocation', { defaultValue: 'Current location' })}
         </p>
       </header>
@@ -183,7 +183,7 @@ export function PositionMapStage({
 
         {effectiveSurfaceState === 'empty' ? (
           <div className="position-command-center__state-card">
-            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
+            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No passenger selected' })}</strong>
             <p>{mapEmptyCopy}</p>
           </div>
         ) : null}

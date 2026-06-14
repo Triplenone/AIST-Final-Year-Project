@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
-      POSTGRES_DB: eldercare
+      POSTGRES_DB: flycare_scaffold
     ports: ["5432:5432"]
   minio:
     image: quay.io/minio/minio
@@ -24,7 +24,7 @@ services:
     build: ../backend
     depends_on: [mqtt, db, minio]
     environment:
-      DATABASE_URL: postgresql+psycopg://app:app@db:5432/eldercare
+      DATABASE_URL: postgresql+psycopg://app:app@db:5432/flycare_scaffold
       MQTT_URL: mqtts://mqtt:8883
       ALLOW_ORIGINS: http://localhost:5173
     ports: ["8000:8000"]

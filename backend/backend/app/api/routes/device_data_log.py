@@ -78,7 +78,7 @@ def log_to_response(log: DeviceDataLog) -> DeviceDataLogResponse:
 
 
 def log_to_elder_detail_response(log: DeviceDataLog) -> ElderDetailResponse:
-    """将数据库模型转换为包含老者信息的响应模型"""
+    """将数据库模型转换为包含乘客信息的响应模型"""
     device = log.device
     elderly_user = device.elderly_user if device else None
     
@@ -111,7 +111,7 @@ def log_to_elder_detail_response(log: DeviceDataLog) -> ElderDetailResponse:
         mac_address=device.mac_address if device else None,
         deploy_location=device.deploy_location if device else None,
         
-        # 老者信息
+        # 乘客信息
         elderly_user_id=elderly_user.user_id if elderly_user else None,
         elderly_name=elderly_user.name if elderly_user else None,
         elderly_age=elderly_user.age if elderly_user else None,
@@ -432,31 +432,31 @@ def get_device_data_time_series(
         raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 
-# ==================== 老者详情搜索接口 ====================
+# ==================== 乘客详情搜索接口 ====================
 
 @router.get("/search-elder-detail", response_model=List[ElderDetailResponse])
 def search_elder_detail(
     skip: int = Query(0, ge=0, description="跳过记录数"),
     limit: int = Query(100, ge=1, le=1000, description="返回记录数"),
     device_id: Optional[int] = Query(None, description="筛选设备ID"),
-    elderly_user_id: Optional[int] = Query(None, description="筛选老者用户ID"),
-    elderly_name: Optional[str] = Query(None, description="筛选老者姓名（模糊匹配）"),
+    elderly_user_id: Optional[int] = Query(None, description="筛选乘客用户ID"),
+    elderly_name: Optional[str] = Query(None, description="筛选乘客姓名（模糊匹配）"),
     is_fall_confirmed: Optional[bool] = Query(None, description="筛选是否确认跌倒"),
     start_timestamp: Optional[int] = Query(None, description="起始时间戳"),
     end_timestamp: Optional[int] = Query(None, description="结束时间戳"),
     db: Session = Depends(get_db)
 ):
     """
-    搜索老者详情
+    搜索乘客详情
     
-    联查 device_data_log、device 和 user 表，获取包含设备信息和老者信息的数据日志。
+    联查 device_data_log、device 和 user 表，获取包含设备信息和乘客信息的数据日志。
     
     **查询参数**:
     - **skip**: 跳过记录数（分页）
     - **limit**: 返回记录数（分页）
     - **device_id**: 可选，筛选特定设备
-    - **elderly_user_id**: 可选，筛选特定老者用户ID
-    - **elderly_name**: 可选，筛选老者姓名（支持模糊匹配）
+    - **elderly_user_id**: 可选，筛选特定乘客用户ID
+    - **elderly_name**: 可选，筛选乘客姓名（支持模糊匹配）
     - **is_fall_confirmed**: 可选，筛选是否确认跌倒
     - **start_timestamp**: 可选，起始时间戳
     - **end_timestamp**: 可选，结束时间戳
@@ -464,11 +464,11 @@ def search_elder_detail(
     **返回数据包括**:
     - 设备数据日志的所有字段
     - 设备信息（设备名称、类型、状态、MAC地址、部署位置等）
-    - 老者信息（用户ID、姓名、年龄、性别等）
+    - 乘客信息（用户ID、姓名、年龄、性别等）
     
     **使用示例**:
-    - 按老者姓名搜索: `/search-elder-detail?elderly_name=张三`
-    - 按设备ID和老者ID搜索: `/search-elder-detail?device_id=1&elderly_user_id=5`
+    - 按乘客姓名搜索: `/search-elder-detail?elderly_name=张三`
+    - 按设备ID和乘客ID搜索: `/search-elder-detail?device_id=1&elderly_user_id=5`
     - 搜索跌倒记录: `/search-elder-detail?is_fall_confirmed=true&elderly_name=李四`
     """
     try:

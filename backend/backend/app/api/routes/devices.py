@@ -15,7 +15,7 @@ router = APIRouter()
 def get_devices(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    elderly_user_id: Optional[int] = Query(None, description="老人用户ID筛选"),
+    elderly_user_id: Optional[int] = Query(None, description="乘客用户ID筛选"),
     status: Optional[str] = Query(None, description="设备状态筛选"),
     db: Session = Depends(get_db)
 ):

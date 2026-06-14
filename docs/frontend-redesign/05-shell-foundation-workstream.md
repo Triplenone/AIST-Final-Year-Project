@@ -31,7 +31,7 @@
 ## Acceptance
 
 - the shared shell reads as one system across `/`, `/residents`, `/location`, `/operations`, `/family`, and `/admin`
-- the header keeps the SmartCare mark and exposes clearer current-workspace context
+- the header keeps the legacy mark and exposes clearer current-workspace context
 - the quick actions dock has an explicit closed and open state
 - `/position` keeps its wide layout
 - `/flycare` keeps workflow behavior unchanged

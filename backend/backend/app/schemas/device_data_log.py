@@ -130,7 +130,7 @@ class DeviceDataLogUpdate(BaseModel):
 
 
 class ElderDetailResponse(BaseModel):
-    """老者详情响应模型（包含设备数据日志、设备信息和老者信息）"""
+    """乘客详情响应模型（包含设备数据日志、设备信息和乘客信息）"""
     # 数据日志基本信息
     id: int = Field(..., description="日志ID")
     device_id: int = Field(..., description="设备ID")
@@ -144,11 +144,11 @@ class ElderDetailResponse(BaseModel):
     mac_address: Optional[str] = Field(None, description="MAC地址")
     deploy_location: Optional[str] = Field(None, description="部署位置")
     
-    # 老者信息
-    elderly_user_id: Optional[int] = Field(None, description="老者用户ID")
-    elderly_name: Optional[str] = Field(None, description="老者姓名")
-    elderly_age: Optional[int] = Field(None, description="老者年龄")
-    elderly_gender: Optional[str] = Field(None, description="老者性别")
+    # 乘客信息
+    elderly_user_id: Optional[int] = Field(None, description="乘客用户ID")
+    elderly_name: Optional[str] = Field(None, description="乘客姓名")
+    elderly_age: Optional[int] = Field(None, description="乘客年龄")
+    elderly_gender: Optional[str] = Field(None, description="乘客性别")
     
     # 加速度计数据
     accel_x: float = Field(..., description="加速度计X轴")

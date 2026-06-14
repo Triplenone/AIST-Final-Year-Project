@@ -2,7 +2,7 @@
 
 ## Objective
 
-- remove the eldercare SmartCare mark from the FlyCare route header
+- remove the retired care-home mark from the FlyCare route header
 - give `/flycare` its own route-correct header mark without changing workflow logic
 
 ## Branch
@@ -25,10 +25,10 @@
 
 ## Acceptance
 
-- FlyCare header no longer renders the SmartCare / Proactive Guardian Care mark
+- FlyCare header no longer renders the retired care-home mark
 - FlyCare header uses the FlyCare route asset instead
 - desktop and mobile FlyCare header alignment stays stable
-- overview and other routes keep the SmartCare mark
+- overview and other routes use FlyCare branding
 
 ## Validation
 

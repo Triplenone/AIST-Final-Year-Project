@@ -359,22 +359,22 @@ def search_elder_detail(
     end_timestamp: Optional[int] = None
 ) -> List[DeviceDataLog]:
     """
-    搜索老者详情
-    联查 device_data_log、device 和 user 表，获取包含老者信息的数据日志
+    搜索乘客详情
+    联查 device_data_log、device 和 user 表，获取包含乘客信息的数据日志
     
     Args:
         db: 数据库会话
         skip: 跳过记录数
         limit: 返回记录数
         device_id: 可选，筛选特定设备
-        elderly_user_id: 可选，筛选特定老者用户ID
-        elderly_name: 可选，筛选老者姓名（模糊匹配）
+        elderly_user_id: 可选，筛选特定乘客用户ID
+        elderly_name: 可选，筛选乘客姓名（模糊匹配）
         is_fall_confirmed: 可选，筛选是否确认跌倒
         start_timestamp: 可选，起始时间戳
         end_timestamp: 可选，结束时间戳
     
     Returns:
-        包含设备信息和老者信息的数据日志列表
+        包含设备信息和乘客信息的数据日志列表
     """
     # 构建查询，使用 joinedload 预加载关联数据
     query = db.query(DeviceDataLog)

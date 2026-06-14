@@ -1,4 +1,4 @@
-// 針對住民 SSE 模擬器撰寫的強型別 EventSource 封裝。
+// 針對乘客 SSE 模擬器撰寫的強型別 EventSource 封裝。
 export type ResidentStatus = 'stable' | 'followUp' | 'high' | 'checked_out';
 
 export type ResidentVitals = {

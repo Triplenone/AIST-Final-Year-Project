@@ -19,7 +19,8 @@ Do not replace these rows with nested metadata objects. Verification notes belon
 | `ESP32_00009822A443CA48` | 5 | TANG WAI HAN | User-corrected ID; not found in live Mongo during implementation precheck |
 | `ESP32_00008C292A04A7AC` | 6 | MA KA WAI | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
 | `ESP32_00009022A443CA48` | 7 | YIP MAN LING | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
-| `ESP32_48CA43A42298` | 8 | NG WAI LUN | Bound by `database/mysql/migrations/20260605_register_esp32_48ca43a42298.sql` |
+| `ESP32_000048CA43A42298` | 8 | NG WAI LUN | Canonical device 8 ID after `database/mysql/migrations/20260608_dedupe_flycare_devices_and_device8_alias.sql` |
+| `ESP32_48CA43A42298` | 8 | NG WAI LUN | Backward-compatible alias for existing local Mongo records |
 
 ## MySQL Migration
 
@@ -30,9 +31,13 @@ cd E:\flycare
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_register_esp32_devices_6_7.sql"
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql"
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260605_register_esp32_48ca43a42298.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260608_dedupe_flycare_devices_and_device8_alias.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260613_flycare_demo_labels.sql"
 ```
 
 Do not keep FlyCare user/device binding changes only in a local MySQL instance. If a binding affects the UI or demo data, add an idempotent migration under `database/mysql/migrations/` and update this mapping table.
+
+Device 8 accepts both `ESP32_000048CA43A42298` and the older local alias `ESP32_48CA43A42298`; admin presets should show only the canonical `ESP32_000048CA43A42298` row. Flight commands published from Admin fan out to every mapped alias for the selected MySQL device, so device 8 receives the same downlink on both `smartwatch/ESP32_000048CA43A42298/flight` and `smartwatch/ESP32_48CA43A42298/flight`. If the FlyCare dashboard shows NG WAI LUN as stale/offline while the device is powered, verify that the device is publishing fresh `smartwatch/<device_id>/status` or `heartbeat` payloads to the same MQTT broker that the backend reports from `/api/v1/data-reception/mqtt/status`.
 
 ## MQTT Topics
 
@@ -62,9 +67,17 @@ Primary FlyCare flight downlink topic:
 smartwatch/{device_id}/flight
 ```
 
+For local Windows demos with a real ESP32 on Wi-Fi, Mosquitto must listen on the PC LAN interface, not only `127.0.0.1`. Use `infra/mosquitto/local-windows.conf` when starting Mosquitto locally:
+
+```powershell
+& 'C:\Program Files\Mosquitto\mosquitto.exe' -c E:\flycare\infra\mosquitto\local-windows.conf
+```
+
+The ESP32 firmware should use the PC Wi-Fi/LAN IP as the MQTT broker host, currently `192.168.0.203` on this local setup, with port `1883`. Do not configure the ESP32 broker as `localhost` or `127.0.0.1`; that points back to the ESP32 itself, not this backend machine.
+
 The backend MQTT subscriber also listens on `smartwatch/+/flight` and writes received downlink JSON into Mongo (`data_type=flight`). This loopback lets Admin **Publish to MQTT** update the FlyCare page without enabling **Mongo only** / **MQTT + save Mongo**.
 
-`backend/backend/app/services/MQTT-topic.txt` defines the same downlink pattern as `smartwatch/%s/flight`. The repo firmware folder is only a PlatformIO scaffold and contains no `.ino` / `.cpp` MQTT subscribe implementation, so smartwatch flight receive handling is pending firmware confirmation.
+`backend/backend/app/services/MQTT-topic.txt` defines the same downlink pattern as `smartwatch/%s/flight`. The migrated Arduino firmware now lives under `firmware/` and subscribes to this downlink through `DataTransmitter` / `FlightInfoManager`; keep the broker host aligned between `backend/backend/.env` and `firmware/Config.h`.
 
 Flight downlink JSON on `smartwatch/{device_id}/flight`:
 
@@ -99,6 +112,48 @@ Flight downlink JSON on `smartwatch/{device_id}/flight`:
 
 ## Local Validation
 
+To start or verify the local Windows stack from an elevated PowerShell, use the repo launcher:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate
+```
+
+The launcher checks/starts MySQL, MongoDB, MQTT, backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, and MQTT status evidence. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
+
+To capture watch evidence from COM5, use the verifier:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_watch.ps1
+```
+
+For the remaining physical checks, wear the watch firmly, then run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_watch.ps1 -WaitForValidHeartRate -WaitForValidSpO2 -WaitForPhysicalSOS -AutoClearSOS -AutoHandleSosEvents -HeartRateLedBrightness 0xFF -Seconds 60
+```
+
+The verifier writes `logs/flycare-watch-verification.json` plus a timestamped `logs/flycare-watch-verification-YYYYMMDD-HHMMSS.json` with serial output, latest status/SOS payloads, unhandled events, and whether physical BOOT/SOS plus live heart-rate and SpO2 validity were observed. Current firmware uses SOS short click for page/picker control and SOS long press for 3 seconds to trigger/clear the SOS path. If `-HeartRateLedBrightness` is supplied, it sends `HRLED <value>` before diagnostics. If a heart-rate wait fails, it sends `HRCAL` and continuously drains serial output so the JSON includes raw MAX30102 contact and saturation diagnostics.
+
+For repeatable MAX30102 troubleshooting, add `-RunHeartRateSensorCheck -RunHeartRateSweep`; the verifier sends `HRSENSOR` to read part ID/revision/die temperature, then sends `HRSWEEP` so firmware tests `0x1F`, `0x3F`, `0x7F`, and `0xFF` LED levels in one serial capture. The generated JSON includes `heartRateDiagnostics.classification`; `optical_contact_missing` means the chip answered over I2C but the red/IR readings never crossed the contact threshold.
+
+To rerun the two remaining physical blockers in one repeatable flow, wear the watch firmly before starting and long-press SOS/BOOT for 3 seconds during the SOS window:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_physical_blockers.ps1
+```
+
+The wrapper calls `verify_flycare_watch.ps1` twice, keeps each timestamped verifier JSON, and writes `logs/flycare-physical-blockers-summary-YYYYMMDD-HHMMSS.json`.
+
+To consolidate the goal-level evidence after running the stack and watch verifier:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\audit_flycare_goal.ps1
+```
+
+The audit writes `logs/flycare-goal-audit.json` and `logs/flycare-goal-audit.md` with stack, beacon, legacy-brand cleanup, positioning, flight, watch popup UI, SOS, physical SOS long-press, SOS/PWR navigation menu input, and live HR/SpO2 status. Dashboard positioning evidence should show the current airport location plus the live navigation target from `location.target` when present, including target name, distance, direction, and ETA. Flight sync evidence can come from `logs/flycare-watch-verification.json`, a focused `logs/flight-downlink-*.log` serial capture, or `logs/serial-ui-popup-smoke-*.log`. Physical SOS long-press evidence can come from the verifier window or from a captured Event API `ButtonLong` SOS event for the watch. The audit reads timestamped verifier JSON files so HR diagnostics and physical SOS windows do not overwrite each other. Exit code `2` means there is no hard software failure but a physical verifier condition remains blocked.
+
 Backend:
 
 ```powershell
@@ -117,10 +172,48 @@ Checks:
 
 ```powershell
 cd E:\flycare\backend\backend
-..\.venv\Scripts\python -m compileall app
+python -m compileall app
 
 cd E:\flycare\frontend
 npm run test
 npm run lint
 npm run build
 ```
+
+## Debug Status and Troubleshooting Plan (2026-06-14)
+
+Current local runtime:
+
+```text
+Backend API:     http://127.0.0.1:8000
+Frontend Vite:   http://127.0.0.1:5173
+MQTT broker:     192.168.0.203:1883
+Watch serial:    COM5, ESP32_48CA43A42298 / ESP32_000048CA43A42298, MySQL device 8
+Fall detection:  intentionally disabled with ENABLE_FALL_DETECTION 0
+```
+
+Verified in the latest COM5 run and current firmware source:
+
+- Current stack proof in `logs/flycare-local-stack-status.json` from 2026-06-14 12:25:58 shows ports 1883, 3306, 5173, 8000, and 27017 listening, `/health=healthy`, and MQTT connected to `192.168.0.203:1883`. That check ran from a non-admin shell (`isAdmin=false`) and therefore confirmed existing services rather than restarting Windows services. Earlier elevated proof is available from 2026-06-13 19:23:31 with `isAdmin=true`.
+- BLE positioning is configured with 12 FlyCare beacon MAC records. Duplicate MACs intentionally share the same zone coordinates for Check-in, Gate 10, Gate 11, Toilet, Security Check, and Customer Services. Live scans report the subset currently nearby.
+- Navigation/arrival logic was serial-tested for Gate 10 and Gate 11 with the correct arrival message for the active destination.
+- Flight downlink was published through `POST /api/v1/flycare-admin/flight/publish`, received by the watch, and stored in Mongo as `data_type=flight`. The focused capture `logs/flight-downlink-20260614-002657.log` shows `smartwatch/ESP32_48CA43A42298/flight`, `[Flight] telemetry target synced: Gate 10 @ (8.0, 1.8)`, and Gate 10 arrival/TTS evidence. A later local publish at 2026-06-14 12:30:02 fanned out CX910 to both canonical and alias watch topics with `estimated_departure=17:50`, `status=delayed`, `delay_minutes=15`, and `delay_reason=Live integration retest`; the FlyCare dashboard now renders those rich `flight_info` fields in the flight panel and drawer instead of only the legacy top-level fields.
+- SOS serial smoke (`SOSON` then `SOSOFF`) created an event and then cleared the latest SOS payload to `active=false`; the generated event was closed through the normal Event API as `false_alarm`.
+- Previous physical BOOT SOS generated event `199` with `trigger_method=Button`; latest SOS payload then cleared to `active=false`, and event `199` was handled as `false_alarm`. Current firmware changed the UX: SOS short click switches pages only when the destination picker is closed, moves destination selection while the picker is open, and SOS long press for 3 seconds toggles the SOS path.
+- Historical heart-rate and SpO2 sync are visible in the vitals bridge for NG WAI LUN / device 8 (`hr=83`, `spo2=98`, both valid in the latest confirmed vitals document). Invalid live vitals no longer overwrite that last confirmed row in `/api/v1/residents`.
+- Physical SOS long-press is proven through Event API evidence: event `201` was created for device `8` with `trigger_method=ButtonLong`, the latest SOS payload was then cleared to `active=false`, and event `201` was handled through the normal Event API as `false_alarm`. The verifier window did not catch that event live, so `audit_flycare_goal.ps1` also accepts a captured Event API `ButtonLong` event as evidence for this check.
+- The current firmware uses PWR on the map page to open the destination picker and PWR again to cancel it. SOS short-click switches pages only when the picker is closed; while the picker is open, SOS short-click moves the highlighted destination from top to bottom across Check-in, Security Check, Customer Services, Toilet, Gate 10, and Gate 11. After at least one SOS picker click, 5 seconds with no further picker input auto-confirms the highlighted destination. The SOS wheel/rotary is not used for navigation. `verify_flycare_watch.ps1 -RunNavMenuAutoConfirm` runs the same picker/SOS-next/idle-confirm path over Serial with `NAVPICK` and `NAVNEXT`.
+- Watch notification UI was tightened after COM5 upload: Arrival now uses a large `ARRIVED` popup for 5 seconds, flight delay/gate popups use larger wrapped text, and the popup is redrawn from a dedicated popup dirty flag so BLE/MQTT updates do not repeatedly repaint the full popup surface. The current smoke capture is `logs/serial-ui-popup-smoke-20260614-082742.log`.
+- Live heart-rate and live SpO2 are now proven in the timestamped verifier evidence (`logs/flycare-watch-verification-20260614-010836.json`): `heart_rate.valid=true`, `bpm=78`, `spo2.valid=true`, and `percentage=100`. The browser dashboard check at 2026-06-14 12:39 showed the last confirmed resident vitals row for NG WAI LUN as `83 bpm` and `98%`. Firmware still keeps HR/SpO2 invalid when optical contact is missing; `HRLED`, `HRSENSOR`, `HRCAL`, and `HRSWEEP` remain available for runtime MAX30102 diagnostics if contact drops again.
+
+Troubleshooting order:
+
+1. For physical SOS, hold the SOS/BOOT button for 3 seconds and verify `smartwatch/<device_id>/sos` plus `/api/v1/events/?event_status=unhandled`. Then clear with `SOSOFF` or another 3-second SOS/BOOT hold and handle the event through `PUT /api/v1/events/{event_id}/handle`; `audit_flycare_goal.ps1` will still count the handled `ButtonLong` event as evidence.
+2. For destination selection, run `verify_flycare_watch.ps1 -RunNavMenuAutoConfirm -Seconds 10` after upload. The expected serial evidence is `[NAVTEST] picker opened`, `[NAVTEST] picker next destination`, `[NAV] auto confirm destination after SOS idle`, `[NAVTEST] picker auto-confirmed`, and `[NAV] selected destination`. Also run `NAVLIST` or `NAVDEST Security` to prove Security Check remains a selectable destination. On hardware, press PWR once on the map page to open the picker, press SOS once or more to move the highlighted destination, then stop for 5 seconds to confirm; press PWR again before auto-confirm to cancel.
+3. For heart rate, first validate physical contact: wear the watch tightly, clean the MAX3010x window, keep the wrist still for 20-30 seconds, then send `HRDEBUG` and `HRSENSOR` on COM5. Run `HRCAL` for a 10-second raw IR/red window or `HRSWEEP` for a repeatable `0x1F`/`0x3F`/`0x7F`/`0xFF` LED sweep. If `HRSENSOR` reports `part_id=0x15` and a plausible die temperature but IR never crosses `30000`, fix contact/window/hardware before changing BPM logic; if `saturated_pct` is high, reduce LED drive with `HRLED 0x1F` or improve placement; if signal remains too low even at `HRLED 0xFF`, inspect the sensor window, wrist contact geometry, cable/solder path, or MAX30102 module orientation; if contact is stable but `avg=0`, keep still longer and inspect beat detection.
+4. For SpO2, keep the same physical-contact checks. Live SpO2 is intentionally invalid until pulse-derived confidence is positive, so `spo2.valid=false` with `heart_rate.valid=false` is expected when MAX30102 contact is not established.
+5. For arrival accuracy, use `TESTARRIVAL Gate10` / `TESTARRIVAL Gate11` before moving hardware. If live arrival fires early or late, adjust only beacon coordinates/RSSI references first, then retest `/api/v1/mongo-upstream/location/latest?device_id=ESP32_48CA43A42298`.
+6. For popup readability or flicker, use `TESTARRIVAL Gate10` and `SIMDELAY` on COM5, then check serial evidence in `logs/serial-ui-popup-smoke-*.log`. Source audit expects `popupNeedsRedraw`, `POPUP_ARRIVAL_AUTO_CLOSE_MS = 5000`, `ARRIVED`, `Route complete`, and no stale side-button confirm prompt.
+7. For map and flight page layout readability, test the longest labels after upload: run `verify_flycare_watch.ps1 -RunNavMenuAutoConfirm -Seconds 10` and confirm the target can become `Customer Services`, then send `PAGE 2`, `SIMDELAY`, and `REDRAW` on COM5. The watch should keep route steps inside the left card, the destination inside the right card, `Singapore` and `Gate 10` in separate flight columns, and the delay reason inside the bottom yellow panel.
+8. For flight sync, verify four points in order: backend MQTT status connected to `192.168.0.203:1883`, `POST /api/v1/flycare-admin/flight/publish` fan-out to canonical and alias topics, Mongo latest flight for the watch alias, and watch Serial `FlightInfoManager` parse output or focused `logs/flight-downlink-*.log` evidence. The `/flycare` panel should show scheduled time plus `estimated_departure`, `status`, `delay_minutes`, and `delay_reason`; if it only shows Gate/Flight Time, rerun `npm test -- src/utils/flycare-flight.test.ts` and inspect `frontend/src/utils/flycare-flight.ts`.
+9. For stale UI rows, select the live `NG WAI LUN` row in `/flycare`. Older seeded users can still show stale cards because their historical Mongo documents remain in the local database.

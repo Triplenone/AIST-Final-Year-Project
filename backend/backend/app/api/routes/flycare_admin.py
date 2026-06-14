@@ -109,6 +109,71 @@ def _build_flight_payload(body: FlightPublishBody) -> Dict[str, Any]:
     }
 
 
+def _device_aliases_for_payload(payload: Dict[str, Any]) -> List[str]:
+    selected_device_id = str(payload["device_id"]).strip()
+    aliases: List[str] = [selected_device_id]
+    mysql_device_id = payload.get("mysql_device_id")
+
+    if mysql_device_id is not None:
+        try:
+            mysql_id = int(mysql_device_id)
+        except (TypeError, ValueError):
+            mysql_id = None
+        if mysql_id is not None:
+            aliases.extend(
+                mongo_id
+                for mongo_id, mapped_mysql_id in settings.device_id_map.items()
+                if int(mapped_mysql_id) == mysql_id
+            )
+
+    deduped: List[str] = []
+    seen: set[str] = set()
+    for alias in aliases:
+        clean = str(alias or "").strip()
+        if clean and clean not in seen:
+            deduped.append(clean)
+            seen.add(clean)
+    return deduped
+
+
+def _publish_flight_downlink_aliases(payload: Dict[str, Any], flight_info: Dict[str, Any]) -> Dict[str, Any]:
+    aliases = _device_aliases_for_payload(payload)
+    results: List[Dict[str, Any]] = []
+
+    for alias in aliases:
+        try:
+            results.append(
+                {
+                    "device_id": alias,
+                    **publish_flight_downlink(alias, flight_info),
+                }
+            )
+        except Exception as exc:
+            results.append(
+                {
+                    "ok": False,
+                    "device_id": alias,
+                    "topic": build_flycare_flight_topic(alias),
+                    "qos": 1,
+                    "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+                    "error": str(exc),
+                }
+            )
+
+    ok_results = [result for result in results if result.get("ok")]
+    error_results = [result for result in results if not result.get("ok")]
+    return {
+        "ok": bool(ok_results),
+        "topic": build_flycare_flight_topic(payload["device_id"]),
+        "topics": [result.get("topic") for result in results],
+        "aliases": aliases,
+        "alias_results": results,
+        "qos": 1,
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": "; ".join(str(result.get("error")) for result in error_results if result.get("error")) or None,
+    }
+
+
 @router.get("/mqtt/status")
 def flycare_mqtt_status():
     return get_mqtt_status()
@@ -120,8 +185,18 @@ def list_flight_presets() -> Dict[str, Any]:
     presets: List[Dict[str, Any]] = []
     db: Session = SessionLocal()
     try:
-        for mongo_id, mysql_id in sorted(settings.device_id_map.items(), key=lambda item: item[1]):
+        aliases_by_mysql_id: Dict[int, List[str]] = {}
+        for mongo_id, mysql_id in settings.device_id_map.items():
+            aliases_by_mysql_id.setdefault(mysql_id, []).append(mongo_id)
+
+        for mysql_id in sorted(aliases_by_mysql_id):
             device = db.query(Device).filter(Device.device_id == mysql_id).first()
+            aliases = aliases_by_mysql_id[mysql_id]
+            mongo_id = aliases[0]
+            if device and device.model_desc:
+                model_desc = device.model_desc.strip()
+                if model_desc in aliases:
+                    mongo_id = model_desc
             passenger_name: Optional[str] = None
             elderly_user_id: Optional[int] = None
             if device and device.elderly_user_id:
@@ -171,15 +246,12 @@ async def publish_flight(body: FlightPublishBody):
     }
 
     if body.publish_mqtt:
-        try:
-            mqtt_result = {
-                **mqtt_result,
-                **publish_flight_downlink(payload["device_id"], flight_info),
-                "skipped": False,
-                "payload": mqtt_payload,
-            }
-        except Exception as exc:
-            mqtt_result.update({"ok": False, "error": str(exc), "skipped": False})
+        mqtt_result = {
+            **mqtt_result,
+            **_publish_flight_downlink_aliases(payload, flight_info),
+            "skipped": False,
+            "payload": mqtt_payload,
+        }
 
     if body.save_mongo:
         try:

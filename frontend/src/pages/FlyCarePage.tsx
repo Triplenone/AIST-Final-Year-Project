@@ -7,12 +7,13 @@ import {
   buildPositionCommandCenterViewModel,
   loadPositionCommandCenterSnapshot,
   loadPositionResidentActivity,
+  POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID,
   resolvePositionResidentRegistry,
   type PositionCommandCenterSnapshot,
   type PositionResidentActivitySnapshot,
   type PositionResidentRegistryEntry
 } from '../adapters/position-command-center';
-import { FlyCareFlightPanel, type FlightInfo } from '../components/flycare/FlyCareFlightPanel';
+import { FlyCareFlightPanel } from '../components/flycare/FlyCareFlightPanel';
 import { FlyCareMapStage } from '../components/flycare/FlyCareMapStage';
 import { PositionDecisionPanel } from '../components/position/PositionDecisionPanel';
 import { PositionResidentRail } from '../components/position/PositionResidentRail';
@@ -21,12 +22,17 @@ import { eventApi, mongoUpstreamApi, type FlightLatestResponse } from '../servic
 import type { BackendEvent } from '../types/backend';
 import type { FallAlertDetailRow } from '../types/fall-alert';
 import { buildFallAlertRowsFromPositionResidents } from '../utils/fall-alert-rows';
-import { resolveFlightPassengerName, extractFlightGateFromLatestResponse } from '../utils/flycare-flight';
+import {
+  buildFlightInfoFromLatestResponse,
+  extractFlightGateFromLatestResponse,
+  type ResolvedFlightInfo
+} from '../utils/flycare-flight';
 
 const FLYCARE_MAP_PROFILE = 'flycare' as const;
 const FLYCARE_SNAPSHOT_REFRESH_MS = 2_000;
 const FLYCARE_FLIGHT_REFRESH_MS = 5_000;
 const FLYCARE_ALERT_EVENT_REFRESH_MS = 5_000;
+const FLYCARE_PREFERRED_DEVICE_IDS = new Set(['ESP32_000048CA43A42298', 'ESP32_48CA43A42298']);
 
 type FlyCarePageProps = {
   onSosOrFallDetected?: (items: FallAlertDetailRow[]) => void;
@@ -36,13 +42,26 @@ function initialRegistry(): PositionResidentRegistryEntry[] {
   return POSITION_RESIDENT_REGISTRY.map((entry) => ({ ...entry }));
 }
 
+function getPreferredFlyCareResidentId(registry: readonly PositionResidentRegistryEntry[]): string | null {
+  return registry.find((resident) => FLYCARE_PREFERRED_DEVICE_IDS.has(resident.deviceId))?.residentId ?? null;
+}
+
+function resolveMysqlDeviceIdForMongoDevice(deviceId: string): number | null {
+  for (const [mysqlDeviceId, mongoDeviceId] of Object.entries(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID)) {
+    if (mongoDeviceId === deviceId) {
+      return Number(mysqlDeviceId);
+    }
+  }
+  return null;
+}
+
 export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   const { t } = useTranslation();
   const [registry, setRegistry] = useState<PositionResidentRegistryEntry[]>(initialRegistry);
   const [snapshot, setSnapshot] = useState<PositionCommandCenterSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedResidentId, setSelectedResidentId] = useState<string | null>(
-    () => POSITION_RESIDENT_REGISTRY[0]?.residentId ?? null
+    () => getPreferredFlyCareResidentId(POSITION_RESIDENT_REGISTRY) ?? POSITION_RESIDENT_REGISTRY[0]?.residentId ?? null
   );
   const [residentActivity, setResidentActivity] = useState<PositionResidentActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -50,10 +69,11 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   const [residentGateById, setResidentGateById] = useState<Map<string, string | null>>(() => new Map());
   const previousAlertRef = useRef(false);
   const activityRequestSequenceRef = useRef(0);
+  const flightRequestSequenceRef = useRef(0);
   const lastConfirmedFlightIdRef = useRef<string | null>(null);
   const pendingFlightIdRef = useRef<string | null>(null);
-  const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(null);
-  const [pendingFlightUpdate, setPendingFlightUpdate] = useState<FlightInfo | null>(null);
+  const [flightInfo, setFlightInfo] = useState<ResolvedFlightInfo | null>(null);
+  const [pendingFlightUpdate, setPendingFlightUpdate] = useState<ResolvedFlightInfo | null>(null);
   const [showFlightUpdateDrawer, setShowFlightUpdateDrawer] = useState(false);
   const [flyCareAlertEvents, setFlyCareAlertEvents] = useState<BackendEvent[]>([]);
 
@@ -73,7 +93,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
         if (current != null && nextRegistry.some((r) => r.residentId === current)) {
           return current;
         }
-        return nextRegistry[0]?.residentId ?? null;
+        return getPreferredFlyCareResidentId(nextRegistry) ?? nextRegistry[0]?.residentId ?? null;
       });
       const nextSnapshot = await loadPositionCommandCenterSnapshot(regForSnapshot);
       setSnapshot(nextSnapshot);
@@ -153,29 +173,27 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   const fetchLatestFlight = useCallback(async () => {
     const deviceId = viewModel.selectedResident?.deviceId;
     if (!deviceId) {
+      flightRequestSequenceRef.current += 1;
       setFlightInfo(null);
       lastConfirmedFlightIdRef.current = null;
       return;
     }
+    const requestId = flightRequestSequenceRef.current + 1;
+    flightRequestSequenceRef.current = requestId;
     try {
       const res = (await mongoUpstreamApi.getLatestFlight(deviceId)) as unknown as FlightLatestResponse;
-      if (!res.found || (res.device_id != null && res.device_id !== deviceId)) {
+      if (flightRequestSequenceRef.current !== requestId) return;
+      const expectedMysqlDeviceId = resolveMysqlDeviceIdForMongoDevice(deviceId);
+      const flightPayload = buildFlightInfoFromLatestResponse(res, deviceId, {
+        expectedMysqlDeviceId,
+        selectedResident: viewModel.selectedResident,
+        registry
+      });
+      if (!flightPayload) {
         setFlightInfo(null);
         lastConfirmedFlightIdRef.current = null;
         return;
       }
-      const flightPayload: FlightInfo = {
-        passengerName: resolveFlightPassengerName(res.passengerName, deviceId, {
-          selectedResident: viewModel.selectedResident,
-          registry
-        }),
-        flightNumber: res.flightNumber,
-        gate: extractFlightGateFromLatestResponse(res, deviceId) ?? undefined,
-        flightTime: res.flightTime,
-        departureAirport: res.departureAirport,
-        arrivalAirport: res.arrivalAirport,
-        seatNumber: res.seatNumber
-      };
       const docId = res._id ?? null;
       if (docId === lastConfirmedFlightIdRef.current) {
         return;
@@ -189,6 +207,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
       pendingFlightIdRef.current = docId;
       setShowFlightUpdateDrawer(true);
     } catch {
+      if (flightRequestSequenceRef.current !== requestId) return;
       setFlightInfo(null);
       lastConfirmedFlightIdRef.current = null;
     }
@@ -260,7 +279,9 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
         mapResidents.map(async (resident) => {
           try {
             const res = (await mongoUpstreamApi.getLatestFlight(resident.deviceId)) as unknown as FlightLatestResponse;
-            const gate = extractFlightGateFromLatestResponse(res, resident.deviceId);
+            const gate = extractFlightGateFromLatestResponse(res, resident.deviceId, {
+              expectedMysqlDeviceId: resolveMysqlDeviceIdForMongoDevice(resident.deviceId)
+            });
             return [resident.residentId, gate] as const;
           } catch {
             return [resident.residentId, null] as const;
@@ -293,6 +314,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   }, [flightInfo?.gate, residentGateById, viewModel.selectedResident]);
 
   const handleSelectResident = useCallback((residentId: string) => {
+    flightRequestSequenceRef.current += 1;
     setShowAllOnMap(false);
     setSelectedResidentId(residentId);
     setFlightInfo(null);

@@ -11,12 +11,11 @@ flowchart LR
   Browser[Browser] --> ReactUI[ReactUI_frontend]
   ReactUI -->|"GET /api/v1/*"| FastAPI[FastAPI_backend]
   DeviceOrScript[DeviceOrTestScript] -->|"POST /api/v1/data-reception/receive"| FastAPI
-  FastAPI --> MySQL[(MySQL_smart_elderly_care_system)]
-  FastAPI --> MongoDB[(MongoDB_smart_elderly_mongo)]
+  FastAPI --> MySQL[(MySQL_smart_elderly_care_system_legacy_name)]
+  FastAPI --> MongoDB[(MongoDB_smart_elderly_care_system_legacy_name)]
   MQTT[MQTT_Broker] -->|"device payloads"| FastAPI
 
   AdminUI[OptionalAdminUI_backend_forntend] -.->|"GET /api/v1/* (via proxy)"| FastAPI
-  LegacyUI[LegacyStaticUI_frontend_web_dashboard] -.->|"Frontend_only_mock"| Browser
 ```
 
 Evidence pointers:
@@ -24,7 +23,8 @@ Evidence pointers:
 - Frontend base URL + API prefix: `frontend/src/constants/backend.ts`
 - FastAPI entry: `backend/backend/app/main.py`
 - Routers: `backend/backend/app/api/routes/__init__.py`
-- DB schema: `database/mysql/Dump20260426.sql`
+- DB schema/runtime name: `smart_elderly_care_system` in `backend/backend/app/config.py`
+- FlyCare database migrations: `database/mysql/migrations/`
 - Mongo upstream samples: `database/mongo/`
 
 ### Implemented fall pipeline (end-to-end)

@@ -1,18 +1,10 @@
 import { useTranslation } from 'react-i18next';
 
-export type FlightInfo = {
-  passengerName?: string;
-  flightNumber?: string;
-  gate?: string;
-  flightTime?: string;
-  departureAirport?: string;
-  arrivalAirport?: string;
-  seatNumber?: string;
-};
+import type { ResolvedFlightInfo } from '../../utils/flycare-flight';
 
 type FlyCareFlightPanelProps = {
-  flightInfo: FlightInfo | null;
-  pendingFlightUpdate: FlightInfo | null;
+  flightInfo: ResolvedFlightInfo | null;
+  pendingFlightUpdate: ResolvedFlightInfo | null;
   showFlightUpdateDrawer: boolean;
   onConfirmFlightUpdate: () => void;
   onCloseFlightUpdateDrawer: () => void;
@@ -20,6 +12,19 @@ type FlyCareFlightPanelProps = {
 
 function formatVal(value: unknown): string {
   return value != null && value !== '' ? String(value) : '—';
+}
+
+function formatStatus(value: string | undefined): string {
+  if (!value) return formatVal(value);
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDelay(minutes: number | undefined, reason: string | undefined): string {
+  if (minutes == null) return formatVal(undefined);
+  const base = `${minutes} min`;
+  return reason ? `${base} - ${reason}` : base;
 }
 
 export function FlyCareFlightPanel({
@@ -33,7 +38,7 @@ export function FlyCareFlightPanel({
 
   return (
     <>
-      <section className="position-command-center__surface flycare-flight-panel">
+      <section className="position-command-center__surface flycare-flight-panel" aria-live="polite">
         <header className="flycare-flight-panel__header">
           <div>
             <p className="position-command-center__eyebrow">
@@ -60,6 +65,26 @@ export function FlyCareFlightPanel({
             <dd>{formatVal(flightInfo?.flightTime)}</dd>
           </div>
           <div>
+            <dt>{t('flyCare.flightEstimatedDeparture', { defaultValue: 'Estimated departure' })}</dt>
+            <dd>{formatVal(flightInfo?.estimatedDeparture)}</dd>
+          </div>
+          <div>
+            <dt>{t('flyCare.flightBoardingTime', { defaultValue: 'Boarding time' })}</dt>
+            <dd>{formatVal(flightInfo?.boardingTime)}</dd>
+          </div>
+          <div>
+            <dt>{t('flyCare.flightStatus', { defaultValue: 'Flight status' })}</dt>
+            <dd>{formatStatus(flightInfo?.flightStatus)}</dd>
+          </div>
+          <div>
+            <dt>{t('flyCare.flightDelay', { defaultValue: 'Delay' })}</dt>
+            <dd>{formatDelay(flightInfo?.delayMinutes, flightInfo?.delayReason)}</dd>
+          </div>
+          <div>
+            <dt>{t('flyCare.flightAirline', { defaultValue: 'Airline' })}</dt>
+            <dd>{formatVal(flightInfo?.airline)}</dd>
+          </div>
+          <div>
             <dt>{t('flyCare.flightDeparture', { defaultValue: 'Departure' })}</dt>
             <dd>{formatVal(flightInfo?.departureAirport)}</dd>
           </div>
@@ -70,6 +95,14 @@ export function FlyCareFlightPanel({
           <div>
             <dt>{t('flyCare.flightSeat', { defaultValue: 'Seat' })}</dt>
             <dd>{formatVal(flightInfo?.seatNumber)}</dd>
+          </div>
+          <div>
+            <dt>{t('flyCare.flightTerminal', { defaultValue: 'Terminal' })}</dt>
+            <dd>{formatVal(flightInfo?.terminal)}</dd>
+          </div>
+          <div>
+            <dt>{t('flyCare.flightCheckinCounter', { defaultValue: 'Check-in counter' })}</dt>
+            <dd>{formatVal(flightInfo?.checkinCounter)}</dd>
           </div>
         </dl>
       </section>
@@ -110,6 +143,28 @@ export function FlyCareFlightPanel({
                 {formatVal(pendingFlightUpdate.flightTime)}
               </p>
               <p>
+                <strong>
+                  {t('flyCare.flightEstimatedDeparture', { defaultValue: 'Estimated departure' })}
+                </strong>
+                : {formatVal(pendingFlightUpdate.estimatedDeparture)}
+              </p>
+              <p>
+                <strong>{t('flyCare.flightBoardingTime', { defaultValue: 'Boarding time' })}</strong>:{' '}
+                {formatVal(pendingFlightUpdate.boardingTime)}
+              </p>
+              <p>
+                <strong>{t('flyCare.flightStatus', { defaultValue: 'Flight status' })}</strong>:{' '}
+                {formatStatus(pendingFlightUpdate.flightStatus)}
+              </p>
+              <p>
+                <strong>{t('flyCare.flightDelay', { defaultValue: 'Delay' })}</strong>:{' '}
+                {formatDelay(pendingFlightUpdate.delayMinutes, pendingFlightUpdate.delayReason)}
+              </p>
+              <p>
+                <strong>{t('flyCare.flightAirline', { defaultValue: 'Airline' })}</strong>:{' '}
+                {formatVal(pendingFlightUpdate.airline)}
+              </p>
+              <p>
                 <strong>{t('flyCare.flightDeparture', { defaultValue: 'Departure' })}</strong>:{' '}
                 {formatVal(pendingFlightUpdate.departureAirport)}
               </p>
@@ -120,6 +175,14 @@ export function FlyCareFlightPanel({
               <p>
                 <strong>{t('flyCare.flightSeat', { defaultValue: 'Seat' })}</strong>:{' '}
                 {formatVal(pendingFlightUpdate.seatNumber)}
+              </p>
+              <p>
+                <strong>{t('flyCare.flightTerminal', { defaultValue: 'Terminal' })}</strong>:{' '}
+                {formatVal(pendingFlightUpdate.terminal)}
+              </p>
+              <p>
+                <strong>{t('flyCare.flightCheckinCounter', { defaultValue: 'Check-in counter' })}</strong>
+                : {formatVal(pendingFlightUpdate.checkinCounter)}
               </p>
             </div>
           ) : null}

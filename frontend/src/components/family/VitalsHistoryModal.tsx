@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import '../../styles/family-page.css';
 import { VitalsHistoryPanel } from './VitalsHistoryPanel';
@@ -17,8 +16,6 @@ export function VitalsHistoryModal({
   isOpen,
   onClose,
 }: VitalsHistoryModalProps) {
-  const { t } = useTranslation();
-
   useEffect(() => {
     if (!isOpen) return;
 
@@ -51,10 +48,10 @@ export function VitalsHistoryModal({
       >
         <header className="family-modal__header">
           <div>
-            <p className="family-modal__eyebrow">{t('layout.nav.residents')}</p>
-            <h3 id="family-vitals-modal-title">{t('residents.vitalsModal.title')}</h3>
+            <p className="family-modal__eyebrow">Passenger vitals</p>
+            <h3 id="family-vitals-modal-title">Vitals history</h3>
             <p className="family-modal__note">
-              {t('residents.vitalsModal.subtitle', { name: residentName })}
+              Latest history for {residentName}
             </p>
           </div>
           <button
@@ -62,7 +59,7 @@ export function VitalsHistoryModal({
             className="family-modal__close"
             onClick={onClose}
           >
-            {t('residents.vitalsModal.close')}
+            Close
           </button>
         </header>
 

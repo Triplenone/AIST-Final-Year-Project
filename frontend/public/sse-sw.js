@@ -1,4 +1,4 @@
-// 由 Service Worker 支援的 SSE 模擬器，無需後端即可產生住民事件。
+// 由 Service Worker 支援的 SSE 模擬器，無需後端即可產生乘客事件。
 const SSE_PATH = '/sim/sse';
 const SNAPSHOT_PATH = '/sim/snapshot';
 const SSE_HEADERS = {
@@ -10,7 +10,7 @@ const SSE_HEADERS = {
 const textEncoder = new TextEncoder();
 const encode = (input) => textEncoder.encode(input);
 
-// residentRegistry 用於保存住民清單，方便後續事件更新既有資料。
+// residentRegistry 用於保存乘客清單，方便後續事件更新既有資料。
 const residentRegistry = new Map();
 // activeConnections 記錄所有開啟中的串流，方便群播事件。
 const activeConnections = new Set();
@@ -19,12 +19,12 @@ const suppressedSeedIds = new Set();
 
 const givenNames = ['Anna', 'Li', 'Dewei', 'Maria', 'Haruto', 'Mei', 'Chloe', 'Mateo', 'Aisha', 'Noah', 'Sara', 'Wei', 'Lucas', 'Yuna'];
 const surnames = ['Chen', 'Singh', 'Lopez', 'Tanaka', 'Ng', 'Garcia', 'Lee', 'Patel', 'Silva', 'Wong', 'Smith', 'Khan', 'Ito', 'Martinez'];
-const roomPrefixes = ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B'];
-const roomNumbers = Array.from({ length: 20 }, (_, index) => String(100 + index));
-const locations = ['Dining Hall', 'Garden', 'Physiotherapy', 'Nurse Station', 'Activity Room', 'Lounge', 'Room', 'Rehab Gym'];
+const roomPrefixes = ['Gate', 'Counter', 'Checkpoint', 'Desk'];
+const roomNumbers = ['10', '11', 'A', 'B', 'C'];
+const locations = ['Check-in Counter', 'Security Check', 'Immigration', 'Gate 10', 'Gate 11', 'Toilet', 'Customer Services', 'Main Concourse'];
 const statuses = ['stable', 'followUp', 'high'];
 
-// 預設住民清單，確保名單穩定且可隨時間更新生命徵象。
+// 預設乘客清單，確保名單穩定且可隨時間更新生命徵象。
 const baseResidentSeeds = [
   { id: 'res-anna-chen', name: 'Anna Chen', room: '1A-101' },
   { id: 'res-maria-lopez', name: 'Maria Lopez', room: '1A-104' },
@@ -89,7 +89,7 @@ const buildVitals = (previousVitals) => {
   };
 };
 
-// 產生一筆模擬住民資料，並附上合理的生理數據。
+// 產生一筆模擬乘客資料，並附上合理的生理數據。
 const createResident = (seed = null) => {
   const now = new Date();
   const nowIso = now.toISOString();
@@ -152,7 +152,7 @@ const initializeResidentBase = () => {
 
 initializeResidentBase();
 
-// 從仍在院的住民中挑選一位以便後續更新。
+// 從仍在院的乘客中挑選一位以便後續更新。
 const randomActiveResident = () => {
   const residents = Array.from(residentRegistry.values()).filter((resident) => !resident.checkedOut);
   if (residents.length === 0) return null;
@@ -238,7 +238,7 @@ const createManualResident = (input) => {
   return createResident(seed);
 };
 
-// 標記住民已退房，同時保留其資料。
+// 標記乘客已退房，同時保留其資料。
 const checkoutResident = (resident) => {
   const updated = {
     ...resident,
@@ -305,7 +305,7 @@ const ensureRosterForCommand = () => {
   markRosterActive();
 };
 
-// 確保串流中至少存在一位活躍住民，並維持預設名單。
+// 確保串流中至少存在一位活躍乘客，並維持預設名單。
 const ensureResidentBase = () => {
   initializeResidentBase();
   const activeResidents = Array.from(residentRegistry.values()).filter((resident) => !resident.checkedOut);
@@ -459,7 +459,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
-// 開發工具可透過 postMessage 觸發連發或新增住民事件。
+// 開發工具可透過 postMessage 觸發連發或新增乘客事件。
 self.addEventListener('message', (event) => {
   const { data } = event;
   if (!data || typeof data !== 'object') return;

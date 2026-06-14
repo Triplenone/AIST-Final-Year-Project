@@ -1,4 +1,4 @@
-// 住民資料映射：後端 → 前端 Resident 型別
+// 乘客資料映射：後端 → 前端 Resident 型別
 // Resident data mapping: backend response (BackendResident) to frontend Resident
 import type { BackendResident } from '../types/backend';
 import type { Resident } from '../sse/client';

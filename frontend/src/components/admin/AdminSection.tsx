@@ -43,9 +43,9 @@ export const AdminSection = () => {
     }
   > = {
     residents: {
-      eyebrow: 'Resident operations',
+      eyebrow: 'Passenger operations',
       title: 'Roster control',
-      note: 'Scan resident status, room context, and device linkage before opening deeper records.',
+      note: 'Scan passenger status, airport context, and device linkage before opening deeper records.',
       surface: 'Directory first',
       endpoint: '/api/v1/residents',
       checklist: ['Check filters first', 'Confirm status drift', 'Keep handoff notes short']
@@ -64,7 +64,7 @@ export const AdminSection = () => {
       note: 'Confirm assignment, battery posture, and deployment location before changing fleet records.',
       surface: 'Fleet overview',
       endpoint: '/api/v1/devices',
-      checklist: ['Review deployment zone', 'Check battery state', 'Confirm elderly assignment']
+      checklist: ['Review deployment zone', 'Check battery state', 'Confirm passenger assignment']
     },
     locations: {
       eyebrow: 'Space model',

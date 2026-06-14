@@ -15,6 +15,7 @@ import {
   type LatLng,
   type LatLngTuple
 } from '../utils/geo';
+import flyCareMapUrl from '../img/FlyCare.png';
 
 import '../styles/location-map.css';
 
@@ -25,30 +26,30 @@ type ZoneShape = {
   bounds: [LatLngTuple, LatLngTuple];
 };
 
-const FLOORPLAN_URL = '/indoor-nursing-home-map.png';
+const FLOORPLAN_URL = flyCareMapUrl;
 
 const ZONE_COLORS: Record<string, { stroke: string; fill: string }> = {
-  'Bedroom 1': { stroke: '#3b82f6', fill: '#bfdbfe' },
-  'Bedroom 2': { stroke: '#0f766e', fill: '#99f6e4' },
-  Bathroom: { stroke: '#8b5cf6', fill: '#ddd6fe' },
-  'Common Lounge': { stroke: '#16a34a', fill: '#bbf7d0' }
+  'Gate 10': { stroke: '#3b82f6', fill: '#bfdbfe' },
+  'Gate 11': { stroke: '#0f766e', fill: '#99f6e4' },
+  Toilet: { stroke: '#8b5cf6', fill: '#ddd6fe' },
+  'Customer Services': { stroke: '#16a34a', fill: '#bbf7d0' }
 };
 
 const ZONE_SWATCH_CLASSES: Record<string, string> = {
-  'Bedroom 1': 'location-legend__swatch--bedroom1',
-  'Bedroom 2': 'location-legend__swatch--bedroom2',
-  Bathroom: 'location-legend__swatch--bathroom',
-  'Common Lounge': 'location-legend__swatch--common'
+  'Gate 10': 'location-legend__swatch--bedroom1',
+  'Gate 11': 'location-legend__swatch--bedroom2',
+  Toilet: 'location-legend__swatch--bathroom',
+  'Customer Services': 'location-legend__swatch--common'
 };
 
 const ZONE_LABEL_KEYS: Record<string, string> = {
-  'Bedroom 1': 'location.zones.bedroom1',
-  'Bedroom 2': 'location.zones.bedroom2',
-  Bathroom: 'location.zones.bathroom',
-  'Common Lounge': 'location.zones.commonLounge'
+  'Gate 10': 'location.zones.bedroom1',
+  'Gate 11': 'location.zones.bedroom2',
+  Toilet: 'location.zones.bathroom',
+  'Customer Services': 'location.zones.commonLounge'
 };
 
-const ALLOWED_ZONE_NAMES = ['Bedroom 1', 'Bedroom 2', 'Bathroom', 'Common Lounge'];
+const ALLOWED_ZONE_NAMES = ['Gate 10', 'Gate 11', 'Toilet', 'Customer Services'];
 
 const MARKER_MIN_DISTANCE = 16;
 const MARKER_MAX_ATTEMPTS = 60;
@@ -248,20 +249,20 @@ const getLocationWorkspaceCopy = (locale: string): LocationWorkspaceCopy => {
       note: '把室内地图放回第一视点，图层与占用情况只保留决策所需信息。',
       syncPending: '等待首次同步',
       syncedLabel: '最近同步',
-      summaryResidents: '在线住户',
+      summaryResidents: '在线乘客',
       summaryMapped: '地图标记',
       summaryZones: '占用分区',
       summarySync: '数据新鲜度',
       stageEyebrow: '地图主舞台',
-      stageNote: '安全区、房间和住户标记在同一张平面图上对齐展示。',
+      stageNote: '机场区域、路线和乘客标记在同一张平面图上对齐展示。',
       stageZones: '监测分区',
       stageMarkers: '可见标记',
       panelEyebrow: '空间图例',
       panelLegendNote: '用最少的颜色和数量提示解释地图上的空间分层。',
       occupancyEyebrow: '占用简报',
-      occupancyNote: '按分区查看当前住户分布，方便快速确认巡视重点。',
+      occupancyNote: '按分区查看当前乘客分布，方便快速确认协助重点。',
       loadingTitle: '正在同步室内地图',
-      loadingBody: '正在刷新房间边界和最新住户分布。',
+      loadingBody: '正在刷新区域边界和最新乘客分布。',
       errorTitle: '室内地图暂不可用',
     };
   }
@@ -272,44 +273,44 @@ const getLocationWorkspaceCopy = (locale: string): LocationWorkspaceCopy => {
       note: '把室內地圖放回第一視點，圖層與佔用情況只保留決策所需資訊。',
       syncPending: '等待首次同步',
       syncedLabel: '最近同步',
-      summaryResidents: '在線住戶',
+      summaryResidents: '在線乘客',
       summaryMapped: '地圖標記',
       summaryZones: '佔用分區',
       summarySync: '資料新鮮度',
       stageEyebrow: '地圖主舞台',
-      stageNote: '安全區、房間和住戶標記在同一張平面圖上對齊展示。',
+      stageNote: '機場區域、路線和乘客標記在同一張平面圖上對齊展示。',
       stageZones: '監測分區',
       stageMarkers: '可見標記',
       panelEyebrow: '空間圖例',
       panelLegendNote: '用最少的顏色和數量提示解釋地圖上的空間分層。',
       occupancyEyebrow: '佔用簡報',
-      occupancyNote: '按分區查看目前住戶分布，方便快速確認巡視重點。',
+      occupancyNote: '按分區查看目前乘客分布，方便快速確認協助重點。',
       loadingTitle: '正在同步室內地圖',
-      loadingBody: '正在刷新房間邊界和最新住戶分布。',
+      loadingBody: '正在刷新區域邊界和最新乘客分布。',
       errorTitle: '室內地圖暫時不可用',
     };
   }
 
   return {
     eyebrow: 'Location workspace',
-    note: 'The indoor map returns to the first visual plane, with only the context needed for quick routing decisions.',
+    note: 'The airport map returns to the first visual plane, with only the context needed for quick routing decisions.',
     syncPending: 'Waiting for first sync',
     syncedLabel: 'Last synced',
-    summaryResidents: 'Active residents',
+    summaryResidents: 'Active passengers',
     summaryMapped: 'Visible markers',
     summaryZones: 'Occupied zones',
     summarySync: 'Data freshness',
     stageEyebrow: 'Map stage',
-    stageNote: 'Safe zones, rooms, and resident markers align on one operational floorplan.',
+    stageNote: 'Airport zones, route context, and passenger markers align on one operational floorplan.',
     stageZones: 'Monitored zones',
     stageMarkers: 'Visible markers',
     panelEyebrow: 'Spatial legend',
     panelLegendNote: 'Use a restrained legend to decode the floorplan without competing with the map.',
     occupancyEyebrow: 'Occupancy briefing',
-    occupancyNote: 'Review resident distribution by zone before deciding where the next walk-through should start.',
-    loadingTitle: 'Syncing indoor floorplan',
-    loadingBody: 'Refreshing room bounds and the latest resident distribution.',
-    errorTitle: 'Indoor floorplan unavailable',
+    occupancyNote: 'Review passenger distribution by zone before deciding where the next walk-through should start.',
+    loadingTitle: 'Syncing airport map',
+    loadingBody: 'Refreshing zone bounds and the latest passenger distribution.',
+    errorTitle: 'Airport map unavailable',
   };
 };
 
@@ -324,7 +325,7 @@ export const LocationDashboard = () => {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
-  const workspaceCopy = useMemo(() => getLocationWorkspaceCopy(locale), [locale]);
+  const workspaceCopy = useMemo(() => getLocationWorkspaceCopy('en'), []);
 
   const formatDateTime = useCallback(
     (input?: string | null) => {
@@ -392,7 +393,7 @@ export const LocationDashboard = () => {
   }, [locations, mapSize]);
 
   const orderedZoneShapes = useMemo(() => {
-    const order = ['Common Lounge', 'Bedroom 1', 'Bedroom 2', 'Bathroom'];
+    const order = ['Customer Services', 'Gate 10', 'Gate 11', 'Toilet'];
     return [...zoneShapes].sort((a, b) => {
       const aIndex = order.indexOf(a.location.name ?? '');
       const bIndex = order.indexOf(b.location.name ?? '');

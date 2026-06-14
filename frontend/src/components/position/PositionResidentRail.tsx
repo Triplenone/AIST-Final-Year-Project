@@ -76,13 +76,13 @@ function getOperatorError(
 ): string {
   if (!error) {
     return t('position.snapshotUnavailable', {
-      defaultValue: 'Resident snapshot unavailable.'
+      defaultValue: 'Passenger snapshot unavailable.'
     });
   }
 
   if (error.toLowerCase().includes('not found')) {
     return t('position.snapshotUnavailable', {
-      defaultValue: 'Resident snapshot unavailable.'
+      defaultValue: 'Passenger snapshot unavailable.'
     });
   }
 
@@ -119,17 +119,17 @@ export function PositionResidentRail({
       <header className="position-resident-rail__header">
         <div>
           <p className="position-command-center__eyebrow">
-            {t('position.railEyebrow', { defaultValue: 'Resident Rail' })}
+            {t('position.railEyebrow', { defaultValue: 'Passenger Rail' })}
           </p>
-          <h2>{t('position.userList', { defaultValue: 'Resident list' })}</h2>
+          <h2>{t('position.userList', { defaultValue: 'Passenger list' })}</h2>
           {surfaceState === 'loading' || surfaceState === 'empty' ? (
             <p className="position-command-center__muted">
               {surfaceState === 'loading'
                 ? t('position.loadingResidents', {
-                    defaultValue: 'Loading resident snapshot...'
+                    defaultValue: 'Loading passenger snapshot...'
                   })
                 : t('position.noResidentsConfigured', {
-                    defaultValue: 'No resident configured for Position.'
+                    defaultValue: 'No passenger configured for Position.'
                   })}
             </p>
           ) : null}
@@ -140,7 +140,7 @@ export function PositionResidentRail({
           onClick={onShowAllOnMap}
           aria-pressed={showAllOnMap}
         >
-          {t('position.viewAllOnMap', { defaultValue: '查看所有人' })}
+          {t('position.viewAllOnMap', { defaultValue: 'View all on map' })}
         </button>
       </header>
 
@@ -153,14 +153,14 @@ export function PositionResidentRail({
       {surfaceState === 'partial-error' ? (
         <p className="position-command-center__notice position-command-center__notice--warning">
           {t('position.partialResidentFailure', {
-            defaultValue: `${partialFailureCount} resident snapshot(s) failed to refresh.`
+            defaultValue: `${partialFailureCount} passenger snapshot(s) failed to refresh.`
           })}
         </p>
       ) : null}
 
       <dl
         className="position-resident-rail__summary position-resident-rail__summary--compact"
-        aria-label={t('position.railSummary', { defaultValue: 'Resident state summary' })}
+        aria-label={t('position.railSummary', { defaultValue: 'Passenger state summary' })}
       >
         {summaryItems.map((item) => (
           <div key={item.key} className="position-resident-rail__summary-item">
@@ -173,19 +173,19 @@ export function PositionResidentRail({
       <ul
         className="position-resident-rail__list position-resident-rail__list--compact"
         role="list"
-        aria-label={t('position.userList', { defaultValue: 'Resident list' })}
+        aria-label={t('position.userList', { defaultValue: 'Passenger list' })}
       >
         {surfaceState === 'loading' ? (
           <li className="position-command-center__state-card position-command-center__state-card--loading">
-            <strong>{t('position.loadingResidents', { defaultValue: 'Loading resident snapshot...' })}</strong>
-            <p>{t('position.loadingResidentsHint', { defaultValue: 'Resident state is pending from upstream.' })}</p>
+            <strong>{t('position.loadingResidents', { defaultValue: 'Loading passenger snapshot...' })}</strong>
+            <p>{t('position.loadingResidentsHint', { defaultValue: 'Passenger state is pending from upstream.' })}</p>
           </li>
         ) : null}
 
         {surfaceState === 'empty' ? (
           <li className="position-command-center__state-card">
-            <strong>{t('position.noResidentsConfigured', { defaultValue: 'No resident configured for Position.' })}</strong>
-            <p>{t('position.noResidentsConfiguredHint', { defaultValue: 'Add a registry entry before using the command center.' })}</p>
+            <strong>{t('position.noResidentsConfigured', { defaultValue: 'No passenger configured for Position.' })}</strong>
+            <p>{t('position.noResidentsConfiguredHint', { defaultValue: 'Add a passenger registry entry before using the command center.' })}</p>
           </li>
         ) : null}
 

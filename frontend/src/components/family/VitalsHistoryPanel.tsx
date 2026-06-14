@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import {
   useVitalsHistory,
@@ -32,11 +31,10 @@ const formatReadingTime = (value: string | null, locale: string) => {
 };
 
 export function VitalsHistoryPanel({ residentId, residentName }: VitalsHistoryPanelProps) {
-  const { t, i18n } = useTranslation();
   const [timeRange, setTimeRange] = useState<VitalsHistoryRange>('24h');
   const { data, loading, error, isUnavailable, invalidResidentId } = useVitalsHistory(residentId, timeRange);
 
-  const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const locale = 'en-US';
   const rows = useMemo(
     () =>
       data.map((item) => ({
@@ -50,19 +48,19 @@ export function VitalsHistoryPanel({ residentId, residentName }: VitalsHistoryPa
     <section className="family-panel family-panel--history" aria-live="polite">
       <div className="family-panel__header">
         <div>
-          <p className="family-panel__eyebrow">{t('layout.nav.family')}</p>
-          <h3>{t('family.vitalsHistory.title')}</h3>
+          <p className="family-panel__eyebrow">Passenger vitals</p>
+          <h3>Vitals history</h3>
         </div>
         <span className="family-panel__chip">
-          {t('family.vitalsHistory.residentLabel')}: {residentName}
+          Passenger: {residentName}
         </span>
       </div>
 
       <div className="family-vitals-history__toolbar">
         <span className="family-vitals-history__range-label">
-          {t('family.vitalsHistory.rangeTitle')}
+          Range
         </span>
-        <div className="family-vitals-history__ranges" role="group" aria-label={t('family.vitalsHistory.rangeTitle')}>
+        <div className="family-vitals-history__ranges" role="group" aria-label="Vitals history range">
           {RANGE_OPTIONS.map((range) => (
             <button
               key={range}
@@ -79,36 +77,36 @@ export function VitalsHistoryPanel({ residentId, residentName }: VitalsHistoryPa
 
       {loading ? (
         <div className="family-panel__state family-panel__state--loading">
-          <strong>{t('family.vitalsHistory.loadingTitle')}</strong>
-          <p>{t('family.vitalsHistory.loadingBody')}</p>
+          <strong>Loading vitals history</strong>
+          <p>Fetching recent heart rate and SpO2 readings.</p>
         </div>
       ) : null}
 
       {!loading && invalidResidentId ? (
         <div className="family-panel__state family-panel__state--warning" role="status">
-          <strong>{t('family.vitalsHistory.invalidResidentIdTitle')}</strong>
-          <p>{t('family.vitalsHistory.invalidResidentIdBody')}</p>
+          <strong>Passenger ID cannot load vitals history</strong>
+          <p>This record does not map to a numeric backend user id.</p>
         </div>
       ) : null}
 
       {!loading && !invalidResidentId && isUnavailable ? (
         <div className="family-panel__state family-panel__state--warning">
-          <strong>{t('family.vitalsHistory.unavailableTitle')}</strong>
-          <p>{t('family.vitalsHistory.unavailableBody')}</p>
+          <strong>Vitals history unavailable</strong>
+          <p>The backend endpoint is not available for this passenger yet.</p>
         </div>
       ) : null}
 
       {!loading && !invalidResidentId && !isUnavailable && error ? (
         <div className="family-panel__state family-panel__state--error" role="alert">
-          <strong>{t('family.vitalsHistory.errorTitle')}</strong>
+          <strong>Vitals history failed to load</strong>
           <p>{error}</p>
         </div>
       ) : null}
 
       {!loading && !invalidResidentId && !isUnavailable && !error && rows.length === 0 ? (
         <div className="family-panel__state family-panel__state--empty">
-          <strong>{t('family.vitalsHistory.emptyTitle')}</strong>
-          <p>{t('family.vitalsHistory.emptyBody')}</p>
+          <strong>No vitals history yet</strong>
+          <p>Readings will appear after the watch syncs heart rate or SpO2 samples.</p>
         </div>
       ) : null}
 
@@ -118,17 +116,17 @@ export function VitalsHistoryPanel({ residentId, residentName }: VitalsHistoryPa
             {rows.map((item) => (
               <article key={item.id} className="family-vitals-history__row" role="listitem">
                 <div className="family-vitals-history__timestamp">
-                  <span>{t('family.vitalsHistory.columns.recordedAt')}</span>
-                  <strong>{item.label ?? t('family.vitalsHistory.noReading')}</strong>
+                  <span>Recorded at</span>
+                  <strong>{item.label ?? 'No reading'}</strong>
                 </div>
                 <dl className="family-vitals-history__readings">
                   <div className="family-vitals-history__reading">
-                    <dt>{t('family.vitalsHistory.columns.heartRate')}</dt>
-                    <dd>{item.heartRate ?? t('family.vitalsHistory.noReading')}</dd>
+                    <dt>Heart rate</dt>
+                    <dd>{item.heartRate ?? 'No reading'}</dd>
                   </div>
                   <div className="family-vitals-history__reading">
-                    <dt>{t('family.vitalsHistory.columns.spo2')}</dt>
-                    <dd>{item.spo2 ?? t('family.vitalsHistory.noReading')}</dd>
+                    <dt>SpO2</dt>
+                    <dd>{item.spo2 ?? 'No reading'}</dd>
                   </div>
                 </dl>
               </article>

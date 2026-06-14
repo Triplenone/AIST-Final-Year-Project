@@ -32,6 +32,16 @@ Thumbs.db
 
 # --- Logs ---
 *.log
+logs/
+
+# --- Local firmware toolchain/build artifacts ---
+.arduino-cli/
+firmware/build/
+firmware/.theia/
+firmware/.vscode/
+
+# Browser automation local state
+.playwright-mcp/
 
 # --- Project-specific (local/legacy) ---
 # (typo'd legacy dashboard; main frontend is in /frontend)

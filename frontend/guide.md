@@ -1,113 +1,102 @@
-# 小學生版本：讓 React 儀表板接上真正後端 🧒
+# FlyCare Frontend Backend Guide
 
-這份小指南教你把 `frontend/` React 儀表板連到 **FastAPI 後端 + MySQL 資料庫**，並確認畫面上看到的住民資料真的是從資料表來的（不是前端亂編的）。
+This guide connects the active `frontend/` React/Vite dashboard to the FastAPI backend and the local MySQL/Mongo/MQTT runtime.
 
----
+## Backend
 
-## 1. 後端準備好
+For a full local Windows stack check from an elevated PowerShell, run:
 
-1. 打開終端機，切到後端目錄（這個 repo 裡的 FastAPI 專案）：`cd backend/backend`
-2. 建立並啟動虛擬環境：
-   ```bash
-   python -m venv .venv
-   # Windows: .venv\Scripts\activate
-   # macOS/Linux: source .venv/bin/activate
-   ```
-3. 安裝套件：`pip install -r requirements.txt`（或依後端說明文件為主）
-4. 確認 MySQL 有 `smart_elderly_care_system`（可用 `database/mysql/Dump20260426.sql` 匯入）
-5. 啟動後端（命令依後端說明為主，這裡給一個例子）：
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-6. 健康檢查：瀏覽 `http://localhost:8000/health` 應回 `{"status":"ok",...}`
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate
+```
 
----
+The script starts or verifies MySQL, MongoDB, MQTT, backend, and frontend where possible, then writes `logs/flycare-local-stack-status.json` with admin status, port listeners, `/health`, and MQTT status.
 
-## 2. 告訴前端「後端住在哪裡」
+For COM5 watch evidence during physical tests:
 
-1. 開 `frontend/src/constants/backend.ts`，確認：
-   ```ts
-   export const BACKEND_BASE_URL = 'http://localhost:8000';
-   export const API_BASE_URL = `${BACKEND_BASE_URL}/api/v1`;
-   ```
-   後端網址或 port 不同就改這裡。
-2. 住民資料來源：`/api/v1/residents`  
-   - 這個 API 是在後端 `app/api/routes/residents.py` 寫好的，會去讀 `user` / `event` / `user_status` / `device` 等資料，組成一個「住民列表」回給前端。
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_watch.ps1
+```
 
----
+To prove live heart-rate, live SpO2, and physical BOOT SOS in one run, wear the watch firmly and run:
 
-## 3. 前端會怎麼取資料
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_watch.ps1 -WaitForValidHeartRate -WaitForValidSpO2 -WaitForPhysicalSOS -AutoClearSOS -AutoHandleSosEvents -HeartRateLedBrightness 0xFF -Seconds 60
+```
 
-- 住民（首頁 Residents 區塊）
-  - `frontend/src/shared/resident-live-store.tsx` 會呼叫 `/api/v1/residents`，把回傳結果轉成前端的 `Resident` 型別。
-  - `frontend/src/adapters/residents.ts` 負責做「欄位翻譯」，例如把後端的 `vitals.hr` / `heart_rate` 變成前端用的 `vitals.hr`。
-  - `frontend/src/App.tsx` 會從這個 Store 拿資料來畫表格、KPI、Alerts、Insights。
+If `-HeartRateLedBrightness` is supplied, the verifier sends `HRLED <value>` before diagnostics. If heart-rate validity is not observed, it sends `HRCAL` and continuously drains serial output so raw MAX30102 IR/red contact and saturation statistics are recorded in `logs/flycare-watch-verification.json`.
 
-- Admin 區塊
-  - 所有 Admin 頁面都在 `frontend/src/components/admin/`。
-  - 分頁切換由 `AdminSection.tsx` 控制，標籤文字會根據你上方選的語言自動切換（English / 繁體 / 簡體）。
-  - 對應的 API：
-    - UsersAdmin → `/api/v1/users`
-    - DevicesAdmin → `/api/v1/devices`
-    - LocationsAdmin → `/api/v1/locations`
-    - EventsAdmin → `/api/v1/events` + `/api/v1/events/{id}/handle`
-    - UserStatusAdmin → `/api/v1/user-status`
-    - DeviceLogsAdmin → `/api/v1/device-data-log` + `/api/v1/data-reception/status`
-    - ResidentsAdmin → `/api/v1/residents`（Admin 裡的 Resident Directory）
-    - KpiAdmin → `/api/v1/kpi`
+For repeatable MAX30102 troubleshooting, add `-RunHeartRateSensorCheck -RunHeartRateSweep`; the verifier sends `HRSENSOR` to read part ID/revision/die temperature, then sends `HRSWEEP` so firmware tests `0x1F`, `0x3F`, `0x7F`, and `0xFF` LED levels in one serial capture. The generated JSON includes `heartRateDiagnostics.classification`; `optical_contact_missing` means the chip answered over I2C but the red/IR readings never crossed the contact threshold.
 
-- Service Worker 模擬器
-  - 以前的前端 SSE 模擬器（`sse-sw.js`）只在舊的 `web-dashboard/` 用。
-  - 現在這個 React 前端的主路線是「接真正後端」，不再靠前端亂造住民資料。
+To consolidate the full FlyCare goal evidence after running the stack and watch verifier:
 
----
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\audit_flycare_goal.ps1
+```
 
-## 4. 啟動前端
+The audit writes `logs/flycare-goal-audit.json` and `logs/flycare-goal-audit.md`; exit code `2` means only live HR/SpO2 is physically blocked.
 
-1. 另開終端機：`cd frontend`
-2. 安裝套件（若第一次）：`npm install`
-3. 啟動開發伺服器：`npm run dev -- --host`
-4. 瀏覽器開 `http://localhost:5173`
-   - 應該會看到住民名單（資料來自後端 `/api/v1/residents`）
+Run the API from `backend/backend`:
 
----
+```powershell
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-## 5. 如何確認真的接到後端
+The implemented backend still uses the legacy MySQL schema name `smart_elderly_care_system`. Treat that name, `/api/v1/residents`, `elderly_user_id`, and the `elderly` role enum as compatibility contracts until a coordinated migration changes the API and database together.
 
-1. 開瀏覽器 DevTools → Network：
-   - 找 `GET /api/v1/residents`，URL 應該是 `http://localhost:8000/api/v1/residents`。
-   - 回傳 JSON 應該有資料庫的住民。
-2. 後端若新增 `event` 或 `user_status`、`device_data_log` 資料：
-   - 稍等一下，或在介面上使用 Admin / Residents 的手動刷新
-   - 就可以在住民狀態、生命徵象或 KPI 上看到變化（例如有跌倒事件就變成高風險）。
+Apply FlyCare setup migrations after creating or refreshing the database:
 
----
+```powershell
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_register_esp32_devices_6_7.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260605_register_esp32_48ca43a42298.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260608_dedupe_flycare_devices_and_device8_alias.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260613_flycare_demo_labels.sql"
+```
 
-## 6. 常見問題
+Check the backend:
 
-1. `/health` 打不開  
-   - 檢查後端是否有跑、port 是否 8000（或你自己改的 port）
-2. 取 `/api/v1/residents` 錯誤  
-   - 檢查 MySQL 是否有 `smart_elderly_care_system`  
-   - 檢查後端 DB 設定（帳號、密碼、host）是否正確  
-   - 看後端 console 有沒有 SQL 錯誤訊息
-3. Admin 功能錯誤  
-   - 看 DevTools Network 的錯誤訊息，確認 `/api/v1/*` 有沒有 404/500  
-   - 確認 FastAPI 有啟用對應路由（例如 `/api/v1/user-status`）  
-   - 檢查 `frontend/src/services/api.ts` 路徑是否拼寫正確
-4. 語言切換沒反應  
-   - 確認 `frontend/src/i18n.ts` 有載入 `en` / `zh-HK` / `zh-CN`  
-   - 刪除瀏覽器 localStorage 裡的 `i18nextLng` 再重新整理。
-5. CORS 問題  
-   - 若看到 CORS 錯誤，請在 FastAPI 的 CORS 設定裡加入 `http://localhost:5173`。
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/residents
+```
 
----
+## Frontend
 
-## 7. 如果只想做前端 Demo？
+Run the active Vite app from `frontend/`:
 
-這個 React 前端是專門用來「接真正後端」的。如果你暫時還沒有後端／資料庫，可以先：
+```powershell
+npm install
+npm run dev -- --host 0.0.0.0
+```
 
-1. 跑舊版的純前端儀表板：`frontend/web-dashboard/`（有自己的 SSE 模擬器與 README）
-2. 等後端準備好，再回到 `frontend/` 目錄照這份小學生指南接上 `/api/v1/*`
+Open `http://127.0.0.1:5173`. The frontend API base URL is defined in `frontend/src/constants/backend.ts` and defaults to `http://localhost:8000/api/v1`.
 
-這樣就可以先 Demo UI，再慢慢補上真正的資料來源。***
+Important data flows:
+
+- Passenger list: `frontend/src/shared/resident-live-store.tsx` calls `/api/v1/residents` and maps the response through `frontend/src/adapters/residents.ts`.
+- Admin modules: `frontend/src/components/admin/` call `/api/v1/users`, `/api/v1/devices`, `/api/v1/events`, `/api/v1/locations`, `/api/v1/user-status`, `/api/v1/device-data-log`, `/api/v1/residents`, and `/api/v1/kpi`.
+- FlyCare positioning: `/flycare` and `/position` use the same backend passenger/device contracts plus Mongo upstream status data.
+
+## Validation
+
+Use these checks after frontend/backend contract changes:
+
+```powershell
+cd frontend
+npm run test
+npm run lint
+npm run build:static
+
+cd ../backend/backend
+python -m compileall app
+```
+
+Then smoke test:
+
+- `GET http://127.0.0.1:8000/health`
+- `GET http://127.0.0.1:8000/api/v1/flycare-admin/mqtt/status`
+- `GET http://127.0.0.1:8000/api/v1/mongo-upstream/?device_id=ESP32_48CA43A42298&page_size=5`
+- Browser routes `/`, `/flycare`, `/position`, and `/admin`

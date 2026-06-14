@@ -16,6 +16,7 @@ import {
   resolveFlyCarePinLabelSide
 } from '../../adapters/flycare-map';
 import {
+  getPositionNavigationTargetDisplay,
   getPositionZoneDisplayForResident,
   type PositionSurfaceState,
   type PositionResidentViewModel,
@@ -89,7 +90,7 @@ function flyCareRouteFailureLabel(
     case 'already_at_gate':
       return t('flyCare.routeFailure.alreadyAtGate', {
         defaultValue:
-          'Resident is already at Gate {{gate}} anchor cell ({{col}}, {{row}}). No navigation line is drawn.',
+          'Passenger is already at Gate {{gate}} anchor cell ({{col}}, {{row}}). No navigation line is drawn.',
         gate: context?.gate ?? '—',
         col: context?.coords?.x ?? '—',
         row: context?.coords?.y ?? '—'
@@ -277,7 +278,7 @@ function getOperatorError(
 ): string {
   if (!error || error.toLowerCase().includes('not found')) {
     return t('position.selectedResidentUnavailable', {
-      defaultValue: 'Selected resident snapshot unavailable.'
+      defaultValue: 'Selected passenger snapshot unavailable.'
     });
   }
   return error;
@@ -370,6 +371,7 @@ export function FlyCareMapStage({
     selectedPin && !navRoutes.some((route) => route.residentId === selectedPin.residentId)
       ? getFlyCareRouteFailureReason({ x: selectedPin.x, y: selectedPin.y }, selectedGate)
       : null;
+  const navigationTargetDisplay = resident ? getPositionNavigationTargetDisplay(resident) : null;
   const clusteredPins = Array.from(
     residentPinRows.reduce<Map<string, typeof residentPinRows>>((acc, pin) => {
       const key = `${Math.round(pin.x)}:${Math.round(pin.y)}`;
@@ -407,11 +409,11 @@ export function FlyCareMapStage({
   const mapEmptyCopy =
     showAllOnMap
       ? t('position.noOnlineResidentsOnMap', {
-          defaultValue: 'No online residents with location data right now.'
+          defaultValue: 'No online passengers with location data right now.'
         })
       : resident == null
       ? t('position.noSelectionHint', {
-          defaultValue: 'Choose a resident from the rail to inspect Position context.'
+          defaultValue: 'Choose a passenger from the rail to inspect Position context.'
         })
       : resident.hasData
         ? t('position.zoneResolutionUnavailable', {
@@ -431,7 +433,7 @@ export function FlyCareMapStage({
           {effectiveSurfaceState === 'loading'
             ? t('position.loadingMapContext', { defaultValue: 'Loading map context...' })
             : showAllOnMap
-              ? t('position.viewAllOnMap', { defaultValue: '查看所有人' })
+              ? t('position.viewAllOnMap', { defaultValue: 'View all on map' })
               : t('position.currentLocation', { defaultValue: 'Current location' })}
         </p>
       </header>
@@ -553,7 +555,7 @@ export function FlyCareMapStage({
 
         {effectiveSurfaceState === 'empty' ? (
           <div className="position-command-center__state-card">
-            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
+            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No passenger selected' })}</strong>
             <p>{mapEmptyCopy}</p>
           </div>
         ) : null}
@@ -577,11 +579,16 @@ export function FlyCareMapStage({
                 <dd>{getPositionZoneDisplayForResident(resident, t, 'flycare')}</dd>
               </div>
               <div>
-                <dt>{t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}</dt>
+                <dt>
+                  {navigationTargetDisplay
+                    ? t('position.navigationTargetLabel', { defaultValue: 'Navigation target' })
+                    : t('position.zoneCommandLabel', { defaultValue: 'Zone command' })}
+                </dt>
                 <dd>
-                  {t(zoneCommandStateLabelKey[resident.zoneCommandState], {
-                    defaultValue: zoneCommandStateDefaultLabel[resident.zoneCommandState]
-                  })}
+                  {navigationTargetDisplay ??
+                    t(zoneCommandStateLabelKey[resident.zoneCommandState], {
+                      defaultValue: zoneCommandStateDefaultLabel[resident.zoneCommandState]
+                    })}
                 </dd>
               </div>
               {resident.currentCoords ? (

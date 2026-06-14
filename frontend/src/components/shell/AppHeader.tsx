@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom';
 
 import flyCareBadgeUrl from '../../assets/brand/flycare-badge-exact-crop.svg';
-import smartCareMarkUrl from '../../assets/brand/smartcare-mark-exact-full.svg';
 
 type AppHeaderNavItem = {
   key: string;
@@ -18,7 +17,6 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle, navItems }: AppHeaderProps) {
-  const brandMarkUrl = isFlyCarePage ? flyCareBadgeUrl : smartCareMarkUrl;
   const hasDenseNav = !isFlyCarePage && activeKey !== 'position' && navItems.length >= 8;
 
   return (
@@ -36,7 +34,7 @@ export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle,
             >
               <img
                 className={`ambient-header__brand-mark${isFlyCarePage ? ' ambient-header__brand-mark--flycare' : ''}`}
-                src={brandMarkUrl}
+                src={flyCareBadgeUrl}
                 alt=""
               />
             </span>
@@ -47,7 +45,7 @@ export function AppHeader({ isFlyCarePage, activeKey, brandTitle, brandSubtitle,
           </div>
           {!isFlyCarePage ? (
             <div className="ambient-header__context">
-              <span className="ambient-header__status">Live Care Workspace</span>
+              <span className="ambient-header__status">Live Airport Workspace</span>
             </div>
           ) : null}
         </div>

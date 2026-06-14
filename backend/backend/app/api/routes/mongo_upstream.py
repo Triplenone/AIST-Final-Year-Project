@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
-from app.services.elderly_device_queries import VITALS_UPSTREAM_DATA_TYPES, devices_by_elderly_user_ids
+from app.services.passenger_device_queries import VITALS_UPSTREAM_DATA_TYPES, devices_by_passenger_user_ids
 from app.services.sensor_vitals_extract import extract_hr_spo2_from_sensors
 
 router = APIRouter()
@@ -446,7 +446,7 @@ async def get_vitals_history_for_user(
     db: Session = Depends(get_db),
 ):
     """Bridge user_id -> device -> MongoDB vitals history."""
-    devices = devices_by_elderly_user_ids(db, [user_id]).get(user_id) or []
+    devices = devices_by_passenger_user_ids(db, [user_id]).get(user_id) or []
     if not devices:
         raise HTTPException(
             status_code=404,

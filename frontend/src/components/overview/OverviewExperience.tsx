@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 import { metricOrder, type Metrics } from '../../constants/metrics';
 import type { Resident } from '../../sse/client';
-import eldercareTextureUrl from '../../assets/brand/texture-eldercare-exact-full.svg';
-import eldercareImg from '../../img/ElderlyCare.png';
+import airportTextureUrl from '../../assets/brand/texture-airport-exact-full.svg';
+import flyCareImg from '../../img/FlyCare.png';
 import { DashboardCharts } from '../charts/DashboardCharts';
 
 type MetricPoint = Metrics[keyof Metrics];
@@ -78,7 +78,7 @@ export function OverviewExperience({
   const strongestZone = zoneData[0];
   const signalPanels = [
     {
-      label: 'Active residents',
+      label: 'Active passengers',
       value: String(activeResidentCount),
       detail: strongestZone ? `${chartLabels.zoneTitle}: ${strongestZone.name}` : chartLabels.empty
     },
@@ -146,10 +146,10 @@ export function OverviewExperience({
 
         <div className="overview-hero__visual">
           <div className="overview-hero__visual-base" aria-hidden="true">
-            <img className="overview-hero__visual-layer" src={eldercareImg} alt="" />
+            <img className="overview-hero__visual-layer" src={flyCareImg} alt="" />
           </div>
           <div className="overview-hero__brand-texture" aria-hidden="true">
-            <img className="overview-hero__brand-texture-image" src={eldercareTextureUrl} alt="" />
+            <img className="overview-hero__brand-texture-image" src={airportTextureUrl} alt="" />
           </div>
           <div className="overview-hero__veil" />
           <div className="overview-signal-grid">

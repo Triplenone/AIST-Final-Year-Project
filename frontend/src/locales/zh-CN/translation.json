@@ -6,20 +6,20 @@
     "loading": "载入中..."
   },
   "layout": {
-    "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
+    "title": "FlyCare 指挥仪表板",
+    "subtitle": "面向机场协助场景的智能穿戴安全系统",
     "nav": {
       "aria": "主导航",
       "overview": "总览",
-      "residents": "住民",
+      "residents": "乘客",
       "location": "位置",
       "position": "室内定位",
       "flycare": "机场关怀",
       "operations": "运营",
-      "family": "家属互动",
+      "family": "协助更新",
       "admin": "系统管理"
     },
-    "footer": "© 2024 SmartCare Collaborative — 为照护团队而生",
+    "footer": "© 2024 FlyCare Collaborative - 为机场协助团队而生",
     "flycareBrand": "Smart FlyCare System"
   },
   "position": {
@@ -52,14 +52,14 @@
     "refresh": "刷新",
     "viewAllOnMap": "查看所有人",
     "zone": {
-      "door1": "门1",
-      "door2": "门2",
-      "nurse_station": "护士站",
-      "activity_room": "活动室",
-      "rehabilitation_room": "康复室",
-      "central_common_area": "中央公共区域",
+      "door1": "值机入口",
+      "door2": "登机口出口",
+      "nurse_station": "安检口",
+      "activity_room": "客户服务",
+      "rehabilitation_room": "入境检查",
+      "central_common_area": "主通道",
       "toilet": "洗手间",
-      "bedroom": "卧室"
+      "bedroom": "登机口区域"
     }
   },
   "flyCare": {
@@ -96,9 +96,16 @@
     "flightNumber": "航班号",
     "flightGate": "登机口",
     "flightTime": "航班时间",
+    "flightEstimatedDeparture": "预计起飞",
+    "flightBoardingTime": "登机时间",
+    "flightStatus": "航班状态",
+    "flightDelay": "延误",
+    "flightAirline": "航空公司",
     "flightDeparture": "起飞机场",
     "flightArrival": "目的机场",
     "flightSeat": "座位号",
+    "flightTerminal": "航站楼",
+    "flightCheckinCounter": "值机柜台",
     "flightUpdateTitle": "航班信息变动",
     "flightUpdateConfirm": "确认",
     "simulateFlightUpdate": "模拟航班变动",
@@ -160,8 +167,8 @@
   "admin": {
     "title": "系统管理",
     "subtitle": "直接连到 TestStage-FYP 后端资源",
-    "detailsTitle": "Proactive Guardian Care 详情",
-    "detailsSubtitle": "System Admin 控制台：长者院舍智慧穿戴安全系统",
+    "detailsTitle": "FlyCare 系统详情",
+    "detailsSubtitle": "System Admin 控制台：机场智能穿戴安全系统",
     "tabs": {
       "users": "用户",
       "devices": "设备",
@@ -169,7 +176,7 @@
       "events": "事件",
       "logs": "设备日志",
       "status": "用户状态",
-      "residents": "住民",
+      "residents": "乘客",
       "kpi": "KPI",
       "flycare": "FlyCare"
     },
@@ -231,34 +238,34 @@
       "successGeneric": "操作成功"
     },
     "residents": {
-      "title": "住民名册",
+      "title": "乘客名册",
       "subtitle": "同步自 /api/v1/residents",
-      "searchPlaceholder": "搜姓名或房号",
+      "searchPlaceholder": "搜姓名或区域",
       "statusFilterLabel": "状态",
       "allStatuses": "全部状态",
       "refresh": "重新整理",
       "lastUpdated": "更新于 {{time}}",
       "columns": {
         "id": "ID",
-        "name": "住民",
-        "room": "房号",
+        "name": "乘客",
+        "room": "区域",
         "status": "状态",
         "lastSeen": "最后出现",
         "device": "设备",
         "updated": "更新时间"
       },
-      "noData": "目前没有住民资料。",
+      "noData": "目前没有乘客资料。",
       "lastSeenUnknown": "未知",
       "deviceUnknown": "未绑定",
       "vitalsUnknown": "等待生命体征",
-      "error": "无法取得住民资料，请稍后再试。"
+      "error": "无法取得乘客资料，请稍后再试。"
     }
   },
   "auth": {
     "guestName": "访客",
     "signIn": "登录",
     "signOut": "登出",
-    "signInTitle": "登录 SmartCare",
+    "signInTitle": "登录 FlyCare",
     "signUpTitle": "建立账号",
     "username": "账号",
     "password": "密码",
@@ -271,7 +278,7 @@
     "toSignIn": "返回登录",
     "roles": {
       "guest": "访客",
-      "caregiver": "看护者",
+      "caregiver": "协助员",
       "admin": "管理员"
     },
     "errors": {
@@ -307,8 +314,8 @@
   },
   "hero": {
     "eyebrow": "渐进式网页应用原型",
-    "title": "为 SmartCare 团队打造的贴心控制室",
-    "description": "当旧版仪表板仍在线上服务时，先预览全新的 React 体验。",
+    "title": "为 FlyCare 团队打造的指挥中心",
+    "description": "在 FlyCare 分支中监控手表定位、生命体征、航班更新和 SOS 事件。",
     "lastUpdated": "最后更新：{{time}}"
   },
   "stats": {
@@ -318,7 +325,7 @@
     },
     "alertsResolved": {
       "title": "已处理警报",
-      "description": "本班次照护团队完成处理的警报数量。"
+      "description": "本班次协助团队完成处理的警报数量。"
     },
     "responseTime": {
       "title": "平均响应时间",
@@ -334,11 +341,11 @@
     }
   },
   "charts": {
-    "title": "护理状态概览",
-    "subtitle": "实时可视化呈现住户状态、区域活动与警报。",
+    "title": "乘客动态概览",
+    "subtitle": "实时可视化呈现乘客状态、区域活动与警报。",
     "status": {
-      "title": "住户状态分布",
-      "subtitle": "当前住户状态占比。"
+      "title": "乘客状态分布",
+      "subtitle": "当前乘客状态占比。"
     },
     "zones": {
       "title": "区域占用",
@@ -358,16 +365,16 @@
     "stable": "稳定"
   },
   "residents": {
-    "title": "Proactive Guardian Care",
-    "subtitle": "Smart Wearable Safety System for Elderly Homes",
+    "title": "FlyCare 乘客运行",
+    "subtitle": "面向机场协助场景的智能穿戴安全系统",
     "filters": {
-      "aria": "按状态筛选住民"
+      "aria": "按状态筛选乘客"
     },
-    "tableCaption": "住民生命体征与状态表",
+    "tableCaption": "乘客生命体征与状态表",
     "columns": {
-      "name": "住民",
-      "room": "房号",
-      "lastCheck": "最后巡房",
+      "name": "乘客",
+      "room": "区域",
+      "lastCheck": "最后记录",
       "vitals": "生命体征",
       "status": "状态",
       "actions": "操作"
@@ -377,7 +384,7 @@
       "delete": "删除",
       "confirmDelete": "确定从模拟资料中移除 {{name}} 吗？"
     },
-    "empty": "目前没有符合此筛选条件的住民。",
+    "empty": "目前没有符合此筛选条件的乘客。",
     "status": {
       "stable": "稳定",
       "followUp": "需跟进",
@@ -394,22 +401,22 @@
     },
     "lastSeen": {
       "label": "{{time}} • {{location}}",
-      "waiting": "等待首次巡房"
+      "waiting": "等待首次记录"
     },
     "edit": {
-      "title": "编辑住民资料",
-      "name": "住民姓名",
-      "room": "房号",
+      "title": "编辑乘客资料",
+      "name": "乘客姓名",
+      "room": "区域",
       "status": "状态",
-      "lastSeenAt": "最近巡房时间",
-      "lastSeenLocation": "最近巡房地点",
+      "lastSeenAt": "最近记录时间",
+      "lastSeenLocation": "最近记录区域",
       "cancel": "取消",
       "save": "储存变更",
-      "delete": "删除住民",
+      "delete": "删除乘客",
       "confirmDelete": "确定要从模拟器中移除 {{name}} 吗？此操作无法复原。",
       "errors": {
-        "requiredName": "请输入住民姓名。",
-        "requiredRoom": "请输入房号。"
+        "requiredName": "请输入乘客姓名。",
+        "requiredRoom": "请输入区域。"
       }
     },
     "live": {
@@ -431,7 +438,7 @@
   },
   "location": {
     "title": "位置总览",
-    "subtitle": "室内平面图（课堂演示）。",
+    "subtitle": "机场室内平面图。",
     "refresh": "更新地图数据",
     "map": {
       "aria": "位置地图",
@@ -439,10 +446,10 @@
       "zone": "区域"
     },
     "zones": {
-      "bedroom1": "卧室 1",
-      "bedroom2": "卧室 2",
-      "bathroom": "浴室",
-      "commonLounge": "公共休息区",
+      "bedroom1": "Gate 10",
+      "bedroom2": "Gate 11",
+      "bathroom": "洗手间",
+      "commonLounge": "客户服务",
       "unknown": "未知区域"
     },
     "legend": {
@@ -450,21 +457,21 @@
       "indoorZones": "室内区域",
       "safeZone": "安全区",
       "alerts": "活跃事件",
-      "residents": "住民"
+      "residents": "乘客"
     },
     "occupancy": {
       "title": "区域入住情况",
-      "subtitle": "按最近位置分组的住民。",
+      "subtitle": "按最近位置分组的乘客。",
       "aria": "区域入住列表",
-      "empty": "该区域暂无住民。"
+      "empty": "该区域暂无乘客。"
     },
     "events": {
       "status": "状态",
       "time": "时间",
       "types": {
         "fall": "跌倒",
-        "bed_exit": "离床",
-        "bathroom_retention": "浴室逗留",
+        "bed_exit": "离开登机口",
+        "bathroom_retention": "洗手间协助",
         "geofence_breach": "围栏越界",
         "sos": "SOS",
         "vital_signs_abnormal": "生命体征异常"
@@ -494,16 +501,16 @@
     "title": "最新警报",
     "subtitle": "今日最需要注意的讯息",
     "items": {
-      "fall": "西侧走廊侦测到跌倒事件。",
-      "heartRate": "辛格女士心率偏高。",
+      "fall": "主通道收到 SOS 事件。",
+      "heartRate": "乘客生命体征需要复核。",
       "wearable": "穿戴装置 A52 电量低于 10%。",
       "ota": "新的固件可供 OTA 更新。"
     },
     "generated": {
       "fall": "侦测到 {{name}} 可能在 {{location}} 跌倒。",
-      "highStatus": "{{name}}（{{room}}）需要紧急巡查。",
-      "followUp": "安排对 {{name}}（{{room}}）的随访检查。",
-      "stale": "{{name}} 已 {{duration}} 未巡房，请安排查访。",
+      "highStatus": "{{name}}（{{room}}）需要紧急复核。",
+      "followUp": "安排对 {{name}}（{{room}}）的跟进检查。",
+      "stale": "{{name}} 已 {{duration}} 未更新位置，请安排查访。",
       "lowSpo2": "{{name}} 的血氧降至 {{spo2}}%。",
       "highHr": "{{name}} 的心率升至 {{hr}} 次/分。",
       "temperatureHigh": "{{name}} 的体温达到 {{temperature}}°C。"
@@ -515,19 +522,19 @@
     "info": "信息"
   },
   "insights": {
-    "title": "照护洞察",
-    "subtitle": "照护团队建议的后续动作",
+    "title": "协助洞察",
+    "subtitle": "协助团队建议的后续动作",
     "items": {
-      "hydration": "保持 C 区域的补水提醒。",
-      "nightRounds": "为陈女士增加夜间巡房。",
-      "physiotherapy": "协调李先生的物理治疗回诊。",
-      "familyFeedback": "记录洛佩斯女士家访回馈。"
+      "hydration": "保持 Gate 10 的登机提醒。",
+      "nightRounds": "为延误航班增加登机状态检查。",
+      "physiotherapy": "在安检口协调行动协助。",
+      "familyFeedback": "记录选中乘客的协助反馈。"
     },
     "generated": {
       "focusHigh": "指派应急团队前往 {{room}} 关注 {{name}}。",
-      "followUp": "规划对 {{name}}（{{room}}）的随访轮班。",
+      "followUp": "规划对 {{name}}（{{room}}）的跟进检查。",
       "hydration": "为 {{name}} 安排补水提醒（已 {{duration}} 未见）。",
-      "familyUpdate": "把 {{name}} 的稳定进展告知家属。",
+      "familyUpdate": "把 {{name}} 的稳定进展告知协助联系人。",
       "location": "下一轮巡查时留意 {{name}} 所在的 {{location}}。"
     }
   },
@@ -557,21 +564,21 @@
     },
     "dataset": {
       "title": "模拟资料集",
-      "addCustom": "新增自订住民",
-      "hideForm": "收合自订住民表单",
-      "submit": "新增住民",
+      "addCustom": "新增自订乘客",
+      "hideForm": "收合自订乘客表单",
+      "submit": "新增乘客",
       "pending": "新增中…",
       "success": "已加入模拟资料。",
       "reset": "清除表单",
       "errors": {
-        "name": "请输入住民姓名。",
-        "room": "请输入房号。",
-        "generic": "无法新增此住民，请稍后再试。"
+        "name": "请输入乘客姓名。",
+        "room": "请输入区域。",
+        "generic": "无法新增此乘客，请稍后再试。"
       }
     },
     "actions": {
-      "clearAll": "清空所有住民",
-      "confirmClearAll": "确定要清空住民目录？只会影响示范资料。"
+      "clearAll": "清空所有乘客",
+      "confirmClearAll": "确定要清空乘客目录？只会影响示范资料。"
     }
   },
   "devPanel": {
@@ -579,8 +586,8 @@
     "title": "模拟器控制",
     "refresh": "刷新一次",
     "burst": "连发 10 条",
-    "spawn": "生成新住民",
-    "clear": "清除新增住民",
+    "spawn": "生成新乘客",
+    "clear": "清除新增乘客",
     "hide": "隐藏",
     "show": "显示模拟器控制",
     "pending": "处理中…",
@@ -588,29 +595,29 @@
     "error": "Service Worker 未就绪"
   },
   "family": {
-    "title": "家属简报",
-    "note": "用住民头像卡片快速整理姓名与房间，方便家属沟通前先掌握现况。",
-    "refresh": "刷新住民",
-    "gridAria": "家属页住民卡片",
+    "title": "协助联系人简报",
+    "note": "用乘客头像卡片快速整理姓名与房间，方便协助联系人沟通前先掌握现况。",
+    "refresh": "刷新乘客",
+    "gridAria": "协助联系人页乘客卡片",
     "avatarAlt": "{{name}} 的头像",
     "roomLabel": "房间",
     "roomUnknown": "房间待确认",
-    "loadingTitle": "正在加载住民卡片",
-    "loadingBody": "正在获取家属页所需的最新住民名单。",
-    "emptyTitle": "目前没有可显示的住民",
-    "emptyBody": "当后端提供住民资料后，家属页会在这里显示卡片。",
-    "errorTitle": "家属页暂时不可用",
-    "errorFallback": "目前无法获取住民名单。"
+    "loadingTitle": "正在加载乘客卡片",
+    "loadingBody": "正在获取协助联系人页所需的最新乘客名单。",
+    "emptyTitle": "目前没有可显示的乘客",
+    "emptyBody": "当后端提供乘客资料后，协助联系人页会在这里显示卡片。",
+    "errorTitle": "协助联系人页暂时不可用",
+    "errorFallback": "目前无法获取乘客名单。"
   ,
     "summary": {
       "title": "\u4eca\u65e5\u6458\u8981",
-      "residentLabel": "\u5df2\u9009\u4f4f\u6237",
-      "promptTitle": "\u8bf7\u5148\u9009\u62e9\u4f4f\u6237",
-      "promptBody": "\u8bf7\u5148\u9009\u62e9\u4e00\u5f20\u4f4f\u6237\u5361\u7247\uff0c\u4ee5\u52a0\u8f7d\u4eca\u65e5\u5bb6\u5c5e\u6458\u8981\u3002",
+      "residentLabel": "\u5df2\u9009\u4e58\u5ba2",
+      "promptTitle": "\u8bf7\u5148\u9009\u62e9\u4e58\u5ba2",
+      "promptBody": "\u8bf7\u5148\u9009\u62e9\u4e00\u5f20\u4e58\u5ba2\u5361\u7247\uff0c\u4ee5\u52a0\u8f7d\u4eca\u65e5\u534f\u52a9\u6458\u8981\u3002",
       "loadingTitle": "\u6b63\u5728\u52a0\u8f7d\u4eca\u65e5\u6458\u8981",
       "loadingBody": "\u6b63\u5728\u4ece\u540e\u7aef\u83b7\u53d6\u6700\u65b0\u7684 placeholder \u6458\u8981\u3002",
       "emptyTitle": "\u4eca\u65e5\u6682\u65e0\u6458\u8981",
-      "emptyBody": "\u540e\u7aef\u4eca\u65e5\u672a\u4e3a\u8be5\u4f4f\u6237\u8fd4\u56de\u6458\u8981\u3002",
+      "emptyBody": "\u540e\u7aef\u4eca\u65e5\u672a\u4e3a\u8be5\u4e58\u5ba2\u8fd4\u56de\u6458\u8981\u3002",
       "unavailableTitle": "\u6458\u8981\u670d\u52a1\u6682\u4e0d\u53ef\u7528",
       "unavailableBody": "\u4eca\u65e5\u6458\u8981\u6682\u65f6\u65e0\u6cd5\u83b7\u53d6\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002",
       "errorTitle": "\u65e0\u6cd5\u52a0\u8f7d\u6458\u8981",
@@ -624,7 +631,7 @@
     },
     "briefing": {
       "heroEyebrow": "\u4eca\u65e5\u7b80\u62a5",
-      "roleFallback": "\u4f4f\u6c11",
+      "roleFallback": "\u4e58\u5ba2",
       "vitals": {
         "title": "\u751f\u547d\u4f53\u5f81\u5feb\u7167",
         "heartRate": "\u5fc3\u7387",
@@ -632,9 +639,9 @@
         "respiration": "\u547c\u5438"
       },
       "activities": {
-        "title": "\u65e5\u5e38\u6d3b\u52a8",
-        "breakfastCompleted": "\u65e9\u9910\u5df2\u5b8c\u6210",
-        "middayWalk": "\u5348\u95f4\u6563\u6b65 15 \u5206\u949f"
+        "title": "\u884c\u7a0b\u52a8\u6001",
+        "breakfastCompleted": "\u503c\u673a\u5df2\u5b8c\u6210",
+        "middayWalk": "\u524d\u5f80\u767b\u673a\u53e3 15 \u5206\u949f"
       },
       "mood": {
         "title": "\u60c5\u7eea\u68c0\u67e5",
@@ -642,13 +649,13 @@
         "attention": "\u9700\u8981\u5173\u6ce8"
       },
       "notes": {
-        "title": "\u7167\u62a4\u5907\u6ce8",
-        "placeholder": "\u8bb0\u5f55\u4e0b\u4e00\u6b21\u4e0e\u5bb6\u5c5e\u6c9f\u901a\u524d\u8981\u8865\u5145\u7684\u7167\u62a4\u5907\u6ce8..."
+        "title": "\u534f\u52a9\u5907\u6ce8",
+        "placeholder": "\u8bb0\u5f55\u4e0b\u4e00\u6b21\u4e0e\u534f\u52a9\u8054\u7cfb\u4eba\u6c9f\u901a\u524d\u8981\u8865\u5145\u7684\u5907\u6ce8..."
       }
     },
     "vitalsHistory": {
       "title": "\u751f\u547d\u4f53\u5f81\u5386\u53f2",
-      "residentLabel": "\u5df2\u9009\u4f4f\u6237",
+      "residentLabel": "\u5df2\u9009\u4e58\u5ba2",
       "rangeTitle": "\u65f6\u95f4\u8303\u56f4",
       "loadingTitle": "\u6b63\u5728\u52a0\u8f7d\u751f\u547d\u4f53\u5f81\u5386\u53f2",
       "loadingBody": "\u6b63\u5728\u68c0\u67e5\u540e\u7aef\u751f\u547d\u4f53\u5f81\u5386\u53f2\u63a5\u53e3\u662f\u5426\u5c31\u7eea\u3002",

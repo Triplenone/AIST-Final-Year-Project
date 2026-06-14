@@ -22,7 +22,7 @@ type UseVitalsHistoryResult = {
   loading: boolean;
   error: string | null;
   isUnavailable: boolean;
-  /** 住民 id 不是正整数 MySQL user_id 时无法请求 /vitals/user/{id}/history */
+  /** Passenger id must be a positive numeric MySQL user_id for /vitals/user/{id}/history. */
   invalidResidentId: boolean;
   refresh: () => Promise<void>;
 };

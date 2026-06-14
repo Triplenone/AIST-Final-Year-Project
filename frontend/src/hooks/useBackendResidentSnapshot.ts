@@ -10,8 +10,7 @@ type UseBackendResidentSnapshotResult = {
   refresh: () => Promise<Resident[]>;
 };
 
-// 住民快照 hook：從後端 /api/v1/residents 取得資料
-// Resident snapshot hook: fetches data from backend /api/v1/residents
+// Passenger snapshot hook: fetches data from the legacy /api/v1/residents route.
 export const useBackendResidentSnapshot = (): UseBackendResidentSnapshotResult => {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [loading, setLoading] = useState(false);

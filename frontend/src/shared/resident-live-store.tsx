@@ -1,5 +1,5 @@
-// 住民即時資料的全域狀態 (Resident live data global store)
-// 說明：移除前端 SSE 模擬器，改為輪詢後端 /api/v1/residents 取得住民快照。
+// 乘客即時資料的全域狀態 (Resident live data global store)
+// 說明：移除前端 SSE 模擬器，改為輪詢後端 /api/v1/residents 取得乘客快照。
 import {
   createContext,
   useContext,
@@ -128,7 +128,7 @@ export const ResidentLiveProvider = ({ children }: ProviderProps) => {
     dispatch({ type: 'disconnected' });
   }, []);
 
-  // 開始輪詢後端住民快照 (Start polling backend residents)
+  // 開始輪詢後端乘客快照 (Start polling backend residents)
   const startStream = useCallback(() => {
     if (demoMode) return;
     if (pollerRef.current) return;
@@ -211,7 +211,7 @@ export const ResidentLiveProvider = ({ children }: ProviderProps) => {
   return <ResidentLiveContext.Provider value={value}>{children}</ResidentLiveContext.Provider>;
 };
 
-// 供元件取得即時住民狀態的 Hook (Public hook for consuming resident live data)
+// 供元件取得即時乘客狀態的 Hook (Public hook for consuming resident live data)
 export const useResidentLiveStore = () => {
   const context = useContext(ResidentLiveContext);
   if (!context) {

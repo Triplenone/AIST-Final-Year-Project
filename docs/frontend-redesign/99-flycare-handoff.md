@@ -17,7 +17,7 @@
 
 ## Current locked visual state
 
-- FlyCare header uses the route-correct badge asset, not the eldercare SmartCare mark
+- FlyCare header uses the route-correct badge asset, not the retired care-home mark
 - FlyCare shell background uses `frontend/src/assets/brand/texture-airport-exact-full.svg`
 - FlyCare map base stays `frontend/src/img/FlyCare.png`
 - FlyCare drawer is restored to fixed overlay behavior and no longer stretches page height
