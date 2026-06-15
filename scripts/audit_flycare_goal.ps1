@@ -1,6 +1,7 @@
 param(
     [string]$DeviceId = "ESP32_48CA43A42298",
-    [string]$BaseUrl = "http://127.0.0.1:8000"
+    [string]$BaseUrl = "http://127.0.0.1:8000",
+    [int]$FreshnessMinutes = 5
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +41,30 @@ function Get-CollectionItems {
         return @($Value.value)
     }
     return @($Value)
+}
+
+function Get-ServerReceivedAgeMinutes {
+    param($Value)
+
+    if (-not $Value -or -not ($Value.PSObject.Properties.Name -contains "server_received_at")) {
+        return $null
+    }
+
+    try {
+        $receivedAt = [DateTimeOffset]::Parse(
+            [string]$Value.server_received_at,
+            [System.Globalization.CultureInfo]::InvariantCulture
+        )
+        return ([DateTimeOffset]::Now - $receivedAt).TotalMinutes
+    } catch {
+        return $null
+    }
+}
+
+function Format-NullableNumber {
+    param($Value)
+    if ($null -eq $Value) { return "unknown" }
+    return ([double]$Value).ToString("0.0", [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
 function New-AuditCheck {
@@ -408,6 +433,13 @@ $encodedDeviceId = [System.Uri]::EscapeDataString($DeviceId)
 $stackPath = Join-Path $logRoot "flycare-local-stack-status.json"
 $watchPath = Join-Path $logRoot "flycare-watch-verification.json"
 $stackReport = if (Test-Path $stackPath) { Get-Content -Path $stackPath -Raw | ConvertFrom-Json } else { $null }
+if (-not $PSBoundParameters.ContainsKey("BaseUrl") -and
+    $stackReport -and
+    $stackReport.PSObject.Properties.Name -contains "activeBackend" -and
+    $stackReport.activeBackend.baseUrl -and
+    $stackReport.activeBackend.mqttConnected -eq $true) {
+    $BaseUrl = $stackReport.activeBackend.baseUrl
+}
 $watchReports = @()
 if (Test-Path $logRoot) {
     $watchReports = @(
@@ -456,6 +488,20 @@ $flightSyncEvidence = Find-FlightSyncEvidence -RepoRoot $repoRoot
 
 $checks = @()
 $checks += New-AuditCheck -Name "local_stack" -Status $(if ($health.ok -and $health.value.status -eq "healthy" -and $mqtt.ok -and $mqtt.value.connected -eq $true) { "pass" } else { "fail" }) -Evidence "health=$($health.value.status); mqttConnected=$($mqtt.value.connected); stackAdmin=$($stackReport.isAdmin)" -Details ([pscustomobject]@{ health = $health.value; mqtt = $mqtt.value; stack = $stackReport })
+
+$statusAgeMinutes = Get-ServerReceivedAgeMinutes $latestStatus.value
+$statusFresh = $latestStatus.ok -and $null -ne $statusAgeMinutes -and $statusAgeMinutes -le $FreshnessMinutes
+$checks += New-AuditCheck `
+    -Name "watch_status_freshness" `
+    -Status $(if ($statusFresh) { "pass" } else { "fail" }) `
+    -Evidence "latestStatusAgeMinutes=$(Format-NullableNumber $statusAgeMinutes); freshnessLimitMinutes=$FreshnessMinutes; serverReceivedAt=$($latestStatus.value.server_received_at); current realtime watch MQTT status is required for completion." `
+    -Details ([pscustomobject]@{
+        latestStatusOk = $latestStatus.ok
+        serverReceivedAt = $latestStatus.value.server_received_at
+        ageMinutes = $statusAgeMinutes
+        freshnessLimitMinutes = $FreshnessMinutes
+        latestStatus = $latestStatus.value
+    })
 $checks += New-AuditCheck -Name "beacon_registry" -Status $(if ($beacons.ok) { "pass" } else { "fail" }) -Evidence "BEACON_COUNT=12 and all 12 expected MACs are present in firmware.ino and BLELocation.cpp." -Details $beacons
 $checks += New-AuditCheck -Name "legacy_brand_visible_cleanup" -Status $(if ($smartCare.ok) { "pass" } else { "fail" }) -Evidence "Visible app/docs scan for legacy care-brand terms returned $($smartCare.matchCount) matches." -Details $smartCare
 
@@ -522,6 +568,7 @@ $audit = [ordered]@{
     repoRoot = $repoRoot
     deviceId = $DeviceId
     baseUrl = $BaseUrl
+    freshnessMinutes = $FreshnessMinutes
     overallStatus = $overall
     checks = $checks
 }
@@ -535,6 +582,8 @@ $markdown += "# FlyCare Goal Audit"
 $markdown += ""
 $markdown += "- Timestamp: $($audit.timestamp)"
 $markdown += "- Device: $DeviceId"
+$markdown += "- Base URL: $BaseUrl"
+$markdown += "- Freshness limit: $FreshnessMinutes minutes"
 $markdown += "- Overall: $overall"
 $markdown += ""
 $markdown += "| Check | Status | Evidence |"

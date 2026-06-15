@@ -167,7 +167,7 @@ cd E:\flycare
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate
 ```
 
-The launcher checks/starts MySQL, MongoDB, MQTT, backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, LAN IPv4 addresses, `mqttLanListener`, and MQTT status evidence. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
+The launcher checks/starts MySQL, MongoDB, MQTT, backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, LAN IPv4 addresses, `mqttLanListener`, `activeBackend`, and MQTT status evidence. If `8000` is occupied by a stale backend but a recovery bridge on `8001` has MQTT connected, `activeBackend` is set to `http://127.0.0.1:8001` and the top-level `health` / `mqttStatus` fields come from that bridge. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
 
 The launcher starts backend from `backend\.venv` when available and runs uvicorn without `--reload` so `-RestartApps` can replace the single port owner cleanly during demo recovery. The Vite frontend is started in a minimized `cmd /k` window because hidden, detached Vite processes can exit after printing `ready` on Windows.
 
@@ -187,6 +187,8 @@ cd E:\flycare\backend\backend
 ```
 
 Verify the bridge with `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status`. The expected MQTT state is `enabled=true`, `connected=true`, broker `192.168.0.203`, port `1883`.
+
+After running the launcher, `scripts/audit_flycare_goal.ps1` automatically uses `logs/flycare-local-stack-status.json.activeBackend.baseUrl` when no explicit `-BaseUrl` is supplied and that backend reports MQTT connected. Pass `-BaseUrl` only when you intentionally want to audit a specific backend port.
 
 For a Vite dev dashboard during that ghost-listener recovery, set `frontend\.env.local` to the LAN bridge URL before restarting `5173`:
 

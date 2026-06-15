@@ -181,6 +181,37 @@ function Invoke-RestJsonWithRetry {
     return @{ error = $lastError }
 }
 
+function Test-HealthyResponse {
+    param($Value)
+    return $Value -and
+        $Value.PSObject.Properties.Name -contains "status" -and
+        $Value.status -eq "healthy"
+}
+
+function Test-MqttConnectedResponse {
+    param($Value)
+    return $Value -and
+        $Value.PSObject.Properties.Name -contains "connected" -and
+        $Value.connected -eq $true
+}
+
+function Get-BackendCandidate {
+    param([int]$Port)
+
+    $baseUrl = "http://127.0.0.1:$Port"
+    $health = Invoke-RestJsonWithRetry "$baseUrl/health" -Attempts 3 -DelaySeconds 1
+    $mqttStatus = Invoke-RestJsonWithRetry "$baseUrl/api/v1/data-reception/mqtt/status" -Attempts 3 -DelaySeconds 1
+
+    return [pscustomobject]@{
+        port = $Port
+        baseUrl = $baseUrl
+        healthy = Test-HealthyResponse $health
+        mqttConnected = Test-MqttConnectedResponse $mqttStatus
+        health = $health
+        mqttStatus = $mqttStatus
+    }
+}
+
 function Start-HiddenProcess {
     param(
         [string]$FilePath,
@@ -376,10 +407,27 @@ if (Test-PortListen -Port 5173) {
 
 Start-Sleep -Seconds 3
 
-$health = Invoke-RestJsonWithRetry "http://127.0.0.1:8000/health"
-$mqttStatus = Invoke-RestJsonWithRetry "http://127.0.0.1:8000/api/v1/data-reception/mqtt/status"
+$backendCandidates = @()
+$backendCandidates += Get-BackendCandidate -Port 8000
+if (Test-PortListen -Port 8001) {
+    $backendCandidates += Get-BackendCandidate -Port 8001
+}
+$activeBackend = $backendCandidates |
+    Where-Object { $_.healthy -and $_.mqttConnected } |
+    Select-Object -First 1
+if (-not $activeBackend) {
+    $activeBackend = $backendCandidates |
+        Where-Object { $_.healthy } |
+        Select-Object -First 1
+}
+if (-not $activeBackend) {
+    $activeBackend = $backendCandidates | Select-Object -First 1
+}
 
-$ports = 1883, 3306, 5173, 8000, 27017 | ForEach-Object { Get-PortStatus -Port $_ }
+$health = $activeBackend.health
+$mqttStatus = $activeBackend.mqttStatus
+
+$ports = 1883, 3306, 5173, 8000, 8001, 27017 | ForEach-Object { Get-PortStatus -Port $_ }
 
 $status = [pscustomobject]@{
     timestamp = (Get-Date).ToString("s")
@@ -389,6 +437,13 @@ $status = [pscustomobject]@{
     ports = $ports
     lanIPv4 = @(Get-ActiveIPv4Addresses)
     mqttLanListener = Test-PortHasLanListener -Port 1883
+    activeBackend = [pscustomobject]@{
+        port = $activeBackend.port
+        baseUrl = $activeBackend.baseUrl
+        healthy = $activeBackend.healthy
+        mqttConnected = $activeBackend.mqttConnected
+    }
+    backendCandidates = $backendCandidates
     health = $health
     mqttStatus = $mqttStatus
 }

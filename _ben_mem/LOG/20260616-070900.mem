@@ -1,0 +1,5 @@
+I.flycare.stack.active_backend=start_flycare_local_stack now probes backend candidates 8000 and 8001, records activeBackend, includes port 8001, and promotes the MQTT-connected bridge to top-level health/mqttStatus when 8000 is stale
+I.flycare.audit.freshness=audit_flycare_goal auto-uses stack activeBackend when BaseUrl is omitted and adds watch_status_freshness with default FreshnessMinutes=5
+V.flycare.stack.20260616T0706=launcher ok activeBackend=http://127.0.0.1:8001 mqttConnected=true broker=192.168.0.203:1883; 8000 healthy but mqttConnected=false
+B.flycare.audit.20260616T0708=expected fail: latest NG WAI LUN status server_received_at=2026-06-15T22:02:30.805000+00:00 age about 65.6min, so realtime watch MQTT is not currently proven
+N.flycare.next=fix network path or move PC+watch to non-isolated LAN/PC-hosted hotspot, then rerun launcher, watch verifier, and audit until watch_status_freshness passes

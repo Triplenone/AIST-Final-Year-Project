@@ -27,6 +27,13 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 07:06-07:09 FlyCare stack audit active backend + freshness gate
+
+- I.stack.report=updated `scripts/start_flycare_local_stack.ps1` now probes backend candidates on `8000` and `8001`, records `activeBackend`, includes `8001` in port evidence, and promotes the MQTT-connected bridge to top-level `health` / `mqttStatus` when `8000` is a stale healthy-but-MQTT-disabled listener.
+- I.goal.audit=updated `scripts/audit_flycare_goal.ps1` auto-uses `logs/flycare-local-stack-status.json.activeBackend.baseUrl` when `-BaseUrl` is not supplied and adds `watch_status_freshness` with a default 5-minute freshness limit so stale Mongo/serial evidence cannot falsely complete realtime watch checks.
+- V.stack.report=ok non-admin launcher run at 2026-06-16T07:06:25 selected active backend `http://127.0.0.1:8001`, MQTT connected to `192.168.0.203:1883`, with `8000` still healthy but MQTT disconnected.
+- V.goal.audit=expected-fail audit now exits 1 because latest NG WAI LUN status `_id=6a307676dde90a25b65b7f3c` was ~65.6 minutes old (`server_received_at=2026-06-15T22:02:30.805000+00:00`), proving current realtime watch MQTT is still not complete.
+
 ### 2026-06-16 06:09-06:40 FlyCare watch MQTT stability + Triple-None isolation finding
 
 - I.firmware.mqtt_stability=updated `firmware/DataTransmitter.cpp/.h` now uses monotonic `millis()` for MQTT/status scheduling, clears stale BLE-busy flags after 15s, closes stale `PubSubClient`/`WiFiClient` transports before and after failed reconnects, and lets status publish enter the reconnect path instead of requiring an already-connected MQTT session.

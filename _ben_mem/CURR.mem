@@ -412,3 +412,7 @@ V.flycare.firmware.final_upload.20260616T0640=ok COM5 ESP32-S3 MAC 48:ca:43:a4:2
 B.flycare.network.triple_none.20260616T0640=blocked watch IP 192.168.0.143 cannot reach PC 192.168.0.203 on MQTT 1883/1884 or HTTP 8001; serial MQTT state=-2 and HTTP code=-1; PC ping watch timeout
 B.flycare.admin.mqtt_restart.20260616T0640=non-admin cannot stop Mosquitto PID 20168 or add firewall rule; UAC runas attempt produced no result file
 N.flycare.next.network=use non-isolated LAN or PC Mobile Hotspot, then rerun watch MQTT status, flight gate-change downlink, SOS and fall smoke before claiming demo complete
+I.flycare.stack.active_backend.20260616T0709=start_flycare_local_stack probes 8000/8001, records activeBackend, and promotes MQTT-connected 8001 bridge when 8000 is stale disabled
+I.flycare.audit.freshness.20260616T0709=audit_flycare_goal auto-uses activeBackend and fails completion if latest watch status server_received_at is older than FreshnessMinutes default 5
+V.flycare.stack.report.20260616T0709=ok activeBackend=http://127.0.0.1:8001 mqttConnected=true broker=192.168.0.203:1883; 8000 healthy but mqttConnected=false
+B.flycare.audit.realtime.20260616T0709=expected fail watch_status_freshness latest status age about 65.6min server_received_at=2026-06-15T22:02:30.805000+00:00

@@ -11,7 +11,7 @@ cd E:\flycare
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate
 ```
 
-The script starts or verifies MySQL, MongoDB, MQTT, backend, and frontend where possible, then writes `logs/flycare-local-stack-status.json` with admin status, port listeners, `/health`, and MQTT status.
+The script starts or verifies MySQL, MongoDB, MQTT, backend, and frontend where possible, then writes `logs/flycare-local-stack-status.json` with admin status, port listeners, `/health`, `activeBackend`, and MQTT status. If `8000` is a stale listener and the MQTT bridge is on `8001`, `activeBackend` points to `http://127.0.0.1:8001`.
 
 For COM5 watch evidence during physical tests:
 
