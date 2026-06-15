@@ -71,7 +71,10 @@ SUFFIX_TO_DATA_TYPE = {
 
 _client = None
 _started = False
+_retry_timer = None
+_last_error = None
 _lock = threading.Lock()
+_RETRY_SECONDS = 5
 
 _TRAILING_COMMA_RE = re.compile(r",\s*([}\]])")
 
@@ -271,9 +274,19 @@ def _on_message(client, userdata, msg):
     )
 
 
+def _schedule_retry():
+    global _retry_timer
+    if _retry_timer is not None and _retry_timer.is_alive():
+        return
+    _retry_timer = threading.Timer(_RETRY_SECONDS, start_mqtt)
+    _retry_timer.daemon = True
+    _retry_timer.start()
+    print(f"[mqtt] retry scheduled in {_RETRY_SECONDS}s")
+
+
 def start_mqtt():
     """启动 MQTT 订阅（在 FastAPI startup 中调用）"""
-    global _client, _started
+    global _client, _started, _last_error, _retry_timer
     with _lock:
         if _started:
             return
@@ -302,14 +315,18 @@ def start_mqtt():
         try:
             client.connect(settings.MQTT_BROKER, settings.MQTT_PORT, keepalive=60)
         except Exception as e:
+            _last_error = str(e)
             print(
                 f"[mqtt] broker connect failed: {settings.MQTT_BROKER}:{settings.MQTT_PORT} — {e}. "
-                "Flight MQTT will not be saved until connected."
+                "Flight MQTT will retry in the background."
             )
+            _schedule_retry()
             return
         client.loop_start()
         _client = client
         _started = True
+        _last_error = None
+        _retry_timer = None
         print(
             f"[mqtt] started -> {settings.MQTT_BROKER}:{settings.MQTT_PORT} "
             f"(flight topic: {FLIGHT_TOPIC})"
@@ -318,8 +335,11 @@ def start_mqtt():
 
 def stop_mqtt():
     """停止 MQTT 订阅（在 FastAPI shutdown 中调用）"""
-    global _client, _started
+    global _client, _started, _retry_timer
     with _lock:
+        if _retry_timer is not None:
+            _retry_timer.cancel()
+            _retry_timer = None
         if not _client:
             return
         try:
@@ -336,10 +356,13 @@ def get_mqtt_status():
     """返回 MQTT 状态，供 GET /data-reception/mqtt/status 使用"""
     with _lock:
         connected = _client is not None and _client.is_connected() if _client else False
+        retry_pending = _retry_timer is not None and _retry_timer.is_alive()
     return {
         "enabled": _started,
         "connected": connected,
         "broker": settings.MQTT_BROKER,
         "port": settings.MQTT_PORT,
+        "retry_pending": retry_pending,
+        "last_error": _last_error,
         "subscribed_topics": _uplink_topics() + [FLIGHT_TOPIC, FLIGHT_DOWNLINK_TOPIC],
     }

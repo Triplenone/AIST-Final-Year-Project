@@ -167,7 +167,24 @@ cd E:\flycare
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate
 ```
 
-The launcher checks/starts MySQL, MongoDB, MQTT, backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, and MQTT status evidence. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
+The launcher checks/starts MySQL, MongoDB, MQTT, backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, LAN IPv4 addresses, `mqttLanListener`, and MQTT status evidence. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
+
+If a stale local process owns the demo ports, add explicit restart flags:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate -RestartMqtt -RestartApps
+```
+
+`-RestartMqtt` stops the listener on `1883` before starting Mosquitto with `infra/mosquitto/local-windows.conf`. This is required when the Windows Mosquitto service is listening only on `127.0.0.1:1883`; the watch cannot reach that localhost-only broker. `-RestartApps` stops listeners on `8000` and `5173` before starting backend and frontend again.
+
+If a Windows/sandbox ghost listener keeps `8000` occupied but cannot be killed, run a temporary backend bridge on `8001` from an Administrator PowerShell so MQTT still writes Mongo while the dashboard continues reading through `8000`:
+
+```powershell
+cd E:\flycare\backend\backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
+
+Verify the bridge with `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status`. The expected MQTT state is `enabled=true`, `connected=true`, broker `192.168.0.203`, port `1883`.
 
 To capture watch evidence from COM5, use the verifier:
 

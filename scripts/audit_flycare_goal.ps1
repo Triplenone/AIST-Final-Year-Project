@@ -191,37 +191,76 @@ function Get-FirmwareDefineValue {
     return [int]$match.Groups[1].Value
 }
 
-function Test-SosNavigationMenuInput {
+function Test-ButtonPolicyAndNavigationDisabled {
     param([string]$RepoRoot)
 
     $firmwarePath = Join-Path $RepoRoot "firmware\firmware.ino"
-    $displayCppPath = Join-Path $RepoRoot "firmware\SimpleDisplayManager.cpp"
-    $displayHPath = Join-Path $RepoRoot "firmware\SimpleDisplayManager.h"
+    $configPath = Join-Path $RepoRoot "firmware\Config.h"
     $firmwareText = Get-Content -Path $firmwarePath -Raw
-    $displayCppText = Get-Content -Path $displayCppPath -Raw
-    $displayHText = Get-Content -Path $displayHPath -Raw
+    $configText = Get-Content -Path $configPath -Raw
+    $buttonTaskMatch = [regex]::Match(
+        $firmwareText,
+        "void\s+buttonTask\s*\([^)]*\)\s*\{(?<body>.*?)\r?\n\}\r?\n\s*void\s+legacyButtonTask",
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    $buttonTaskText = if ($buttonTaskMatch.Success) { $buttonTaskMatch.Groups["body"].Value } else { $firmwareText }
 
-    $pwrOpenCancel = $firmwareText -match "PWR click - open destination picker" -and
-        $firmwareText -match "PWR click - cancel destination picker"
-    $sosNext = $firmwareText -match "SOS click - picker next destination" -and
-        $displayCppText -match "cycleNavigationDestination" -and
-        $displayCppText -match "noteDestinationPickerActivity"
-    $autoConfirm = $displayCppText -match "auto confirm destination after SOS idle" -and
-        $displayCppText -match "picker auto-confirmed" -and
-        $displayHText -match "DESTINATION_PICKER_AUTO_CONFIRM_MS = 5000"
-    $wheelDisabled = $firmwareText -match "#define SOS_WHEEL_ENABLED 0" -and
-        $firmwareText -notmatch "\[Wheel\] destination picker"
-    $serialSmoke = $firmwareText -match "NAVPICK" -and
-        $firmwareText -match "NAVNEXT" -and
-        $firmwareText -match "NAVCANCEL"
+    $manualNavDisabled = (Get-FirmwareDefineValue -ConfigText $configText -Name "ENABLE_MANUAL_NAVIGATION") -eq 0
+    $navDownlinkDisabled = (Get-FirmwareDefineValue -ConfigText $configText -Name "ENABLE_NAVIGATION_DOWNLINK") -eq 0
+    $flightRouteDisabled = (Get-FirmwareDefineValue -ConfigText $configText -Name "ENABLE_FLIGHT_ROUTE_NAVIGATION") -eq 0
+    $arrivalTargetEnabled = (Get-FirmwareDefineValue -ConfigText $configText -Name "ENABLE_FLIGHT_ARRIVAL_TARGET") -eq 1
+    $sosShortCyclesPages = $buttonTaskText -match "SOS short press - next page" -and
+        $buttonTaskText -match "display->nextPage\(\)"
+    $sosLongToggles = $buttonTaskText -match "SOS long press - SOS toggled" -and
+        $buttonTaskText -match "toggleSOSAlert\(\""ButtonLong\""\)"
+    $pwrShortSleeps = $buttonTaskText -match "PWR short press - screen off" -and
+        $buttonTaskText -match "display->sleepScreen\(\)"
+    $pwrLongTogglesScreen = $buttonTaskText -match "PWR long press - screen off" -and
+        $buttonTaskText -match "PWR long press - screen on"
+    $noPickerInActiveButtonTask = $buttonTaskText -notmatch "DestinationPicker|isDestinationPickerActive|cycleNavigationDestination|confirmNavigationSelection|NAVPICK|NAVNEXT|NAVCANCEL"
 
     return [pscustomobject]@{
-        pwrOpenCancel = $pwrOpenCancel
-        sosNext = $sosNext
-        autoConfirm = $autoConfirm
-        wheelDisabled = $wheelDisabled
-        serialSmoke = $serialSmoke
-        ok = ($pwrOpenCancel -and $sosNext -and $autoConfirm -and $wheelDisabled -and $serialSmoke)
+        manualNavDisabled = $manualNavDisabled
+        navDownlinkDisabled = $navDownlinkDisabled
+        flightRouteDisabled = $flightRouteDisabled
+        arrivalTargetEnabled = $arrivalTargetEnabled
+        sosShortCyclesPages = $sosShortCyclesPages
+        sosLongToggles = $sosLongToggles
+        pwrShortSleeps = $pwrShortSleeps
+        pwrLongTogglesScreen = $pwrLongTogglesScreen
+        noPickerInActiveButtonTask = $noPickerInActiveButtonTask
+        ok = ($manualNavDisabled -and $navDownlinkDisabled -and $flightRouteDisabled -and
+            $arrivalTargetEnabled -and $sosShortCyclesPages -and $sosLongToggles -and
+            $pwrShortSleeps -and $pwrLongTogglesScreen -and $noPickerInActiveButtonTask)
+    }
+}
+
+function Test-WatchUploadPort {
+    $serialPorts = @()
+    try {
+        $serialPorts = @([System.IO.Ports.SerialPort]::GetPortNames())
+    } catch {
+        $serialPorts = @()
+    }
+
+    $pnpPorts = @()
+    $pnpError = $null
+    try {
+        $pnpPorts = @(Get-PnpDevice -PresentOnly -Class Ports -ErrorAction Stop | Select-Object Status, FriendlyName, InstanceId)
+    } catch {
+        $pnpError = $_.Exception.Message
+    }
+
+    $pnpCom5 = @($pnpPorts | Where-Object { $_.FriendlyName -match "\(COM5\)" })
+    $esp32Com5 = @($pnpCom5 | Where-Object { $_.InstanceId -match "VID_303A&PID_1001" })
+
+    return [pscustomobject]@{
+        serialPorts = $serialPorts
+        com5Openable = $serialPorts -contains "COM5"
+        pnpCom5 = $pnpCom5
+        esp32Com5 = $esp32Com5
+        pnpError = $pnpError
+        ok = (($serialPorts -contains "COM5") -and ($esp32Com5.Count -eq 0 -or @($esp32Com5 | Where-Object { $_.Status -eq "OK" }).Count -gt 0))
     }
 }
 
@@ -404,14 +443,14 @@ $health = Invoke-ApiJson "$BaseUrl/health"
 $mqtt = Invoke-ApiJson "$BaseUrl/api/v1/data-reception/mqtt/status"
 $latestStatus = Invoke-ApiJson "$BaseUrl/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=status_update"
 $latestFlight = Invoke-ApiJson "$BaseUrl/api/v1/mongo-upstream/flight/latest?device_id=$encodedDeviceId"
+$latestSos = Invoke-ApiJson "$BaseUrl/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=sos"
 $unhandledEvents = Invoke-ApiJson "$BaseUrl/api/v1/events/?event_status=unhandled&limit=50"
 $mysqlDeviceId = if ($latestStatus.ok -and $latestStatus.value.mysql_device_id) { $latestStatus.value.mysql_device_id } else { $null }
 $longPressEventEvidence = Find-SosLongPressEvidence -BaseUrl $BaseUrl -MysqlDeviceId $mysqlDeviceId
 $beacons = Test-ExpectedBeaconRegistry -RepoRoot $repoRoot
 $smartCare = Test-VisibleSmartCareReferences -RepoRoot $repoRoot
-$navMenuInput = Test-SosNavigationMenuInput -RepoRoot $repoRoot
+$buttonPolicy = Test-ButtonPolicyAndNavigationDisabled -RepoRoot $repoRoot
 $watchPopupUi = Test-WatchPopupUiSource -RepoRoot $repoRoot
-$navMenuEvidence = Find-SosNavigationMenuEvidence -RepoRoot $repoRoot
 $arrivalEvidence = Find-ArrivalEvidence -RepoRoot $repoRoot
 $flightSyncEvidence = Find-FlightSyncEvidence -RepoRoot $repoRoot
 
@@ -421,14 +460,16 @@ $checks += New-AuditCheck -Name "beacon_registry" -Status $(if ($beacons.ok) { "
 $checks += New-AuditCheck -Name "legacy_brand_visible_cleanup" -Status $(if ($smartCare.ok) { "pass" } else { "fail" }) -Evidence "Visible app/docs scan for legacy care-brand terms returned $($smartCare.matchCount) matches." -Details $smartCare
 
 $location = $latestStatus.value.location
-$positionStatus = if ($latestStatus.ok -and $location.current.quality -eq "high" -and [int]$location.current.beacon_count -gt 0 -and $arrivalEvidence.found) {
+$beaconCount = if ($location -and $location.current -and $location.current.beacon_count) { [int]$location.current.beacon_count } else { 0 }
+$hasCoordinates = $location -and $location.current -and $null -ne $location.current.x -and $null -ne $location.current.y
+$positionStatus = if ($latestStatus.ok -and $hasCoordinates -and $beaconCount -ge 3 -and $arrivalEvidence.found) {
     "pass"
-} elseif ($latestStatus.ok -and $location.current.quality -eq "high" -and [int]$location.current.beacon_count -gt 0) {
+} elseif ($latestStatus.ok -and $hasCoordinates -and $beaconCount -gt 0) {
     "warn"
 } else {
     "fail"
 }
-$checks += New-AuditCheck -Name "positioning_navigation" -Status $positionStatus -Evidence "latestQuality=$($location.current.quality); beaconCount=$($location.current.beacon_count); target=$($location.target.name); arrivalEvidence=$($arrivalEvidence.found)" -Details ([pscustomobject]@{ latestStatus = $latestStatus.value; arrivalEvidence = $arrivalEvidence })
+$checks += New-AuditCheck -Name "positioning_arrival" -Status $positionStatus -Evidence "latestQuality=$($location.current.quality); beaconCount=$beaconCount; target=$($location.target.name); arrivalEvidence=$($arrivalEvidence.found)" -Details ([pscustomobject]@{ latestStatus = $latestStatus.value; arrivalEvidence = $arrivalEvidence })
 
 $flightFound = $latestFlight.ok -and $latestFlight.value.found -eq $true
 $serialFlightSync = ($watchReport -and $watchReport.serialOutput -match "\[Flight\] telemetry target synced|FlightInfo|Boarding for flight") -or $flightSyncEvidence.found
@@ -436,23 +477,23 @@ $checks += New-AuditCheck -Name "flight_information_update" -Status $(if ($fligh
 
 $checks += New-AuditCheck -Name "watch_popup_ui" -Status $(if ($watchPopupUi.ok -and $arrivalEvidence.found -and $flightSyncEvidence.found) { "pass" } elseif ($watchPopupUi.ok) { "warn" } else { "fail" }) -Evidence "singleRedraw=$($watchPopupUi.singlePopupRedraw); arrivalLarge=$($watchPopupUi.arrivalLarge); arrivalMs5000=$($watchPopupUi.arrivalReadableMs); flightReadable=$($watchPopupUi.flightPopupReadable); serialPopupEvidence=$($arrivalEvidence.found)" -Details ([pscustomobject]@{ source = $watchPopupUi; arrivalEvidence = $arrivalEvidence; flightSyncEvidence = $flightSyncEvidence })
 
-$unhandledCount = if ($unhandledEvents.ok) { Get-CollectionCount $unhandledEvents.value } else { -1 }
-$finalSosActive = if ($watchReport -and $watchReport.finalSos -and $watchReport.finalSos.sos) { $watchReport.finalSos.sos.active } else { $null }
-$checks += New-AuditCheck -Name "sos_current_state" -Status $(if ($unhandledEvents.ok -and $unhandledCount -eq 0 -and ($null -eq $finalSosActive -or $finalSosActive -eq $false)) { "pass" } else { "fail" }) -Evidence "unhandledEvents=$unhandledCount; finalSosActive=$finalSosActive; firmware SOS trigger is long-press 3 seconds; short SOS click is page/picker control." -Details ([pscustomobject]@{ unhandledEvents = $unhandledEvents.value; finalSos = $watchReport.finalSos })
+$targetUnhandledEvents = if ($unhandledEvents.ok -and $mysqlDeviceId) {
+    @((Get-CollectionItems $unhandledEvents.value) | Where-Object { "$($_.trigger_device_id)" -eq "$mysqlDeviceId" })
+} elseif ($unhandledEvents.ok) {
+    @(Get-CollectionItems $unhandledEvents.value)
+} else {
+    @()
+}
+$targetUnhandledCount = if ($unhandledEvents.ok) { $targetUnhandledEvents.Count } else { -1 }
+$latestSosActive = if ($latestSos.ok -and $latestSos.value.sos) { $latestSos.value.sos.active } else { $null }
+$checks += New-AuditCheck -Name "sos_current_state" -Status $(if ($unhandledEvents.ok -and $targetUnhandledCount -eq 0 -and ($null -eq $latestSosActive -or $latestSosActive -eq $false)) { "pass" } else { "fail" }) -Evidence "targetUnhandledEvents=$targetUnhandledCount; latestSosActive=$latestSosActive; firmware SOS long press toggles SOS; SOS short press switches pages only." -Details ([pscustomobject]@{ unhandledEvents = $targetUnhandledEvents; latestSos = $latestSos.value })
 
 $physicalSosWaited = $physicalSosReport -and $physicalSosReport.waitForPhysicalSOS -eq $true
 $physicalSosObserved = $physicalSosReport -and $physicalSosReport.physicalSosObserved -eq $true
 $physicalSosProven = $physicalSosObserved -or $longPressEventEvidence.found
 $checks += New-AuditCheck -Name "physical_sos_long_press" -Status $(if ($physicalSosProven) { "pass" } elseif ($physicalSosWaited) { "blocked" } else { "warn" }) -Evidence "waited=$physicalSosWaited; verifierObserved=$physicalSosObserved; eventApiButtonLong=$($longPressEventEvidence.found); hold SOS/BOOT for 3 seconds during verify_flycare_watch.ps1 -WaitForPhysicalSOS to prove the current firmware UX." -Details ([pscustomobject]@{ timestamp = $physicalSosReport.timestamp; waitForPhysicalSOS = $physicalSosReport.waitForPhysicalSOS; physicalSosObserved = $physicalSosReport.physicalSosObserved; eventApiButtonLong = $longPressEventEvidence; notes = $physicalSosReport.notes })
 
-$navMenuStatus = if ($navMenuInput.ok -and $navMenuEvidence.found) {
-    "pass"
-} elseif ($navMenuInput.ok) {
-    "warn"
-} else {
-    "fail"
-}
-$checks += New-AuditCheck -Name "sos_navigation_menu_input" -Status $navMenuStatus -Evidence "pwrOpenCancel=$($navMenuInput.pwrOpenCancel); sosNext=$($navMenuInput.sosNext); autoConfirm=$($navMenuInput.autoConfirm); wheelDisabled=$($navMenuInput.wheelDisabled); serialEvidence=$($navMenuEvidence.found)" -Details ([pscustomobject]@{ input = $navMenuInput; evidence = $navMenuEvidence })
+$checks += New-AuditCheck -Name "button_policy_navigation_disabled" -Status $(if ($buttonPolicy.ok) { "pass" } else { "fail" }) -Evidence "manualNavDisabled=$($buttonPolicy.manualNavDisabled); navDownlinkDisabled=$($buttonPolicy.navDownlinkDisabled); flightRouteDisabled=$($buttonPolicy.flightRouteDisabled); sosShortPages=$($buttonPolicy.sosShortCyclesPages); sosLongToggles=$($buttonPolicy.sosLongToggles); pwrShortSleeps=$($buttonPolicy.pwrShortSleeps); pwrLongTogglesScreen=$($buttonPolicy.pwrLongTogglesScreen); noPickerInActiveButtonTask=$($buttonPolicy.noPickerInActiveButtonTask)" -Details $buttonPolicy
 
 $hrDiag = if ($hrWatchReport) { $hrWatchReport.heartRateDiagnostics } else { $null }
 $statusHeartRateValid = $hrWatchReport -and

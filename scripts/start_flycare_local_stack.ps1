@@ -1,6 +1,8 @@
 param(
     [switch]$Elevate,
-    [switch]$NoPause
+    [switch]$NoPause,
+    [switch]$RestartApps,
+    [switch]$RestartMqtt
 )
 
 $ErrorActionPreference = "Stop"
@@ -60,6 +62,115 @@ function Get-PortStatus {
     }
 }
 
+function Get-NetstatListenRows {
+    param([int]$Port)
+
+    return @(& netstat -ano 2>$null | Select-String -Pattern "[:.]$Port\s+.*LISTENING" | ForEach-Object {
+        $parts = ($_.Line.Trim() -split "\s+")
+        if ($parts.Count -ge 5) {
+            $address = $parts[1]
+            $localAddress = $address
+            if ($address -match "^\[(.+)\]:(\d+)$") {
+                $localAddress = $matches[1]
+            } elseif ($address -match "^(.+):(\d+)$") {
+                $localAddress = $matches[1]
+            }
+            [pscustomobject]@{
+                localAddress = $localAddress
+                localAddressPort = $address
+                pid = [int]$parts[4]
+            }
+        }
+    })
+}
+
+function Get-ActiveIPv4Addresses {
+    return @(& ipconfig 2>$null | Select-String -Pattern "IPv4" | ForEach-Object {
+        if ($_.Line -match ":\s*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)") {
+            $matches[1]
+        }
+    } | Where-Object {
+        $_ -and $_ -notlike "127.*" -and $_ -notlike "169.254*"
+    })
+}
+
+function Test-PortHasLanListener {
+    param([int]$Port)
+
+    $lanAddresses = @(Get-ActiveIPv4Addresses)
+    $rows = @(Get-NetstatListenRows -Port $Port)
+    return [bool]($rows | Where-Object {
+        $_.localAddress -eq "0.0.0.0" -or
+        $_.localAddress -eq "::" -or
+        $lanAddresses -contains $_.localAddress
+    })
+}
+
+function Stop-LocalhostOnlyMosquitto {
+    $rows = @(Get-NetstatListenRows -Port 1883)
+    if ($rows.Count -eq 0 -or (Test-PortHasLanListener -Port 1883)) {
+        return
+    }
+
+    foreach ($processId in @($rows | Select-Object -ExpandProperty pid -Unique)) {
+        try {
+            $process = Get-Process -Id $processId -ErrorAction Stop
+            if ($process.ProcessName -ieq "mosquitto") {
+                Write-Warning "Mosquitto is only listening on localhost; stopping PID $processId so FlyCare can start LAN MQTT."
+                Stop-Process -Id $processId -Force -ErrorAction Stop
+            } else {
+                Write-Warning "Port 1883 is occupied by $($process.ProcessName) PID $processId, not stopping it automatically."
+            }
+        } catch {
+            Write-Warning "Could not inspect/stop PID $processId on port 1883: $($_.Exception.Message)"
+        }
+    }
+
+    Start-Sleep -Seconds 1
+}
+
+function Stop-PortListeners {
+    param(
+        [int[]]$Ports,
+        [string]$Reason
+    )
+
+    foreach ($port in $Ports) {
+        $rows = @(Get-NetstatListenRows -Port $port)
+        foreach ($processId in @($rows | Select-Object -ExpandProperty pid -Unique | Where-Object { $_ -and $_ -ne 0 })) {
+            try {
+                $process = Get-Process -Id $processId -ErrorAction Stop
+                Write-Warning "Stopping PID $processId ($($process.ProcessName)) on port $port for $Reason."
+                Stop-Process -Id $processId -Force -ErrorAction Stop
+            } catch {
+                Write-Warning "Could not stop PID $processId on port ${port}: $($_.Exception.Message)"
+            }
+        }
+    }
+
+    Start-Sleep -Seconds 1
+}
+
+function Invoke-RestJsonWithRetry {
+    param(
+        [string]$Url,
+        [int]$Attempts = 10,
+        [int]$DelaySeconds = 2
+    )
+
+    $lastError = $null
+    for ($i = 0; $i -lt $Attempts; $i++) {
+        try {
+            return Invoke-RestMethod $Url -TimeoutSec 5
+        } catch {
+            $lastError = $_.Exception.Message
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+
+    return @{ error = $lastError }
+}
+
 function Start-HiddenProcess {
     param(
         [string]$FilePath,
@@ -70,14 +181,34 @@ function Start-HiddenProcess {
     )
 
     $quotedFilePath = if ($FilePath -match "\s") { "`"$FilePath`"" } else { $FilePath }
-    $command = "$quotedFilePath $ArgumentList > `"$OutLog`" 2> `"$ErrLog`""
+    $command = "`"$quotedFilePath $ArgumentList > `"$OutLog`" 2> `"$ErrLog`"`""
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = "cmd.exe"
-    $startInfo.Arguments = "/c $command"
+    $startInfo.Arguments = "/s /c $command"
     $startInfo.WorkingDirectory = $WorkingDirectory
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
+    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    return $process.Id
+}
+
+function Start-DetachedProcess {
+    param(
+        [string]$FilePath,
+        [string]$ArgumentList,
+        [string]$WorkingDirectory
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $FilePath
+    $startInfo.Arguments = $ArgumentList
+    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
 
     $process = [System.Diagnostics.Process]::Start($startInfo)
     return $process.Id
@@ -135,6 +266,12 @@ if ($Elevate -and -not (Test-IsAdmin)) {
         "-File", "`"$scriptPath`"",
         "-NoPause"
     )
+    if ($RestartApps) {
+        $args += "-RestartApps"
+    }
+    if ($RestartMqtt) {
+        $args += "-RestartMqtt"
+    }
     Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs
     Write-Host "Requested elevated PowerShell. Accept the UAC prompt, then read logs/flycare-local-stack-status.json."
     return
@@ -148,26 +285,31 @@ Write-Host "FlyCare local stack"
 Write-Host "Repo: $repoRoot"
 Write-Host "Administrator: $isAdmin"
 
+if ($RestartMqtt) {
+    Stop-PortListeners -Ports @(1883) -Reason "RestartMqtt"
+}
+
+if ($RestartApps) {
+    Stop-PortListeners -Ports @(8000, 5173) -Reason "RestartApps"
+}
+
 $startedServices = [ordered]@{}
 if ($isAdmin) {
     $startedServices["mysql"] = Start-ServiceIfPresent -Names @("MySQL84", "MySQL80", "MySQL", "mysql")
     $startedServices["mongodb"] = Start-ServiceIfPresent -Names @("MongoDB", "mongodb")
-    $startedServices["mosquitto"] = Start-ServiceIfPresent -Names @("mosquitto", "Mosquitto")
 } else {
     Write-Warning "Not running as Administrator; Windows services will only be checked, not started."
 }
 
 $mosquittoExe = "C:\Program Files\Mosquitto\mosquitto.exe"
 $mosquittoConfig = Join-Path $repoRoot "infra\mosquitto\local-windows.conf"
-if (-not (Test-PortListen -Port 1883) -and (Test-Path $mosquittoExe) -and (Test-Path $mosquittoConfig)) {
-    Start-ProcessIfPortFree `
-        -Port 1883 `
-        -Name "Mosquitto" `
+Stop-LocalhostOnlyMosquitto
+if (-not (Test-PortHasLanListener -Port 1883) -and -not (Test-PortListen -Port 1883) -and (Test-Path $mosquittoExe) -and (Test-Path $mosquittoConfig)) {
+    Write-Host "Starting Mosquitto on port 1883"
+    Start-DetachedProcess `
         -FilePath $mosquittoExe `
-        -ArgumentList "-c `"$mosquittoConfig`"" `
-        -WorkingDirectory $repoRoot `
-        -OutLog (Join-Path $logRoot "mosquitto-local.out.log") `
-        -ErrLog (Join-Path $logRoot "mosquitto-local.err.log") | Out-Null
+        -ArgumentList "-c `"$mosquittoConfig`" -v" `
+        -WorkingDirectory $repoRoot | Out-Null
 }
 
 $backendRoot = Join-Path $repoRoot "backend\backend"
@@ -197,19 +339,8 @@ Start-ProcessIfPortFree `
 
 Start-Sleep -Seconds 3
 
-$health = $null
-$mqttStatus = $null
-try {
-    $health = Invoke-RestMethod "http://127.0.0.1:8000/health" -TimeoutSec 5
-} catch {
-    $health = @{ error = $_.Exception.Message }
-}
-
-try {
-    $mqttStatus = Invoke-RestMethod "http://127.0.0.1:8000/api/v1/data-reception/mqtt/status" -TimeoutSec 5
-} catch {
-    $mqttStatus = @{ error = $_.Exception.Message }
-}
+$health = Invoke-RestJsonWithRetry "http://127.0.0.1:8000/health"
+$mqttStatus = Invoke-RestJsonWithRetry "http://127.0.0.1:8000/api/v1/data-reception/mqtt/status"
 
 $ports = 1883, 3306, 5173, 8000, 27017 | ForEach-Object { Get-PortStatus -Port $_ }
 
@@ -219,6 +350,8 @@ $status = [pscustomobject]@{
     isAdmin = $isAdmin
     startedServices = $startedServices
     ports = $ports
+    lanIPv4 = @(Get-ActiveIPv4Addresses)
+    mqttLanListener = Test-PortHasLanListener -Port 1883
     health = $health
     mqttStatus = $mqttStatus
 }
