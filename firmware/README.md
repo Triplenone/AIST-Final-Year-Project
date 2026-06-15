@@ -87,6 +87,10 @@ smartwatch/ESP32_48CA43A42298/heartbeat
 smartwatch/ESP32_48CA43A42298/sos
 ```
 
+`DataTransmitter` is the only runtime owner of the FlyCare MQTT session. `MyNetworkManager` keeps Wi-Fi/NTP alive but does not auto-connect its own MQTT client, because two `PubSubClient` instances on the watch can race and leave publishes disconnected. Serial publish diagnostics use `[MQTT_PUB]` lines.
+
+The committed local demo config leaves `MQTT_BROKER_FALLBACK_1` empty so an offline `Triple-None` run does not block on the public broker. Use `scripts/set_flycare_mqtt_endpoint.ps1 -Mode Cloud` before uploading when a public broker is intentionally required.
+
 Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:
 
 ```text
@@ -117,6 +121,8 @@ Positioning uses all registered beacons seen within the recent scan window, so t
 ## Smart navigation
 
 `SmartNavigationPlanner` owns the destination list and route policy used by both manual navigation and flight-driven navigation.
+
+Manual navigation and destination picker UI are disabled for the FlyCare demo. The boot-time demo flight/arrival target is `CX910` to `Gate 10`; backend flight updates can still override it through MQTT.
 
 Known destinations:
 

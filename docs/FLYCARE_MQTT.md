@@ -169,6 +169,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_loca
 
 The launcher checks/starts MySQL, MongoDB, MQTT, backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, LAN IPv4 addresses, `mqttLanListener`, and MQTT status evidence. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
 
+The launcher starts backend from `backend\.venv` when available and runs uvicorn without `--reload` so `-RestartApps` can replace the single port owner cleanly during demo recovery. The Vite frontend is started in a minimized `cmd /k` window because hidden, detached Vite processes can exit after printing `ready` on Windows.
+
 If a stale local process owns the demo ports, add explicit restart flags:
 
 ```powershell
@@ -185,6 +187,22 @@ cd E:\flycare\backend\backend
 ```
 
 Verify the bridge with `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status`. The expected MQTT state is `enabled=true`, `connected=true`, broker `192.168.0.203`, port `1883`.
+
+For a Vite dev dashboard during that ghost-listener recovery, set `frontend\.env.local` to the LAN bridge URL before restarting `5173`:
+
+```text
+VITE_BACKEND_BASE_URL=http://192.168.0.203:8001
+```
+
+The frontend still defaults to the same host on `:8000` when this override is absent.
+
+When publishing JSON smoke payloads from Windows PowerShell, avoid `mosquitto_pub -m $json`; native argument parsing can strip double quotes and the broker will receive invalid JSON such as `{device_id:...}`. Pipe the complete JSON to stdin instead:
+
+```powershell
+$payload = @{ device_id = "ESP32_48CA43A42298"; data_type = "sos"; sos = @{ active = $true } } |
+  ConvertTo-Json -Depth 8 -Compress
+$payload | & "C:\Program Files\Mosquitto\mosquitto_pub.exe" -h 192.168.0.203 -p 1883 -q 1 -t "smartwatch/ESP32_48CA43A42298/sos" -s
+```
 
 To capture watch evidence from COM5, use the verifier:
 

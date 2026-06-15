@@ -216,8 +216,8 @@ void BLELocation::startScan() {
         BLE_DEBUG_PRINT("❌ startScan: pBLEScan 为空！\n");
         return;
     }
-    Serial.println("[BLE] scan start: duration=3s");
-    pBLEScan->start(3, false);
+    Serial.println("[BLE] scan start: duration=2s");
+    pBLEScan->start(2, false);
     last_scan_time = millis();
     BLE_DEBUG_PRINT("扫描已启动 (非阻塞模式)\n");
 }

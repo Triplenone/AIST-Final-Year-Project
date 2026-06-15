@@ -815,7 +815,7 @@ void legacyButtonTask_old(void* param) {
 #endif
 
 void bleLocationTask(void* param) {
-    const TickType_t locationInterval = pdMS_TO_TICKS(3000);  // 1秒一次（与能工作的代码一致）
+    const TickType_t locationInterval = pdMS_TO_TICKS(6000);
     TickType_t lastWakeTime = xTaskGetTickCount();
 
     // 首次运行设置起始点
@@ -844,8 +844,10 @@ void bleLocationTask(void* param) {
         Serial.println("\n=== BLE定位任务开始 ===");
         
         if (ble_location) {
+            if (data_transmitter) data_transmitter->setBLEScanning(true);
             ble_location->startScan();
             ble_location->stopScan();
+            if (data_transmitter) data_transmitter->setBLEScanning(false);
             
             Location loc = ble_location->getLocation();
             
@@ -1844,10 +1846,18 @@ void handleSerialCommands() {
     }
     
     // ========== 导航命令 ==========
-    else if (cmd == "UPLOAD" || cmd == "PUBLISHSTATUS") {
+    else if (cmd == "PUBLISHSTATUS") {
         if (data_transmitter) {
-            data_transmitter->transmitAllData();
+            data_transmitter->transmitStatusSummary();
             Serial.println("[UPLOAD] status telemetry publish requested");
+        } else {
+            Serial.println("[UPLOAD] data transmitter unavailable");
+        }
+    }
+    else if (cmd == "PUBLISHHEARTBEAT" || cmd == "SENDHB") {
+        if (data_transmitter) {
+            data_transmitter->transmitHeartbeat();
+            Serial.println("[UPLOAD] heartbeat telemetry publish requested");
         } else {
             Serial.println("[UPLOAD] data transmitter unavailable");
         }
@@ -2189,18 +2199,18 @@ void setup() {
     String defaultFlightJson = "{"
         "\"command_type\":\"flight_info\","
         "\"flight_info\":{"
-        "\"flight_number\":\"CW124\","
-        "\"airline\":\"\","
-        "\"destination\":\"Hong Kong\","
-        "\"scheduled_departure\":\"16:50\","
-        "\"estimated_departure\":\"16:50\","
-        "\"boarding_time\":\"16:00\","
-        "\"boarding_gate\":\"11\","
-        "\"status\":\"boarding\","
-        "\"delay_minutes\":0,"
-        "\"delay_reason\":\"\","
-        "\"gate_changed\":false,"
-        "\"terminal\":\"T3\","
+        "\"flight_number\":\"CX910\","
+        "\"airline\":\"Cathay Pacific\","
+        "\"destination\":\"Singapore\","
+        "\"scheduled_departure\":\"17:35\","
+        "\"estimated_departure\":\"17:50\","
+        "\"boarding_time\":\"17:05\","
+        "\"boarding_gate\":\"Gate 10\","
+        "\"status\":\"delayed\","
+        "\"delay_minutes\":15,"
+        "\"delay_reason\":\"Live integration reset\","
+        "\"gate_changed\":true,"
+        "\"terminal\":\"T1\","
         "\"checkin_counter\":\"C12-C18\""
         "}}";
     
@@ -2212,7 +2222,7 @@ void setup() {
     }
     
     // 2. 设置默认智能导航路径
-    if (display && display->setSmartNavigationDestination("GATE11", true)) {
+    if (display && display->setSmartNavigationDestination("GATE10", true)) {
         Serial.println("✅ 默认 smart navigation 路径已设置");
     } else {
         Serial.println("❌ 默认 smart navigation 路径设置失败");

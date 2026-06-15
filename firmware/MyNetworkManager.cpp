@@ -569,18 +569,9 @@ void MyNetworkManager::update() {
         wifiConnected = true;
     }
     
-    // 如果 WiFi 已连接但 MQTT 断开，尝试重连 MQTT
-    if (wifiConnected && !mqttClient.connected()) {
-        if (now - lastReconnectAttempt > 10000) {  // 每10秒尝试重连MQTT
-            lastReconnectAttempt = now;
-            connectMQTT();
-        }
-    }
-    
-    // MQTT 循环
-    if (mqttClient.connected()) {
-        mqttClient.loop();
-    }
+    // DataTransmitter owns the FlyCare MQTT session. Keeping WiFi-only here
+    // avoids two PubSubClient instances racing on the same ESP32 network stack.
+    mqttConnected = false;
     
     // 更新时间
     if (now - last_update > 60000) {

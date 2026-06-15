@@ -14,7 +14,8 @@ param(
     [switch]$RunNavMenuConfirm,
     [switch]$RunNavMenuAutoConfirm,
     [switch]$AutoClearSOS,
-    [switch]$AutoHandleSosEvents
+    [switch]$AutoHandleSosEvents,
+    [string]$BaseUrl = "http://127.0.0.1:8000"
 )
 
 $ErrorActionPreference = "Stop"
@@ -73,7 +74,38 @@ function Open-WatchSerial {
 
 function Get-EventIds {
     param($Events)
-    return @($Events | ForEach-Object { $_.event_id })
+    return @((Get-CollectionItems $Events) | ForEach-Object { $_.event_id })
+}
+
+function Get-CollectionItems {
+    param($Value)
+    if ($null -eq $Value) { return @() }
+    if ($Value -is [array]) { return @($Value) }
+    if ($Value.PSObject.Properties.Name -contains "value") {
+        return @($Value.value)
+    }
+    return @($Value)
+}
+
+function Select-TargetEvents {
+    param(
+        $Events,
+        $MysqlDeviceId
+    )
+
+    $items = @(Get-CollectionItems $Events)
+    $targetItems = if ($MysqlDeviceId) {
+        @($items | Where-Object { "$($_.trigger_device_id)" -eq "$MysqlDeviceId" })
+    } else {
+        $items
+    }
+
+    return [pscustomobject]@{
+        value = $targetItems
+        Count = $targetItems.Count
+        globalCount = $items.Count
+        filteredByMysqlDeviceId = $MysqlDeviceId
+    }
 }
 
 function Get-HeartRateDiagnostics {
@@ -185,7 +217,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $logRoot = Join-Path $repoRoot "logs"
 New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
 
-$base = "http://127.0.0.1:8000"
+$base = $BaseUrl.TrimEnd("/")
 $startedAt = Get-Date
 $deadline = $startedAt.AddSeconds($Seconds)
 $encodedDeviceId = [System.Uri]::EscapeDataString($DeviceId)
@@ -193,6 +225,7 @@ $encodedDeviceId = [System.Uri]::EscapeDataString($DeviceId)
 $report = [ordered]@{
     timestamp = $startedAt.ToString("s")
     deviceId = $DeviceId
+    baseUrl = $base
     serialPort = $SerialPort
     waitForPhysicalSOS = [bool]$WaitForPhysicalSOS
     waitForValidHeartRate = [bool]$WaitForValidHeartRate
@@ -226,8 +259,9 @@ $report.health = Invoke-ApiJson "$base/health"
 $report.mqttStatus = Invoke-ApiJson "$base/api/v1/data-reception/mqtt/status"
 $report.baselineStatus = Invoke-ApiJson "$base/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=status_update"
 $report.baselineSos = Invoke-ApiJson "$base/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=sos"
-$report.baselineUnhandledEvents = Invoke-ApiJson "$base/api/v1/events/?event_status=unhandled&limit=50"
 $report.mysqlDeviceId = $report.baselineStatus.mysql_device_id
+$baselineUnhandledResponse = Invoke-ApiJson "$base/api/v1/events/?event_status=unhandled&limit=50"
+$report.baselineUnhandledEvents = Select-TargetEvents -Events $baselineUnhandledResponse -MysqlDeviceId $report.mysqlDeviceId
 $baselineEventIds = Get-EventIds $report.baselineUnhandledEvents
 $baselineSosReceivedAt = $report.baselineSos.server_received_at
 
@@ -288,7 +322,7 @@ try {
         if ($WaitForPhysicalSOS -and -not $report.physicalSosObserved) {
             $latestSos = Invoke-ApiJson "$base/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=sos"
             $events = Invoke-ApiJson "$base/api/v1/events/?event_status=unhandled&limit=50"
-            $newSosEvents = @($events | Where-Object {
+            $newSosEvents = @((Get-CollectionItems $events) | Where-Object {
                 $_.event_type -eq "sos" -and
                 (-not $report.mysqlDeviceId -or $_.trigger_device_id -eq $report.mysqlDeviceId) -and
                 $_.event_id -notin $baselineEventIds
@@ -364,8 +398,10 @@ try {
 }
 
 if ($AutoHandleSosEvents) {
-    $eventsToHandle = @(Invoke-ApiJson "$base/api/v1/events/?event_status=unhandled&limit=50" | Where-Object {
-        $_.event_type -eq "sos" -and $_.event_id -notin $baselineEventIds
+    $eventsToHandle = @((Get-CollectionItems (Invoke-ApiJson "$base/api/v1/events/?event_status=unhandled&limit=50")) | Where-Object {
+        $_.event_type -eq "sos" -and
+        $_.event_id -notin $baselineEventIds -and
+        (-not $report.mysqlDeviceId -or "$($_.trigger_device_id)" -eq "$($report.mysqlDeviceId)")
     })
     foreach ($event in $eventsToHandle) {
         $remark = [System.Uri]::EscapeDataString("Physical SOS verification cleared")
@@ -376,7 +412,9 @@ if ($AutoHandleSosEvents) {
 
 $report.finalStatus = Invoke-ApiJson "$base/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=status_update"
 $report.finalSos = Invoke-ApiJson "$base/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=sos"
-$report.finalUnhandledEvents = Invoke-ApiJson "$base/api/v1/events/?event_status=unhandled&limit=50"
+$report.finalUnhandledEvents = Select-TargetEvents `
+    -Events (Invoke-ApiJson "$base/api/v1/events/?event_status=unhandled&limit=50") `
+    -MysqlDeviceId $report.mysqlDeviceId
 $report.heartRateDiagnostics = Get-HeartRateDiagnostics `
     -SerialOutput $report.serialOutput `
     -FinalStatus $report.finalStatus `

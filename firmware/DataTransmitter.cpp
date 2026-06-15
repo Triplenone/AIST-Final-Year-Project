@@ -68,7 +68,7 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
       ble_location(ble_loc), power(pwr),
       nav_manager(nullptr), flight_manager(nullptr), voice_manager(nullptr),
       relative_time(0), last_transmit(0), transmit_interval(5000),
-      mqttClient(mqttWifiClient), mqttEnabled(false),
+      mqttClient(mqttWifiClient), mqttEnabled(false), mqttMutex(nullptr),
       target_x(4.4), target_y(1.8), target_name("Gate11"), navigation_active(false),
       sos_active(false), sos_trigger_time(0), sos_trigger_count(0), sos_trigger_method("none"),
       door_count(0), night_mode_active(false), light_triggered_tonight(false),
@@ -112,6 +112,7 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
     }
 
     rfMutex = xSemaphoreCreateMutex();
+    mqttMutex = xSemaphoreCreateMutex();
     
     Serial.printf("DataTransmitter初始化完成, 设备ID: %s\n", device_id.c_str());
 }
@@ -145,13 +146,43 @@ String DataTransmitter::getDeviceTopic(const char* baseTopic) {
     return String(topic);
 }
 
+bool DataTransmitter::waitForBLEIdle(unsigned long maxWaitMs) {
+    unsigned long start = millis();
+    while (ble_scanning_active && millis() - start < maxWaitMs) {
+        if (mqttEnabled && mqttClient.connected()) {
+            mqttClient.loop();
+        }
+        delay(50);
+    }
+    if (ble_scanning_active) {
+        Serial.printf("[MQTT] skipped: BLE scan busy for %lu ms\n", maxWaitMs);
+        return false;
+    }
+    return true;
+}
+
 // ================ 确保 MQTT 连接 ================
 bool DataTransmitter::ensureMQTTConnected() {
+    if (!mqttMutex) {
+        return ensureMQTTConnectedUnlocked();
+    }
+    if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(8000)) != pdTRUE) {
+        Serial.println("[MQTT] connect skipped: mutex busy");
+        return false;
+    }
+    bool connected = ensureMQTTConnectedUnlocked();
+    xSemaphoreGive(mqttMutex);
+    return connected;
+}
+
+bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     if (!mqttEnabled) return false;
     
     if (!network || !network->isConnected()) return false;
     
     if (mqttClient.connected()) return true;
+
+    if (!waitForBLEIdle(3500)) return false;
 
     String brokerCandidates[6];
     int brokerCount = 0;
@@ -164,7 +195,7 @@ bool DataTransmitter::ensureMQTTConnected() {
     Serial.printf("连接 MQTT 服务器 %s:%d...\n", mqttServer.c_str(), mqttPort);
     
     // ===== 关键：设置超大缓冲区（10KB）=====
-    mqttClient.setBufferSize(10240);  // 10KB 缓冲区
+    mqttClient.setBufferSize(512);  // MQTT CONNECT is small; grow after CONNACK.
     
     mqttClient.setKeepAlive(30);       // 30秒保活
     mqttClient.setSocketTimeout(4);
@@ -177,8 +208,13 @@ bool DataTransmitter::ensureMQTTConnected() {
     
     if (connected) {
         Serial.println("✅ MQTT 连接成功");
-        String subscribeTopic = String(MQTT_TOPIC_PREFIX) + "/" + device_id + "/#";
-        mqttClient.subscribe(subscribeTopic.c_str());
+        mqttClient.setBufferSize(4096);
+        String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
+        mqttClient.subscribe((topicBase + "/flight").c_str());
+        mqttClient.subscribe((topicBase + "/alert").c_str());
+#if ENABLE_NAVIGATION_DOWNLINK
+        mqttClient.subscribe((topicBase + "/navigation").c_str());
+#endif
         return true;
     } else {
         Serial.printf("[MQTT] connect failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
@@ -194,8 +230,13 @@ bool DataTransmitter::ensureMQTTConnected() {
 
             if (fallbackConnected) {
                 Serial.printf("[MQTT] connected broker=%s\n", mqttServer.c_str());
-                String subscribeTopic = String(MQTT_TOPIC_PREFIX) + "/" + device_id + "/#";
-                mqttClient.subscribe(subscribeTopic.c_str());
+                mqttClient.setBufferSize(4096);
+                String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
+                mqttClient.subscribe((topicBase + "/flight").c_str());
+                mqttClient.subscribe((topicBase + "/alert").c_str());
+#if ENABLE_NAVIGATION_DOWNLINK
+                mqttClient.subscribe((topicBase + "/navigation").c_str());
+#endif
                 return true;
             }
 
@@ -213,40 +254,119 @@ bool DataTransmitter::publishToMQTT(const String& topic, const String& payload) 
 
 // ================ 发布到 MQTT（三个参数，带重试机制） ================
 bool DataTransmitter::publishToMQTT(const String& topic, const String& payload, bool retained) {
-    if (!ensureMQTTConnected()) {
+    bool locked = false;
+    if (mqttMutex) {
+        if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(8000)) != pdTRUE) {
+            Serial.printf("[MQTT_PUB] skipped topic=%s mutex=busy\n", topic.c_str());
+            return false;
+        }
+        locked = true;
+    }
+
+    if (!waitForBLEIdle(3500) || !ensureMQTTConnectedUnlocked()) {
+        Serial.printf("[MQTT_PUB] skipped topic=%s connected=0 state=%d\n",
+                      topic.c_str(),
+                      mqttClient.state());
         Serial.println("MQTT 未连接");
+        if (locked) xSemaphoreGive(mqttMutex);
         return false;
     }
     
-    // 检查数据大小
+    // Check packet/header size. Payload is written in chunks below so large
+    // status JSON does not depend on one WiFiClient write completing at once.
     int payloadSize = payload.length();
     int maxSize = mqttClient.getBufferSize();
+    int headerSize = MQTT_MAX_HEADER_SIZE + 2 + topic.length();
     
-    Serial.printf("数据大小: %d 字节, 缓冲区: %d 字节\n", payloadSize, maxSize);
+    Serial.printf("MQTT payload=%d header=%d buffer=%d\n", payloadSize, headerSize, maxSize);
     
-    if (payloadSize > maxSize) {
-        Serial.printf("❌ 数据太大！需要 %d 字节，但缓冲区只有 %d 字节\n", 
-                     payloadSize, maxSize);
+    if (headerSize >= maxSize) {
+        Serial.printf("[MQTT_PUB] skipped topic=%s header_too_large=%d buffer=%d\n",
+                      topic.c_str(),
+                      headerSize,
+                      maxSize);
+        if (locked) xSemaphoreGive(mqttMutex);
         return false;
     }
     
-    // 发布
-    bool success = mqttClient.publish(topic.c_str(), payload.c_str(), retained);
+    Serial.printf("[MQTT_PUB] topic=%s len=%d retained=%d broker=%s:%d\n",
+                  topic.c_str(),
+                  payloadSize,
+                  retained ? 1 : 0,
+                  mqttServer.c_str(),
+                  mqttPort);
+
+    size_t written = 0;
+    const uint8_t* payloadBytes = reinterpret_cast<const uint8_t*>(payload.c_str());
+    bool success = false;
+
+    if (payloadSize <= 900 && headerSize + payloadSize < maxSize) {
+        success = mqttClient.publish(topic.c_str(), payloadBytes, payloadSize, retained);
+        if (success) {
+            written = payloadSize;
+            mqttClient.loop();
+            delay(5);
+        }
+    } else {
+        const size_t chunkSize = 128;
+        success = mqttClient.beginPublish(topic.c_str(), payloadSize, retained);
+        while (success && written < (size_t)payloadSize) {
+            size_t nextChunk = min(chunkSize, (size_t)payloadSize - written);
+            size_t rc = mqttClient.write(payloadBytes + written, nextChunk);
+            if (rc != nextChunk) {
+                Serial.printf("[MQTT_PUB] chunk failed topic=%s offset=%u want=%u got=%u state=%d\n",
+                              topic.c_str(),
+                              (unsigned)written,
+                              (unsigned)nextChunk,
+                              (unsigned)rc,
+                              mqttClient.state());
+                success = false;
+                break;
+            }
+            written += rc;
+            mqttClient.loop();
+            delay(1);
+        }
+        if (success) {
+            mqttClient.endPublish();
+            mqttClient.loop();
+            delay(5);
+        }
+    }
+    if (!success) {
+        mqttClient.disconnect();
+        mqttWifiClient.stop();
+        delay(20);
+    }
     
     if (success) {
+        Serial.printf("[MQTT_PUB] ok=1 topic=%s bytes=%u state=%d\n",
+                      topic.c_str(),
+                      (unsigned)written,
+                      mqttClient.state());
         Serial.println("✅ 发布成功");
     } else {
+        Serial.printf("[MQTT_PUB] ok=0 topic=%s bytes=%u state=%d\n",
+                      topic.c_str(),
+                      (unsigned)written,
+                      mqttClient.state());
         Serial.printf("❌ 发布失败, 状态码: %d\n", mqttClient.state());
     }
     
+    if (locked) xSemaphoreGive(mqttMutex);
     return success;
 }
 
 // ================ MQTT 循环 ================
 void DataTransmitter::mqttLoop() {
-    if (mqttEnabled && mqttClient.connected()) {
+    if (!mqttEnabled) return;
+    if (mqttMutex && xSemaphoreTake(mqttMutex, 0) != pdTRUE) {
+        return;
+    }
+    if (mqttClient.connected()) {
         mqttClient.loop();
     }
+    if (mqttMutex) xSemaphoreGive(mqttMutex);
 }
 
 // ================ 处理 MQTT 消息 ================
@@ -528,6 +648,104 @@ String DataTransmitter::getAllDataJSON() {
 }
 
 // ================ 上传所有数据 ================
+String DataTransmitter::getStatusSummaryJSON() {
+    String json = "{";
+
+    json += "\"device_id\":\"" + device_id + "\",";
+    json += "\"timestamp\":" + String(getCurrentTimestamp()) + ",";
+    json += "\"data_type\":\"status_update\",";
+
+    json += "\"location\":{";
+    json += "\"current\":{";
+    json += "\"x\":" + String(current_x, 2) + ",";
+    json += "\"y\":" + String(current_y, 2) + ",";
+    json += "\"accuracy\":" + String(accuracy, 2) + ",";
+    json += "\"quality\":\"" + location_quality + "\",";
+    json += "\"beacon_count\":" + String(beacon_count) + ",";
+    json += "\"beacons\":[]";
+    json += "},";
+
+    json += "\"target\":{";
+    json += "\"active\":";
+    json += navigation_active ? "true" : "false";
+    json += ",";
+    json += "\"x\":" + String(target_x, 2) + ",";
+    json += "\"y\":" + String(target_y, 2) + ",";
+    json += "\"name\":\"" + target_name + "\",";
+    json += "\"distance\":" + String(calculateDistanceToTarget(), 2) + ",";
+    json += "\"direction\":\"" + calculateDirectionToTarget() + "\",";
+    float bearing = atan2(target_y - current_y, target_x - current_x) * 180 / PI;
+    json += "\"bearing\":" + String(bearing, 1) + ",";
+    float eta = calculateDistanceToTarget() / 1.4;
+    json += "\"eta\":" + String((int)eta);
+    json += "}";
+    json += "},";
+
+    json += "\"fall_detection\":{";
+    if (fall_detector) {
+        FallEvent event = fall_detector->getFallEvent();
+        json += "\"state\":" + String(event.state) + ",";
+        json += "\"state_description\":\"" + event.description + "\",";
+        json += "\"confidence\":" + String(event.confidence, 2) + ",";
+        json += "\"is_fall_confirmed\":" + String(event.is_fall_confirmed ? "true" : "false") + ",";
+        json += "\"impact_force\":" + String(event.impact_force, 2) + ",";
+        json += "\"direction\":\"" + event.direction + "\",";
+        json += "\"fall_time\":" + String(event.fall_time);
+    } else {
+        json += "\"state\":0,\"state_description\":\"normal\",\"confidence\":0.0,\"is_fall_confirmed\":false,\"impact_force\":0.0,\"direction\":\"unknown\",\"fall_time\":0";
+    }
+    json += "},";
+
+    json += "\"sos\":{";
+    json += "\"active\":" + String(sos_active ? "true" : "false") + ",";
+    json += "\"trigger_method\":\"" + sos_trigger_method + "\",";
+    json += "\"trigger_time\":" + String(sos_trigger_time) + ",";
+    json += "\"trigger_count\":" + String(sos_trigger_count) + ",";
+    json += "\"duration\":" + String(sos_active ? (getCurrentTimestamp() - sos_trigger_time) : 0);
+    json += "},";
+
+    json += "\"sensors\":{";
+    json += "\"heart_rate\":{";
+    json += "\"bpm\":" + String(heart_rate.bpm) + ",";
+    json += "\"confidence\":" + String(heart_rate.confidence, 2) + ",";
+    json += "\"timestamp\":" + String(heart_rate.timestamp) + ",";
+    json += "\"valid\":" + String(heart_rate.valid ? "true" : "false");
+    json += "},";
+    json += "\"spo2\":{";
+    json += "\"percentage\":" + String(spo2.percentage) + ",";
+    json += "\"confidence\":" + String(spo2.confidence, 2) + ",";
+    json += "\"timestamp\":" + String(spo2.timestamp) + ",";
+    json += "\"valid\":" + String(spo2.valid ? "true" : "false");
+    json += "}";
+    json += "},";
+
+    json += "\"system\":{";
+    json += "\"battery\":{";
+    json += "\"level\":" + (power ? String(power->getBatteryPercent()) : "0") + ",";
+    json += "\"voltage\":" + (power ? String(power->getBatteryVoltage(), 2) : "0.0") + ",";
+    json += "\"charging\":";
+    json += (power && power->isCharging()) ? "true" : "false";
+    json += "}";
+    json += "}";
+
+    json += "}";
+    return json;
+}
+
+void DataTransmitter::transmitStatusSummary() {
+    String jsonData = getStatusSummaryJSON();
+
+    String topic = getDeviceTopic(MQTT_TOPIC_STATUS);
+    Serial.print("status topic: ");
+    Serial.println(topic);
+    Serial.printf("status bytes: %d\n", jsonData.length());
+    publishToMQTT(topic, jsonData);
+
+    if (ENABLE_HTTP_UPLOAD && network && network->isConnected()) {
+        network->sendHTTPData(jsonData);
+    }
+}
+
 void DataTransmitter::transmitAllData() {
     String jsonData = getAllDataJSON();
     
@@ -648,11 +866,9 @@ void DataTransmitter::update() {
     // 改为每2秒上传一次（而不是每秒）
     if (network && network->isConnected() && mqttClient.connected()) {
         if (current_time - lastStatusUpload >= 2000) {  // 2秒
-            String topic = getDeviceTopic(MQTT_TOPIC_STATUS);
-            String jsonData = getAllDataJSON();
+            transmitStatusSummary();
             
             // 非阻塞发送
-            publishToMQTT(topic, jsonData);
             lastStatusUpload = current_time;
         }
     }

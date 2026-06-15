@@ -144,6 +144,16 @@ function Stop-PortListeners {
                 Stop-Process -Id $processId -Force -ErrorAction Stop
             } catch {
                 Write-Warning "Could not stop PID $processId on port ${port}: $($_.Exception.Message)"
+                try {
+                    $taskkillOutput = & taskkill.exe /PID $processId /T /F 2>&1
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Warning "Stopped PID $processId with taskkill fallback."
+                    } else {
+                        Write-Warning "taskkill fallback failed for PID ${processId}: $taskkillOutput"
+                    }
+                } catch {
+                    Write-Warning "taskkill fallback errored for PID ${processId}: $($_.Exception.Message)"
+                }
             }
         }
     }
@@ -209,6 +219,24 @@ function Start-DetachedProcess {
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
     $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    return $process.Id
+}
+
+function Start-MinimizedConsoleProcess {
+    param(
+        [string]$FilePath,
+        [string]$ArgumentList,
+        [string]$WorkingDirectory
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $FilePath
+    $startInfo.Arguments = $ArgumentList
+    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.UseShellExecute = $true
+    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
 
     $process = [System.Diagnostics.Process]::Start($startInfo)
     return $process.Id
@@ -314,7 +342,10 @@ if (-not (Test-PortHasLanListener -Port 1883) -and -not (Test-PortListen -Port 1
 
 $backendRoot = Join-Path $repoRoot "backend\backend"
 $frontendRoot = Join-Path $repoRoot "frontend"
-$pythonExe = Join-Path $backendRoot ".venv\Scripts\python.exe"
+$pythonExe = Join-Path $repoRoot "backend\.venv\Scripts\python.exe"
+if (-not (Test-Path $pythonExe)) {
+    $pythonExe = Join-Path $backendRoot ".venv\Scripts\python.exe"
+}
 if (-not (Test-Path $pythonExe)) {
     $pythonExe = "python"
 }
@@ -323,19 +354,25 @@ Start-ProcessIfPortFree `
     -Port 8000 `
     -Name "Backend" `
     -FilePath $pythonExe `
-    -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload" `
+    -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 8000" `
     -WorkingDirectory $backendRoot `
     -OutLog (Join-Path $logRoot "backend-local.out.log") `
     -ErrLog (Join-Path $logRoot "backend-local.err.log") | Out-Null
 
-Start-ProcessIfPortFree `
-    -Port 5173 `
-    -Name "Frontend" `
-    -FilePath "cmd.exe" `
-    -ArgumentList "/c npm run dev -- --host 0.0.0.0 --port 5173" `
-    -WorkingDirectory $frontendRoot `
-    -OutLog (Join-Path $logRoot "frontend-local.out.log") `
-    -ErrLog (Join-Path $logRoot "frontend-local.err.log") | Out-Null
+$npmCmd = "C:\Program Files\nodejs\npm.cmd"
+if (-not (Test-Path $npmCmd)) {
+    $npmCmd = "npm.cmd"
+}
+
+if (Test-PortListen -Port 5173) {
+    Write-Host "Frontend already listening on port 5173"
+} else {
+    Write-Host "Starting Frontend on port 5173"
+    Start-MinimizedConsoleProcess `
+        -FilePath "cmd.exe" `
+        -ArgumentList "/k `"`"$npmCmd`" run dev -- --host 0.0.0.0 --port 5173`"" `
+        -WorkingDirectory $frontendRoot | Out-Null
+}
 
 Start-Sleep -Seconds 3
 

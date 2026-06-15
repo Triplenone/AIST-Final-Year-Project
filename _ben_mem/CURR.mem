@@ -391,3 +391,15 @@ V.guard.diff_check=ok-crlf-warnings-only
 V.guard.frontend=[lint-ok,test-ok-23,build-ok-vite-existing-chunk-warning]
 V.guard.backend_smoke=[health-ok,residents-ok,events-ok,mongo-status-ok]
 V.guard.browser_smoke=[overview-ok,family-primary-ok,position-ok,flycare-ok,admin-events-ok,residents-ok]
+V.flycare.repo=E:\flycare
+V.flycare.branch=Flycare
+V.flycare.stack.20260616T0538={mqtt:192.168.0.203:1883,pid_mqtt:20168,frontend:0.0.0.0:5173,pid_frontend:22432,backend_bridge:0.0.0.0:8001,pid_backend:11372,backend_8000:ghost}
+V.flycare.frontend.bridge=frontend\.env.local VITE_BACKEND_BASE_URL=http://192.168.0.203:8001
+V.flycare.browser.20260616T0538=ok /flycare shows NG WAI LUN online, Customer Services, CX910, Gate 10, Gate Change to 10, no console errors
+V.flycare.ng.status=Mongo _id=6a306edfdde90a25b65b7e25 device=ESP32_48CA43A42298 mysql=8 x=6.19 y=4.00 beacons=6 sos=false fall=Normal
+V.flycare.flight.gate_change=Mongo _id=6a306e0ddde90a25b65b7e02 CX910 Gate10 delay_reason=Gate Change to 10
+V.flycare.sos.smoke=ok mqtt stdin topic=smartwatch/ESP32_48CA43A42298/sos mongo=6a306f91dde90a25b65b7e46 event=309 resolved clear=6a306facdde90a25b65b7e4d
+V.flycare.fall.smoke=ok mqtt stdin topic=smartwatch/ESP32_48CA43A42298/fall mongo=6a306fbedde90a25b65b7e4e event=310 resolved clear=6a306fcbdde90a25b65b7e4f
+V.flycare.validation.20260616T0538=[frontend-test-61-ok,frontend-build-ok,backend-compileall-ok,ps1-parse-ok,firmware-compile-ok-1537091B-55176RAM]
+B.flycare.issue.8000=stale ghost listener; use backend bridge 8001 until Windows frees 8000
+B.flycare.issue.alert_overlay=old unrelated unhandled events still visible on /flycare; NG current event state normal

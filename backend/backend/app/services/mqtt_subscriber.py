@@ -317,7 +317,7 @@ def start_mqtt():
         except Exception as e:
             _last_error = str(e)
             print(
-                f"[mqtt] broker connect failed: {settings.MQTT_BROKER}:{settings.MQTT_PORT} — {e}. "
+                f"[mqtt] broker connect failed: {settings.MQTT_BROKER}:{settings.MQTT_PORT} - {e}. "
                 "Flight MQTT will retry in the background."
             )
             _schedule_retry()

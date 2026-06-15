@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 05:30-05:38 FlyCare NG WAI LUN bridge + alert smoke
+
+- V.stack.lan=up Mosquitto `0.0.0.0:1883` PID 20168, frontend `0.0.0.0:5173` PID 22432, backend bridge `0.0.0.0:8001` PID 11372; `8001/api/v1/data-reception/mqtt/status` reports broker `192.168.0.203:1883` connected. `8000` remains a stale ghost listener and is not the reliable MQTT bridge.
+- V.frontend.bridge=ok `frontend\.env.local` points Vite to `VITE_BACKEND_BASE_URL=http://192.168.0.203:8001`; browser smoke at `http://192.168.0.203:5173/flycare` shows selected passenger NG WAI LUN online, Customer Services, CX910, Gate 10, and `Gate Change to 10` with no console errors.
+- V.ng_wai_lun.status=ok latest Mongo status `_id=6a306edfdde90a25b65b7e25` maps alias `ESP32_48CA43A42298` to MySQL device 8 with x=6.19, y=4.00, high quality, 6 beacons, SOS inactive, fall normal.
+- V.flight.gate_change=ok latest flight `_id=6a306e0ddde90a25b65b7e02` for canonical/alias device 8 is CX910, Cathay Pacific, Singapore, Gate 10, `delay_reason=Gate Change to 10`.
+- V.sos.path=ok valid JSON published through local MQTT using `mosquitto_pub -s` to `smartwatch/ESP32_48CA43A42298/sos` created Mongo `_id=6a306f91dde90a25b65b7e46` and EventLog 309 for MySQL device 8, then was resolved and followed by clear payload `_id=6a306facdde90a25b65b7e4d`.
+- V.fall.path=ok valid JSON published through local MQTT using `mosquitto_pub -s` to `smartwatch/ESP32_48CA43A42298/fall` created Mongo `_id=6a306fbedde90a25b65b7e4e` and EventLog 310 for MySQL device 8, then was resolved and followed by normal payload `_id=6a306fcbdde90a25b65b7e4f`.
+- V.validation=ok frontend `npm.cmd test` 61/61 pass; frontend `npm.cmd run build` ok with existing Vite dynamic-import chunk warning; backend `python -m compileall backend\backend\app` ok; PowerShell script parse ok; firmware ESP32-S3 compile ok, sketch 1537091/3145728 bytes and RAM 55176/327680 bytes.
+- B.dashboard.alert_overlay=stale unrelated old unhandled events from other devices still show a fall/SOS overlay on `/flycare`; NG WAI LUN current event state is normal. Do not treat that overlay as NG path failure.
+
 ### 2026-06-15 17:00-17:40 FlyCare LAN stack restart/MQTT bridge
 
 - V.lan.urls=up frontend `0.0.0.0:5173` PID 10496 serves `http://192.168.0.203:5173/flycare`; backend `0.0.0.0:8000` answers `/health` on `http://192.168.0.203:8000/health`.

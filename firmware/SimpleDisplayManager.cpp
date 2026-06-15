@@ -420,7 +420,7 @@ void SimpleDisplayManager::update() {
     // 4. 数据上传
     if (now - lastUpload >= UPLOAD_INTERVAL || uploadNeeded) {
         if (data_transmitter) {
-            data_transmitter->transmitAllData();
+            data_transmitter->transmitStatusSummary();
         }
         lastUpload = now;
         uploadNeeded = false;
@@ -1444,7 +1444,7 @@ bool SimpleDisplayManager::setSmartNavigationDestination(const String& destinati
         data_transmitter->setTargetPosition(destination->x, destination->y,
                                            String(destination->label));
         data_transmitter->setNavigationActive(true);
-        data_transmitter->transmitAllData();
+        data_transmitter->transmitStatusSummary();
         Serial.println("[NAV] telemetry publish requested after destination selection");
     }
 

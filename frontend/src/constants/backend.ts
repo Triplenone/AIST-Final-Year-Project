@@ -5,6 +5,11 @@
 const DEV_VITE_PORTS = new Set(['5173', '4173']);
 
 function resolveBackendBaseUrl(): string {
+  const configuredBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL?.trim();
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.endsWith('/') ? configuredBaseUrl.slice(0, -1) : configuredBaseUrl;
+  }
+
   if (typeof window === 'undefined') {
     return 'http://localhost:8000';
   }

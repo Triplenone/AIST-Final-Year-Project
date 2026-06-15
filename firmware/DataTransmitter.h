@@ -152,6 +152,7 @@ private:
     // 存储最近的信标信息
     BeaconInfo last_beacons[MAX_BEACON_STORE];
     int last_beacon_count;
+    SemaphoreHandle_t mqttMutex;
 
     volatile bool ble_scanning_active;  // BLE 是否正在扫描
     SemaphoreHandle_t rfMutex;           // 射频互斥锁
@@ -159,6 +160,9 @@ private:
     unsigned long baseTimestamp;    // 基准时间戳（同步时的时间）
     unsigned long syncTimeMillis;   // 同步时的 millis() 值
     
+    bool ensureMQTTConnectedUnlocked();
+    bool waitForBLEIdle(unsigned long maxWaitMs);
+
 public:
     DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
                    FallDetection* fall_det, BLELocation* ble_loc, 
@@ -168,6 +172,7 @@ public:
     void transmitFallAlert(const FallEvent& fall_event);
     void transmitSOSAlert();
     void transmitLocation();
+    void transmitStatusSummary();
     void transmitAllData();
     void transmitHeartbeat();
 
@@ -256,6 +261,7 @@ public:
     
     // 获取完整的JSON数据
     String getAllDataJSON();
+    String getStatusSummaryJSON();
     String getFallJSON(const FallEvent& fall_event);
     String getSOSJSON();
     String getLocationJSON();
