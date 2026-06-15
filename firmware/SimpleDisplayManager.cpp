@@ -949,6 +949,13 @@ void SimpleDisplayManager::drawHomePage() {
     // 中心圆点
     gfx->fillCircle(centerX, centerY, 7, RGB565_WHITE);
     gfx->fillCircle(centerX, centerY, 4, 0x0000);
+
+    String clockDeviceLabel = CLOCK_DEVICE_LABEL;
+    clockDeviceLabel.trim();
+    if (clockDeviceLabel.length() > 0) {
+        drawCenteredFittedText(gfx, centerX - 46, SCREEN_HEIGHT - 58, 92,
+                               clockDeviceLabel, RGB565_YELLOW, 1, 1);
+    }
     
     // 不绘制状态栏和侧边按钮
     // drawStatusBar();
@@ -1505,9 +1512,19 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
         String targetLabel = activeArrivalLabel.length() > 0
             ? activeArrivalLabel
             : SmartNavigationPlanner::normalizeLabel(navInfo.targetGate);
-        bool arrived = navManager->isActive() &&
-                       targetKey == expectedKey &&
-                       navInfo.currentDistance <= 0.5f;
+        bool routeArrived = navManager->isActive() &&
+                            targetKey == expectedKey &&
+                            navInfo.currentDistance <= 0.5f;
+        bool directArrivalTargetArmed = activeArrivalKey.length() > 0;
+        float directArrivalDistance = sqrt(pow(current_x - target_x, 2) + pow(current_y - target_y, 2));
+#if ENABLE_FLIGHT_ARRIVAL_TARGET
+        bool directArrived = !navManager->isActive() &&
+                             directArrivalTargetArmed &&
+                             directArrivalDistance <= 0.6f;
+#else
+        bool directArrived = false;
+#endif
+        bool arrived = routeArrived || directArrived;
 
         if (arrived && (!arrivalPopupShown || arrivalPopupTarget != expectedKey)) {
             arrivalPopupShown = true;
@@ -1523,7 +1540,11 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
             if (data_transmitter) {
                 data_transmitter->setNavigationActive(false);
             }
+#if ENABLE_FLIGHT_ROUTE_NAVIGATION
             pageManager.setPage(PAGE_NAV);
+#else
+            pageManager.setPage(PAGE_HOME);
+#endif
             showPopup(POPUP_ARRIVAL, "Arrived", popupMessage);
             if (audioCommandQueue) {
                 AudioCommand tts_cmd;
@@ -2229,8 +2250,9 @@ void SimpleDisplayManager::drawPopup() {
                            currentPopupType == POPUP_FLIGHT_DELAY ||
                            currentPopupType == POPUP_FLIGHT_CANCELLED);
     bool arrivalPopup = (currentPopupType == POPUP_ARRIVAL);
+    bool gateChangePopup = (currentPopupType == POPUP_GATE_CHANGE);
     int popupWidth = SCREEN_WIDTH - (arrivalPopup ? 16 : 20);
-    int popupHeight = arrivalPopup ? 188 : (prominentPopup ? 176 : 132);
+    int popupHeight = arrivalPopup ? 188 : (gateChangePopup ? 156 : (prominentPopup ? 176 : 132));
     int popupX = (SCREEN_WIDTH - popupWidth) / 2;
     int popupY = (SCREEN_HEIGHT - popupHeight) / 2;
     
@@ -2302,6 +2324,47 @@ void SimpleDisplayManager::drawPopup() {
         gfx->setTextSize(1);
         gfx->setTextColor(0x528A);
         gfx->print("Returning to map");
+        return;
+    }
+
+    if (gateChangePopup) {
+        String gate = popupMessage;
+        gate.replace("Gate Change", "");
+        gate.replace("gate change", "");
+        gate.replace("GATE CHANGE", "");
+        gate.replace("Gate", "");
+        gate.replace("gate", "");
+        gate.replace("GATE", "");
+        gate.replace("to", "");
+        gate.replace("TO", "");
+        gate.trim();
+        if (gate.length() == 0) {
+            gate = popupMessage;
+        }
+
+        gfx->setCursor(popupX + 14, popupY + 24);
+        gfx->setTextSize(2);
+        gfx->setTextColor(RGB565_WHITE);
+        gfx->print("GATE");
+
+        gfx->setCursor(popupX + 14, popupY + 50);
+        gfx->setTextSize(2);
+        gfx->setTextColor(RGB565_WHITE);
+        gfx->print("CHANGE");
+
+        gfx->drawLine(popupX + 14, popupY + 78, popupX + popupWidth - 14, popupY + 78, borderColor);
+
+        gfx->setCursor(popupX + 18, popupY + 94);
+        gfx->setTextSize(3);
+        gfx->setTextColor(borderColor);
+        gfx->print("TO ");
+        gfx->setTextSize(gate.length() > 3 ? 3 : 4);
+        gfx->print(gate);
+
+        gfx->setCursor(popupX + 16, popupY + popupHeight - 24);
+        gfx->setTextSize(1);
+        gfx->setTextColor(0x528A);
+        gfx->print("Auto close");
         return;
     }
 

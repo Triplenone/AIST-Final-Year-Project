@@ -14,6 +14,19 @@ On the current Windows workstation, Arduino CLI is installed with Arduino IDE an
 & 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' compile --fqbn "esp32:esp32:esp32s3:FlashSize=8M,PartitionScheme=huge_app,PSRAM=opi,CDCOnBoot=cdc" .
 ```
 
+The local `libraries/` folder is an Arduino Library Manager cache and is intentionally ignored by git. Recreate the required dependencies before compiling on a clean machine:
+
+```powershell
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install PubSubClient
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install 'GFX Library for Arduino'
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install TJpg_Decoder
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install SensorLib
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install NTPClient
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install 'Adafruit MAX1704X'
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install 'SparkFun MAX3010x Pulse and Proximity Sensor Library'
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' lib install ArduinoJson@6.21.5
+```
+
 ## Network
 
 `Config.h` keeps a WiFi candidate list. The firmware tries each configured SSID in order and uses the first one that connects:
@@ -140,30 +153,27 @@ Manual controls:
 
 ```text
 Touch                 Disabled and not initialized
-Initial page          Nav/map page
-SOS single click      Switch pages when the destination picker is closed
-SOS long press        Hold for 3 seconds to toggle SOS and publish the active/clear state over MQTT
-PWR on map page       Open the destination picker overlay
-SOS click in picker   Move the highlighted destination top-to-bottom
-Idle 5s in picker     Confirm after at least one SOS picker click
-PWR while picker open Cancel the destination picker without changing the active route
-PWR outside map       Keep the original screen on/off behavior
+Initial page          Home/clock page
+SOS single click      Switch to the next page: Home -> Map -> Flight -> Home
+SOS long press        Hold for 3 seconds to trigger SOS; hold for 3 seconds again to clear SOS
+PWR single click      Turn the display off
+PWR long press        Hold for 3 seconds to toggle the display on/off
 ```
 
-Destination selection is map-scoped: PWR opens the picker only from the map page, SOS short click moves the highlighted destination while the picker is open, 5 seconds with no further picker input confirms the highlighted destination after at least one SOS picker click, and PWR cancels the picker without changing the active route. Once a destination is committed by the picker, serial command, or flight sync, any pending picker auto-confirm state is cleared so stale highlights cannot overwrite the active route. The SOS wheel/rotary is not used for FlyCare navigation.
+Manual destination selection and the on-watch navigation menu are disabled for the FlyCare airport demo. Flight updates may arm an arrival target for Gate 10/Gate 11, but SOS/PWR button presses no longer select or confirm routes. SOS short press only switches pages. The SOS wheel/rotary is not used for FlyCare navigation.
 
 The destination picker fits labels by available pixel width rather than raw string length, so `Security Check` stays the same large size as the other standard destinations while longer labels still shrink safely when needed.
 
 Map display layout is intentionally bounded for the 240x310 active watch surface: the lower half uses a fixed left route card and a fixed right destination card, distance text has its own narrow column, and long places are compacted or split (`Customer Services` -> `Customer` / `Svc`, `Security Check` -> `Security` / `Check`) instead of overflowing. BLE jitter redraws are throttled so the map does not repaint on tiny RSSI-driven movement. `NAV_DISPLAY_INTERVAL` is 4 seconds, with immediate redraw only when position movement is meaningful.
 
-Flight JSON updates are connected to `FlightInfoManager`. When `boarding_gate` maps to a known destination, the same planner builds the active route:
+Flight JSON updates are connected to `FlightInfoManager`. When `boarding_gate` maps to a known destination, the watch stores that gate as the arrival target without opening the manual navigation route UI:
 
 ```text
 Gate 10 / 10 / A10 -> GATE10
 Gate 11 / 11 / A11 -> GATE11
 ```
 
-Arrival is checked against the active navigation destination. If backend flight JSON says `Gate 10`, only reaching Gate 10 shows and speaks:
+Arrival is checked against the flight arrival target. If backend flight JSON says `Gate 10`, only reaching Gate 10 shows and speaks:
 
 ```text
 You've arrived at Gate 10

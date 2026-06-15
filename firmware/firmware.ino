@@ -578,6 +578,7 @@ void buttonTask(void* param) {
     unsigned long bootPressStart = 0;
     unsigned long pwrPressStart = 0;
     bool bootLongPressTriggered = false;
+    bool pwrLongPressTriggered = false;
 
     Serial.println("[Button] task started");
 
@@ -596,13 +597,10 @@ void buttonTask(void* param) {
             }
         } else if (bootState == HIGH && lastBootState == LOW) {
             unsigned long duration = millis() - bootPressStart;
-            if (!bootLongPressTriggered && duration >= 20 && duration < SOS_HOLD_TIME && display) {
-                if (display->isDestinationPickerActive()) {
-                    display->cycleNavigationDestination();
-                    Serial.println("[Button] SOS click - picker next destination");
-                } else {
+            if (!bootLongPressTriggered && duration >= 20 && duration < SOS_HOLD_TIME) {
+                if (display) {
                     display->nextPage();
-                    Serial.printf("[Button] SOS click - next page: %d\n",
+                    Serial.printf("[Button] SOS short press - next page: %d\n",
                                   display->getCurrentPage());
                 }
             }
@@ -611,22 +609,25 @@ void buttonTask(void* param) {
 
         if (pwrState == LOW && lastPwrState == HIGH) {
             pwrPressStart = millis();
+            pwrLongPressTriggered = false;
+        } else if (pwrState == LOW && !pwrLongPressTriggered) {
+            if (millis() - pwrPressStart >= SOS_HOLD_TIME) {
+                pwrLongPressTriggered = true;
+                if (display) {
+                    if (display->isScreenOn()) {
+                        display->sleepScreen();
+                        Serial.println("[Button] PWR long press - screen off");
+                    } else {
+                        display->wakeScreen();
+                        Serial.println("[Button] PWR long press - screen on");
+                    }
+                }
+            }
         } else if (pwrState == HIGH && lastPwrState == LOW) {
             unsigned long duration = millis() - pwrPressStart;
-            if (duration >= 20 && duration < 1000 && display) {
-                if (!display->isScreenOn()) {
-                    display->wakeScreen();
-                    Serial.println("[Button] PWR click - wake screen");
-                } else if (display->isDestinationPickerActive()) {
-                    display->cancelDestinationPicker();
-                    Serial.println("[Button] PWR click - cancel destination picker");
-                } else if (display->getCurrentPage() == PAGE_NAV) {
-                    display->openDestinationPicker();
-                    Serial.println("[Button] PWR click - open destination picker");
-                } else {
-                    display->sleepScreen();
-                    Serial.println("[Button] PWR click - sleep screen");
-                }
+            if (!pwrLongPressTriggered && duration >= 20 && duration < SOS_HOLD_TIME && display) {
+                display->sleepScreen();
+                Serial.println("[Button] PWR short press - screen off");
             }
         }
         lastPwrState = pwrState;

@@ -12,15 +12,17 @@ Do not replace these rows with nested metadata objects. Verification notes belon
 
 | External MQTT/Mongo device_id | MySQL device_id | Bound name | Verification note |
 | --- | ---: | --- | --- |
-| `ESP32_0000E03948D4DB1C` | 1 | CHAN TAI MAN | Existing mapping |
 | `ESP32_0000C422A443CA48` | 2 | LAU SIU FONG | Existing mapping |
-| `ESP32_00005CFA7AD4DB1C` | 3 | WONG KA MING | Existing mapping |
-| `ESP32_0000A022A443CA48` | 4 | HO CHI WAI | Verified in live Mongo upstream |
+| `ESP32_0000C8292A04A7AC` | 3 | WONG KA MING | Canonical device 3 ID after `database/mysql/migrations/20260615_register_flycare_device9_and_aliases.sql` |
+| `ESP32_00005CFA7AD4DB1C` | 3 | WONG KA MING | Backward-compatible alias for existing local Mongo records |
+| `ESP32_0000A022A443CA48` | 4 | HO CHI WAI | Canonical device 4 ID after `database/mysql/migrations/20260615_register_flycare_device4_canonical_id.sql`; verified in live Mongo upstream |
 | `ESP32_00009822A443CA48` | 5 | TANG WAI HAN | User-corrected ID; not found in live Mongo during implementation precheck |
 | `ESP32_00008C292A04A7AC` | 6 | MA KA WAI | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
 | `ESP32_00009022A443CA48` | 7 | YIP MAN LING | Bound by `database/mysql/migrations/20260603_bind_flycare_devices_6_7_hk_names.sql` |
 | `ESP32_000048CA43A42298` | 8 | NG WAI LUN | Canonical device 8 ID after `database/mysql/migrations/20260608_dedupe_flycare_devices_and_device8_alias.sql` |
 | `ESP32_48CA43A42298` | 8 | NG WAI LUN | Backward-compatible alias for existing local Mongo records |
+| `ESP32_0000E03948D4DB1C` | 9 | LEE KA YAN | Canonical ID emitted by `SmartWatch_Project_S3R8_ISS_20260614163130` after COM5 upload |
+| `ESP32_1CDBD44839E0` | 9 | LEE KA YAN | Backward-compatible alias for the previously uploaded firmware ID |
 
 ## MySQL Migration
 
@@ -33,11 +35,14 @@ cd E:\flycare
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260605_register_esp32_48ca43a42298.sql"
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260608_dedupe_flycare_devices_and_device8_alias.sql"
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260613_flycare_demo_labels.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260615_register_flycare_device4_canonical_id.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260615_mark_flycare_device8_ng_wai_lun_online.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260615_register_flycare_device9_and_aliases.sql"
 ```
 
 Do not keep FlyCare user/device binding changes only in a local MySQL instance. If a binding affects the UI or demo data, add an idempotent migration under `database/mysql/migrations/` and update this mapping table.
 
-Device 8 accepts both `ESP32_000048CA43A42298` and the older local alias `ESP32_48CA43A42298`; admin presets should show only the canonical `ESP32_000048CA43A42298` row. Flight commands published from Admin fan out to every mapped alias for the selected MySQL device, so device 8 receives the same downlink on both `smartwatch/ESP32_000048CA43A42298/flight` and `smartwatch/ESP32_48CA43A42298/flight`. If the FlyCare dashboard shows NG WAI LUN as stale/offline while the device is powered, verify that the device is publishing fresh `smartwatch/<device_id>/status` or `heartbeat` payloads to the same MQTT broker that the backend reports from `/api/v1/data-reception/mqtt/status`.
+Device 3 accepts both `ESP32_0000C8292A04A7AC` and the older local alias `ESP32_00005CFA7AD4DB1C`; admin presets should show only the canonical `ESP32_0000C8292A04A7AC` row. Device 8 accepts both `ESP32_000048CA43A42298` and the older local alias `ESP32_48CA43A42298`; admin presets should show only the canonical `ESP32_000048CA43A42298` row. Flight commands published from Admin fan out to every mapped alias for the selected MySQL device. If the FlyCare dashboard shows a passenger as stale/offline while the device is powered, verify that the device is publishing fresh `smartwatch/<device_id>/status` or `heartbeat` payloads to the same MQTT broker that the backend reports from `/api/v1/data-reception/mqtt/status`.
 
 ## MQTT Topics
 
@@ -68,6 +73,8 @@ Default local FlyCare flight downlink topic:
 ```text
 smartwatch/{device_id}/flight
 ```
+
+FlyCare flight downlinks are published with QoS 1 and the retained flag so a watch that briefly disconnects during Wi-Fi scanning or MQTT fallback receives the latest flight update after it re-subscribes to `smartwatch/<device_id>/#`.
 
 For local Windows demos with a real ESP32 on Wi-Fi, Mosquitto must listen on the PC LAN interface, not only `127.0.0.1`. Use `infra/mosquitto/local-windows.conf` when starting Mosquitto locally:
 
@@ -175,7 +182,7 @@ For the remaining physical checks, wear the watch firmly, then run:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_watch.ps1 -WaitForValidHeartRate -WaitForValidSpO2 -WaitForPhysicalSOS -AutoClearSOS -AutoHandleSosEvents -HeartRateLedBrightness 0xFF -Seconds 60
 ```
 
-The verifier writes `logs/flycare-watch-verification.json` plus a timestamped `logs/flycare-watch-verification-YYYYMMDD-HHMMSS.json` with serial output, latest status/SOS payloads, unhandled events, and whether physical BOOT/SOS plus live heart-rate and SpO2 validity were observed. Current firmware uses SOS short click for page/picker control and SOS long press for 3 seconds to trigger/clear the SOS path. If `-HeartRateLedBrightness` is supplied, it sends `HRLED <value>` before diagnostics. If a heart-rate wait fails, it sends `HRCAL` and continuously drains serial output so the JSON includes raw MAX30102 contact and saturation diagnostics.
+The verifier writes `logs/flycare-watch-verification.json` plus a timestamped `logs/flycare-watch-verification-YYYYMMDD-HHMMSS.json` with serial output, latest status/SOS payloads, unhandled events, and whether physical BOOT/SOS plus live heart-rate and SpO2 validity were observed. Current firmware uses SOS short click only to switch pages; SOS long press for 3 seconds toggles the SOS path on/off. PWR short click turns the display off, and PWR long press for 3 seconds toggles the display on/off. If `-HeartRateLedBrightness` is supplied, it sends `HRLED <value>` before diagnostics. If a heart-rate wait fails, it sends `HRCAL` and continuously drains serial output so the JSON includes raw MAX30102 contact and saturation diagnostics.
 
 For repeatable MAX30102 troubleshooting, add `-RunHeartRateSensorCheck -RunHeartRateSweep`; the verifier sends `HRSENSOR` to read part ID/revision/die temperature, then sends `HRSWEEP` so firmware tests `0x1F`, `0x3F`, `0x7F`, and `0xFF` LED levels in one serial capture. The generated JSON includes `heartRateDiagnostics.classification`; `optical_contact_missing` means the chip answered over I2C but the red/IR readings never crossed the contact threshold.
 
@@ -229,7 +236,7 @@ Current local runtime:
 Backend API:     http://127.0.0.1:8000
 Frontend Vite:   http://127.0.0.1:5173
 MQTT broker:     See `backend/backend/.env`, `firmware/Config.h`, and `logs/flycare-mqtt-endpoint.json`
-Watch serial:    COM5, ESP32_48CA43A42298 / ESP32_000048CA43A42298, MySQL device 8
+Watch serial:    COM5, ESP32_0000E03948D4DB1C, MySQL device 9, LEE KA YAN
 Fall detection:  intentionally disabled with ENABLE_FALL_DETECTION 0
 ```
 

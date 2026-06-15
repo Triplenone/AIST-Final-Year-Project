@@ -206,38 +206,33 @@ export const POSITION_MAP_PIXEL_HEIGHT = 800;
 export const POSITION_ACTIVITY_PAGE_SIZE = 12;
 
 /** 定位页跟踪的 MySQL `device.device_id` 列表（与 Mongo 上行通过下方映射关联）。 */
-export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
+export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [2, 3, 4, 5, 6, 7, 8, 9];
 
 /**
  * MySQL 设备 id → Mongo `device_raw_upstream` 顶层 `device_id` 字符串。
  * 请与 `backend/backend/config/device_id_map.json` 中 `mysql_device_id` / `mongodb_device_id` 保持一致。
  */
 export const POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID: Readonly<Record<number, string>> = {
-  1: 'ESP32_0000E03948D4DB1C',
   2: 'ESP32_0000C422A443CA48',
-  3: 'ESP32_00005CFA7AD4DB1C',
+  3: 'ESP32_0000C8292A04A7AC',
   4: 'ESP32_0000A022A443CA48',
   5: 'ESP32_00009822A443CA48',
   6: 'ESP32_00008C292A04A7AC',
   7: 'ESP32_00009022A443CA48',
-  8: 'ESP32_000048CA43A42298'
+  8: 'ESP32_000048CA43A42298',
+  9: 'ESP32_0000E03948D4DB1C'
 };
 
 export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[] = [
   {
-    residentId: 'TestUser01',
-    displayName: 'test-user01',
-    deviceId: 'ESP32_0000E03948D4DB1C'
-  },
-  {
     residentId: 'TestUser02',
-    displayName: 'test-user02',
+    displayName: 'LAU SIU FONG',
     deviceId: 'ESP32_0000C422A443CA48'
   },
   {
     residentId: 'TestUser03',
-    displayName: 'test-user03',
-    deviceId: 'ESP32_00005CFA7AD4DB1C'
+    displayName: 'WONG KA MING',
+    deviceId: 'ESP32_0000C8292A04A7AC'
   },
   {
     residentId: 'TestUser04',
@@ -263,6 +258,11 @@ export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[
     residentId: '15',
     displayName: 'NG WAI LUN',
     deviceId: 'ESP32_000048CA43A42298'
+  },
+  {
+    residentId: '16',
+    displayName: 'LEE KA YAN',
+    deviceId: 'ESP32_0000E03948D4DB1C'
   }
 ];
 

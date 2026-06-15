@@ -9,7 +9,13 @@ from app.config import settings
 _PUBLISH_TIMEOUT_SEC = 8
 
 
-def publish_json(topic: str, payload: Dict[str, Any], *, qos: int = 1) -> Dict[str, Any]:
+def publish_json(
+    topic: str,
+    payload: Dict[str, Any],
+    *,
+    qos: int = 1,
+    retain: bool = False,
+) -> Dict[str, Any]:
     try:
         import paho.mqtt.client as mqtt
     except ImportError as exc:
@@ -37,7 +43,7 @@ def publish_json(topic: str, payload: Dict[str, Any], *, qos: int = 1) -> Dict[s
     try:
         client.connect(settings.MQTT_BROKER, settings.MQTT_PORT, keepalive=30)
         client.loop_start()
-        info = client.publish(topic, body, qos=qos)
+        info = client.publish(topic, body, qos=qos, retain=retain)
         info.wait_for_publish(timeout=_PUBLISH_TIMEOUT_SEC)
     finally:
         try:
@@ -53,6 +59,7 @@ def publish_json(topic: str, payload: Dict[str, Any], *, qos: int = 1) -> Dict[s
         "ok": True,
         "topic": topic,
         "qos": qos,
+        "retain": retain,
         "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
         "error": None,
     }
@@ -75,12 +82,18 @@ def publish_flight_downlink(
     flight_info: Dict[str, Any],
     *,
     qos: int = 1,
+    retain: bool = True,
 ) -> Dict[str, Any]:
     device_id = str(device_id or "").strip()
     if not device_id:
         raise ValueError("device_id is required for FlyCare flight downlink")
     mqtt_payload = build_flight_mqtt_downlink(flight_info)
-    return publish_json(build_flycare_flight_topic(device_id), mqtt_payload, qos=qos)
+    return publish_json(
+        build_flycare_flight_topic(device_id),
+        mqtt_payload,
+        qos=qos,
+        retain=retain,
+    )
 
 
 def publish_flight_payload(payload: Dict[str, Any], *, qos: int = 1) -> Dict[str, Any]:

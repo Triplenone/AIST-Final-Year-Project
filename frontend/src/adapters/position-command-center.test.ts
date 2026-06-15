@@ -59,14 +59,26 @@ function makeResident(
 }
 
 describe('position-command-center adapter', () => {
-  it('tracks FlyCare device 4 and device 5 registry entries', () => {
+  it('tracks FlyCare demo registry entries with Hong Kong passenger names', () => {
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[2]).toBe('ESP32_0000C422A443CA48');
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[3]).toBe('ESP32_0000C8292A04A7AC');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[4]).toBe('ESP32_0000A022A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[5]).toBe('ESP32_00009822A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[6]).toBe('ESP32_00008C292A04A7AC');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[7]).toBe('ESP32_00009022A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[8]).toBe('ESP32_000048CA43A42298');
+    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[9]).toBe('ESP32_0000E03948D4DB1C');
     expect(POSITION_RESIDENT_REGISTRY.map((entry) => entry.displayName)).toEqual(
-      expect.arrayContaining(['HO CHI WAI', 'TANG WAI HAN', 'MA KA WAI', 'YIP MAN LING', 'NG WAI LUN'])
+      expect.arrayContaining([
+        'LAU SIU FONG',
+        'WONG KA MING',
+        'HO CHI WAI',
+        'TANG WAI HAN',
+        'MA KA WAI',
+        'YIP MAN LING',
+        'NG WAI LUN',
+        'LEE KA YAN'
+      ])
     );
   });
 

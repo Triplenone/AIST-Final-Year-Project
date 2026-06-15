@@ -324,10 +324,19 @@ async def get_latest_for_position_panel(
         return {}
 
     payload = doc.get("payload") or {}
+    external_device_id = doc.get("device_id") or payload.get("device_id")
+    mysql_device_id = doc.get("mysql_device_id") or payload.get("mysql_device_id")
+    mapped_mysql_device_id = (
+        settings.device_id_map.get(str(external_device_id))
+        if external_device_id is not None
+        else None
+    )
+    if mapped_mysql_device_id is not None:
+        mysql_device_id = mapped_mysql_device_id
     return {
         "_id": str(doc["_id"]) if doc.get("_id") else None,
-        "device_id": doc.get("device_id") or payload.get("device_id"),
-        "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
+        "device_id": external_device_id,
+        "mysql_device_id": mysql_device_id,
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
         "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "location": payload.get("location") or doc.get("location"),

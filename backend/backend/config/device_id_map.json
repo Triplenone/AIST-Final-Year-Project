@@ -3,7 +3,7 @@
   "mongo_to_mysql": [
     {
       "mongodb_device_id": "ESP32_0000E03948D4DB1C",
-      "mysql_device_id": 1
+      "mysql_device_id": 9
     },
     {
       "mongodb_device_id": "ESP32_0000C422A443CA48",
@@ -11,6 +11,10 @@
     },
     {
       "mongodb_device_id": "ESP32_00005CFA7AD4DB1C",
+      "mysql_device_id": 3
+    },
+    {
+      "mongodb_device_id": "ESP32_0000C8292A04A7AC",
       "mysql_device_id": 3
     },
     {
@@ -36,6 +40,10 @@
     {
       "mongodb_device_id": "ESP32_000048CA43A42298",
       "mysql_device_id": 8
+    },
+    {
+      "mongodb_device_id": "ESP32_1CDBD44839E0",
+      "mysql_device_id": 9
     }
   ]
 }

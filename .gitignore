@@ -36,6 +36,7 @@ logs/
 
 # --- Local firmware toolchain/build artifacts ---
 .arduino-cli/
+libraries/
 firmware/build/
 firmware/.theia/
 firmware/.vscode/

@@ -15,7 +15,7 @@ private:
     ScreenPage currentPage;
     
 public:
-    PageManager() : currentPage(PAGE_NAV) {}
+    PageManager() : currentPage(PAGE_HOME) {}
     
     ScreenPage getCurrentPage() { return currentPage; }
     

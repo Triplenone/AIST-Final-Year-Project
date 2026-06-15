@@ -19,6 +19,21 @@ static String formatFlightGateLabel(const String& gate) {
     return gate;
 }
 
+static String formatGateChangeDestination(const String& gate) {
+    String normalized = formatFlightGateLabel(gate);
+    normalized.trim();
+    normalized.toUpperCase();
+    normalized.replace("GATE CHANGE", "");
+    normalized.replace("CHANGE", "");
+    normalized.replace(" TO ", " ");
+    if (normalized.startsWith("TO ")) {
+        normalized = normalized.substring(3);
+    }
+    normalized.replace("GATE", "");
+    normalized.trim();
+    return normalized.length() > 0 ? normalized : gate;
+}
+
 FlightInfoManager::FlightInfoManager() 
     : flight_info_received(false), last_display_time(0), display_interval(30000),
       last_update_time(0) {
@@ -112,15 +127,27 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     bool hasManualNavigation = display && display->hasManualNavigationDestination();
 
     if (hasGateCoordinates && display && !hasManualNavigation) {
+#if ENABLE_FLIGHT_ROUTE_NAVIGATION
         display->setSmartNavigationDestination(navKey, true);
+#else
+        display->setTargetGate(formatFlightGateLabel(current_flight.boarding_gate), gateX, gateY);
+        Serial.printf("[Flight] arrival target armed: %s @ (%.1f, %.1f)\n",
+                      formatFlightGateLabel(current_flight.boarding_gate).c_str(), gateX, gateY);
+#endif
     } else if (hasGateCoordinates && navManager && !hasManualNavigation) {
+#if ENABLE_FLIGHT_ROUTE_NAVIGATION
         navManager->setTarget(gateX, gateY, current_flight.boarding_gate);
         Serial.printf("[Flight] navigation target synced: %s @ (%.1f, %.1f)\n",
                       current_flight.boarding_gate.c_str(), gateX, gateY);
+#endif
     }
     if (hasGateCoordinates && data_transmitter && !hasManualNavigation) {
         data_transmitter->setTargetPosition(gateX, gateY, formatFlightGateLabel(current_flight.boarding_gate));
+#if ENABLE_FLIGHT_ROUTE_NAVIGATION
         data_transmitter->setNavigationActive(true);
+#else
+        data_transmitter->setNavigationActive(false);
+#endif
         Serial.printf("[Flight] telemetry target synced: %s @ (%.1f, %.1f)\n",
                       formatFlightGateLabel(current_flight.boarding_gate).c_str(), gateX, gateY);
     } else if (hasGateCoordinates && hasManualNavigation) {
@@ -195,7 +222,7 @@ bool FlightInfoManager::getGateCoordinates(const String& gate, float& x, float& 
 void FlightInfoManager::notifyGateChange() {
     String title = "Gate Change";
     String gateLabel = formatFlightGateLabel(current_flight.boarding_gate);
-    String message = "to " + gateLabel;
+    String message = formatGateChangeDestination(gateLabel);
     
     Serial.printf("[航班提醒] %s\n", message.c_str());
     
@@ -413,7 +440,8 @@ void FlightInfoManager::checkForAlerts(const String& json) {
             String message = alert["message"] | "";
             
             if (type == "gate_change" && display) {
-                display->showPopup(SimpleDisplayManager::POPUP_GATE_CHANGE, "Gate Change", message);
+                String compactMessage = formatGateChangeDestination(message);
+                display->showPopup(SimpleDisplayManager::POPUP_GATE_CHANGE, "Gate Change", compactMessage);
                 playAlertSound("/alerts/gate_change.wav");
                 speakAlert(message);
             } 

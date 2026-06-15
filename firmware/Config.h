@@ -3,11 +3,16 @@
 
 // ??????謕?
 #define DEVICE_ID "ESP32_SmartWatch"
+#define CLOCK_DEVICE_LABEL "NG WAI LUN"
 
 // Feature switches. Set to 1 only when the hardware path is ready.
 #define ENABLE_BLE_LOCATION 1
 #define ENABLE_IMU_SENSOR 0
-#define ENABLE_FALL_DETECTION 0
+#define ENABLE_FALL_DETECTION 1
+#define ENABLE_MANUAL_NAVIGATION 0
+#define ENABLE_NAVIGATION_DOWNLINK 0
+#define ENABLE_FLIGHT_ROUTE_NAVIGATION 0
+#define ENABLE_FLIGHT_ARRIVAL_TARGET 1
 
 // MAX30102 heart-rate contact/sampling settings.
 // Keep HR validity gated by contact; do not lower this to fake a BPM reading.
@@ -30,10 +35,10 @@
 #define WIFI_FALLBACK_SSID "Triple-None"
 #define WIFI_FALLBACK_PASSWORD "08080606"
 #define ENABLE_HTTP_UPLOAD 0
-#define SERVER_URL "http://172.20.10.3:8000/api/v1/data-reception/receive"
-#define MQTT_BROKER "172.20.10.3"
-#define MQTT_BROKER_MILLION1 "172.20.10.3"
-#define MQTT_BROKER_TRIPLE_NONE "172.20.10.3"
+#define SERVER_URL "http://192.168.0.203:8000/api/v1/data-reception/receive"
+#define MQTT_BROKER "192.168.0.203"
+#define MQTT_BROKER_MILLION1 "192.168.0.203"
+#define MQTT_BROKER_TRIPLE_NONE "192.168.0.203"
 #define MQTT_BROKER_FALLBACK_1 "broker.emqx.io"
 #define MQTT_BROKER_FALLBACK_2 ""
 #define MQTT_PORT 1883

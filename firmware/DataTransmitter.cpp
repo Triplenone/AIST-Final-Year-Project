@@ -264,6 +264,12 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
     
     // 根据主题类型处理
     if (topic.endsWith("/navigation")) {
+#if !ENABLE_NAVIGATION_DOWNLINK
+        setNavigationActive(false);
+        addLog("info", "Navigation downlink ignored");
+        Serial.println("[NAV] downlink ignored by ENABLE_NAVIGATION_DOWNLINK=0");
+        return;
+#else
         if (nav_manager) {
             nav_manager->parseNavigationPlan(payload);
         }
@@ -284,6 +290,7 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
                 addLog("info", "Navigation target set: " + name);
             }
         }
+#endif
     }
     else if (topic.endsWith("/flight")) {
         if (flight_manager) {
