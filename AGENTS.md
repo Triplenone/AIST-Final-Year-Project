@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 06:09-06:40 FlyCare watch MQTT stability + Triple-None isolation finding
+
+- I.firmware.mqtt_stability=updated `firmware/DataTransmitter.cpp/.h` now uses monotonic `millis()` for MQTT/status scheduling, clears stale BLE-busy flags after 15s, closes stale `PubSubClient`/`WiFiClient` transports before and after failed reconnects, and lets status publish enter the reconnect path instead of requiring an already-connected MQTT session.
+- I.firmware.task_ownership=updated `firmware/SimpleDisplayManager.cpp` no longer owns periodic telemetry publish; `DataTransmitter` on the Network task is the periodic telemetry owner. `firmware/firmware.ino` skips BLE scans while MQTT reconnect is pending to give ESP32 Wi-Fi a quiet connect window.
+- V.firmware.compile_upload=ok final ESP32-S3 compile/upload to COM5 succeeded after restoring formal config `MQTT_PORT=1883` and `ENABLE_HTTP_UPLOAD=0`; sketch 1537363/3145728 bytes, RAM 55176/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.watch.runtime=partial serial confirms watch boots, joins `Triple-None`, gets IP `192.168.0.143`, scans FlyCare beacons, and keeps attempting MQTT to `192.168.0.203`.
+- B.network.triple_none_isolation=confirmed current `Triple-None` topology blocks watch-to-PC traffic: MQTT to PC `1883` remains `state=-2`, A/B Mosquitto on `1884` also `state=-2` with no watch TCP session, HTTP POST to backend `8001` returns `-1`, and PC ping to watch `192.168.0.143` times out. Public MQTT probes from PC to `broker.emqx.io:1883` and `broker.hivemq.com:1883` also failed.
+- B.admin.mqtt_restart=not-completed non-admin cannot stop Mosquitto PID 20168 or inspect/add firewall rules; UAC elevated PowerShell attempt did not produce a result file. Backend bridge `8001` remains connected to local Mosquitto, but the watch cannot reach PC over this hotspot.
+- N.next.network=to complete hardware demo, move PC+watch to a non-isolated LAN or make the PC the hotspot, then set broker to the PC host IP and rerun MQTT/status, flight gate-change, SOS, and fall smoke tests. Do not claim real-time update path is fixed while `Triple-None` client isolation remains.
+
 ### 2026-06-16 05:46-05:49 FlyCare alert modal backlog fix
 
 - I.frontend.alert_baseline=updated `frontend/src/App.tsx` waits for `useBackendEvents.lastUpdatedAt` before seeding known fall/SOS event IDs, so historical unhandled EventLog rows are treated as backlog instead of newly discovered alerts after `/flycare` reload.

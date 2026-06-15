@@ -1,0 +1,6 @@
+I.flycare.firmware.mqtt_stability=DataTransmitter.cpp/h added monotonic millis scheduling, stale BLE busy guard, MQTT transport cleanup before/after failed reconnects, and status reconnect attempts.
+I.flycare.firmware.task_ownership=SimpleDisplayManager periodic publish removed; DataTransmitter owns telemetry; BLE task yields while MQTT reconnect is pending.
+V.flycare.compile_upload=ok final COM5 upload restored MQTT_PORT=1883 and ENABLE_HTTP_UPLOAD=0; sketch 1537363/3145728, RAM 55176/327680, MAC 48:ca:43:a4:22:98.
+B.flycare.network=Triple-None currently isolates watch from PC: MQTT 1883 state=-2, MQTT 1884 state=-2, HTTP 8001 code=-1, ping 192.168.0.143 timeout; public MQTT probes from PC failed.
+B.flycare.admin=Cannot restart Mosquitto/firewall without real Windows admin; non-admin Stop-Process denied for PID 20168 and UAC runas produced no result file.
+N.flycare.next=Move to non-isolated LAN or PC-hosted hotspot, then rerun MQTT/status, gate-change downlink, SOS, fall, and dashboard validation.

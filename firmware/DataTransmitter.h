@@ -153,6 +153,7 @@ private:
     BeaconInfo last_beacons[MAX_BEACON_STORE];
     int last_beacon_count;
     SemaphoreHandle_t mqttMutex;
+    unsigned long ble_scan_started_at_ms;
 
     volatile bool ble_scanning_active;  // BLE 是否正在扫描
     SemaphoreHandle_t rfMutex;           // 射频互斥锁

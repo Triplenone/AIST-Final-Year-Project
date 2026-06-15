@@ -406,3 +406,9 @@ B.flycare.issue.alert_overlay=old unrelated unhandled events still visible on /f
 I.flycare.frontend.alert_baseline.20260616T0549=App.tsx waits for useBackendEvents.lastUpdatedAt before seeding known fall/SOS event ids; historical unhandled backlog no longer opens modal after reload
 V.flycare.frontend.validation.20260616T0549=[frontend-test-61-ok,frontend-build-ok-existing-vite-warning]
 V.flycare.browser.20260616T0549=ok /flycare shows NG WAI LUN online, CX910, Gate 10, Gate Change to 10, no console errors, no fall-alert-modal
+I.flycare.firmware.mqtt_stability.20260616T0640=DataTransmitter uses millis scheduler, clears stale BLE busy flag, closes PubSubClient/WiFiClient after failed connects, and status publish can enter reconnect path
+I.flycare.firmware.telemetry_owner.20260616T0640=SimpleDisplayManager no longer periodically publishes telemetry; Network/DataTransmitter owns periodic status; BLE task skips scans while MQTT reconnect pending
+V.flycare.firmware.final_upload.20260616T0640=ok COM5 ESP32-S3 MAC 48:ca:43:a4:22:98 formal config MQTT_PORT=1883 ENABLE_HTTP_UPLOAD=0 sketch=1537363 RAM=55176
+B.flycare.network.triple_none.20260616T0640=blocked watch IP 192.168.0.143 cannot reach PC 192.168.0.203 on MQTT 1883/1884 or HTTP 8001; serial MQTT state=-2 and HTTP code=-1; PC ping watch timeout
+B.flycare.admin.mqtt_restart.20260616T0640=non-admin cannot stop Mosquitto PID 20168 or add firewall rule; UAC runas attempt produced no result file
+N.flycare.next.network=use non-isolated LAN or PC Mobile Hotspot, then rerun watch MQTT status, flight gate-change downlink, SOS and fall smoke before claiming demo complete

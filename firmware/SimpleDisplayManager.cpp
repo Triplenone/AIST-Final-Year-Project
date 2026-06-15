@@ -419,9 +419,7 @@ void SimpleDisplayManager::update() {
     
     // 4. 数据上传
     if (now - lastUpload >= UPLOAD_INTERVAL || uploadNeeded) {
-        if (data_transmitter) {
-            data_transmitter->transmitStatusSummary();
-        }
+        // DataTransmitter owns periodic telemetry on the Network task.
         lastUpload = now;
         uploadNeeded = false;
     }

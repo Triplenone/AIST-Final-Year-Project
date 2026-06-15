@@ -61,6 +61,12 @@ static void buildMqttBrokerCandidates(String brokers[], int& count, int maxCount
 
 // ================ 构造函数 ================
 // 构造函数中修复 MAC 地址获取
+static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
+    client.disconnect();
+    transport.stop();
+    delay(20);
+}
+
 DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
                                FallDetection* fall_det, BLELocation* ble_loc,
                                PowerManager* pwr)
@@ -74,7 +80,8 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
       door_count(0), night_mode_active(false), light_triggered_tonight(false),
       movement_threshold(2.0), heartbeat_detected(false), heartbeat_interval(30000),
       current_x(0), current_y(0), accuracy(0), beacon_count(0), location_quality("unknown"),
-      last_beacon_count(0), log_index(0), log_count(0), ble_scanning_active(false) {
+      last_beacon_count(0), log_index(0), log_count(0),
+      ble_scan_started_at_ms(0), ble_scanning_active(false) {
     
     // 生成唯一的设备ID - 修复 MAC 地址获取
     uint8_t mac[6];
@@ -148,6 +155,12 @@ String DataTransmitter::getDeviceTopic(const char* baseTopic) {
 
 bool DataTransmitter::waitForBLEIdle(unsigned long maxWaitMs) {
     unsigned long start = millis();
+    if (ble_scanning_active && ble_scan_started_at_ms > 0 &&
+        start - ble_scan_started_at_ms > 15000) {
+        Serial.println("[MQTT] BLE busy flag stale; clearing for telemetry");
+        ble_scanning_active = false;
+        ble_scan_started_at_ms = 0;
+    }
     while (ble_scanning_active && millis() - start < maxWaitMs) {
         if (mqttEnabled && mqttClient.connected()) {
             mqttClient.loop();
@@ -182,6 +195,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     
     if (mqttClient.connected()) return true;
 
+    closeMqttTransport(mqttClient, mqttWifiClient);
     if (!waitForBLEIdle(3500)) return false;
 
     String brokerCandidates[6];
@@ -218,6 +232,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
         return true;
     } else {
         Serial.printf("[MQTT] connect failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
+        closeMqttTransport(mqttClient, mqttWifiClient);
         for (int i = 1; i < brokerCount; i++) {
             mqttServer = brokerCandidates[i];
             mqttClient.setServer(mqttServer.c_str(), mqttPort);
@@ -241,6 +256,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
             }
 
             Serial.printf("[MQTT] fallback failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
+            closeMqttTransport(mqttClient, mqttWifiClient);
         }
         Serial.printf("❌ MQTT 连接失败, 状态码: %d\n", mqttClient.state());
         return false;
@@ -838,17 +854,18 @@ void DataTransmitter::triggerLightControl(bool turn_on) {
 
 // ================ update函数（自动上传） ================
 void DataTransmitter::update() {
-    unsigned long current_time = getCurrentTimestamp();
+    unsigned long nowMs = millis();
+    static unsigned long lastDebugPrintMs = 0;
+    unsigned long current_time = nowMs;
     static unsigned long lastMqttReconnect = 0;
     static unsigned long lastStatusUpload = 0;
-    static unsigned long lastDebugPrint = 0;
     
     // MQTT 循环
     mqttLoop();
     
     // 每10秒打印一次状态
-    if (current_time - lastDebugPrint > 10000) {
-        lastDebugPrint = current_time;
+    if (nowMs - lastDebugPrintMs >= 10000) {
+        lastDebugPrintMs = nowMs;
         Serial.printf("[MQTT] WiFi:%s MQTT:%s\n", 
                      network && network->isConnected() ? "连" : "断",
                      mqttClient.connected() ? "连" : "断");
@@ -864,7 +881,7 @@ void DataTransmitter::update() {
     }
 
     // 改为每2秒上传一次（而不是每秒）
-    if (network && network->isConnected() && mqttClient.connected()) {
+    if (network && network->isConnected()) {
         if (current_time - lastStatusUpload >= 2000) {  // 2秒
             transmitStatusSummary();
             
@@ -1395,6 +1412,7 @@ void DataTransmitter::addLog(const String& level, const String& message) {
 
 void DataTransmitter::setBLEScanning(bool scanning) {
     ble_scanning_active = scanning;
+    ble_scan_started_at_ms = scanning ? millis() : 0;
 }
 
 // 设置基准时间戳

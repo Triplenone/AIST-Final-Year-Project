@@ -844,6 +844,12 @@ void bleLocationTask(void* param) {
         Serial.println("\n=== BLE定位任务开始 ===");
         
         if (ble_location) {
+            if (data_transmitter && network && network->isConnected() &&
+                !data_transmitter->isMQTTConnected()) {
+                data_transmitter->setBLEScanning(false);
+                Serial.println("[BLE] skipped: MQTT reconnect pending");
+                continue;
+            }
             if (data_transmitter) data_transmitter->setBLEScanning(true);
             ble_location->startScan();
             ble_location->stopScan();
