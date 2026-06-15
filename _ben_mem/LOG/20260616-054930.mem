@@ -1,0 +1,3 @@
+I.flycare.frontend.alert_baseline.20260616T0549=App.tsx waits for useBackendEvents.lastUpdatedAt before seeding known fall/SOS event ids; historical unhandled backlog no longer opens modal after reload
+V.flycare.frontend.validation.20260616T0549=[frontend-test-61-ok,frontend-build-ok-existing-vite-warning]
+V.flycare.browser.20260616T0549=ok /flycare shows NG WAI LUN online, CX910, Gate 10, Gate Change to 10, no console errors, no fall-alert-modal

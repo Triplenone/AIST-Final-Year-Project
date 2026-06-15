@@ -495,6 +495,7 @@ export default function App() {
   const {
     events: allFallTypeEvents,
     activeEvents: fallEvents,
+    lastUpdatedAt: fallEventsLastUpdatedAt,
     refresh: refreshFallBackendEvents
   } = useBackendEvents({
     pollIntervalMs: 5000,
@@ -658,6 +659,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!fallEventsLastUpdatedAt) {
+      return;
+    }
     if (!fallEventsInitializedRef.current) {
       knownFallEventIdsRef.current = new Set(fallEventIds);
       fallEventsInitializedRef.current = true;
@@ -682,7 +686,7 @@ export default function App() {
         openFallAlertModal(buildFallAlertRowsFromBackendEvents(newlyDiscovered, lookups));
       })();
     }
-  }, [fallEventIds, fallEvents, openFallAlertModal]);
+  }, [fallEventIds, fallEvents, fallEventsLastUpdatedAt, openFallAlertModal]);
 
   /** 任一端将相关事件标为非 unhandled 后，其他客户端轮询到即关窗 */
   useEffect(() => {

@@ -27,6 +27,12 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 05:46-05:49 FlyCare alert modal backlog fix
+
+- I.frontend.alert_baseline=updated `frontend/src/App.tsx` waits for `useBackendEvents.lastUpdatedAt` before seeding known fall/SOS event IDs, so historical unhandled EventLog rows are treated as backlog instead of newly discovered alerts after `/flycare` reload.
+- V.frontend.validation=ok `npm.cmd test` 61/61 pass; `npm.cmd run build` ok with existing Vite dynamic-import chunk warning.
+- V.browser.flycare=ok reloaded `http://192.168.0.203:5173/flycare` after one event poll; NG WAI LUN remains Online with CX910, Gate 10, `Gate Change to 10`, no console errors, and no `.fall-alert-modal` / old overlay text.
+
 ### 2026-06-16 05:30-05:38 FlyCare NG WAI LUN bridge + alert smoke
 
 - V.stack.lan=up Mosquitto `0.0.0.0:1883` PID 20168, frontend `0.0.0.0:5173` PID 22432, backend bridge `0.0.0.0:8001` PID 11372; `8001/api/v1/data-reception/mqtt/status` reports broker `192.168.0.203:1883` connected. `8000` remains a stale ghost listener and is not the reliable MQTT bridge.

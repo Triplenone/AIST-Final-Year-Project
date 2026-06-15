@@ -403,3 +403,6 @@ V.flycare.fall.smoke=ok mqtt stdin topic=smartwatch/ESP32_48CA43A42298/fall mong
 V.flycare.validation.20260616T0538=[frontend-test-61-ok,frontend-build-ok,backend-compileall-ok,ps1-parse-ok,firmware-compile-ok-1537091B-55176RAM]
 B.flycare.issue.8000=stale ghost listener; use backend bridge 8001 until Windows frees 8000
 B.flycare.issue.alert_overlay=old unrelated unhandled events still visible on /flycare; NG current event state normal
+I.flycare.frontend.alert_baseline.20260616T0549=App.tsx waits for useBackendEvents.lastUpdatedAt before seeding known fall/SOS event ids; historical unhandled backlog no longer opens modal after reload
+V.flycare.frontend.validation.20260616T0549=[frontend-test-61-ok,frontend-build-ok-existing-vite-warning]
+V.flycare.browser.20260616T0549=ok /flycare shows NG WAI LUN online, CX910, Gate 10, Gate Change to 10, no console errors, no fall-alert-modal
