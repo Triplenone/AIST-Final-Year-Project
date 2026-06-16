@@ -1,0 +1,5 @@
+I.flycare.audit.display_runtime=audit_flycare_goal now has display_runtime_stability: source checks for retained-flight dedupe, accepted-only flight logging, and NAV/map redraw throttling; runtime checks newest flycare-serial-bridge log with duplicate ignore, uplink count, and crash count
+D.flycare.docs.audit_display=docs/FLYCARE_MQTT.md documents display stability audit evidence and warns that missing runtime log is warn while source mismatch or crash evidence is fail
+V.flycare.serial_refresh=ok bridge_flycare_serial.ps1 -SerialPort COM5 -DisableDownlink -Seconds 90 parsed=14 sent=14 log=logs/flycare-serial-bridge-20260616-145318.log
+V.flycare.display_runtime=ok duplicateIgnored=3 uplinks=14 crashes=0 latestLog=logs/flycare-serial-bridge-20260616-145318.log
+V.flycare.audit=pass logs/flycare-goal-audit.md timestamp=2026-06-16T14:54:57 activeBackend=http://127.0.0.1:8001 freshnessAge=0.2min positioning=medium beacons=5 display_runtime_stability=pass

@@ -27,6 +27,13 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 14:52-14:55 FlyCare display runtime audit hardening
+
+- I.goal.audit.display=updated `scripts/audit_flycare_goal.ps1` with `display_runtime_stability`, which verifies retained-flight payload de-duplication source, accepted-only flight logging, NAV/map redraw throttling, and the newest serial bridge runtime log containing `[Flight] duplicate flight payload ignored`.
+- D.goal.audit.display_docs=updated `docs/FLYCARE_MQTT.md` so future agents know display stability evidence comes from firmware source checks plus `logs/flycare-serial-bridge-*.log`; missing runtime evidence is a warning, source mismatch or crash evidence is a failure.
+- V.serial.bridge.refresh=ok `bridge_flycare_serial.ps1 -SerialPort COM5 -DisableDownlink -Seconds 90` parsed/sent 14 status uplinks through MQTT/backend and captured 3 duplicate retained flight payloads ignored with no crash evidence in `logs/flycare-serial-bridge-20260616-145318.log`.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T14:54:57 using active backend `http://127.0.0.1:8001`; `watch_status_freshness` age=0.2min, positioning quality=medium/beacons=5, and `display_runtime_stability` duplicateIgnored=3/uplinks=14/crashes=0.
+
 ### 2026-06-16 14:24-14:34 FlyCare display flicker reduction + retained flight dedupe
 
 - I.firmware.flight_dedupe=updated `firmware/FlightInfoManager.cpp/.h` to hash the last successfully parsed flight JSON and ignore identical retained payloads, so MQTT reconnects or serial fallback repeats do not reopen the same Gate Change popup.

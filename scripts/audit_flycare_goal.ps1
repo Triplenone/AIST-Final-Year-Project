@@ -318,6 +318,73 @@ function Test-WatchPopupUiSource {
     }
 }
 
+function Test-DisplayRuntimeStability {
+    param([string]$RepoRoot)
+
+    $flightCppPath = Join-Path $RepoRoot "firmware\FlightInfoManager.cpp"
+    $flightHPath = Join-Path $RepoRoot "firmware\FlightInfoManager.h"
+    $displayCppPath = Join-Path $RepoRoot "firmware\SimpleDisplayManager.cpp"
+    $dataTransmitterPath = Join-Path $RepoRoot "firmware\DataTransmitter.cpp"
+    $flightCppText = Get-Content -Path $flightCppPath -Raw
+    $flightHText = Get-Content -Path $flightHPath -Raw
+    $displayCppText = Get-Content -Path $displayCppPath -Raw
+    $dataTransmitterText = Get-Content -Path $dataTransmitterPath -Raw
+
+    $flightPayloadDedupeSource = $flightCppText -match "hashFlightPayload" -and
+        $flightCppText -match "duplicate flight payload ignored" -and
+        $flightHText -match "has_last_payload_hash" -and
+        $flightHText -match "last_payload_hash"
+    $flightLogAcceptedOnly = $dataTransmitterText -match "if \(flight_manager->parseFlightInfo\(payload\)\)" -and
+        $dataTransmitterText -match 'addLog\("info", "Flight info updated"\)'
+    $navPeriodicRefreshDisabled = $displayCppText -match "currentPage != PAGE_NAV" -and
+        $displayCppText -match "fabs\(current_x - lastNavX\) >= 0\.15f" -and
+        $displayCppText -match "fabs\(current_y - lastNavY\) >= 0\.15f"
+
+    $logRoot = Join-Path $RepoRoot "logs"
+    $latestLog = $null
+    $duplicateIgnoredCount = 0
+    $uplinkCount = 0
+    $crashCount = 0
+    $gatePopupCount = 0
+    if (Test-Path $logRoot) {
+        $latestLog = Get-ChildItem -Path $logRoot -File -Filter "flycare-serial-bridge-*.log" |
+            Sort-Object LastWriteTime -Descending |
+            Where-Object {
+                (Select-String -Path $_.FullName -Pattern "\[Flight\] duplicate flight payload ignored" -Quiet -ErrorAction SilentlyContinue)
+            } |
+            Select-Object -First 1
+    }
+
+    if ($latestLog) {
+        $lines = @(Get-Content -Path $latestLog.FullName)
+        $duplicateIgnoredCount = @($lines | Where-Object { $_ -match "\[Flight\] duplicate flight payload ignored" }).Count
+        $uplinkCount = @($lines | Where-Object { $_ -match "^\[serial\] ok\b" }).Count
+        $crashCount = @($lines | Where-Object {
+            $_ -match "rst:|Guru Meditation|stack overflow|Stack canary|panic|abort\(\)|reboot"
+        }).Count
+        $gatePopupCount = @($lines | Where-Object { $_ -match "Gate Change\s*-\s*\d+" }).Count
+    }
+
+    $sourceOk = $flightPayloadDedupeSource -and $flightLogAcceptedOnly -and $navPeriodicRefreshDisabled
+    $runtimeEvidenceFound = $null -ne $latestLog
+    $runtimeOk = $runtimeEvidenceFound -and $duplicateIgnoredCount -ge 1 -and $uplinkCount -ge 5 -and $crashCount -eq 0
+
+    return [pscustomobject]@{
+        flightPayloadDedupeSource = $flightPayloadDedupeSource
+        flightLogAcceptedOnly = $flightLogAcceptedOnly
+        navPeriodicRefreshDisabled = $navPeriodicRefreshDisabled
+        sourceOk = $sourceOk
+        runtimeEvidenceFound = $runtimeEvidenceFound
+        runtimeOk = $runtimeOk
+        latestLog = if ($latestLog) { $latestLog.FullName } else { $null }
+        duplicateIgnoredCount = $duplicateIgnoredCount
+        uplinkCount = $uplinkCount
+        crashCount = $crashCount
+        gatePopupCount = $gatePopupCount
+        ok = $sourceOk -and $runtimeOk
+    }
+}
+
 function Find-SosNavigationMenuEvidence {
     param([string]$RepoRoot)
 
@@ -483,6 +550,7 @@ $beacons = Test-ExpectedBeaconRegistry -RepoRoot $repoRoot
 $smartCare = Test-VisibleSmartCareReferences -RepoRoot $repoRoot
 $buttonPolicy = Test-ButtonPolicyAndNavigationDisabled -RepoRoot $repoRoot
 $watchPopupUi = Test-WatchPopupUiSource -RepoRoot $repoRoot
+$displayRuntimeStability = Test-DisplayRuntimeStability -RepoRoot $repoRoot
 $arrivalEvidence = Find-ArrivalEvidence -RepoRoot $repoRoot
 $flightSyncEvidence = Find-FlightSyncEvidence -RepoRoot $repoRoot
 
@@ -522,6 +590,19 @@ $serialFlightSync = ($watchReport -and $watchReport.serialOutput -match "\[Fligh
 $checks += New-AuditCheck -Name "flight_information_update" -Status $(if ($flightFound -and $serialFlightSync) { "pass" } elseif ($flightFound) { "warn" } else { "fail" }) -Evidence "flightApiFound=$($latestFlight.value.found); apiGate=$($latestFlight.value.gate); serialFlightSync=$serialFlightSync" -Details ([pscustomobject]@{ latestFlight = $latestFlight.value; serialFlightSync = $serialFlightSync; flightSyncEvidence = $flightSyncEvidence })
 
 $checks += New-AuditCheck -Name "watch_popup_ui" -Status $(if ($watchPopupUi.ok -and $arrivalEvidence.found -and $flightSyncEvidence.found) { "pass" } elseif ($watchPopupUi.ok) { "warn" } else { "fail" }) -Evidence "singleRedraw=$($watchPopupUi.singlePopupRedraw); arrivalLarge=$($watchPopupUi.arrivalLarge); arrivalMs5000=$($watchPopupUi.arrivalReadableMs); flightReadable=$($watchPopupUi.flightPopupReadable); serialPopupEvidence=$($arrivalEvidence.found)" -Details ([pscustomobject]@{ source = $watchPopupUi; arrivalEvidence = $arrivalEvidence; flightSyncEvidence = $flightSyncEvidence })
+
+$displayRuntimeStatus = if ($displayRuntimeStability.ok) {
+    "pass"
+} elseif (-not $displayRuntimeStability.sourceOk -or ($displayRuntimeStability.runtimeEvidenceFound -and $displayRuntimeStability.crashCount -gt 0)) {
+    "fail"
+} else {
+    "warn"
+}
+$checks += New-AuditCheck `
+    -Name "display_runtime_stability" `
+    -Status $displayRuntimeStatus `
+    -Evidence "sourceOk=$($displayRuntimeStability.sourceOk); navPeriodicRefreshDisabled=$($displayRuntimeStability.navPeriodicRefreshDisabled); duplicateIgnored=$($displayRuntimeStability.duplicateIgnoredCount); uplinks=$($displayRuntimeStability.uplinkCount); crashes=$($displayRuntimeStability.crashCount); latestLog=$($displayRuntimeStability.latestLog)" `
+    -Details $displayRuntimeStability
 
 $targetUnhandledEvents = if ($unhandledEvents.ok -and $mysqlDeviceId) {
     @((Get-CollectionItems $unhandledEvents.value) | Where-Object { "$($_.trigger_device_id)" -eq "$mysqlDeviceId" })

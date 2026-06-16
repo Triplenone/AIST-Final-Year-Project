@@ -441,3 +441,6 @@ V.flycare.compile_upload.20260616T1434=ok COM5 ESP32-S3 MAC=48:ca:43:a4:22:98 sk
 V.flycare.flight.dedupe_runtime.20260616T1434=ok bridge log flycare-serial-bridge-20260616-143124.log GateChange=1 DuplicateIgnored=1 Reboot=0 Uplinks=13
 V.flycare.status.20260616T1434=ok latest status 6a30ee08dde90a25b65b7fa8 mysql=8 x=4.65 y=3.19 quality=medium beacons=4 fall=normal sos=false
 V.flycare.audit.20260616T1434=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T14:33:24 activeBackend=http://127.0.0.1:8001 freshnessAge=0.7min
+I.flycare.audit.display_runtime.20260616T1455=audit_flycare_goal adds display_runtime_stability source/runtime check for flight dedupe, accepted-only flight log, nav redraw throttling, and serial bridge duplicate-ignore/no-crash evidence
+V.flycare.display_runtime.20260616T1455=pass bridge log flycare-serial-bridge-20260616-145318.log DuplicateIgnored=3 Uplinks=14 Crashes=0 after COM5 90s bridge
+V.flycare.audit.20260616T1455=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T14:54:57 activeBackend=http://127.0.0.1:8001 freshnessAge=0.2min positioning=medium/beacons5 displayRuntime=pass
