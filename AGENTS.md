@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 13:17-13:24 FlyCare USB serial-to-MQTT fallback bridge
+
+- I.firmware.serial_uplink=updated `firmware/DataTransmitter.cpp` emits `FLYCARE_UPLINK <topic> <json>` for every MQTT uplink before attempting Wi-Fi MQTT, so COM5 can carry status/SOS/fall/heartbeat payloads when hotspot client isolation blocks watch-to-PC TCP.
+- I.firmware.ble_mqtt_balance=updated `firmware/firmware.ino` no longer lets MQTT reconnect starvation permanently block BLE scans; when MQTT is disconnected it only skips BLE if the last BLE scan was within 15 seconds.
+- I.bridge.serial_mqtt=added `scripts/bridge_flycare_serial.ps1` reads COM5 `FLYCARE_UPLINK` lines and republishes them to local Mosquitto from `logs/flycare-local-stack-status.json.mqttStatus`, with optional HTTP serial-ingest fallback.
+- I.backend.serial_ingest=added `/api/v1/mongo-upstream/serial-ingest` and shared `ingest_upstream_payload()` helper so a restarted backend can ingest serial bridge payloads directly; default bridge path remains USB-to-MQTT to reuse the already-running 8001 subscriber.
+- V.serial_bridge.smoke=ok `bridge_flycare_serial.ps1 -SmokeTest` published `smartwatch/ESP32_SERIAL_BRIDGE_SMOKE/status` to `192.168.0.203:1883`; existing backend 8001 subscriber wrote Mongo `_id=6a30dc44dde90a25b65b7f3d`.
+- V.firmware.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded; final sketch 1537471/3145728 bytes, RAM 55176/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.ng_wai_lun.serial_realtime=ok `bridge_flycare_serial.ps1 -SerialPort COM5 -Seconds 90` parsed/sent 12 real watch uplinks, including heartbeat; latest NG WAI LUN status `_id=6a30dddedde90a25b65b7f4f` is fresh with x=6.47, y=4.93, quality=medium, beacon_count=5, target Gate 10, SOS inactive, fall Normal.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T13:23:54 passed using active backend `http://127.0.0.1:8001`; `watch_status_freshness` age=0.2min and `positioning_arrival` quality=medium/beacons=5.
+
 ### 2026-06-16 07:06-07:09 FlyCare stack audit active backend + freshness gate
 
 - I.stack.report=updated `scripts/start_flycare_local_stack.ps1` now probes backend candidates on `8000` and `8001`, records `activeBackend`, includes `8001` in port evidence, and promotes the MQTT-connected bridge to top-level `health` / `mqttStatus` when `8000` is a stale healthy-but-MQTT-disabled listener.

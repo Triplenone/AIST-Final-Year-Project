@@ -67,6 +67,13 @@ static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
     delay(20);
 }
 
+static void emitSerialUplink(const String& topic, const String& payload) {
+    Serial.print("FLYCARE_UPLINK ");
+    Serial.print(topic);
+    Serial.print(" ");
+    Serial.println(payload);
+}
+
 DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
                                FallDetection* fall_det, BLELocation* ble_loc,
                                PowerManager* pwr)
@@ -270,6 +277,8 @@ bool DataTransmitter::publishToMQTT(const String& topic, const String& payload) 
 
 // ================ 发布到 MQTT（三个参数，带重试机制） ================
 bool DataTransmitter::publishToMQTT(const String& topic, const String& payload, bool retained) {
+    emitSerialUplink(topic, payload);
+
     bool locked = false;
     if (mqttMutex) {
         if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(8000)) != pdTRUE) {

@@ -198,6 +198,15 @@ VITE_BACKEND_BASE_URL=http://192.168.0.203:8001
 
 The frontend still defaults to the same host on `:8000` when this override is absent.
 
+If the watch is connected over USB but the current Wi-Fi/hotspot blocks watch-to-PC traffic, use the serial fallback bridge for local demo validation. Firmware emits every upstream payload as `FLYCARE_UPLINK <topic> <json>` on Serial before attempting MQTT; the bridge reads those lines from COM5 and republishes them into the local Mosquitto broker so the existing backend MQTT subscriber writes Mongo and EventLog exactly as if the watch had reached MQTT itself:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bridge_flycare_serial.ps1 -SerialPort COM5
+```
+
+For a bounded capture during verification, add `-Seconds 60`. The bridge auto-uses `logs/flycare-local-stack-status.json.mqttStatus.broker` / `port`; in the current stack that is `192.168.0.203:1883`. This is a local USB-to-MQTT fallback for blocked networks only; the normal demo path remains direct watch MQTT over `192.168.0.203:1883`. `-Transport Http` is available for direct backend serial ingest after restarting a backend that includes `/api/v1/mongo-upstream/serial-ingest`, but MQTT transport is the recommended demo fallback because it exercises the same subscriber path.
+
 When publishing JSON smoke payloads from Windows PowerShell, avoid `mosquitto_pub -m $json`; native argument parsing can strip double quotes and the broker will receive invalid JSON such as `{device_id:...}`. Pipe the complete JSON to stdin instead:
 
 ```powershell

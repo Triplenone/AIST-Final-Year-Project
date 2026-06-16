@@ -192,6 +192,86 @@ def _on_connect(client, userdata, flags, rc):
     )
 
 
+def ingest_upstream_payload(topic: str, data: dict, source: str = "mqtt") -> dict:
+    """Persist a smartwatch upstream payload from MQTT or a serial bridge."""
+    if not isinstance(data, dict):
+        data = {"payload": data}
+
+    parsed_topic = _parse_device_topic(topic)
+    if parsed_topic and parsed_topic[1] == "flight":
+        device_id_from_topic = parsed_topic[0]
+        flight_doc = enrich_flight_downlink_payload(data, device_id_from_topic)
+        mongo_result = run_sync_save_raw_upstream(flight_doc)
+        print(
+            f"[{source}] flight downlink topic={topic} device_id={device_id_from_topic} "
+            f"flight_number={flight_doc.get('flightNumber')} mongo={mongo_result}"
+        )
+        return {
+            "ok": bool(mongo_result.get("ok")),
+            "topic": topic,
+            "device_id": device_id_from_topic,
+            "data_type": "flight",
+            "mongo": mongo_result,
+            "event": {"created": False, "reason": "flight"},
+        }
+
+    if topic == FLIGHT_TOPIC:
+        data["data_type"] = "flight"
+        data.setdefault("timestamp", time.time())
+        mongo_result = run_sync_save_raw_upstream(data)
+        print(
+            f"[{source}] legacy flight topic={topic} device_id={data.get('device_id', 'MISSING')} "
+            f"data_type=flight mongo={mongo_result}"
+        )
+        return {
+            "ok": bool(mongo_result.get("ok")),
+            "topic": topic,
+            "device_id": data.get("device_id"),
+            "data_type": "flight",
+            "mongo": mongo_result,
+            "event": {"created": False, "reason": "flight"},
+        }
+
+    if parsed_topic:
+        device_id_from_topic, suffix = parsed_topic
+        mapped = settings.device_id_map.get(device_id_from_topic)
+        data["device_id"] = device_id_from_topic
+        if mapped is not None:
+            data["mysql_device_id"] = int(mapped)
+        data_type = SUFFIX_TO_DATA_TYPE.get(suffix, suffix)
+        incoming_data_type = data.get("data_type")
+        if incoming_data_type and str(incoming_data_type).strip().lower() != data_type:
+            print(
+                f"[{source}] data_type mismatch topic={topic}: "
+                f"payload={incoming_data_type} -> forced={data_type}"
+            )
+        data["data_type"] = data_type
+    else:
+        data.setdefault("device_id", "UNKNOWN")
+        data.setdefault("data_type", "status_update")
+
+    mongo_result = run_sync_save_raw_upstream(data)
+    try:
+        event_result = _create_unhandled_event_if_needed(data)
+    except Exception as e:
+        event_result = {"ok": False, "error": str(e)}
+        print(f"[{source}] event bridge failed: {e}")
+    print(
+        f"[{source}] upstream topic={topic} device_id={data.get('device_id')} "
+        f"mysql_device_id={data.get('mysql_device_id')} data_type={data.get('data_type')} "
+        f"mongo={mongo_result} event={event_result}"
+    )
+    return {
+        "ok": bool(mongo_result.get("ok")),
+        "topic": topic,
+        "device_id": data.get("device_id"),
+        "mysql_device_id": data.get("mysql_device_id"),
+        "data_type": data.get("data_type"),
+        "mongo": mongo_result,
+        "event": event_result,
+    }
+
+
 def _on_message(client, userdata, msg):
     try:
         payload_str = msg.payload.decode("utf-8")
@@ -218,6 +298,9 @@ def _on_message(client, userdata, msg):
         return
     if not isinstance(data, dict):
         data = {"payload": data}
+
+    ingest_upstream_payload(msg.topic, data, source="mqtt")
+    return
 
     parsed_topic = _parse_device_topic(msg.topic)
     if parsed_topic and parsed_topic[1] == "flight":

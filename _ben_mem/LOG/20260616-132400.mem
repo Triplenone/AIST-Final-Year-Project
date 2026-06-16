@@ -1,0 +1,8 @@
+I.flycare.firmware.serial_uplink=DataTransmitter emits FLYCARE_UPLINK topic json to Serial before MQTT publish; COM5 can carry status/SOS/fall/heartbeat when WiFi MQTT is blocked
+I.flycare.bridge.serial_mqtt=added bridge_flycare_serial.ps1; default transport republishes serial uplinks to local Mosquitto using stack mqttStatus broker/port, then existing backend subscriber writes Mongo/EventLog
+I.flycare.firmware.ble_balance=BLE scan skip while MQTT disconnected is throttled; scans can run at least every 15s so positioning is not starved by blocked MQTT
+V.flycare.compile_upload=ok ESP32-S3 COM5 MAC 48:ca:43:a4:22:98 sketch=1537471 RAM=55176
+V.flycare.bridge.smoke=ok fake serial bridge MQTT smoke inserted Mongo 6a30dc44dde90a25b65b7f3d via existing 8001 subscriber
+V.flycare.ng.realtime=ok 90s COM5 bridge parsed/sent 12 real watch uplinks; latest NG status 6a30dddedde90a25b65b7f4f fresh x=6.47 y=4.93 quality=medium beacons=5 target Gate10 sos=false fall=Normal
+V.flycare.audit=pass 2026-06-16T13:23:54 audit on activeBackend 8001; freshness pass age=0.2min and positioning_arrival pass quality=medium beacons=5
+N.flycare.demo=when Triple-None blocks watch-to-PC MQTT, run scripts/bridge_flycare_serial.ps1 -SerialPort COM5 during demo; direct MQTT remains preferred on non-isolated LAN

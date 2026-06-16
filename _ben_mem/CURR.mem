@@ -416,3 +416,9 @@ I.flycare.stack.active_backend.20260616T0709=start_flycare_local_stack probes 80
 I.flycare.audit.freshness.20260616T0709=audit_flycare_goal auto-uses activeBackend and fails completion if latest watch status server_received_at is older than FreshnessMinutes default 5
 V.flycare.stack.report.20260616T0709=ok activeBackend=http://127.0.0.1:8001 mqttConnected=true broker=192.168.0.203:1883; 8000 healthy but mqttConnected=false
 B.flycare.audit.realtime.20260616T0709=expected fail watch_status_freshness latest status age about 65.6min server_received_at=2026-06-15T22:02:30.805000+00:00
+I.flycare.firmware.serial_uplink.20260616T1324=DataTransmitter emits FLYCARE_UPLINK topic json over Serial before MQTT publish so COM5 can bridge blocked WiFi MQTT
+I.flycare.bridge.serial_mqtt.20260616T1324=bridge_flycare_serial.ps1 reads COM5 FLYCARE_UPLINK and republishes to local Mosquitto; default transport Mqtt uses stack mqttStatus broker/port
+I.flycare.firmware.ble_balance.20260616T1324=BLE scan skip while MQTT disconnected is throttled; at least one BLE scan every 15s so positioning does not starve when network blocks MQTT
+V.flycare.serial_bridge.smoke.20260616T1324=ok fake status via bridge smoke to 192.168.0.203:1883 inserted Mongo 6a30dc44dde90a25b65b7f3d through existing backend 8001 subscriber
+V.flycare.ng.serial_realtime.20260616T1324=ok COM5 bridge 90s parsed/sent 12 real uplinks; latest status 6a30dddedde90a25b65b7f4f fresh x=6.47 y=4.93 quality=medium beacons=5 target=Gate10 sos=false fall=Normal
+V.flycare.audit.20260616T1324=pass audit activeBackend=http://127.0.0.1:8001 freshness age=0.2min positioning quality=medium beacons=5

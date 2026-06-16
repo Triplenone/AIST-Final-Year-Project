@@ -838,6 +838,7 @@ void bleLocationTask(void* param) {
         Serial.println("❌ ble_location 为空！");
     }
     
+    unsigned long lastBleScanMs = 0;
     while (systemRunning) {
         vTaskDelayUntil(&lastWakeTime, locationInterval);
         
@@ -845,11 +846,13 @@ void bleLocationTask(void* param) {
         
         if (ble_location) {
             if (data_transmitter && network && network->isConnected() &&
-                !data_transmitter->isMQTTConnected()) {
+                !data_transmitter->isMQTTConnected() &&
+                millis() - lastBleScanMs < 15000) {
                 data_transmitter->setBLEScanning(false);
                 Serial.println("[BLE] skipped: MQTT reconnect pending");
                 continue;
             }
+            lastBleScanMs = millis();
             if (data_transmitter) data_transmitter->setBLEScanning(true);
             ble_location->startScan();
             ble_location->stopScan();

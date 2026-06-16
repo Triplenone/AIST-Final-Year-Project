@@ -1,5 +1,6 @@
 """MongoDB raw upstream query routes."""
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -254,6 +255,30 @@ async def seed_one_document(data: Dict[str, Any]):
         "status": "ok",
         "message": "Inserted one raw upstream document. Query it via /latest or /.",
     }
+
+
+@router.post("/serial-ingest", response_model=Dict[str, Any])
+async def ingest_serial_bridge_document(data: Dict[str, Any]):
+    """Ingest a smartwatch upstream line captured from USB serial fallback."""
+    topic = str(data.get("topic") or "").strip()
+    payload = data.get("payload")
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"payload is not valid JSON: {exc}") from exc
+    if not topic:
+        raise HTTPException(status_code=400, detail="topic is required")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="payload must be a JSON object")
+
+    from app.services.mqtt_subscriber import ingest_upstream_payload
+
+    try:
+        result = ingest_upstream_payload(topic, payload, source="serial")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"serial ingest failed: {exc}") from exc
+    return {"status": "ok", **result}
 
 
 @router.get("/", response_model=Dict[str, Any])
