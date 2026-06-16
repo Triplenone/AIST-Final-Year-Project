@@ -27,6 +27,13 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 00:55-00:59 FlyCare final freeze PWR polarity audit
+
+- V.git.pwr_audit=ok branch `Flycare`, HEAD `599c641401b3c59fe43913962a72de960b81ee3f`, `origin/Flycare...HEAD=0/0`; only the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs were present before this note.
+- B.pwr.runtime=blocked live bridge `logs/flycare-serial-bridge-live-20260616-234509.log` was still receiving uplinks at 2026-06-17 00:55:35 but still had no `[Button] PWR...`, `screen off`, or `screen on` evidence.
+- B.pwr.source_ambiguity=found `firmware/pin_config.h` documents `PWR_BUTTON_PIN 45` as high-active and `firmware/ButtonManager.h` checks PWR press on `HIGH`, while the active `firmware/firmware.ino` `buttonTask` checks PWR press on `LOW`; the downloaded ISS source has the same mixed history, so changing polarity without hardware sampling is risky.
+- N.pwr.next=do not mark final demo complete until a human observes PWR short-press screen-off and long-press screen toggle, or a bounded serial/pin diagnostic proves the physical PWR edge on this watch. Direct firmware polarity changes are deferred during final freeze unless explicitly accepted as a bug fix and re-uploaded to COM5.
+
 ### 2026-06-17 00:50-00:52 FlyCare final freeze PWR blocker recheck
 
 - V.git.recheck=ok branch `Flycare`, HEAD `8c3016c87a620b95ad78f5919d707c97023685ab`, `origin/Flycare...HEAD=0/0`; only the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs were present before this note.
