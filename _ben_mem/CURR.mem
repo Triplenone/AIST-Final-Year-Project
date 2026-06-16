@@ -435,3 +435,9 @@ V.flycare.compile_upload.20260616T1421=ok final COM5 upload MAC=48:ca:43:a4:22:9
 V.flycare.status_normal.20260616T1421=ok latest status 6a30eafddde90a25b65b7f9a mysql=8 x=5.72 y=3.95 quality=high beacons=5 fall=normal sos=false
 V.flycare.simfall.final.20260616T1421=ok bridge log flycare-serial-bridge-20260616-141919.log parsed=6 sent=6 downlinks=1; latest fall 6a30eaf1dde90a25b65b7f97 event=312 resolved
 V.flycare.audit.20260616T1421=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T14:20:45 activeBackend=http://127.0.0.1:8001 freshnessAge=1.1min
+I.flycare.flight.dedupe.20260616T1434=FlightInfoManager hashes last accepted flight JSON and ignores identical retained payloads to stop repeat Gate Change popups on MQTT reconnect/serial fallback repeats
+I.flycare.display.nav_redraw.20260616T1434=SimpleDisplayManager nav/map page no longer uses fixed periodic full-screen refresh; redraw is driven by meaningful movement or explicit UI changes
+V.flycare.compile_upload.20260616T1434=ok COM5 ESP32-S3 MAC=48:ca:43:a4:22:98 sketch=1538623/3145728 RAM=55176/327680
+V.flycare.flight.dedupe_runtime.20260616T1434=ok bridge log flycare-serial-bridge-20260616-143124.log GateChange=1 DuplicateIgnored=1 Reboot=0 Uplinks=13
+V.flycare.status.20260616T1434=ok latest status 6a30ee08dde90a25b65b7fa8 mysql=8 x=4.65 y=3.19 quality=medium beacons=4 fall=normal sos=false
+V.flycare.audit.20260616T1434=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T14:33:24 activeBackend=http://127.0.0.1:8001 freshnessAge=0.7min

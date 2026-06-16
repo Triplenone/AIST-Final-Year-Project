@@ -74,7 +74,7 @@ Default local FlyCare flight downlink topic:
 smartwatch/{device_id}/flight
 ```
 
-FlyCare flight downlinks are published with QoS 1 and the retained flag so a watch that briefly disconnects during Wi-Fi scanning or MQTT fallback receives the latest flight update after it re-subscribes to `smartwatch/<device_id>/#`.
+FlyCare flight downlinks are published with QoS 1 and the retained flag so a watch that briefly disconnects during Wi-Fi scanning or MQTT fallback receives the latest flight update after it re-subscribes to `smartwatch/<device_id>/#`. Firmware ignores identical retained flight payloads after the first successful parse, preventing MQTT reconnects from repeatedly reopening the same Gate Change popup.
 
 For local Windows demos with a real ESP32 on Wi-Fi, Mosquitto must listen on the PC LAN interface, not only `127.0.0.1`. Use `infra/mosquitto/local-windows.conf` when starting Mosquitto locally:
 
@@ -198,7 +198,7 @@ VITE_BACKEND_BASE_URL=http://192.168.0.203:8001
 
 The frontend still defaults to the same host on `:8000` when this override is absent.
 
-If the watch is connected over USB but the current Wi-Fi/hotspot blocks watch-to-PC traffic, use the serial fallback bridge for local demo validation. Firmware emits every upstream payload as `FLYCARE_UPLINK <topic> <json>` on Serial before attempting MQTT; the bridge reads those lines from COM5 and republishes them into the local Mosquitto broker so the existing backend MQTT subscriber writes Mongo and EventLog exactly as if the watch had reached MQTT itself. The bridge is bidirectional for flight updates: it also polls retained `smartwatch/+/flight` MQTT downlinks, de-duplicates each topic and identical alias payload, and writes `FLYCARE_DOWNLINK <topic> <json>` back to the watch over USB. Firmware handles that serial downlink through `FlightInfoManager`, so Gate Change popups still work when hotspot isolation blocks direct watch MQTT.
+If the watch is connected over USB but the current Wi-Fi/hotspot blocks watch-to-PC traffic, use the serial fallback bridge for local demo validation. Firmware emits every upstream payload as `FLYCARE_UPLINK <topic> <json>` on Serial before attempting MQTT; the bridge reads those lines from COM5 and republishes them into the local Mosquitto broker so the existing backend MQTT subscriber writes Mongo and EventLog exactly as if the watch had reached MQTT itself. The bridge is bidirectional for flight updates: it also polls retained `smartwatch/+/flight` MQTT downlinks, de-duplicates each topic and identical alias payload, and writes `FLYCARE_DOWNLINK <topic> <json>` back to the watch over USB. Firmware handles that serial downlink through `FlightInfoManager`, which also ignores identical retained flight payloads, so Gate Change popups still work when hotspot isolation blocks direct watch MQTT without flickering from repeat messages.
 
 ```powershell
 cd E:\flycare

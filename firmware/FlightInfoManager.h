@@ -50,6 +50,8 @@ private:
     
     unsigned long last_update_time;
     const unsigned long UPDATE_COOLDOWN = 3000;
+    bool has_last_payload_hash;
+    uint32_t last_payload_hash;
 public:
     FlightInfoManager();
     

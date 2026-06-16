@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 14:24-14:34 FlyCare display flicker reduction + retained flight dedupe
+
+- I.firmware.flight_dedupe=updated `firmware/FlightInfoManager.cpp/.h` to hash the last successfully parsed flight JSON and ignore identical retained payloads, so MQTT reconnects or serial fallback repeats do not reopen the same Gate Change popup.
+- I.firmware.flight_log=updated `firmware/DataTransmitter.cpp` so `Flight info updated` is logged only when `FlightInfoManager::parseFlightInfo()` accepts a non-duplicate payload.
+- I.firmware.nav_redraw=updated `firmware/SimpleDisplayManager.cpp` so the navigation/map page no longer does fixed periodic full-screen refreshes; it redraws from meaningful movement or explicit UI state changes.
+- V.firmware.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded; final sketch 1538623/3145728 bytes, RAM 55176/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.flight.dedupe_runtime=ok 90s uplink-only COM5 bridge log `logs/flycare-serial-bridge-20260616-143124.log` captured one initial Gate Change popup, then a second identical retained `smartwatch/ESP32_48CA43A42298/flight` payload was ignored with `[Flight] duplicate flight payload ignored`; no reboot, panic, or stack overflow was observed and 13 uplinks were bridged.
+- V.positioning_after_upload=ok latest status `_id=6a30ee08dde90a25b65b7fa8` is fresh with x=4.65, y=3.19, quality=medium, beacon_count=4, fall normal, SOS inactive.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T14:33:24 using active backend `http://127.0.0.1:8001`; local stack, freshness, positioning, flight update, popup UI, SOS state, button policy, and historical HR/SpO2 checks passed.
+
 ### 2026-06-16 14:08-14:21 FlyCare fall source parity + SIMFALL serial smoke
 
 - I.firmware.fall_source=updated `firmware/Config.h` to keep fall detection enabled and align `IMPACT_THRESHOLD=1` with the ISS source logic from `D:\Download\SmartWatch_Project_S3R8_ISS_20260614163130`; deeper false-positive tuning is intentionally deferred.

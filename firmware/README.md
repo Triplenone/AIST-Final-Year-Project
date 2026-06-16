@@ -170,7 +170,7 @@ Manual destination selection and the on-watch navigation menu are disabled for t
 
 The destination picker fits labels by available pixel width rather than raw string length, so `Security Check` stays the same large size as the other standard destinations while longer labels still shrink safely when needed.
 
-Map display layout is intentionally bounded for the 240x310 active watch surface: the lower half uses a fixed left route card and a fixed right destination card, distance text has its own narrow column, and long places are compacted or split (`Customer Services` -> `Customer` / `Svc`, `Security Check` -> `Security` / `Check`) instead of overflowing. BLE jitter redraws are throttled so the map does not repaint on tiny RSSI-driven movement. `NAV_DISPLAY_INTERVAL` is 4 seconds, with immediate redraw only when position movement is meaningful.
+Map display layout is intentionally bounded for the 240x310 active watch surface: the lower half uses a fixed left route card and a fixed right destination card, distance text has its own narrow column, and long places are compacted or split (`Customer Services` -> `Customer` / `Svc`, `Security Check` -> `Security` / `Check`) instead of overflowing. BLE jitter redraws are throttled so the map does not repaint on tiny RSSI-driven movement. The navigation/map page is event-driven: it redraws for meaningful position movement or explicit UI changes, not from a fixed periodic full-screen refresh.
 
 Flight JSON updates are connected to `FlightInfoManager`. When `boarding_gate` maps to a known destination, the watch stores that gate as the arrival target without opening the manual navigation route UI:
 
@@ -191,7 +191,7 @@ Arrival popup uses the large dedicated `ARRIVED` layout, auto-closes after 5 sec
 
 Flight display layout uses fixed destination/gate columns, a top status bar that stays above the flight title, and a bounded delay panel kept above the rounded bottom edge. Long airline, destination, gate, and delay reason text is fitted or wrapped inside its panel rather than drawing into the next column or off the bottom edge.
 
-When a backend update is explicitly a gate-change notice (`gate_changed=true` and a `delay_reason` such as `Gate Change to 10`), the firmware keeps the large simplified Gate Change popup and suppresses the extra verbose delay popup.
+When a backend update is explicitly a gate-change notice (`gate_changed=true` and a `delay_reason` such as `Gate Change to 10`), the firmware keeps the large simplified Gate Change popup and suppresses the extra verbose delay popup. Identical retained flight payloads are ignored by `FlightInfoManager`, so MQTT reconnects or USB serial downlink fallback do not repeatedly reopen the same Gate Change popup.
 
 Alert sounds are queued before or alongside TTS for SOS, gate change, delay, boarding, final call, cancellation, on-time updates, and arrival. Missing alert sound files are logged and the firmware safely continues with TTS.
 

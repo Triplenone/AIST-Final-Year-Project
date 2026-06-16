@@ -34,9 +34,18 @@ static String formatGateChangeDestination(const String& gate) {
     return normalized.length() > 0 ? normalized : gate;
 }
 
+static uint32_t hashFlightPayload(const String& payload) {
+    uint32_t hash = 2166136261UL;
+    for (size_t i = 0; i < payload.length(); i++) {
+        hash ^= (uint8_t)payload[i];
+        hash *= 16777619UL;
+    }
+    return hash;
+}
+
 FlightInfoManager::FlightInfoManager() 
     : flight_info_received(false), last_display_time(0), display_interval(30000),
-      last_update_time(0) {
+      last_update_time(0), has_last_payload_hash(false), last_payload_hash(0) {
     current_flight.valid = false;
     current_flight.delay_minutes = 0;
     current_flight.gate_changed = false;
@@ -54,6 +63,12 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     // 检查命令类型
     String commandType = doc["command_type"] | "";
     if (commandType != "flight_info" && !doc.containsKey("flight_info")) {
+        return false;
+    }
+
+    uint32_t payloadHash = hashFlightPayload(json);
+    if (has_last_payload_hash && payloadHash == last_payload_hash) {
+        Serial.println("[Flight] duplicate flight payload ignored");
         return false;
     }
     
@@ -95,6 +110,8 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     current_flight.valid = true;
     current_flight.last_update = millis();
     flight_info_received = true;
+    last_payload_hash = payloadHash;
+    has_last_payload_hash = true;
     
     Serial.println("\n========== 航班信息更新 ==========");
     Serial.printf("航班号: %s\n", current_flight.flight_number.c_str());

@@ -492,7 +492,7 @@ void SimpleDisplayManager::update() {
         default: break;
     }
     
-    if (!needRefresh && (now - lastPageRenderTime >= refreshInterval)) {
+    if (!needRefresh && currentPage != PAGE_NAV && (now - lastPageRenderTime >= refreshInterval)) {
         needRefresh = true;
     }
     

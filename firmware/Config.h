@@ -133,7 +133,7 @@
 
 // ?頛?鞊?????賹?????謅???察???
 #define HOME_DISPLAY_INTERVAL 10000   // 10??
-#define NAV_DISPLAY_INTERVAL 4000     // 4?? BLE jitter redraws still update sooner when movement is meaningful
+#define NAV_DISPLAY_INTERVAL 4000     // reserved fallback; nav page redraw is event-driven to avoid map flicker
 #define FLIGHT_DISPLAY_INTERVAL 10000 // 10??
 
 #endif

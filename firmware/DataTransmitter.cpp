@@ -439,8 +439,9 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
     }
     else if (topic.endsWith("/flight")) {
         if (flight_manager) {
-            flight_manager->parseFlightInfo(payload);
-            addLog("info", "Flight info updated");
+            if (flight_manager->parseFlightInfo(payload)) {
+                addLog("info", "Flight info updated");
+            }
         }
     }
     else if (topic.endsWith("/voice")) {

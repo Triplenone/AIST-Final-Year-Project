@@ -1,0 +1,6 @@
+I.flycare.flight.dedupe=FlightInfoManager hashes the last accepted flight JSON and ignores identical retained payloads, preventing repeat Gate Change popups after MQTT reconnects or serial fallback repeats
+I.flycare.display.nav_redraw=SimpleDisplayManager navigation/map page is event-driven; no fixed periodic full-screen refresh when position/UI state has not changed
+V.flycare.compile_upload=ok COM5 ESP32-S3 MAC 48:ca:43:a4:22:98 sketch=1538623/3145728 RAM=55176/327680
+V.flycare.serial_observe=ok logs/flycare-serial-bridge-20260616-143124.log over 90s: GateChange=1 DuplicateIgnored=1 Reboot=0 Uplinks=13
+V.flycare.status=ok latest status Mongo=6a30ee08dde90a25b65b7fa8 device=ESP32_48CA43A42298 mysql=8 x=4.65 y=3.19 quality=medium beacons=4 fall=normal sos=false
+V.flycare.audit=pass logs/flycare-goal-audit.md timestamp=2026-06-16T14:33:24 activeBackend=http://127.0.0.1:8001 freshnessAge=0.7min
