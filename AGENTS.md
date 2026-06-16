@@ -27,6 +27,14 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 00:50-00:52 FlyCare final freeze PWR blocker recheck
+
+- V.git.recheck=ok branch `Flycare`, HEAD `8c3016c87a620b95ad78f5919d707c97023685ab`, `origin/Flycare...HEAD=0/0`; only the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs were present before this note.
+- V.audit.recheck=warn `scripts/audit_flycare_goal.ps1` at 2026-06-17T00:50:52 using active backend `http://127.0.0.1:8001`; freshness age=0.0min, positioning high/5 beacons, flight serial sync, SOS inactive, physical `ButtonLong` evidence pass, fall path pass, but `display_runtime_stability` still warns with `gatePopups=3`, `duplicateIgnored=2`, `uplinks=533`, `crashes=0`.
+- V.pwr.source=ok active `firmware/firmware.ino` `buttonTask` maps SOS short press to page switch, SOS long press to `toggleSOSAlert("ButtonLong")`, PWR short press to `display->sleepScreen()`, and PWR long press to screen off/on toggle; audit `button_policy_navigation_disabled` passes and confirms no destination picker in the active button task.
+- P.pwr.runtime=partial live bridge `logs/flycare-serial-bridge-live-20260616-234509.log` was still receiving status uplinks at 2026-06-17 00:50:50 and still had no `PWR`/screen-off serial evidence; physical screen-off remains a human visual confirmation gap.
+- D.docs.final_freeze=updated `docs/FLYCARE_MQTT.md` troubleshooting notes to remove stale destination-picker/PWR guidance and align the runbook with final freeze behavior: PWR short press screen-off, PWR long press screen toggle, and no SOS/PWR route selection.
+
 ### 2026-06-17 00:46-00:49 FlyCare final freeze SOS evidence closeout
 
 - V.git.current=ok branch `Flycare`, HEAD `ed69072198fad7d924be0ff9e6711611f2d8512a`, upstream `origin/Flycare`, `origin/Flycare...HEAD=0/0`; working tree only had the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs before this note.
