@@ -266,7 +266,7 @@ function Poll-MqttDownlink {
         if ($hadNativePreference) {
             $script:PSNativeCommandUseErrorActionPreference = $false
         }
-        $output = & $Mqtt.sub -h $Mqtt.host -p $Mqtt.port -q 1 -t $TopicFilter -C 20 -W 1 -F "%t %p" 2>$null
+        $output = & $Mqtt.sub -h $Mqtt.host -p $Mqtt.port -q 1 -t $TopicFilter -C 1 -W 1 -F "%t %p" 2>$null
         $exitCode = $LASTEXITCODE
     } catch {
         Write-Warning "mosquitto_sub failed: $($_.Exception.Message)"

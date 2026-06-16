@@ -2,7 +2,10 @@ param(
     [switch]$Elevate,
     [switch]$NoPause,
     [switch]$RestartApps,
-    [switch]$RestartMqtt
+    [switch]$RestartMqtt,
+    [switch]$StartSerialBridge,
+    [switch]$RestartSerialBridge,
+    [string]$SerialPort = "COM5"
 )
 
 $ErrorActionPreference = "Stop"
@@ -273,6 +276,123 @@ function Start-MinimizedConsoleProcess {
     return $process.Id
 }
 
+function Get-SerialBridgeStatePath {
+    param([string]$RepoRoot)
+    return (Join-Path $RepoRoot "logs\flycare-serial-bridge-process.json")
+}
+
+function Get-SerialBridgeState {
+    param([string]$RepoRoot)
+
+    $statePath = Get-SerialBridgeStatePath -RepoRoot $RepoRoot
+    if (-not (Test-Path $statePath)) {
+        return $null
+    }
+
+    try {
+        return Get-Content -Path $statePath -Raw | ConvertFrom-Json
+    } catch {
+        Write-Warning "Could not read serial bridge state ${statePath}: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Get-SerialBridgeProcesses {
+    param([string]$RepoRoot)
+
+    $processes = @()
+    $state = Get-SerialBridgeState -RepoRoot $RepoRoot
+    if ($state -and $state.processId) {
+        try {
+            $process = Get-Process -Id ([int]$state.processId) -ErrorAction Stop
+            $processes += [pscustomobject]@{
+                ProcessId = $process.Id
+                CommandLine = "pid-file"
+                LogPath = $state.logPath
+                StdoutLog = $state.stdoutLog
+                StderrLog = $state.stderrLog
+                Source = "pid-file"
+            }
+        } catch {
+            Write-Warning "Serial bridge pid-file process $($state.processId) is not running."
+        }
+    }
+
+    $bridgeScript = Join-Path $RepoRoot "scripts\bridge_flycare_serial.ps1"
+    try {
+        $processes += @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+            $_.CommandLine -and
+            $_.CommandLine -match [regex]::Escape("bridge_flycare_serial.ps1") -and
+            $_.CommandLine -match [regex]::Escape($bridgeScript)
+        } | Select-Object ProcessId, CommandLine, @{Name = "LogPath"; Expression = { $null } }, @{Name = "StdoutLog"; Expression = { $null } }, @{Name = "StderrLog"; Expression = { $null } }, @{Name = "Source"; Expression = { "cim" } })
+    } catch {
+        Write-Warning "Could not inspect serial bridge processes: $($_.Exception.Message)"
+    }
+
+    return @($processes | Sort-Object ProcessId -Unique)
+}
+
+function Stop-SerialBridgeProcesses {
+    param([string]$RepoRoot)
+
+    foreach ($processInfo in (Get-SerialBridgeProcesses -RepoRoot $RepoRoot)) {
+        try {
+            Write-Warning "Stopping serial bridge PID $($processInfo.ProcessId)."
+            $taskkillOutput = & taskkill.exe /PID $processInfo.ProcessId /T /F 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                throw "taskkill failed: $taskkillOutput"
+            }
+        } catch {
+            Write-Warning "Could not stop serial bridge PID $($processInfo.ProcessId): $($_.Exception.Message)"
+            try {
+                Stop-Process -Id $processInfo.ProcessId -Force -ErrorAction Stop
+                Write-Warning "Stopped serial bridge PID $($processInfo.ProcessId) with Stop-Process fallback."
+            } catch {
+                Write-Warning "Stop-Process fallback errored for serial bridge PID $($processInfo.ProcessId): $($_.Exception.Message)"
+            }
+        }
+    }
+
+    $statePath = Get-SerialBridgeStatePath -RepoRoot $RepoRoot
+    if (Test-Path $statePath) {
+        Remove-Item -LiteralPath $statePath -Force
+    }
+}
+
+function Start-SerialBridgeProcess {
+    param(
+        [string]$RepoRoot,
+        [string]$SerialPort,
+        [string]$LogPath
+    )
+
+    $bridgeScript = Join-Path $RepoRoot "scripts\bridge_flycare_serial.ps1"
+    $stdoutLog = "$LogPath.stdout.log"
+    $stderrLog = "$LogPath.stderr.log"
+    $command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$bridgeScript`" -SerialPort $SerialPort -LogPath `"$LogPath`" > `"$stdoutLog`" 2> `"$stderrLog`""
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = "cmd.exe"
+    $startInfo.Arguments = "/s /c `"$command`""
+    $startInfo.WorkingDirectory = $RepoRoot
+    $startInfo.UseShellExecute = $true
+    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+
+    $state = [ordered]@{
+        processId = $process.Id
+        serialPort = $SerialPort
+        logPath = $LogPath
+        stdoutLog = $stdoutLog
+        stderrLog = $stderrLog
+        startedAt = (Get-Date).ToString("s")
+    }
+    $statePath = Get-SerialBridgeStatePath -RepoRoot $RepoRoot
+    $state | ConvertTo-Json -Depth 4 | Set-Content -Path $statePath -Encoding UTF8
+    return [pscustomobject]$state
+}
+
 function Start-ServiceIfPresent {
     param([string[]]$Names)
     foreach ($name in $Names) {
@@ -331,6 +451,16 @@ if ($Elevate -and -not (Test-IsAdmin)) {
     if ($RestartMqtt) {
         $args += "-RestartMqtt"
     }
+    if ($StartSerialBridge) {
+        $args += "-StartSerialBridge"
+    }
+    if ($RestartSerialBridge) {
+        $args += "-RestartSerialBridge"
+    }
+    if ($SerialPort) {
+        $args += "-SerialPort"
+        $args += $SerialPort
+    }
     Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs
     Write-Host "Requested elevated PowerShell. Accept the UAC prompt, then read logs/flycare-local-stack-status.json."
     return
@@ -350,6 +480,11 @@ if ($RestartMqtt) {
 
 if ($RestartApps) {
     Stop-PortListeners -Ports @(8000, 5173) -Reason "RestartApps"
+}
+
+if ($RestartSerialBridge) {
+    Stop-SerialBridgeProcesses -RepoRoot $repoRoot
+    Start-Sleep -Seconds 1
 }
 
 $startedServices = [ordered]@{}
@@ -405,6 +540,48 @@ if (Test-PortListen -Port 5173) {
         -WorkingDirectory $frontendRoot | Out-Null
 }
 
+$serialBridge = [ordered]@{
+    requested = [bool]($StartSerialBridge -or $RestartSerialBridge)
+    serialPort = $SerialPort
+    running = $false
+    pids = @()
+    startedPid = $null
+    logPath = $null
+    stdoutLog = $null
+    stderrLog = $null
+}
+if ($StartSerialBridge -or $RestartSerialBridge) {
+    $existingBridge = @(Get-SerialBridgeProcesses -RepoRoot $repoRoot)
+    if ($existingBridge.Count -eq 0) {
+        $bridgeLogPath = Join-Path $logRoot ("flycare-serial-bridge-live-{0}.log" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+        Write-Host "Starting serial bridge on $SerialPort"
+        $startedBridge = Start-SerialBridgeProcess -RepoRoot $repoRoot -SerialPort $SerialPort -LogPath $bridgeLogPath
+        Start-Sleep -Seconds 2
+        $serialBridge["startedPid"] = $startedBridge.processId
+        $serialBridge["logPath"] = $startedBridge.logPath
+        $serialBridge["stdoutLog"] = $startedBridge.stdoutLog
+        $serialBridge["stderrLog"] = $startedBridge.stderrLog
+    } else {
+        Write-Host "Serial bridge already running: $(@($existingBridge | Select-Object -ExpandProperty ProcessId) -join ', ')"
+    }
+
+    $bridgeProcesses = @(Get-SerialBridgeProcesses -RepoRoot $repoRoot)
+    $serialBridge["running"] = $bridgeProcesses.Count -gt 0
+    $serialBridge["pids"] = @($bridgeProcesses | Select-Object -ExpandProperty ProcessId)
+    $firstBridge = $bridgeProcesses | Select-Object -First 1
+    if ($firstBridge) {
+        if (-not $serialBridge["logPath"]) {
+            $serialBridge["logPath"] = if ($firstBridge.LogPath) { $firstBridge.LogPath } else { "existing" }
+        }
+        if (-not $serialBridge["stdoutLog"] -and $firstBridge.StdoutLog) {
+            $serialBridge["stdoutLog"] = $firstBridge.StdoutLog
+        }
+        if (-not $serialBridge["stderrLog"] -and $firstBridge.StderrLog) {
+            $serialBridge["stderrLog"] = $firstBridge.StderrLog
+        }
+    }
+}
+
 Start-Sleep -Seconds 3
 
 $backendCandidates = @()
@@ -446,6 +623,7 @@ $status = [pscustomobject]@{
     backendCandidates = $backendCandidates
     health = $health
     mqttStatus = $mqttStatus
+    serialBridge = [pscustomobject]$serialBridge
 }
 
 $statusPath = Join-Path $logRoot "flycare-local-stack-status.json"

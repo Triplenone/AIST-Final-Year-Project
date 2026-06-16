@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 19:58-20:20 FlyCare persistent COM5 serial bridge + live dashboard pass
+
+- I.stack.serial_launcher=updated `scripts/start_flycare_local_stack.ps1` with `-StartSerialBridge`, `-RestartSerialBridge`, `-SerialPort`, and `logs/flycare-serial-bridge-process.json` PID tracking so local stack status records COM5 bridge PID/log evidence.
+- I.bridge.downlink_poll=updated `scripts/bridge_flycare_serial.ps1` to poll one retained/new `smartwatch/+/flight` payload per cycle instead of waiting for a 20-message batch; this prevents flight downlink polling from starving serial status reads.
+- I.audit.live_runtime=updated `scripts/audit_flycare_goal.ps1` so live bridge logs without a stop line use `LastWriteTime - bridge start` for runtime duration.
+- D.serial.launcher=updated `docs/FLYCARE_MQTT.md` with launcher serial bridge usage and the elevated/non-sandbox requirement for persistent COM5 demo bridges.
+- V.stack.serial_live=ok non-sandbox launcher started COM5 bridge from `logs/flycare-local-stack-status.json` with `activeBackend=http://127.0.0.1:8001`, MQTT `192.168.0.203:1883`, and live log `logs/flycare-serial-bridge-live-20260616-195844.log`.
+- V.dashboard.live=ok browser `/flycare` shows NG WAI LUN Online/Live, Customer Services, CX910, Gate 10, `Gate Change to 10`, no loading state for selected passenger; stale labels are only other passengers.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T20:20:25; freshness age=0.2min, display runtime uplinks=185/crashes=0, watch runtime duration=1289.8s/invalidUplinks=0, fall/SOS/button policy all pass.
+
 ### 2026-06-16 17:18-17:21 FlyCare semantic flight dedupe + fall audit pass
 
 - I.flight.semantic_dedupe=updated `firmware/FlightInfoManager.cpp` to hash a parsed flight signature rather than raw JSON, so canonical/alias retained downlinks with different spacing or transport paths are treated as the same flight update and repeated MQTT alias payloads are ignored.

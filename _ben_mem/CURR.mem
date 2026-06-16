@@ -457,3 +457,9 @@ V.flycare.compile_upload.20260616T1721=ok COM5 ESP32-S3 MAC=48:ca:43:a4:22:98 sk
 V.flycare.serial_runtime.20260616T1721=ok bridge log flycare-serial-bridge-20260616-171610.log 120s parsed=17 sent=17 downlinks=1 invalidUplinks=0 crashes=0 duplicateIgnored=1
 V.flycare.simfall.20260616T1721=ok bridge log flycare-serial-bridge-20260616-171853.log parsed=11 sent=11 event=314 false_alarm latest fall=6a311507dde90a25b65b804f latest status=6a311543dde90a25b65b8057 fall normal
 V.flycare.audit.20260616T1721=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T17:20:54 activeBackend=http://127.0.0.1:8001 freshnessAge=0.9min displayRuntime=pass watchRuntime=pass fallDetection=pass
+I.flycare.stack.serial_launcher.20260616T2020=start_flycare_local_stack.ps1 supports -StartSerialBridge/-RestartSerialBridge/-SerialPort and records logs/flycare-serial-bridge-process.json plus serialBridge pid/log fields in flycare-local-stack-status.json
+I.flycare.bridge.downlink_poll.20260616T2020=bridge_flycare_serial.ps1 polls one retained/new smartwatch/+/flight payload per cycle so mosquitto_sub downlink polling does not block COM5 status uplinks
+I.flycare.audit.live_runtime.20260616T2020=audit_flycare_goal.ps1 uses latest live bridge log LastWriteTime minus bridge start when no bridge stop line exists
+V.flycare.stack.serial_live.20260616T2020=ok non-sandbox launcher kept COM5 bridge alive; activeBackend=http://127.0.0.1:8001 mqtt=192.168.0.203:1883 log=logs/flycare-serial-bridge-live-20260616-195844.log
+V.flycare.browser.20260616T2020=ok /flycare shows NG WAI LUN Online/Live, Customer Services, CX910 Gate 10, Gate Change to 10; stale labels only other passengers
+V.flycare.audit.20260616T2020=pass overall=pass freshnessAge=0.2min displayRuntime uplinks=185 crashes=0 watchRuntime duration=1289.8s invalidUplinks=0 fall/SOS/buttons pass

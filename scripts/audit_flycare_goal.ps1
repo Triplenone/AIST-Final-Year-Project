@@ -533,11 +533,15 @@ function Test-WatchRuntimeStability {
         $startMatch = [regex]::Match($lines[0], "^\[(?<ts>[^\]]+)\]\s+bridge start")
         $stopLine = @($lines | Where-Object { $_ -match "bridge stop" } | Select-Object -Last 1)
         $stopMatch = if ($stopLine.Count -gt 0) { [regex]::Match($stopLine[0], "^\[(?<ts>[^\]]+)\]\s+bridge stop") } else { $null }
-        if ($startMatch.Success -and $stopMatch -and $stopMatch.Success) {
+        if ($startMatch.Success) {
             try {
-                $startTime = [DateTimeOffset]::Parse($startMatch.Groups["ts"].Value, [System.Globalization.CultureInfo]::InvariantCulture)
-                $stopTime = [DateTimeOffset]::Parse($stopMatch.Groups["ts"].Value, [System.Globalization.CultureInfo]::InvariantCulture)
-                $durationSeconds = ($stopTime - $startTime).TotalSeconds
+                $startTime = [DateTime]::Parse($startMatch.Groups["ts"].Value, [System.Globalization.CultureInfo]::InvariantCulture)
+                $endTime = if ($stopMatch -and $stopMatch.Success) {
+                    [DateTime]::Parse($stopMatch.Groups["ts"].Value, [System.Globalization.CultureInfo]::InvariantCulture)
+                } else {
+                    $latestLog.LastWriteTime
+                }
+                $durationSeconds = ($endTime - $startTime).TotalSeconds
             } catch {
                 $durationSeconds = $null
             }

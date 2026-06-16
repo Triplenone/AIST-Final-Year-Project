@@ -179,6 +179,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_loca
 
 `-RestartMqtt` stops the listener on `1883` before starting Mosquitto with `infra/mosquitto/local-windows.conf`. This is required when the Windows Mosquitto service is listening only on `127.0.0.1:1883`; the watch cannot reach that localhost-only broker. `-RestartApps` stops listeners on `8000` and `5173` before starting backend and frontend again.
 
+For a COM5 watch on a network that blocks watch-to-PC MQTT, the launcher can also start the USB serial bridge and include its PID/log evidence in `logs/flycare-local-stack-status.json`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate -StartSerialBridge -SerialPort COM5
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate -RestartSerialBridge -SerialPort COM5
+```
+
+`-RestartSerialBridge` stops the previously recorded bridge PID from `logs/flycare-serial-bridge-process.json`, then starts a new minimized console process and records `serialBridge.running`, `pids`, `logPath`, `stdoutLog`, and `stderrLog`. In Codex's restricted shell, a background serial bridge may be cleaned up when the command exits; use an elevated/non-sandbox PowerShell for a persistent demo bridge. The bridge log is the runtime proof for live dashboard freshness.
+
 If a Windows/sandbox ghost listener keeps `8000` occupied but cannot be killed, run a temporary backend bridge on `8001` from an Administrator PowerShell so MQTT still writes Mongo while the dashboard continues reading through `8000`:
 
 ```powershell
@@ -206,6 +215,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bridge_flycare_ser
 ```
 
 For a bounded capture during verification, add `-Seconds 60`. The bridge auto-uses `logs/flycare-local-stack-status.json.mqttStatus.broker` / `port`; in the current stack that is `192.168.0.203:1883`. This is a local USB-to-MQTT fallback for blocked networks only; the normal demo path remains direct watch MQTT over `192.168.0.203:1883`. `-Transport Http` is available for direct backend serial ingest after restarting a backend that includes `/api/v1/mongo-upstream/serial-ingest`, but MQTT transport is the recommended demo fallback because it exercises the same subscriber path. Use `-DisableDownlink` only when you need uplink-only serial capture; otherwise leave downlink enabled so Admin Gate Change reaches the connected watch. For the simplified gate-change demo, publish `delay_reason="Gate Change to 10"` and `gate_changed=true`; firmware suppresses the extra long delay popup and keeps the visible watch notification as the large `Gate Change` popup.
+
+The downlink poll intentionally consumes one retained/new flight message per poll. This keeps `mosquitto_sub` from blocking serial reads while still delivering the retained Gate Change payload; repeated alias payloads are de-duplicated by payload and topic.
 
 For one-shot software-path smoke tests that must also bridge the resulting serial uplink, pass serial commands through the bridge itself instead of opening COM5 from another process:
 
