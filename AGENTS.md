@@ -27,6 +27,14 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 23:44-23:47 FlyCare final freeze live bridge restore
+
+- B.bridge.stale=found `logs/flycare-serial-bridge-live-20260616-205947.log` had stopped at 2026-06-16T22:58:14 after parsed/sent 943, so `scripts/audit_flycare_goal.ps1` at 23:44 failed freshness with latest status age=46.7min.
+- V.bridge.restore=ok restarted persistent COM5 serial bridge with `start_flycare_local_stack.ps1 -NoPause -RestartSerialBridge -SerialPort COM5`; new live log `logs/flycare-serial-bridge-live-20260616-234509.log` shows downlink sent, watch `[SERIAL_DOWNLINK] handled=1`, Gate Change to 10 notice, duplicate retained alias ignored, and live status uplinks.
+- V.status.restore=ok latest status `_id=6a316ffadde90a25b65b8629` received at `2026-06-16T15:47:06.349000+00:00`, x=5.04, y=2.73, quality=medium, beacon_count=5, SOS inactive, fall normal.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T23:47:10; freshness age=0.1min, display/watch runtime duration=117.4s with 14 uplinks, invalidUplinks=0, crashes=0, flight serial sync, fall path latestEvent=315/false_alarm, SOS current state inactive.
+- N.remaining=still no fresh physical SOS/PWR proof from this resumed run; button completion still requires a human to press SOS for 3s trigger/cancel and observe PWR short-press screen-off on the watch.
+
 ### 2026-06-16 21:25-21:26 FlyCare final freeze blocked audit
 
 - V.stack.blocked_audit=ok branch `Flycare`, HEAD `4b2f1f06ed57e01b4a5cad0fe3de3863a4932448`, `origin/Flycare...HEAD=0/0`; active backend remains `http://127.0.0.1:8001` with MQTT connected, while `8000` remains healthy but MQTT-disabled.
