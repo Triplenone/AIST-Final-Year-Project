@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 17:18-17:21 FlyCare semantic flight dedupe + fall audit pass
+
+- I.flight.semantic_dedupe=updated `firmware/FlightInfoManager.cpp` to hash a parsed flight signature rather than raw JSON, so canonical/alias retained downlinks with different spacing or transport paths are treated as the same flight update and repeated MQTT alias payloads are ignored.
+- I.firmware.startup_flight=updated the default startup flight JSON in `firmware/firmware.ino` to `scheduled`, `delay_minutes=0`, and `gate_changed=false`, preventing a fake Gate Change/Delay popup immediately after reboot before the real retained flight downlink arrives.
+- I.serial.stability=updated `firmware/firmware.ino`, `firmware/DataTransmitter.cpp`, and `firmware/BLELocation.cpp` to use a 2048-byte Serial TX buffer, shorten inactive-target/inactive-SOS serial status JSON, and suppress high-frequency BLE target debug lines that could interleave into `FLYCARE_UPLINK`.
+- I.audit.fall_runtime=updated `scripts/audit_flycare_goal.ps1` with `fall_detection_path` and stricter latest-log runtime checks for semantic flight dedupe, Gate Change popup count, invalid uplinks, and crash markers.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded after the final stability fix; sketch 1543523/3145728 bytes, RAM 55184/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.serial_runtime=ok `logs/flycare-serial-bridge-20260616-171610.log` ran 120s with parsed/sent 17, downlinks=1, no invalid uplink, no crash markers, and repeated MQTT retained flight payloads ignored.
+- V.simfall=ok `logs/flycare-serial-bridge-20260616-171853.log` ran `SIMFALL`, published two fall uplinks plus fresh status, ignored the retained flight downlink as duplicate, and created EventLog 314 for device 8; EventLog 314 was handled as `false_alarm` after verification.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T17:20:54 using active backend `http://127.0.0.1:8001`; all checks passed, including freshness age=0.9min, display runtime duplicateIgnored=1/gatePopups=0/invalidUplinks=0, watch runtime duration=71s, fall_detection_path latestEvent=314/false_alarm, SOS state, button policy, and historical HR/SpO2 evidence.
+
 ### 2026-06-16 15:02-15:20 FlyCare serial JSON corruption fix + runtime stability gate
 
 - I.firmware.serial_json=updated `firmware/DataTransmitter.cpp/.h` so periodic status keeps the full MQTT/HTTP JSON but emits a compact status payload on `FLYCARE_UPLINK`; serial output is now built as one buffered line with a serial uplink mutex to reduce UART interleaving.

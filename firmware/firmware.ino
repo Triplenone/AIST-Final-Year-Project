@@ -2119,6 +2119,7 @@ void checkSystemHealth() {
 // ==================== setup ====================
 void setup() {
     Serial.setRxBufferSize(2048);
+    Serial.setTxBufferSize(2048);
     Serial.begin(115200);
     Serial.setTimeout(250);
     delay(2000);
@@ -2261,13 +2262,13 @@ void setup() {
         "\"airline\":\"Cathay Pacific\","
         "\"destination\":\"Singapore\","
         "\"scheduled_departure\":\"17:35\","
-        "\"estimated_departure\":\"17:50\","
+        "\"estimated_departure\":\"17:35\","
         "\"boarding_time\":\"17:05\","
         "\"boarding_gate\":\"Gate 10\","
-        "\"status\":\"delayed\","
-        "\"delay_minutes\":15,"
-        "\"delay_reason\":\"Live integration reset\","
-        "\"gate_changed\":true,"
+        "\"status\":\"scheduled\","
+        "\"delay_minutes\":0,"
+        "\"delay_reason\":\"\","
+        "\"gate_changed\":false,"
         "\"terminal\":\"T1\","
         "\"checkin_counter\":\"C12-C18\""
         "}}";

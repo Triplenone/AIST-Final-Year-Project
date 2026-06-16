@@ -450,3 +450,10 @@ I.flycare.audit.watch_runtime.20260616T1520=audit_flycare_goal adds watch_runtim
 V.flycare.serial_json.20260616T1520=ok final COM5 bridge log flycare-serial-bridge-20260616-151759.log parsed=15 sent=15 invalidUplinks=0 duplicateIgnored=2 crashes=0
 V.flycare.compile_upload.20260616T1520=ok COM5 ESP32-S3 MAC=48:ca:43:a4:22:98 sketch=1542235/3145728 RAM=55184/327680
 V.flycare.audit.20260616T1520=pass scripts/audit_flycare_goal.ps1 activeBackend=http://127.0.0.1:8001 watch_runtime=pass duration=90s uplinks=15 invalidUplinks=0 crashes=0
+I.flycare.flight.semantic_dedupe.20260616T1721=FlightInfoManager hashes parsed flight signature not raw JSON, so retained canonical/alias serial/MQTT payloads with spacing differences do not repeat Gate Change popups
+I.flycare.serial_stability.20260616T1721=firmware Serial TX buffer=2048, serial status omits inactive target/SOS details, and high-frequency BLE target debug lines are BLE_DEBUG only to avoid corrupting FLYCARE_UPLINK
+I.flycare.audit.fall_path.20260616T1721=audit_flycare_goal adds fall_detection_path and latest-log display runtime checks for flightPayloadSeen, gatePopups, duplicateIgnored, invalidUplinks, crashes
+V.flycare.compile_upload.20260616T1721=ok COM5 ESP32-S3 MAC=48:ca:43:a4:22:98 sketch=1543523/3145728 RAM=55184/327680
+V.flycare.serial_runtime.20260616T1721=ok bridge log flycare-serial-bridge-20260616-171610.log 120s parsed=17 sent=17 downlinks=1 invalidUplinks=0 crashes=0 duplicateIgnored=1
+V.flycare.simfall.20260616T1721=ok bridge log flycare-serial-bridge-20260616-171853.log parsed=11 sent=11 event=314 false_alarm latest fall=6a311507dde90a25b65b804f latest status=6a311543dde90a25b65b8057 fall normal
+V.flycare.audit.20260616T1721=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T17:20:54 activeBackend=http://127.0.0.1:8001 freshnessAge=0.9min displayRuntime=pass watchRuntime=pass fallDetection=pass

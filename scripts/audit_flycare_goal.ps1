@@ -205,6 +205,47 @@ function Find-SosLongPressEvidence {
     }
 }
 
+function Find-FallEventEvidence {
+    param(
+        [string]$BaseUrl,
+        $MysqlDeviceId
+    )
+
+    $statuses = @("false_alarm", "resolved", "confirmed", "unhandled")
+    $matches = @()
+    foreach ($status in $statuses) {
+        $events = Invoke-ApiJson "$BaseUrl/api/v1/events/?event_status=$status&limit=100"
+        if (-not $events.ok) { continue }
+
+        foreach ($event in (Get-CollectionItems $events.value)) {
+            if ($null -eq $event) { continue }
+            $deviceMatches = $null -eq $MysqlDeviceId -or "$($event.trigger_device_id)" -eq "$MysqlDeviceId"
+            if ($event.event_type -eq "fall" -and $deviceMatches) {
+                $fall = $event.event_params.payload.fall_detection
+                $matches += [pscustomobject]@{
+                    event_id = $event.event_id
+                    event_status = $event.event_status
+                    event_timestamp = $event.event_timestamp
+                    trigger_device_id = $event.trigger_device_id
+                    confirmed = if ($fall) { $fall.is_fall_confirmed } else { $null }
+                    state = if ($fall) { $fall.state } else { $null }
+                    state_description = if ($fall) { $fall.state_description } else { $null }
+                    handled_at = $event.handled_at
+                    remark = $event.remark
+                }
+            }
+        }
+    }
+
+    $matches = @($matches | Sort-Object event_timestamp -Descending)
+    return [pscustomobject]@{
+        found = $matches.Count -gt 0
+        statusesQueried = $statuses
+        latest = if ($matches.Count -gt 0) { $matches[0] } else { $null }
+        matches = @($matches | Select-Object -First 5)
+    }
+}
+
 function Get-FirmwareDefineValue {
     param(
         [string]$ConfigText,
@@ -214,6 +255,34 @@ function Get-FirmwareDefineValue {
     $match = [regex]::Match($ConfigText, "(?m)^\s*#define\s+$([regex]::Escape($Name))\s+(-?\d+)\b")
     if (-not $match.Success) { return $null }
     return [int]$match.Groups[1].Value
+}
+
+function Test-FallDetectionSource {
+    param([string]$RepoRoot)
+
+    $configPath = Join-Path $RepoRoot "firmware\Config.h"
+    $firmwarePath = Join-Path $RepoRoot "firmware\firmware.ino"
+    $dataTransmitterPath = Join-Path $RepoRoot "firmware\DataTransmitter.cpp"
+    $configText = Get-Content -Path $configPath -Raw
+    $firmwareText = Get-Content -Path $firmwarePath -Raw
+    $dataTransmitterText = Get-Content -Path $dataTransmitterPath -Raw
+
+    $fallEnabled = (Get-FirmwareDefineValue -ConfigText $configText -Name "ENABLE_FALL_DETECTION") -eq 1
+    $impactThresholdAligned = (Get-FirmwareDefineValue -ConfigText $configText -Name "IMPACT_THRESHOLD") -eq 1
+    $simfallUploads = $firmwareText -match "SIMFALL" -and
+        $firmwareText -match "transmitFallAlert\(event\)" -and
+        $firmwareText -match "SIMFALL alert displayed and uploaded"
+    $statusNormalizesTransient = $dataTransmitterText -match 'state_description\\":\\"normal' -and
+        $dataTransmitterText -match 'is_fall_confirmed\\":false' -and
+        $dataTransmitterText -match "event\.is_fall_confirmed"
+
+    return [pscustomobject]@{
+        fallEnabled = $fallEnabled
+        impactThresholdAligned = $impactThresholdAligned
+        simfallUploads = $simfallUploads
+        statusNormalizesTransient = $statusNormalizesTransient
+        ok = $fallEnabled -and $impactThresholdAligned -and $simfallUploads -and $statusNormalizesTransient
+    }
 }
 
 function Test-ButtonPolicyAndNavigationDisabled {
@@ -331,6 +400,7 @@ function Test-DisplayRuntimeStability {
     $dataTransmitterText = Get-Content -Path $dataTransmitterPath -Raw
 
     $flightPayloadDedupeSource = $flightCppText -match "hashFlightPayload" -and
+        $flightCppText -match "buildFlightSignature" -and
         $flightCppText -match "duplicate flight payload ignored" -and
         $flightHText -match "has_last_payload_hash" -and
         $flightHText -match "last_payload_hash"
@@ -346,12 +416,10 @@ function Test-DisplayRuntimeStability {
     $uplinkCount = 0
     $crashCount = 0
     $gatePopupCount = 0
+    $flightPayloadSeen = $false
     if (Test-Path $logRoot) {
         $latestLog = Get-ChildItem -Path $logRoot -File -Filter "flycare-serial-bridge-*.log" |
             Sort-Object LastWriteTime -Descending |
-            Where-Object {
-                (Select-String -Path $_.FullName -Pattern "\[Flight\] duplicate flight payload ignored" -Quiet -ErrorAction SilentlyContinue)
-            } |
             Select-Object -First 1
     }
 
@@ -362,12 +430,24 @@ function Test-DisplayRuntimeStability {
         $crashCount = @($lines | Where-Object {
             $_ -match "rst:|Guru Meditation|stack overflow|Stack canary|panic|abort\(\)|reboot"
         }).Count
-        $gatePopupCount = @($lines | Where-Object { $_ -match "Gate Change\s*-\s*\d+" }).Count
+        $flightPayloadSeen = @($lines | Where-Object {
+            $_ -match "\[downlink\].*/flight" -or
+            $_ -match "\[SERIAL_DOWNLINK\].*/flight" -or
+            $_ -match "MQTT .*\[/flight\]" -or
+            $_ -match "MQTT .*\]/flight" -or
+            $_ -match "MQTT .*\bflight_info\b"
+        }).Count -gt 0
+        $gatePopupCount = @($lines | Where-Object {
+            $_ -match "^\[watch\].*Gate Change\s*-\s*\d+" -and
+            $_ -notmatch "MQTT|flight_info|delay_reason"
+        }).Count
     }
 
     $sourceOk = $flightPayloadDedupeSource -and $flightLogAcceptedOnly -and $navPeriodicRefreshDisabled
     $runtimeEvidenceFound = $null -ne $latestLog
-    $runtimeOk = $runtimeEvidenceFound -and $duplicateIgnoredCount -ge 1 -and $uplinkCount -ge 5 -and $crashCount -eq 0
+    $flightDedupeRuntimeOk = $flightPayloadSeen -and $gatePopupCount -le 1 -and
+        ($duplicateIgnoredCount -ge 1 -or $gatePopupCount -eq 0)
+    $runtimeOk = $runtimeEvidenceFound -and $flightDedupeRuntimeOk -and $uplinkCount -ge 5 -and $crashCount -eq 0
 
     return [pscustomobject]@{
         flightPayloadDedupeSource = $flightPayloadDedupeSource
@@ -376,6 +456,8 @@ function Test-DisplayRuntimeStability {
         sourceOk = $sourceOk
         runtimeEvidenceFound = $runtimeEvidenceFound
         runtimeOk = $runtimeOk
+        flightPayloadSeen = $flightPayloadSeen
+        flightDedupeRuntimeOk = $flightDedupeRuntimeOk
         latestLog = if ($latestLog) { $latestLog.FullName } else { $null }
         duplicateIgnoredCount = $duplicateIgnoredCount
         uplinkCount = $uplinkCount
@@ -651,12 +733,15 @@ $mqtt = Invoke-ApiJson "$BaseUrl/api/v1/data-reception/mqtt/status"
 $latestStatus = Invoke-ApiJson "$BaseUrl/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=status_update"
 $latestFlight = Invoke-ApiJson "$BaseUrl/api/v1/mongo-upstream/flight/latest?device_id=$encodedDeviceId"
 $latestSos = Invoke-ApiJson "$BaseUrl/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=sos"
+$latestFall = Invoke-ApiJson "$BaseUrl/api/v1/mongo-upstream/latest?device_id=$encodedDeviceId&data_type=fall"
 $unhandledEvents = Invoke-ApiJson "$BaseUrl/api/v1/events/?event_status=unhandled&limit=50"
 $mysqlDeviceId = if ($latestStatus.ok -and $latestStatus.value.mysql_device_id) { $latestStatus.value.mysql_device_id } else { $null }
 $longPressEventEvidence = Find-SosLongPressEvidence -BaseUrl $BaseUrl -MysqlDeviceId $mysqlDeviceId
+$fallEventEvidence = Find-FallEventEvidence -BaseUrl $BaseUrl -MysqlDeviceId $mysqlDeviceId
 $beacons = Test-ExpectedBeaconRegistry -RepoRoot $repoRoot
 $smartCare = Test-VisibleSmartCareReferences -RepoRoot $repoRoot
 $buttonPolicy = Test-ButtonPolicyAndNavigationDisabled -RepoRoot $repoRoot
+$fallSource = Test-FallDetectionSource -RepoRoot $repoRoot
 $watchPopupUi = Test-WatchPopupUiSource -RepoRoot $repoRoot
 $displayRuntimeStability = Test-DisplayRuntimeStability -RepoRoot $repoRoot
 $watchRuntimeStability = Test-WatchRuntimeStability -RepoRoot $repoRoot
@@ -710,7 +795,7 @@ $displayRuntimeStatus = if ($displayRuntimeStability.ok) {
 $checks += New-AuditCheck `
     -Name "display_runtime_stability" `
     -Status $displayRuntimeStatus `
-    -Evidence "sourceOk=$($displayRuntimeStability.sourceOk); navPeriodicRefreshDisabled=$($displayRuntimeStability.navPeriodicRefreshDisabled); duplicateIgnored=$($displayRuntimeStability.duplicateIgnoredCount); uplinks=$($displayRuntimeStability.uplinkCount); crashes=$($displayRuntimeStability.crashCount); latestLog=$($displayRuntimeStability.latestLog)" `
+    -Evidence "sourceOk=$($displayRuntimeStability.sourceOk); navPeriodicRefreshDisabled=$($displayRuntimeStability.navPeriodicRefreshDisabled); flightPayloadSeen=$($displayRuntimeStability.flightPayloadSeen); gatePopups=$($displayRuntimeStability.gatePopupCount); duplicateIgnored=$($displayRuntimeStability.duplicateIgnoredCount); uplinks=$($displayRuntimeStability.uplinkCount); crashes=$($displayRuntimeStability.crashCount); latestLog=$($displayRuntimeStability.latestLog)" `
     -Details $displayRuntimeStability
 
 $watchRuntimeStatus = if ($watchRuntimeStability.ok) {
@@ -727,6 +812,40 @@ $checks += New-AuditCheck `
     -Status $watchRuntimeStatus `
     -Evidence "sourceOk=$($watchRuntimeStability.sourceOk); durationSeconds=$(Format-NullableNumber $watchRuntimeStability.durationSeconds); uplinks=$($watchRuntimeStability.uplinkCount); invalidUplinks=$($watchRuntimeStability.invalidUplinkCount); crashes=$($watchRuntimeStability.crashCount); audioStack=$($watchRuntimeStability.audioStackValue); displayStack=$($watchRuntimeStability.displayStackValue); latestLog=$($watchRuntimeStability.latestLog)" `
     -Details $watchRuntimeStability
+
+$latestFallConfirmed = $latestFall.ok -and
+    $latestFall.value.fall_detection -and
+    $latestFall.value.fall_detection.is_fall_confirmed -eq $true
+$latestStatusFallNormal = $latestStatus.ok -and
+    $latestStatus.value.fall_detection -and
+    $latestStatus.value.fall_detection.is_fall_confirmed -eq $false
+$targetUnhandledFallCount = if ($unhandledEvents.ok -and $mysqlDeviceId) {
+    @((Get-CollectionItems $unhandledEvents.value) | Where-Object {
+        "$($_.trigger_device_id)" -eq "$mysqlDeviceId" -and $_.event_type -eq "fall"
+    }).Count
+} elseif ($unhandledEvents.ok) {
+    @((Get-CollectionItems $unhandledEvents.value) | Where-Object { $_.event_type -eq "fall" }).Count
+} else {
+    -1
+}
+$fallDetectionStatus = if ($fallSource.ok -and $latestFallConfirmed -and $fallEventEvidence.found -and $targetUnhandledFallCount -eq 0 -and $latestStatusFallNormal) {
+    "pass"
+} elseif ($fallSource.ok -and $latestFallConfirmed -and $fallEventEvidence.found) {
+    "warn"
+} else {
+    "fail"
+}
+$checks += New-AuditCheck `
+    -Name "fall_detection_path" `
+    -Status $fallDetectionStatus `
+    -Evidence "sourceOk=$($fallSource.ok); latestFallConfirmed=$latestFallConfirmed; eventFound=$($fallEventEvidence.found); latestEvent=$($fallEventEvidence.latest.event_id)/$($fallEventEvidence.latest.event_status); targetUnhandledFalls=$targetUnhandledFallCount; latestStatusFallNormal=$latestStatusFallNormal" `
+    -Details ([pscustomobject]@{
+        source = $fallSource
+        latestFall = $latestFall.value
+        eventEvidence = $fallEventEvidence
+        targetUnhandledFallCount = $targetUnhandledFallCount
+        latestStatusFallNormal = $latestStatusFallNormal
+    })
 
 $targetUnhandledEvents = if ($unhandledEvents.ok -and $mysqlDeviceId) {
     @((Get-CollectionItems $unhandledEvents.value) | Where-Object { "$($_.trigger_device_id)" -eq "$mysqlDeviceId" })

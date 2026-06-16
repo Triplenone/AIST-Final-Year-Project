@@ -237,7 +237,7 @@ void BLELocation::processScanResults(BLEScanResults* results) {
     scanned_beacons.clear();
     
     int count = results->getCount();
-    Serial.printf("[BLE] scan result: devices=%d\n", count);
+    BLE_DEBUG_PRINT("[BLE] scan result: devices=%d\n", count);
     Serial.printf("\n📡 扫描到 %d 个BLE设备\n", count);
     
     for (int i = 0; i < count; i++) {
@@ -251,8 +251,8 @@ void BLELocation::processScanResults(BLEScanResults* results) {
         for (int j = 0; j < beacon_count; j++) {
             if (address.equals(beacons[j].uuid)) {
                 Serial.printf("        ✅ 匹配信标%d: %s\n", j, beacons[j].uuid.c_str());
-                Serial.printf("[BLE] target matched: index=%d mac=%s rssi=%d\n",
-                              j, beacons[j].uuid.c_str(), rssi);
+                BLE_DEBUG_PRINT("[BLE] target matched: index=%d mac=%s rssi=%d\n",
+                                j, beacons[j].uuid.c_str(), rssi);
                 matched = true;
                 
                 // 更新信标信息
@@ -264,9 +264,9 @@ void BLELocation::processScanResults(BLEScanResults* results) {
                 Serial.printf("           距离=%.2fm, 置信度=%.2f\n", 
                              beacons[j].distance, beacons[j].confidence);
                 
-                Serial.printf("[BLE] target data: mac=%s distance=%.2fm confidence=%.2f x=%.1f y=%.1f\n",
-                              beacons[j].uuid.c_str(), beacons[j].distance,
-                              beacons[j].confidence, beacons[j].x, beacons[j].y);
+                BLE_DEBUG_PRINT("[BLE] target data: mac=%s distance=%.2fm confidence=%.2f x=%.1f y=%.1f\n",
+                                beacons[j].uuid.c_str(), beacons[j].distance,
+                                beacons[j].confidence, beacons[j].x, beacons[j].y);
                 scanned_beacons.push_back(beacons[j]);
                 break;
             }

@@ -43,6 +43,50 @@ static uint32_t hashFlightPayload(const String& payload) {
     return hash;
 }
 
+static String normalizedFlightField(JsonObject flight, const char* key) {
+    String value = flight[key] | "";
+    value.trim();
+    return value;
+}
+
+static String normalizedFlightBool(JsonObject flight, const char* key) {
+    bool value = flight[key] | false;
+    return value ? "1" : "0";
+}
+
+static String buildFlightSignature(JsonObject flight) {
+    String signature;
+    signature.reserve(256);
+    signature += normalizedFlightField(flight, "flight_number");
+    signature += "|";
+    signature += normalizedFlightField(flight, "airline");
+    signature += "|";
+    signature += normalizedFlightField(flight, "destination");
+    signature += "|";
+    signature += normalizedFlightField(flight, "scheduled_departure");
+    signature += "|";
+    signature += normalizedFlightField(flight, "estimated_departure");
+    signature += "|";
+    signature += normalizedFlightField(flight, "boarding_time");
+    signature += "|";
+    signature += formatFlightGateLabel(normalizedFlightField(flight, "boarding_gate"));
+    signature += "|";
+    signature += normalizedFlightField(flight, "terminal");
+    signature += "|";
+    signature += normalizedFlightField(flight, "checkin_counter");
+    signature += "|";
+    signature += normalizedFlightField(flight, "status");
+    signature += "|";
+    signature += String((int)(flight["delay_minutes"] | 0));
+    signature += "|";
+    signature += normalizedFlightField(flight, "delay_reason");
+    signature += "|";
+    signature += normalizedFlightBool(flight, "gate_changed");
+    signature += "|";
+    signature += formatFlightGateLabel(normalizedFlightField(flight, "previous_gate"));
+    return signature;
+}
+
 FlightInfoManager::FlightInfoManager() 
     : flight_info_received(false), last_display_time(0), display_interval(30000),
       last_update_time(0), has_last_payload_hash(false), last_payload_hash(0) {
@@ -66,17 +110,18 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
         return false;
     }
 
-    uint32_t payloadHash = hashFlightPayload(json);
-    if (has_last_payload_hash && payloadHash == last_payload_hash) {
-        Serial.println("[Flight] duplicate flight payload ignored");
-        return false;
-    }
-    
     JsonObject flight;
     if (doc.containsKey("flight_info")) {
         flight = doc["flight_info"];
     } else {
         flight = doc.as<JsonObject>();
+    }
+
+    String flightSignature = buildFlightSignature(flight);
+    uint32_t payloadHash = hashFlightPayload(flightSignature);
+    if (has_last_payload_hash && payloadHash == last_payload_hash) {
+        Serial.println("[Flight] duplicate flight payload ignored");
+        return false;
     }
     
     // 保存旧信息用于比较

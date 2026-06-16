@@ -808,12 +808,14 @@ String DataTransmitter::getSerialStatusSummaryJSON() {
     json += "\"target\":{";
     json += "\"active\":";
     json += navigation_active ? "true" : "false";
-    json += ",";
-    json += "\"x\":" + String(target_x, 2) + ",";
-    json += "\"y\":" + String(target_y, 2) + ",";
-    json += "\"name\":\"" + target_name + "\",";
-    json += "\"distance\":" + String(calculateDistanceToTarget(), 2) + ",";
-    json += "\"direction\":\"" + calculateDirectionToTarget() + "\"";
+    if (navigation_active) {
+        json += ",";
+        json += "\"x\":" + String(target_x, 2) + ",";
+        json += "\"y\":" + String(target_y, 2) + ",";
+        json += "\"name\":\"" + target_name + "\",";
+        json += "\"distance\":" + String(calculateDistanceToTarget(), 2) + ",";
+        json += "\"direction\":\"" + calculateDirectionToTarget() + "\"";
+    }
     json += "}";
     json += "},";
 
@@ -834,10 +836,13 @@ String DataTransmitter::getSerialStatusSummaryJSON() {
     json += "},";
 
     json += "\"sos\":{";
-    json += "\"active\":" + String(sos_active ? "true" : "false") + ",";
-    json += "\"trigger_method\":\"" + sos_trigger_method + "\",";
-    json += "\"trigger_count\":" + String(sos_trigger_count) + ",";
-    json += "\"duration\":" + String(sos_active ? (getCurrentTimestamp() - sos_trigger_time) : 0);
+    json += "\"active\":" + String(sos_active ? "true" : "false");
+    if (sos_active) {
+        json += ",";
+        json += "\"trigger_method\":\"" + sos_trigger_method + "\",";
+        json += "\"trigger_count\":" + String(sos_trigger_count) + ",";
+        json += "\"duration\":" + String(getCurrentTimestamp() - sos_trigger_time);
+    }
     json += "},";
 
     json += "\"sensors\":{";
