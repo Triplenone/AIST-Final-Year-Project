@@ -626,8 +626,13 @@ void buttonTask(void* param) {
         } else if (pwrState == HIGH && lastPwrState == LOW) {
             unsigned long duration = millis() - pwrPressStart;
             if (!pwrLongPressTriggered && duration >= 20 && duration < SOS_HOLD_TIME && display) {
-                display->sleepScreen();
-                Serial.println("[Button] PWR short press - screen off");
+                if (display->isScreenOn()) {
+                    display->sleepScreen();
+                    Serial.println("[Button] PWR short press - screen off");
+                } else {
+                    display->wakeScreen();
+                    Serial.println("[Button] PWR short press - screen on");
+                }
             }
         }
         lastPwrState = pwrState;

@@ -162,8 +162,8 @@ Touch                 Disabled and not initialized
 Initial page          Home/clock page
 SOS single click      Switch to the next page: Home -> Map -> Flight -> Home
 SOS long press        Hold for 3 seconds to trigger SOS; hold for 3 seconds again to clear SOS
-PWR single click      Turn the display off
-PWR long press        Hold for 3 seconds to toggle the display on/off
+PWR single click      Toggle the display off/on
+PWR long press        Hold for 3 seconds to toggle the display off/on
 ```
 
 Manual destination selection and the on-watch navigation menu are disabled for the FlyCare airport demo. Flight updates may arm an arrival target for Gate 10/Gate 11, but SOS/PWR button presses no longer select or confirm routes. SOS short press only switches pages. The SOS wheel/rotary is not used for FlyCare navigation.

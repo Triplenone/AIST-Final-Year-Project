@@ -307,8 +307,10 @@ function Test-ButtonPolicyAndNavigationDisabled {
         $buttonTaskText -match "display->nextPage\(\)"
     $sosLongToggles = $buttonTaskText -match "SOS long press - SOS toggled" -and
         $buttonTaskText -match "toggleSOSAlert\(\""ButtonLong\""\)"
-    $pwrShortSleeps = $buttonTaskText -match "PWR short press - screen off" -and
-        $buttonTaskText -match "display->sleepScreen\(\)"
+    $pwrShortTogglesScreen = $buttonTaskText -match "PWR short press - screen off" -and
+        $buttonTaskText -match "PWR short press - screen on" -and
+        $buttonTaskText -match "display->sleepScreen\(\)" -and
+        $buttonTaskText -match "display->wakeScreen\(\)"
     $pwrLongTogglesScreen = $buttonTaskText -match "PWR long press - screen off" -and
         $buttonTaskText -match "PWR long press - screen on"
     $noPickerInActiveButtonTask = $buttonTaskText -notmatch "DestinationPicker|isDestinationPickerActive|cycleNavigationDestination|confirmNavigationSelection|NAVPICK|NAVNEXT|NAVCANCEL"
@@ -320,12 +322,12 @@ function Test-ButtonPolicyAndNavigationDisabled {
         arrivalTargetEnabled = $arrivalTargetEnabled
         sosShortCyclesPages = $sosShortCyclesPages
         sosLongToggles = $sosLongToggles
-        pwrShortSleeps = $pwrShortSleeps
+        pwrShortTogglesScreen = $pwrShortTogglesScreen
         pwrLongTogglesScreen = $pwrLongTogglesScreen
         noPickerInActiveButtonTask = $noPickerInActiveButtonTask
         ok = ($manualNavDisabled -and $navDownlinkDisabled -and $flightRouteDisabled -and
             $arrivalTargetEnabled -and $sosShortCyclesPages -and $sosLongToggles -and
-            $pwrShortSleeps -and $pwrLongTogglesScreen -and $noPickerInActiveButtonTask)
+            $pwrShortTogglesScreen -and $pwrLongTogglesScreen -and $noPickerInActiveButtonTask)
     }
 }
 
@@ -867,7 +869,7 @@ $physicalSosObserved = $physicalSosReport -and $physicalSosReport.physicalSosObs
 $physicalSosProven = $physicalSosObserved -or $longPressEventEvidence.found
 $checks += New-AuditCheck -Name "physical_sos_long_press" -Status $(if ($physicalSosProven) { "pass" } elseif ($physicalSosWaited) { "blocked" } else { "warn" }) -Evidence "waited=$physicalSosWaited; verifierObserved=$physicalSosObserved; eventApiButtonLong=$($longPressEventEvidence.found); hold SOS/BOOT for 3 seconds during verify_flycare_watch.ps1 -WaitForPhysicalSOS to prove the current firmware UX." -Details ([pscustomobject]@{ timestamp = $physicalSosReport.timestamp; waitForPhysicalSOS = $physicalSosReport.waitForPhysicalSOS; physicalSosObserved = $physicalSosReport.physicalSosObserved; eventApiButtonLong = $longPressEventEvidence; notes = $physicalSosReport.notes })
 
-$checks += New-AuditCheck -Name "button_policy_navigation_disabled" -Status $(if ($buttonPolicy.ok) { "pass" } else { "fail" }) -Evidence "manualNavDisabled=$($buttonPolicy.manualNavDisabled); navDownlinkDisabled=$($buttonPolicy.navDownlinkDisabled); flightRouteDisabled=$($buttonPolicy.flightRouteDisabled); sosShortPages=$($buttonPolicy.sosShortCyclesPages); sosLongToggles=$($buttonPolicy.sosLongToggles); pwrShortSleeps=$($buttonPolicy.pwrShortSleeps); pwrLongTogglesScreen=$($buttonPolicy.pwrLongTogglesScreen); noPickerInActiveButtonTask=$($buttonPolicy.noPickerInActiveButtonTask)" -Details $buttonPolicy
+$checks += New-AuditCheck -Name "button_policy_navigation_disabled" -Status $(if ($buttonPolicy.ok) { "pass" } else { "fail" }) -Evidence "manualNavDisabled=$($buttonPolicy.manualNavDisabled); navDownlinkDisabled=$($buttonPolicy.navDownlinkDisabled); flightRouteDisabled=$($buttonPolicy.flightRouteDisabled); sosShortPages=$($buttonPolicy.sosShortCyclesPages); sosLongToggles=$($buttonPolicy.sosLongToggles); pwrShortTogglesScreen=$($buttonPolicy.pwrShortTogglesScreen); pwrLongTogglesScreen=$($buttonPolicy.pwrLongTogglesScreen); noPickerInActiveButtonTask=$($buttonPolicy.noPickerInActiveButtonTask)" -Details $buttonPolicy
 
 $hrDiag = if ($hrWatchReport) { $hrWatchReport.heartRateDiagnostics } else { $null }
 $statusHeartRateValid = $hrWatchReport -and

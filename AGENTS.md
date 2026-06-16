@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 01:05-01:20 FlyCare final freeze PWR wake fix upload
+
+- I.pwr.short_toggle=updated `firmware/firmware.ino` so PWR short press toggles the screen off/on; user manually confirmed the pre-fix short press could turn the screen off, and hardware retest after this wake fix was skipped per user direction.
+- I.audit.pwr=updated `scripts/audit_flycare_goal.ps1` so `button_policy_navigation_disabled` requires both PWR short-press sleep and wake evidence in the active `buttonTask`; docs were aligned in `firmware/README.md` and `docs/FLYCARE_MQTT.md`.
+- V.compile_upload=ok ESP32-S3 compile passed (`1547115/3145728` bytes, RAM `55200/327680`), then upload to COM5 succeeded for MAC `48:ca:43:a4:22:98`; upload wrote `1547264` bytes and hard-reset the watch.
+- V.stack.bridge=ok restarted the local stack serial bridge after upload with `start_flycare_local_stack.ps1 -NoPause -RestartSerialBridge -SerialPort COM5`; active backend remains `http://127.0.0.1:8001`, MQTT is connected to `192.168.0.203:1883`, and live log is `logs/flycare-serial-bridge-live-20260617-011354.log`.
+- V.goal.audit=warn but no hard failures: `scripts/audit_flycare_goal.ps1` exited `0`; freshness passed, positioning passed (`quality=medium`, `beaconCount=4`, `arrivalEvidence=True`), flight update passed (`Gate 10`, serial sync true), watch runtime passed (`uplinks=38`, `invalidUplinks=0`, `crashes=0`), and PWR/SOS button policy passed.
+- P.display.runtime=partial latest audit still warns because retained flight payloads produced `gatePopups=3`, `duplicateIgnored=0`, `uplinks=38`, `crashes=0`; data flow is live, but repeated Gate Change notification remains a final-demo UI risk.
+- V.browser.flycare=ok in-app browser at `http://192.168.0.203:5173/flycare` shows NG WAI LUN Online/Live, Customer Services, CX910, Gate 10, `Gate Change to 10`, no loading state, no fall/SOS modal, and no console errors.
+
 ### 2026-06-17 00:55-00:59 FlyCare final freeze PWR polarity audit
 
 - V.git.pwr_audit=ok branch `Flycare`, HEAD `599c641401b3c59fe43913962a72de960b81ee3f`, `origin/Flycare...HEAD=0/0`; only the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs were present before this note.
