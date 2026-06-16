@@ -1193,8 +1193,8 @@ void handleSerialCommands() {
         Serial.println("╠══════════════════════════════════════════════════════════════╣");
         Serial.println("║ 传感器命令:                                                   ║");
         Serial.println("║   IMU        - 显示 IMU 数据                                   ║");
-        Serial.println("║   FALL       - disabled (power saving)                         ║");
-        Serial.println("║   SIMFALL    - disabled (power saving)                         ║");
+        Serial.println("║   FALL       - 显示跌倒检测状态                                  ║");
+        Serial.println("║   SIMFALL    - 模拟跌倒并上传 fall payload                       ║");
         Serial.println("║   HR         - 检测心跳和血氧                                  ║");
         Serial.println("║   HRDEBUG    - Print MAX30102 IR/red/contact diagnostics        ║");
         Serial.println("║   HRSENSOR   - Print MAX30102 part ID, revision, temperature    ║");
@@ -1231,7 +1231,7 @@ void handleSerialCommands() {
         Serial.println("║   SCREENOFF  - 强制熄屏                                        ║");
         Serial.println("║   MAPSTATUS  - 显示地图状态                                    ║");
         Serial.println("║   SOSDISP    - 显示 SOS 界面                                   ║");
-        Serial.println("║   FALLDISP   - disabled (power saving)                         ║");
+        Serial.println("║   FALLDISP   - 显示跌倒报警界面                                  ║");
         Serial.println("╠══════════════════════════════════════════════════════════════╣");
         Serial.println("║ 航班命令:                                                     ║");
         Serial.println("║   TESTFLIGHT   - 测试航班信息并导航到 A11                      ║");
@@ -1546,8 +1546,19 @@ void handleSerialCommands() {
 #if ENABLE_FALL_DETECTION
         Serial.println("⚠️ 模拟跌倒事件...");
         if (fall_detector && display) {
+            FallEvent event = fall_detector->getFallEvent();
+            event.state = STATE_FALL_CONFIRMED;
+            event.description = "Fall confirmed";
+            event.confidence = 0.9;
+            event.is_fall_confirmed = true;
+            event.impact_force = max(event.impact_force, (float)IMPACT_THRESHOLD);
+            event.fall_time = millis();
+
             display->showFallAlert(true);
-            Serial.println("✅ 跌倒事件已触发");
+            if (data_transmitter) {
+                data_transmitter->transmitFallAlert(event);
+            }
+            Serial.println("[FallDetection] SIMFALL alert displayed and uploaded");
         } else {
             Serial.println("❌ 跌倒检测或显示未初始化");
         }

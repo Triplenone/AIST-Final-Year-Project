@@ -207,6 +207,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bridge_flycare_ser
 
 For a bounded capture during verification, add `-Seconds 60`. The bridge auto-uses `logs/flycare-local-stack-status.json.mqttStatus.broker` / `port`; in the current stack that is `192.168.0.203:1883`. This is a local USB-to-MQTT fallback for blocked networks only; the normal demo path remains direct watch MQTT over `192.168.0.203:1883`. `-Transport Http` is available for direct backend serial ingest after restarting a backend that includes `/api/v1/mongo-upstream/serial-ingest`, but MQTT transport is the recommended demo fallback because it exercises the same subscriber path. Use `-DisableDownlink` only when you need uplink-only serial capture; otherwise leave downlink enabled so Admin Gate Change reaches the connected watch. For the simplified gate-change demo, publish `delay_reason="Gate Change to 10"` and `gate_changed=true`; firmware suppresses the extra long delay popup and keeps the visible watch notification as the large `Gate Change` popup.
 
+For one-shot software-path smoke tests that must also bridge the resulting serial uplink, pass serial commands through the bridge itself instead of opening COM5 from another process:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bridge_flycare_serial.ps1 -SerialPort COM5 -SerialCommand SIMFALL -Seconds 30
+```
+
 When publishing JSON smoke payloads from Windows PowerShell, avoid `mosquitto_pub -m $json`; native argument parsing can strip double quotes and the broker will receive invalid JSON such as `{device_id:...}`. Pipe the complete JSON to stdin instead:
 
 ```powershell
@@ -279,11 +285,11 @@ npm run build
 Current local runtime:
 
 ```text
-Backend API:     http://127.0.0.1:8000
+Backend API:     http://127.0.0.1:8001 (active MQTT bridge; 8000 may be a stale listener)
 Frontend Vite:   http://127.0.0.1:5173
 MQTT broker:     See `backend/backend/.env`, `firmware/Config.h`, and `logs/flycare-mqtt-endpoint.json`
-Watch serial:    COM5, ESP32_0000E03948D4DB1C, MySQL device 9, LEE KA YAN
-Fall detection:  intentionally disabled with ENABLE_FALL_DETECTION 0
+Watch serial:    COM5, ESP32_48CA43A42298, MySQL device 8, NG WAI LUN
+Fall detection:  enabled with ENABLE_FALL_DETECTION 1; `SIMFALL` uploads a fall payload for software-path smoke testing; status telemetry normalizes non-confirmed transient fall states to normal and confirmed falls still use the fall topic/event path
 ```
 
 Verified in the latest COM5 run and current firmware source:

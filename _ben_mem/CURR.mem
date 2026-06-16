@@ -428,3 +428,10 @@ I.flycare.gate_popup_audio.20260616T1357=Gate Change to 10 suppresses extra long
 V.flycare.flight.serial_downlink.20260616T1357=ok publish inserted flight 6a30e330dde90a25b65b7f6e, retained aliases ok, bridge log 20260616-135549 len=411 handled=1 gate popup delay-suppressed no reboot 75s
 V.flycare.ng.positioning.20260616T1357=ok latest status 6a30e5addde90a25b65b7f7e fresh x=6.01 y=3.77 quality=high beacons=6 sos=false
 V.flycare.audit.20260616T1357=pass audit activeBackend=http://127.0.0.1:8001 after final COM5 upload; stack, positioning, flight, popup UI, sos state, buttons passed
+I.flycare.fall.source_parity.20260616T1421=fall detection enabled from ISS source state machine; IMPACT_THRESHOLD=1 kept for source parity and later false-positive tuning
+I.flycare.status.fall_normalization.20260616T1421=status telemetry reports normal unless fall state is confirmed; confirmed falls and SIMFALL still publish fall topic/event
+I.flycare.bridge.serial_commands.20260616T1421=bridge_flycare_serial.ps1 accepts -SerialCommand so COM5 smoke commands and FLYCARE_UPLINK bridge share one serial owner
+V.flycare.compile_upload.20260616T1421=ok final COM5 upload MAC=48:ca:43:a4:22:98 sketch=1538471/3145728 RAM=55176/327680
+V.flycare.status_normal.20260616T1421=ok latest status 6a30eafddde90a25b65b7f9a mysql=8 x=5.72 y=3.95 quality=high beacons=5 fall=normal sos=false
+V.flycare.simfall.final.20260616T1421=ok bridge log flycare-serial-bridge-20260616-141919.log parsed=6 sent=6 downlinks=1; latest fall 6a30eaf1dde90a25b65b7f97 event=312 resolved
+V.flycare.audit.20260616T1421=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T14:20:45 activeBackend=http://127.0.0.1:8001 freshnessAge=1.1min

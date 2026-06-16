@@ -619,13 +619,17 @@ String DataTransmitter::getAllDataJSON() {
     json += "\"fall_detection\":{";
     if (fall_detector) {
         FallEvent event = fall_detector->getFallEvent();
-        json += "\"state\":" + String(event.state) + ",";
-        json += "\"state_description\":\"" + event.description + "\",";
-        json += "\"confidence\":" + String(event.confidence, 2) + ",";
-        json += "\"is_fall_confirmed\":" + String(event.is_fall_confirmed ? "true" : "false") + ",";
-        json += "\"impact_force\":" + String(event.impact_force, 2) + ",";
-        json += "\"direction\":\"" + event.direction + "\",";
-        json += "\"fall_time\":" + String(event.fall_time);
+        if (event.is_fall_confirmed) {
+            json += "\"state\":" + String(event.state) + ",";
+            json += "\"state_description\":\"" + event.description + "\",";
+            json += "\"confidence\":" + String(event.confidence, 2) + ",";
+            json += "\"is_fall_confirmed\":true,";
+            json += "\"impact_force\":" + String(event.impact_force, 2) + ",";
+            json += "\"direction\":\"" + event.direction + "\",";
+            json += "\"fall_time\":" + String(event.fall_time);
+        } else {
+            json += "\"state\":0,\"state_description\":\"normal\",\"confidence\":0.0,\"is_fall_confirmed\":false,\"impact_force\":0.0,\"direction\":\"unknown\",\"fall_time\":0";
+        }
     } else {
         json += "\"state\":0,\"state_description\":\"normal\",\"confidence\":0.0,\"is_fall_confirmed\":false,\"impact_force\":0.0,\"direction\":\"unknown\",\"fall_time\":0";
     }
@@ -709,13 +713,17 @@ String DataTransmitter::getStatusSummaryJSON() {
     json += "\"fall_detection\":{";
     if (fall_detector) {
         FallEvent event = fall_detector->getFallEvent();
-        json += "\"state\":" + String(event.state) + ",";
-        json += "\"state_description\":\"" + event.description + "\",";
-        json += "\"confidence\":" + String(event.confidence, 2) + ",";
-        json += "\"is_fall_confirmed\":" + String(event.is_fall_confirmed ? "true" : "false") + ",";
-        json += "\"impact_force\":" + String(event.impact_force, 2) + ",";
-        json += "\"direction\":\"" + event.direction + "\",";
-        json += "\"fall_time\":" + String(event.fall_time);
+        if (event.is_fall_confirmed) {
+            json += "\"state\":" + String(event.state) + ",";
+            json += "\"state_description\":\"" + event.description + "\",";
+            json += "\"confidence\":" + String(event.confidence, 2) + ",";
+            json += "\"is_fall_confirmed\":true,";
+            json += "\"impact_force\":" + String(event.impact_force, 2) + ",";
+            json += "\"direction\":\"" + event.direction + "\",";
+            json += "\"fall_time\":" + String(event.fall_time);
+        } else {
+            json += "\"state\":0,\"state_description\":\"normal\",\"confidence\":0.0,\"is_fall_confirmed\":false,\"impact_force\":0.0,\"direction\":\"unknown\",\"fall_time\":0";
+        }
     } else {
         json += "\"state\":0,\"state_description\":\"normal\",\"confidence\":0.0,\"is_fall_confirmed\":false,\"impact_force\":0.0,\"direction\":\"unknown\",\"fall_time\":0";
     }

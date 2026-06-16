@@ -1,0 +1,7 @@
+I.flycare.fall.source_parity=FallDetection remains the ISS source state machine; Config.h enables fall detection and sets IMPACT_THRESHOLD=1 for source parity
+I.flycare.status.fall_normalization=DataTransmitter status/all-data JSON normalizes non-confirmed fall states to normal; confirmed fall topic/event payloads remain unchanged
+I.flycare.bridge.serial_commands=bridge_flycare_serial.ps1 -SerialCommand can send SIMFALL through the same COM5 session that republishes FLYCARE_UPLINK to MQTT
+V.flycare.compile_upload=ok COM5 ESP32-S3 MAC 48:ca:43:a4:22:98 sketch=1538471/3145728 RAM=55176/327680
+V.flycare.status_normal=ok latest status Mongo=6a30eafddde90a25b65b7f9a device=ESP32_48CA43A42298 mysql=8 x=5.72 y=3.95 quality=high beacons=5 fall=normal sos=false
+V.flycare.simfall=ok final firmware bridge log=logs/flycare-serial-bridge-20260616-141919.log fall Mongo=6a30eaf1dde90a25b65b7f97 event=312 resolved; no NG unhandled fall remains
+V.flycare.audit=pass logs/flycare-goal-audit.md timestamp=2026-06-16T14:20:45 activeBackend=http://127.0.0.1:8001 watch_status_freshness age=1.1min

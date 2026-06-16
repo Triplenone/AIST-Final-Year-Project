@@ -11,6 +11,7 @@ param(
     [string]$DownlinkTopic = "smartwatch/+/flight",
     [int]$DownlinkPollSeconds = 2,
     [switch]$DisableDownlink,
+    [string[]]$SerialCommand = @(),
     [int]$Seconds = 0,
     [string]$LogPath = "",
     [switch]$SmokeTest
@@ -338,11 +339,20 @@ $startedAt = Get-Date
 if ($DownlinkPollSeconds -lt 1) { $DownlinkPollSeconds = 1 }
 
 try {
-    "[$($startedAt.ToString("s"))] bridge start port=$SerialPort baud=$BaudRate transport=$Transport base=$base mqtt=$($mqtt.host):$($mqtt.port) downlink=$(-not $DisableDownlink) topic=$DownlinkTopic" |
+    "[$($startedAt.ToString("s"))] bridge start port=$SerialPort baud=$BaudRate transport=$Transport base=$base mqtt=$($mqtt.host):$($mqtt.port) downlink=$(-not $DisableDownlink) topic=$DownlinkTopic serialCommands=$($SerialCommand.Count)" |
         Tee-Object -FilePath $LogPath -Append | Out-Host
     $serial = Open-WatchSerial -Name $SerialPort -Baud $BaudRate
     Start-Sleep -Milliseconds 1000
     $null = $serial.ReadExisting()
+    foreach ($command in $SerialCommand) {
+        if ([string]::IsNullOrWhiteSpace($command)) {
+            continue
+        }
+        $serial.WriteLine($command)
+        "[serial-command] sent $command" |
+            Tee-Object -FilePath $LogPath -Append | Out-Host
+        Start-Sleep -Milliseconds 250
+    }
 
     while ($true) {
         if ($deadline -and (Get-Date) -ge $deadline) {
@@ -367,7 +377,7 @@ try {
 
         $uplink = Parse-UplinkLine -Line $line
         if (-not $uplink) {
-            if ($line -match '^\[SERIAL_DOWNLINK\]|\[Flight\]|Flight info updated|Gate Change') {
+            if ($line -match '^\[SERIAL_DOWNLINK\]|\[Flight\]|Flight info updated|Gate Change|\[FallDetection\]|\[FALL\]|\[SOS\]') {
                 "[watch] $line" |
                     Tee-Object -FilePath $LogPath -Append | Out-Host
             }

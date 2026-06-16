@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 14:08-14:21 FlyCare fall source parity + SIMFALL serial smoke
+
+- I.firmware.fall_source=updated `firmware/Config.h` to keep fall detection enabled and align `IMPACT_THRESHOLD=1` with the ISS source logic from `D:\Download\SmartWatch_Project_S3R8_ISS_20260614163130`; deeper false-positive tuning is intentionally deferred.
+- I.firmware.simfall=updated `firmware/firmware.ino` so `SIMFALL` shows the fall alert and uploads a confirmed fall payload through `DataTransmitter::transmitFallAlert()` instead of being display-only.
+- I.firmware.fall_status=updated `firmware/DataTransmitter.cpp` so normal status/all-data telemetry reports fall as normal unless the fall state is confirmed; transient Freefall/Impact/Static states stay internal and do not leave `/flycare` in a false alert state.
+- I.bridge.serial_command=updated `scripts/bridge_flycare_serial.ps1` with `-SerialCommand`, allowing one COM5 owner to send `SIMFALL` and bridge the resulting `FLYCARE_UPLINK` into MQTT/backend.
+- V.firmware.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded; final sketch 1538471/3145728 bytes, RAM 55176/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.fall.status_normal=ok after final upload, 60s COM5 bridge captured status `_id=6a30ead0dde90a25b65b7f94` with x=6.18, y=4.18, quality=high, 6 beacons, and fall normal; post-SIMFALL latest status `_id=6a30eafddde90a25b65b7f9a` still reports fall normal.
+- V.fall.simfall_path=ok final SIMFALL bridge log `logs/flycare-serial-bridge-20260616-141919.log` shows `smartwatch/ESP32_48CA43A42298/fall` published, `[FallDetection] SIMFALL alert displayed and uploaded`, and `[SERIAL_DOWNLINK] handled=1`; backend stored fall Mongo `_id=6a30eaf1dde90a25b65b7f97` and EventLog 312 for MySQL device 8, then it was marked resolved after verification.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T14:20:45 using active backend `http://127.0.0.1:8001`; local stack, freshness, positioning, flight update, popup UI, SOS state, button policy, and historical HR/SpO2 checks passed.
+
 ### 2026-06-16 13:31-13:57 FlyCare bidirectional serial flight downlink + audio stability
 
 - I.bridge.serial_downlink=updated `scripts/bridge_flycare_serial.ps1` to poll retained `smartwatch/+/flight`, de-duplicate topic/payload alias repeats, and write `FLYCARE_DOWNLINK <topic> <json>` to the connected watch while still bridging `FLYCARE_UPLINK` into MQTT.

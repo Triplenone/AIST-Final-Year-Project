@@ -195,7 +195,7 @@ When a backend update is explicitly a gate-change notice (`gate_changed=true` an
 
 Alert sounds are queued before or alongside TTS for SOS, gate change, delay, boarding, final call, cancellation, on-time updates, and arrival. Missing alert sound files are logged and the firmware safely continues with TTS.
 
-Fall detection is disabled for power saving in this build (`ENABLE_FALL_DETECTION 0`). `FALL`, `SIMFALL`, and `FALLDISP` only print a disabled message.
+Fall detection is enabled in this build (`ENABLE_FALL_DETECTION 1`) and uses the ISS source state machine from `D:\Download\SmartWatch_Project_S3R8_ISS_20260614163130`: freefall -> impact -> static -> orientation change. `IMPACT_THRESHOLD` is kept at the source value `1` for parity; optimize false-positive behavior later only after the demo path is stable. `SIMFALL` displays the fall alert and uploads a fall payload through the same `DataTransmitter` path used by a confirmed fall. Normal status telemetry reports fall as normal unless the state is confirmed, so transient Freefall/Impact/Static states do not leave the dashboard in a false alarm state.
 
 Heart-rate sampling and MQTT upload cadence are intentionally separate: `HR_SAMPLE_INTERVAL_MS` controls MAX30102 sampling for pulse detection, while `HR_UPLOAD_INTERVAL_MS` keeps the existing 2-second vitals publish cadence. SpO2 starts as unknown and remains invalid until pulse-derived confidence is positive.
 
@@ -221,6 +221,7 @@ REDRAW               Force a display redraw after a serial UI test command
 TESTARRIVAL          Trigger arrival test for Gate 10
 TESTARRIVAL Gate11   Trigger arrival test for Gate 11
 TESTSOUND            Queue alert sound plus English TTS
+SIMFALL              Show fall alert and upload fall payload
 SOSON / SOSOFF       Test the same SOS publish/display/audio path used by BOOT
 HR / HRDEBUG         Print current HR/SpO2 and MAX30102 IR/red/contact diagnostics
 HRSENSOR            Print MAX30102 part ID, revision, die temperature, and contact state
