@@ -27,6 +27,13 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 21:12-21:15 FlyCare final freeze physical button monitor
+
+- V.stack.recheck=ok branch `Flycare`, HEAD `c650de58ae18c25481cce35ac57fdba7c239348f`, `origin/Flycare...HEAD=0/0`; active backend remains `http://127.0.0.1:8001`, MQTT connected to `192.168.0.203:1883`, and persistent COM5 bridge log is `logs/flycare-serial-bridge-live-20260616-205947.log`.
+- P.sos_physical.monitor=partial: a second 90s live Event API monitor during final freeze did not observe a new device 8 SOS/ButtonLong event; latest status `_id=6a314c22dde90a25b65b82e8` remained `sos.active=false`.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T21:14:46; freshness age=0.1min, display/watch runtime duration=892.7s with 129 uplinks, invalidUplinks=0, crashes=0, fall path latestEvent=315/false_alarm, SOS current state inactive, and button source policy still pass.
+- N.final_blocker=remaining proof gap is fresh physical SOS long-press trigger/cancel plus physical PWR short-press observation; Codex can monitor backend/source evidence but cannot press the watch buttons remotely.
+
 ### 2026-06-16 20:53-21:02 FlyCare final demo freeze smoke
 
 - V.git.final_freeze=ok branch `Flycare`, pre-smoke HEAD `ef6548bbdea85f9a1669e6b45acb0cecf0da0ecf`, `origin/Flycare...HEAD=0/0`; working tree only had the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs.
