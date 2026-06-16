@@ -436,7 +436,7 @@ try {
                     Tee-Object -FilePath $LogPath -Append | Out-Host
                 $line | Add-Content -Path "$LogPath.invalid" -Encoding UTF8
             }
-            if ($line -match '^\[SERIAL_DOWNLINK\]|\[Flight\]|Flight info updated|Gate Change|\[FallDetection\]|\[FALL\]|\[SOS\]') {
+            if ($line -match '^\[SERIAL_DOWNLINK\]|\[Flight\]|Flight info updated|Gate Change|\[FallDetection\]|\[FALL\]|\[SOS\]|rst:|boot:|ESP-ROM|Guru|panic|stack|overflow|abort|Backtrace') {
                 "[watch] $line" |
                     Tee-Object -FilePath $LogPath -Append | Out-Host
             }

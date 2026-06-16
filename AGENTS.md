@@ -27,6 +27,20 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 02:05-03:10 FlyCare final freeze Gate Change reboot closeout
+
+- B.gate_audio_abort=confirmed the repeated Gate Change vibration/black-screen loop was a watch reboot path, not a dashboard retry loop: serial evidence showed `abort()` / `RTC_SW_CPU_RST`, and `addr2line` mapped the backtrace to `AudioManager::fileExists()` from `audioTask` during the SD_MMC alert-file lookup.
+- I.flight.downlink_dedupe=updated `firmware/DataTransmitter.cpp`, `firmware/FlightInfoManager.cpp`, and `firmware/firmware.ino` so serial flight downlinks enter the same semantic de-duplication path as MQTT; identical retained/alias payloads are ignored, while same-gate updates with changed estimated time or delay still refresh the flight state without reopening the Gate Change popup.
+- I.flight.gate_audio=updated Gate Change handling to keep the large simplified popup plus vibration and suppress the long delay popup, but intentionally skip Gate Change audio/TTS to avoid the SD_MMC alert lookup path that triggered the final-demo reboot loop.
+- I.bridge.crash_evidence=updated `scripts/bridge_flycare_serial.ps1` so live COM5 bridge logs retain reset, panic, abort, stack, overflow, and backtrace markers for audit/runtime stability checks.
+- D.backend.final_demo=use `http://127.0.0.1:8001` / `http://192.168.0.203:8001` for final hardware smoke because `logs/flycare-local-stack-status.json` shows `8000` healthy but MQTT-disabled (`mqttConnected=false`) while `8001` is healthy and MQTT-connected to `192.168.0.203:1883`.
+- V.compile_upload=ok clean ESP32-S3 build/upload to COM5 succeeded for MAC `48:ca:43:a4:22:98`; final sketch used `1550027/3145728` bytes, RAM `55240/327680`, upload wrote `1550176` bytes, and hard-reset the watch.
+- V.flight.runtime=ok live bridge `logs/flycare-serial-bridge-live-20260617-025903.log` showed the retained Gate Change downlink handled once with Gate Change audio skipped, alias duplicate payloads ignored, and a later same-gate 17:56 / 21-minute update parsed without reopening the Gate Change popup; no reset/panic/abort markers were observed in the audited runtime window.
+- V.fall.final=ok final-binary `SIMFALL` through `bridge_flycare_serial.ps1 -SerialCommand SIMFALL` created EventLog `319` for device `8`, then it was handled as `false_alarm`; latest status returned fall normal.
+- V.dashboard.final=ok browser `http://192.168.0.203:5173/flycare` shows NG WAI LUN Online/Live, Customer Services, CX910, estimated departure `17:56`, and `21 min - Gate Change to 10`, with no console errors.
+- V.bridge.final_clean=ok restarted the persistent COM5 bridge to isolate a previous one-off UART character drop; newest live log `logs/flycare-serial-bridge-live-20260617-031233.log` ran 102.2s with 12 uplinks, `invalidUplinks=0`, `crashes=0`, and duplicate retained flight payload ignored.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-17T03:14:20 using active backend `http://127.0.0.1:8001`; freshness age=0.1min, positioning medium/4 beacons, flight serial sync, display/watch runtime crashes=0, fall path latestEvent=319/false_alarm, SOS inactive, and PWR/SOS source policy passed.
+
 ### 2026-06-17 01:05-01:20 FlyCare final freeze PWR wake fix upload
 
 - I.pwr.short_toggle=updated `firmware/firmware.ino` so PWR short press toggles the screen off/on; user manually confirmed the pre-fix short press could turn the screen off, and hardware retest after this wake fix was skipped per user direction.

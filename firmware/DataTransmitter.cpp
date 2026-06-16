@@ -62,6 +62,67 @@ static void buildMqttBrokerCandidates(String brokers[], int& count, int maxCount
 // ================ 构造函数 ================
 // 构造函数中修复 MAC 地址获取
 static SemaphoreHandle_t serialUplinkMutex = nullptr;
+static bool hasLastFlightDownlinkHash = false;
+static uint32_t lastFlightDownlinkHash = 0;
+
+static uint32_t hashDownlinkPayload(const String& payload) {
+    uint32_t hash = 2166136261UL;
+    for (size_t i = 0; i < payload.length(); i++) {
+        hash ^= (uint8_t)payload[i];
+        hash *= 16777619UL;
+    }
+    return hash;
+}
+
+static String normalizeFlightDownlinkField(JsonObject flight, const char* key) {
+    String value = flight[key] | "";
+    value.trim();
+    return value;
+}
+
+static String normalizeFlightDownlinkGate(const String& gate) {
+    String normalized = gate;
+    normalized.trim();
+    normalized.toUpperCase();
+    if (normalized == "10" || normalized == "A10" || normalized == "GATE10" || normalized == "GATE 10") {
+        return "Gate 10";
+    }
+    if (normalized == "11" || normalized == "A11" || normalized == "GATE11" || normalized == "GATE 11") {
+        return "Gate 11";
+    }
+    return gate;
+}
+
+static String buildFlightDownlinkSignature(JsonObject flight) {
+    String signature;
+    signature.reserve(256);
+    signature += normalizeFlightDownlinkField(flight, "flight_number");
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "airline");
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "destination");
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "scheduled_departure");
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "estimated_departure");
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "boarding_time");
+    signature += "|";
+    signature += normalizeFlightDownlinkGate(normalizeFlightDownlinkField(flight, "boarding_gate"));
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "terminal");
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "checkin_counter");
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "status");
+    signature += "|";
+    signature += String((int)(flight["delay_minutes"] | 0));
+    signature += "|";
+    signature += normalizeFlightDownlinkField(flight, "delay_reason");
+    signature += "|";
+    signature += (flight["gate_changed"] | false) ? "1" : "0";
+    return signature;
+}
 
 static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
     client.disconnect();
@@ -462,6 +523,15 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
 #endif
     }
     else if (topic.endsWith("/flight")) {
+        JsonObject flight = doc.containsKey("flight_info") ? doc["flight_info"].as<JsonObject>() : doc.as<JsonObject>();
+        uint32_t flightHash = hashDownlinkPayload(buildFlightDownlinkSignature(flight));
+        if (hasLastFlightDownlinkHash && flightHash == lastFlightDownlinkHash) {
+            Serial.println("[Flight] duplicate flight payload ignored");
+            return;
+        }
+        lastFlightDownlinkHash = flightHash;
+        hasLastFlightDownlinkHash = true;
+
         if (flight_manager) {
             if (flight_manager->parseFlightInfo(payload)) {
                 addLog("info", "Flight info updated");

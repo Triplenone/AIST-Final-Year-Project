@@ -5,6 +5,8 @@
 #include "NavigationManager.h"
 #include "SmartNavigationPlanner.h"
 
+static char last_gate_change_notice_signature[32] = "";
+
 static String formatFlightGateLabel(const String& gate) {
     String normalized = gate;
     normalized.trim();
@@ -87,6 +89,43 @@ static String buildFlightSignature(JsonObject flight) {
     return signature;
 }
 
+static String buildCurrentFlightSignature(const FlightInfo& flight) {
+    String signature;
+    signature.reserve(256);
+    signature += flight.flight_number;
+    signature += "|";
+    signature += flight.airline;
+    signature += "|";
+    signature += flight.destination;
+    signature += "|";
+    signature += flight.scheduled_departure;
+    signature += "|";
+    signature += flight.estimated_departure;
+    signature += "|";
+    signature += flight.boarding_time;
+    signature += "|";
+    signature += formatFlightGateLabel(flight.boarding_gate);
+    signature += "|";
+    signature += flight.terminal;
+    signature += "|";
+    signature += flight.checkin_counter;
+    signature += "|";
+    signature += flight.status;
+    signature += "|";
+    signature += String(flight.delay_minutes);
+    signature += "|";
+    signature += flight.delay_reason;
+    signature += "|";
+    signature += flight.gate_changed ? "1" : "0";
+    signature += "|";
+    signature += formatFlightGateLabel(flight.previous_gate);
+    return signature;
+}
+
+static String buildGateChangeNoticeSignature(const FlightInfo& flight) {
+    return formatFlightGateLabel(flight.boarding_gate);
+}
+
 FlightInfoManager::FlightInfoManager() 
     : flight_info_received(false), last_display_time(0), display_interval(30000),
       last_update_time(0), has_last_payload_hash(false), last_payload_hash(0) {
@@ -119,7 +158,12 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
 
     String flightSignature = buildFlightSignature(flight);
     uint32_t payloadHash = hashFlightPayload(flightSignature);
-    if (has_last_payload_hash && payloadHash == last_payload_hash) {
+    bool sameAsLastPayload = has_last_payload_hash && payloadHash == last_payload_hash;
+    bool sameAsCurrentFlight = flight_info_received && current_flight.valid &&
+        flightSignature == buildCurrentFlightSignature(current_flight);
+    if (sameAsLastPayload || sameAsCurrentFlight) {
+        last_payload_hash = payloadHash;
+        has_last_payload_hash = true;
         Serial.println("[Flight] duplicate flight payload ignored");
         return false;
     }
@@ -292,6 +336,16 @@ void FlightInfoManager::notifyGateChange() {
     String title = "Gate Change";
     String gateLabel = formatFlightGateLabel(current_flight.boarding_gate);
     String message = formatGateChangeDestination(gateLabel);
+    String noticeSignature = buildGateChangeNoticeSignature(current_flight);
+    if (strncmp(last_gate_change_notice_signature, noticeSignature.c_str(),
+                sizeof(last_gate_change_notice_signature) - 1) == 0) {
+        Serial.println("[Flight] duplicate flight payload ignored");
+        return;
+    }
+    snprintf(last_gate_change_notice_signature,
+             sizeof(last_gate_change_notice_signature),
+             "%s",
+             noticeSignature.c_str());
     
     Serial.printf("[航班提醒] %s\n", message.c_str());
     
@@ -301,8 +355,7 @@ void FlightInfoManager::notifyGateChange() {
     }
     
     // 语音播报
-    playAlertSound("/alerts/gate_change.wav");
-    speakAlert("Gate change to " + gateLabel);
+    Serial.println("[Flight] gate change audio skipped for display stability");
     
     // 振动
     if (display) {
@@ -459,6 +512,7 @@ void FlightInfoManager::speakAlert(const String& message) {
 void FlightInfoManager::clearFlightInfo() {
     current_flight.valid = false;
     flight_info_received = false;
+    last_gate_change_notice_signature[0] = '\0';
     
     if (display) {
         display->clearFlightInfo();

@@ -1157,7 +1157,10 @@ void handleSerialCommands() {
 
         Serial.printf("[SERIAL_DOWNLINK] topic=%s len=%d\n", topic.c_str(), payload.length());
         bool handled = false;
-        if (topic.endsWith("/flight") && flight_manager) {
+        if (topic.endsWith("/flight") && data_transmitter) {
+            data_transmitter->handleMQTTMessage(topic, payload);
+            handled = true;
+        } else if (topic.endsWith("/flight") && flight_manager) {
             handled = flight_manager->parseFlightInfo(payload);
         } else if (data_transmitter) {
             data_transmitter->handleMQTTMessage(topic, payload);
