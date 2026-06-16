@@ -7,6 +7,10 @@ param(
     [string]$MqttBrokerHost = "",
     [int]$MqttPort = 0,
     [string]$MosquittoPub = "",
+    [string]$MosquittoSub = "",
+    [string]$DownlinkTopic = "smartwatch/+/flight",
+    [int]$DownlinkPollSeconds = 2,
+    [switch]$DisableDownlink,
     [int]$Seconds = 0,
     [string]$LogPath = "",
     [switch]$SmokeTest
@@ -41,13 +45,15 @@ function Resolve-MqttSettings {
     param(
         [string]$RequestedHost,
         [int]$RequestedPort,
-        [string]$RequestedPub
+        [string]$RequestedPub,
+        [string]$RequestedSub
     )
 
     $repoRoot = Split-Path -Parent $PSScriptRoot
     $hostValue = $RequestedHost
     $portValue = $RequestedPort
     $pubValue = $RequestedPub
+    $subValue = $RequestedSub
 
     $stackPath = Join-Path $repoRoot "logs\flycare-local-stack-status.json"
     if (Test-Path $stackPath) {
@@ -70,11 +76,16 @@ function Resolve-MqttSettings {
         $candidate = "C:\Program Files\Mosquitto\mosquitto_pub.exe"
         $pubValue = if (Test-Path $candidate) { $candidate } else { "mosquitto_pub.exe" }
     }
+    if ([string]::IsNullOrWhiteSpace($subValue)) {
+        $candidate = "C:\Program Files\Mosquitto\mosquitto_sub.exe"
+        $subValue = if (Test-Path $candidate) { $candidate } else { "mosquitto_sub.exe" }
+    }
 
     return [pscustomobject]@{
         host = $hostValue
         port = $portValue
         pub = $pubValue
+        sub = $subValue
     }
 }
 
@@ -156,8 +167,107 @@ function Parse-UplinkLine {
     }
 }
 
+$downlinkPayloadByTopic = @{}
+$nextDownlinkPoll = Get-Date
+
+function Write-SerialDownlink {
+    param(
+        [System.IO.Ports.SerialPort]$Port,
+        [string]$Topic,
+        [string]$Payload
+    )
+
+    $cleanTopic = if ($null -eq $Topic) { "" } else { $Topic.Trim() }
+    $cleanPayload = if ($null -eq $Payload) { "" } else { $Payload.Trim() }
+    if ([string]::IsNullOrWhiteSpace($cleanTopic) -or [string]::IsNullOrWhiteSpace($cleanPayload)) {
+        return 0
+    }
+
+    try {
+        $parsed = $cleanPayload | ConvertFrom-Json
+        $cleanPayload = $parsed | ConvertTo-Json -Depth 20 -Compress
+    } catch {
+        Write-Warning "Invalid downlink JSON on ${cleanTopic}: $($_.Exception.Message)"
+        return 0
+    }
+
+    $Port.WriteLine("FLYCARE_DOWNLINK $cleanTopic $cleanPayload")
+    return $cleanPayload.Length
+}
+
+function Poll-MqttDownlink {
+    param(
+        [System.IO.Ports.SerialPort]$Port,
+        $Mqtt,
+        [string]$TopicFilter,
+        [hashtable]$LastPayloadByTopic
+    )
+
+    $output = @()
+    $exitCode = 0
+    $oldErrorActionPreference = $ErrorActionPreference
+    $hadNativePreference = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
+    $oldNativePreference = if ($hadNativePreference) { $PSNativeCommandUseErrorActionPreference } else { $null }
+    try {
+        $ErrorActionPreference = "Continue"
+        if ($hadNativePreference) {
+            $script:PSNativeCommandUseErrorActionPreference = $false
+        }
+        $output = & $Mqtt.sub -h $Mqtt.host -p $Mqtt.port -q 1 -t $TopicFilter -C 20 -W 1 -F "%t %p" 2>$null
+        $exitCode = $LASTEXITCODE
+    } catch {
+        Write-Warning "mosquitto_sub failed: $($_.Exception.Message)"
+        return 0
+    } finally {
+        $ErrorActionPreference = $oldErrorActionPreference
+        if ($hadNativePreference) {
+            $script:PSNativeCommandUseErrorActionPreference = $oldNativePreference
+        }
+    }
+
+    if ($exitCode -ne 0 -and @($output).Count -eq 0) {
+        return 0
+    }
+
+    $sent = 0
+    foreach ($line in @($output)) {
+        $lineText = [string]$line
+        if ([string]::IsNullOrWhiteSpace($lineText)) {
+            continue
+        }
+        $space = $lineText.IndexOf(" ")
+        if ($space -le 0) {
+            continue
+        }
+
+        $topic = $lineText.Substring(0, $space).Trim()
+        $payload = $lineText.Substring($space + 1).Trim()
+        if ([string]::IsNullOrWhiteSpace($topic) -or [string]::IsNullOrWhiteSpace($payload)) {
+            continue
+        }
+        $payloadKey = "__payload::$payload"
+        if ($LastPayloadByTopic.ContainsKey($payloadKey)) {
+            continue
+        }
+        if ($LastPayloadByTopic.ContainsKey($topic) -and $LastPayloadByTopic[$topic] -eq $payload) {
+            continue
+        }
+
+        $downlinkBytes = Write-SerialDownlink -Port $Port -Topic $topic -Payload $payload
+        if ($downlinkBytes -gt 0) {
+            $LastPayloadByTopic[$topic] = $payload
+            $LastPayloadByTopic[$payloadKey] = $true
+            $sent++
+            "[downlink] sent topic=$topic len=$downlinkBytes" |
+                Tee-Object -FilePath $LogPath -Append | Out-Host
+        }
+    }
+
+    return $sent
+}
+
 $base = Resolve-BridgeBaseUrl -RequestedBaseUrl $BaseUrl
-$mqtt = Resolve-MqttSettings -RequestedHost $MqttBrokerHost -RequestedPort $MqttPort -RequestedPub $MosquittoPub
+$mqtt = Resolve-MqttSettings -RequestedHost $MqttBrokerHost -RequestedPort $MqttPort -RequestedPub $MosquittoPub -RequestedSub $MosquittoSub
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($LogPath)) {
     $logRoot = Join-Path $repoRoot "logs"
@@ -223,10 +333,12 @@ $deadline = if ($Seconds -gt 0) { (Get-Date).AddSeconds($Seconds) } else { $null
 $serial = $null
 $sent = 0
 $parsed = 0
+$downlinks = 0
 $startedAt = Get-Date
+if ($DownlinkPollSeconds -lt 1) { $DownlinkPollSeconds = 1 }
 
 try {
-    "[$($startedAt.ToString("s"))] bridge start port=$SerialPort baud=$BaudRate transport=$Transport base=$base mqtt=$($mqtt.host):$($mqtt.port)" |
+    "[$($startedAt.ToString("s"))] bridge start port=$SerialPort baud=$BaudRate transport=$Transport base=$base mqtt=$($mqtt.host):$($mqtt.port) downlink=$(-not $DisableDownlink) topic=$DownlinkTopic" |
         Tee-Object -FilePath $LogPath -Append | Out-Host
     $serial = Open-WatchSerial -Name $SerialPort -Baud $BaudRate
     Start-Sleep -Milliseconds 1000
@@ -235,6 +347,11 @@ try {
     while ($true) {
         if ($deadline -and (Get-Date) -ge $deadline) {
             break
+        }
+
+        if (-not $DisableDownlink -and (Get-Date) -ge $nextDownlinkPoll) {
+            $downlinks += Poll-MqttDownlink -Port $serial -Mqtt $mqtt -TopicFilter $DownlinkTopic -LastPayloadByTopic $downlinkPayloadByTopic
+            $nextDownlinkPoll = (Get-Date).AddSeconds($DownlinkPollSeconds)
         }
 
         try {
@@ -250,6 +367,10 @@ try {
 
         $uplink = Parse-UplinkLine -Line $line
         if (-not $uplink) {
+            if ($line -match '^\[SERIAL_DOWNLINK\]|\[Flight\]|Flight info updated|Gate Change') {
+                "[watch] $line" |
+                    Tee-Object -FilePath $LogPath -Append | Out-Host
+            }
             continue
         }
 
@@ -269,6 +390,6 @@ try {
         $serial.Close()
     }
     $endedAt = Get-Date
-    "[$($endedAt.ToString("s"))] bridge stop parsed=$parsed sent=$sent log=$LogPath" |
+    "[$($endedAt.ToString("s"))] bridge stop parsed=$parsed sent=$sent downlinks=$downlinks log=$LogPath" |
         Tee-Object -FilePath $LogPath -Append | Out-Host
 }

@@ -1126,7 +1126,43 @@ void handleSerialCommands() {
     
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
-    cmd.toUpperCase();
+    if (cmd.length() == 0) return;
+
+    String rawCmd = cmd;
+    String upperCmd = rawCmd;
+    upperCmd.toUpperCase();
+
+    if (upperCmd.startsWith("FLYCARE_DOWNLINK ")) {
+        int firstSpace = rawCmd.indexOf(' ');
+        int secondSpace = rawCmd.indexOf(' ', firstSpace + 1);
+        if (firstSpace < 0 || secondSpace < 0) {
+            Serial.printf("[SERIAL_DOWNLINK] invalid: %s\n", rawCmd.c_str());
+            return;
+        }
+
+        String topic = rawCmd.substring(firstSpace + 1, secondSpace);
+        String payload = rawCmd.substring(secondSpace + 1);
+        topic.trim();
+        payload.trim();
+
+        if (topic.length() == 0 || payload.length() == 0) {
+            Serial.println("[SERIAL_DOWNLINK] ignored empty topic/payload");
+            return;
+        }
+
+        Serial.printf("[SERIAL_DOWNLINK] topic=%s len=%d\n", topic.c_str(), payload.length());
+        bool handled = false;
+        if (topic.endsWith("/flight") && flight_manager) {
+            handled = flight_manager->parseFlightInfo(payload);
+        } else if (data_transmitter) {
+            data_transmitter->handleMQTTMessage(topic, payload);
+            handled = true;
+        }
+        Serial.printf("[SERIAL_DOWNLINK] handled=%d\n", handled ? 1 : 0);
+        return;
+    }
+
+    cmd = upperCmd;
     
     // ========================================================================
     // 1. 基础命令
@@ -2071,7 +2107,9 @@ void checkSystemHealth() {
 
 // ==================== setup ====================
 void setup() {
+    Serial.setRxBufferSize(2048);
     Serial.begin(115200);
+    Serial.setTimeout(250);
     delay(2000);
 
     // ⭐ 关键修复：禁用 PSRAM 的 I2S 缓存冲突
@@ -2189,7 +2227,7 @@ void setup() {
     }
 #endif
     xTaskCreatePinnedToCore(networkTask, "Network", 6144, nullptr, 4, &networkTaskHandle, 1);
-    xTaskCreatePinnedToCore(audioTask, "Audio", 4096, nullptr, 4, &audioTaskHandle, 0);
+    xTaskCreatePinnedToCore(audioTask, "Audio", AUDIO_TASK_STACK_SIZE, nullptr, 4, &audioTaskHandle, 0);
     // xTaskCreatePinnedToCore(mainCoordinatorTask, "Main", 6144, nullptr, 3, &mainCoordinatorTaskHandle, 0);
     xTaskCreatePinnedToCore(heartRateTask, "HeartRate", 4096, nullptr, 2, nullptr, 1);
     xTaskCreatePinnedToCore(mapDisplayTask, "Display", 16384, nullptr, 3, &mapDisplayTaskHandle, 1);

@@ -20,7 +20,7 @@ cd E:\flycare
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_watch.ps1
 ```
 
-If the PC and watch are on a Wi-Fi/hotspot that blocks watch-to-PC MQTT but the watch is connected over USB, run the serial fallback bridge in another PowerShell. It reads firmware `FLYCARE_UPLINK` lines from COM5 and republishes them into the local MQTT broker from `logs/flycare-local-stack-status.json`, so the existing backend subscriber updates Mongo and EventLog:
+If the PC and watch are on a Wi-Fi/hotspot that blocks watch-to-PC MQTT but the watch is connected over USB, run the serial fallback bridge in another PowerShell. It reads firmware `FLYCARE_UPLINK` lines from COM5 and republishes them into the local MQTT broker from `logs/flycare-local-stack-status.json`, so the existing backend subscriber updates Mongo and EventLog. It also polls retained `smartwatch/+/flight` downlinks, de-duplicates identical alias payloads, and writes them back to the watch as `FLYCARE_DOWNLINK`, so Admin Gate Change can still appear on the watch when the hotspot blocks direct MQTT:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bridge_flycare_serial.ps1 -SerialPort COM5

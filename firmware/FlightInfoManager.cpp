@@ -174,13 +174,20 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     // ========== 检查各种变更并调用对应的 notify 函数 ==========
     
     // 1. 登机口变更
-    if (current_flight.gate_changed && !oldGateChanged) {
+    bool gateChangeEvent = current_flight.gate_changed && !oldGateChanged;
+    if (gateChangeEvent) {
         notifyGateChange();
     }
     
     // 2. 航班延误
-    if (current_flight.delay_minutes > 0 && current_flight.delay_minutes != oldDelay) {
+    String delayReasonLower = current_flight.delay_reason;
+    delayReasonLower.toLowerCase();
+    bool delayIsGateChangeNotice = current_flight.gate_changed &&
+        (gateChangeEvent || delayReasonLower.indexOf("gate change") >= 0);
+    if (current_flight.delay_minutes > 0 && current_flight.delay_minutes != oldDelay && !delayIsGateChangeNotice) {
         notifyDelay();
+    } else if (current_flight.delay_minutes > 0 && current_flight.delay_minutes != oldDelay && delayIsGateChangeNotice) {
+        Serial.println("[Flight] delay popup suppressed for gate change notice");
     }
     
     // 3. 登机状态变更

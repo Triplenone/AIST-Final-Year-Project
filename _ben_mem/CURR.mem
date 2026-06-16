@@ -422,3 +422,9 @@ I.flycare.firmware.ble_balance.20260616T1324=BLE scan skip while MQTT disconnect
 V.flycare.serial_bridge.smoke.20260616T1324=ok fake status via bridge smoke to 192.168.0.203:1883 inserted Mongo 6a30dc44dde90a25b65b7f3d through existing backend 8001 subscriber
 V.flycare.ng.serial_realtime.20260616T1324=ok COM5 bridge 90s parsed/sent 12 real uplinks; latest status 6a30dddedde90a25b65b7f4f fresh x=6.47 y=4.93 quality=medium beacons=5 target=Gate10 sos=false fall=Normal
 V.flycare.audit.20260616T1324=pass audit activeBackend=http://127.0.0.1:8001 freshness age=0.2min positioning quality=medium beacons=5
+I.flycare.bridge.serial_downlink.20260616T1357=bridge_flycare_serial polls retained smartwatch/+/flight, dedupes alias payloads, writes FLYCARE_DOWNLINK topic json to COM5 while preserving uplink mqtt bridge
+I.flycare.firmware.serial_downlink.20260616T1357=firmware handles FLYCARE_DOWNLINK before uppercasing commands, Serial RX buffer=2048, flight JSON parsed by FlightInfoManager with handled=1 evidence
+I.flycare.gate_popup_audio.20260616T1357=Gate Change to 10 suppresses extra long delay popup; Audio task stack=8192 and gate TTS says short gate number to avoid Audio stack overflow
+V.flycare.flight.serial_downlink.20260616T1357=ok publish inserted flight 6a30e330dde90a25b65b7f6e, retained aliases ok, bridge log 20260616-135549 len=411 handled=1 gate popup delay-suppressed no reboot 75s
+V.flycare.ng.positioning.20260616T1357=ok latest status 6a30e5addde90a25b65b7f7e fresh x=6.01 y=3.77 quality=high beacons=6 sos=false
+V.flycare.audit.20260616T1357=pass audit activeBackend=http://127.0.0.1:8001 after final COM5 upload; stack, positioning, flight, popup UI, sos state, buttons passed

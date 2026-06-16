@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 13:31-13:57 FlyCare bidirectional serial flight downlink + audio stability
+
+- I.bridge.serial_downlink=updated `scripts/bridge_flycare_serial.ps1` to poll retained `smartwatch/+/flight`, de-duplicate topic/payload alias repeats, and write `FLYCARE_DOWNLINK <topic> <json>` to the connected watch while still bridging `FLYCARE_UPLINK` into MQTT.
+- I.firmware.serial_downlink=updated `firmware/firmware.ino` to handle `FLYCARE_DOWNLINK` before uppercasing serial commands, enlarged Serial RX to 2048 bytes, and routes flight JSON through `FlightInfoManager` with `[SERIAL_DOWNLINK] handled=1` evidence.
+- I.firmware.gate_popup=updated `firmware/FlightInfoManager.cpp` and `AudioManager.cpp` so `gate_changed=true` with `delay_reason=Gate Change to 10` shows the large simplified Gate Change popup, suppresses the extra verbose delay popup, and speaks a short gate-number TTS.
+- I.firmware.audio_stability=updated Audio task creation to use `AUDIO_TASK_STACK_SIZE=8192`; this fixed the observed `***ERROR*** A stack overflow in task Audio` after Gate Change TTS/SD audio fallback.
+- V.firmware.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded after the audio fix; final sketch 1538363/3145728 bytes, RAM 55176/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.flight.serial_downlink=ok backend `POST /api/v1/flycare-admin/flight/publish` for NG WAI LUN inserted Mongo `_id=6a30e330dde90a25b65b7f6e`, published retained QoS1 to both `ESP32_48CA43A42298` aliases, and bridge log `logs/flycare-serial-bridge-20260616-135549.log` shows serial downlink len=411, `[SERIAL_DOWNLINK] handled=1`, Gate Change popup, delay popup suppression, and no reboot over 75 seconds.
+- V.positioning_after_upload=ok latest NG WAI LUN status `_id=6a30e5addde90a25b65b7f7e` is fresh with x=6.01, y=3.77, quality=high, beacon_count=6.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` after the final upload passed using active backend `http://127.0.0.1:8001`; local stack, positioning, flight update, popup UI, SOS state, button policy, and historical HR/SpO2 checks passed.
+
 ### 2026-06-16 13:17-13:24 FlyCare USB serial-to-MQTT fallback bridge
 
 - I.firmware.serial_uplink=updated `firmware/DataTransmitter.cpp` emits `FLYCARE_UPLINK <topic> <json>` for every MQTT uplink before attempting Wi-Fi MQTT, so COM5 can carry status/SOS/fall/heartbeat payloads when hotspot client isolation blocks watch-to-PC TCP.

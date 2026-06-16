@@ -1,0 +1,7 @@
+I.flycare.bridge.serial_downlink=bridge_flycare_serial.ps1 now polls retained smartwatch/+/flight and writes FLYCARE_DOWNLINK topic json to COM5; identical alias payloads are deduped
+I.flycare.firmware.serial_downlink=firmware handles FLYCARE_DOWNLINK before command uppercasing; Serial RX buffer raised to 2048; flight path uses FlightInfoManager parse result
+I.flycare.gate_popup_audio=Gate Change to 10 remains a large simple Gate Change popup; delay popup is suppressed for gate-change reason; Audio task stack=8192 and gate TTS is shortened
+V.flycare.compile_upload=ok final COM5 upload MAC 48:ca:43:a4:22:98 sketch=1538363/3145728 RAM=55176/327680
+V.flycare.flight_downlink=ok backend publish flight Mongo=6a30e330dde90a25b65b7f6e retained aliases ok; bridge log 20260616-135549 shows downlink len=411 handled=1, popup suppression, no reboot over 75s
+V.flycare.positioning=ok latest NG status 6a30e5addde90a25b65b7f7e x=6.01 y=3.77 quality=high beacons=6
+V.flycare.audit=pass scripts/audit_flycare_goal.ps1 using active backend 8001 after final upload

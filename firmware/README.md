@@ -191,6 +191,8 @@ Arrival popup uses the large dedicated `ARRIVED` layout, auto-closes after 5 sec
 
 Flight display layout uses fixed destination/gate columns, a top status bar that stays above the flight title, and a bounded delay panel kept above the rounded bottom edge. Long airline, destination, gate, and delay reason text is fitted or wrapped inside its panel rather than drawing into the next column or off the bottom edge.
 
+When a backend update is explicitly a gate-change notice (`gate_changed=true` and a `delay_reason` such as `Gate Change to 10`), the firmware keeps the large simplified Gate Change popup and suppresses the extra verbose delay popup.
+
 Alert sounds are queued before or alongside TTS for SOS, gate change, delay, boarding, final call, cancellation, on-time updates, and arrival. Missing alert sound files are logged and the firmware safely continues with TTS.
 
 Fall detection is disabled for power saving in this build (`ENABLE_FALL_DETECTION 0`). `FALL`, `SIMFALL`, and `FALLDISP` only print a disabled message.
@@ -213,6 +215,7 @@ TESTROUTE Gate11     Set and print a smart navigation route
 SIMFLIGHT            Simulate a Gate 10 flight JSON update
 SIMFLIGHT11          Simulate a Gate 11 flight JSON update
 SIMDELAY             Simulate a delayed flight JSON update
+FLYCARE_DOWNLINK T J Apply serial MQTT downlink topic T with JSON payload J
 PAGE 2               Switch to the flight page
 REDRAW               Force a display redraw after a serial UI test command
 TESTARRIVAL          Trigger arrival test for Gate 10

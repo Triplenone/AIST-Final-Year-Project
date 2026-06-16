@@ -334,17 +334,17 @@ void AudioManager::playTTS(const String& text) {
     
     // 登机口
     if (lowerText.indexOf("gate") >= 0) {
-        String gate = "";
+        String gateNumber = "";
         for (int i = 0; i < text.length(); i++) {
             char c = text[i];
-            if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
-                gate += c;
+            if (c >= '0' && c <= '9') {
+                gateNumber += c;
             }
         }
-        if (gate.length() > 0) {
-            playGate(gate.c_str());
-        } else {
-            playWord("gate");
+        playWord("gate");
+        if (gateNumber.length() > 0) {
+            delay(60);
+            playNumber(gateNumber.toInt());
         }
         return;
     }
