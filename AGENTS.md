@@ -27,6 +27,12 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 21:25-21:26 FlyCare final freeze blocked audit
+
+- V.stack.blocked_audit=ok branch `Flycare`, HEAD `4b2f1f06ed57e01b4a5cad0fe3de3863a4932448`, `origin/Flycare...HEAD=0/0`; active backend remains `http://127.0.0.1:8001` with MQTT connected, while `8000` remains healthy but MQTT-disabled.
+- B.physical_buttons=blocked: latest 120 EventLog rows contained no fresh device 8 SOS/ButtonLong event, latest status `_id=6a314ee9dde90a25b65b834e` remained `sos.active=false`; remaining proof requires a human to press SOS for 3s trigger/cancel and observe PWR short-press screen-off on the watch.
+- N.goal.status=software/hardware data paths are smoke-passed, but the active final demo goal cannot be marked complete until fresh physical button evidence is captured.
+
 ### 2026-06-16 21:12-21:15 FlyCare final freeze physical button monitor
 
 - V.stack.recheck=ok branch `Flycare`, HEAD `c650de58ae18c25481cce35ac57fdba7c239348f`, `origin/Flycare...HEAD=0/0`; active backend remains `http://127.0.0.1:8001`, MQTT connected to `192.168.0.203:1883`, and persistent COM5 bridge log is `logs/flycare-serial-bridge-live-20260616-205947.log`.
