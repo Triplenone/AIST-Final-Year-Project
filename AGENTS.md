@@ -27,6 +27,13 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 23:52-23:53 FlyCare final freeze current UI recheck
+
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T23:52:02 using active backend `http://127.0.0.1:8001`; freshness age=0.1min, status `_id=6a31711edde90a25b65b8650`, x=6.20, y=4.00, quality=high, beacon_count=3, SOS inactive, fall normal.
+- V.dashboard.current=ok browser `http://192.168.0.203:5173/flycare` shows NG WAI LUN Online/Live, Boarding Gate 10, CX910, Gate 10, `Gate Change to 10`, no loading state, and no active fall/SOS overlay.
+- V.bridge.current=ok `logs/flycare-serial-bridge-live-20260616-234509.log` has live status uplinks, `[SERIAL_DOWNLINK] handled=1`, Gate Change to 10 notice, one retained duplicate ignored, invalidUplinks=0, crashes=0.
+- P.physical_buttons.current=partial: latest 150 EventLog rows still contained no fresh device 8 SOS/ButtonLong event; latest checked status `_id=6a31715adde90a25b65b865a` remained `sos.active=false`, so fresh physical SOS trigger/cancel and PWR short-press screen-off remain unproven in this resumed run.
+
 ### 2026-06-16 23:44-23:47 FlyCare final freeze live bridge restore
 
 - B.bridge.stale=found `logs/flycare-serial-bridge-live-20260616-205947.log` had stopped at 2026-06-16T22:58:14 after parsed/sent 943, so `scripts/audit_flycare_goal.ps1` at 23:44 failed freshness with latest status age=46.7min.
