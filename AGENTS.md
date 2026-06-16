@@ -27,6 +27,14 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 00:11-00:13 FlyCare final freeze resumed audit
+
+- V.git.resumed=ok branch `Flycare`, HEAD `345ad6beafae318559b3d753ff5d409505509017`, `origin/Flycare...HEAD=0/0`; working tree only had the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs before this note.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-17T00:11:13 using active backend `http://127.0.0.1:8001`; freshness age=0.1min, latest status `_id=6a317599dde90a25b65b86e3`, x=6.21, y=4.00, quality=high, beacon_count=6, SOS inactive, fall normal.
+- V.dashboard.current=ok browser `http://192.168.0.203:5173/flycare` shows NG WAI LUN Online/Live, Boarding Gate 10, CX910, Gate 10, `Gate Change to 10`, no loading state, and no active fall/SOS overlay.
+- V.bridge.current=ok `logs/flycare-serial-bridge-live-20260616-234509.log` is still live with 200 status uplinks, invalidUplinks=0, crashes=0, flight downlink seen, Gate Change notice, and duplicate retained payload ignored.
+- B.physical_buttons=blocked: latest 200 EventLog rows still contained no fresh device 8 SOS/ButtonLong event; latest checked status `_id=6a3175eedde90a25b65b86ef` remained `sos.active=false`. Fresh physical SOS trigger/cancel and PWR short-press screen-off still require a human to press/observe the watch.
+
 ### 2026-06-16 23:52-23:53 FlyCare final freeze current UI recheck
 
 - V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T23:52:02 using active backend `http://127.0.0.1:8001`; freshness age=0.1min, status `_id=6a31711edde90a25b65b8650`, x=6.20, y=4.00, quality=high, beacon_count=3, SOS inactive, fall normal.
