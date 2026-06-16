@@ -27,6 +27,18 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 00:46-00:49 FlyCare final freeze SOS evidence closeout
+
+- V.git.current=ok branch `Flycare`, HEAD `ed69072198fad7d924be0ff9e6711611f2d8512a`, upstream `origin/Flycare`, `origin/Flycare...HEAD=0/0`; working tree only had the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs before this note.
+- D.backend.final_demo.current=use `http://127.0.0.1:8001` / `http://192.168.0.203:8001` for final hardware smoke because `logs/flycare-local-stack-status.json` shows `8000` healthy but MQTT-disabled (`mqttConnected=false`) and `8001` healthy with MQTT connected to `192.168.0.203:1883`.
+- V.dashboard.current=ok browser `http://192.168.0.203:5173/flycare` sampled a no-loading window with NG WAI LUN Online, freshness Live, CX910, Customer Services, and `Gate Change to 10`; no console errors and no fall/SOS modal were present.
+- V.location.current=ok latest device 8 status `_id=6a317e5ddde90a25b65b881e` at `2026-06-16T16:48:29.392000+00:00`, x=4.35, y=2.10, quality=high, beacon_count=4, SOS inactive, fall normal.
+- V.flight.current=ok latest flight `_id=6a314783dde90a25b65b8247` remains CX910 / Gate 10 / `Gate Change to 10`; live serial bridge `logs/flycare-serial-bridge-live-20260616-234509.log` shows `[SERIAL_DOWNLINK] handled=1`, `TTS: Gate change to Gate 10`, duplicate retained flight payload ignored, and no crash markers.
+- V.sos_physical.current=ok physical SOS long press is now proven by live serial bridge lines `[SOS] Activate via ButtonLong` and `[SOS] Clear via ButtonLong` twice, plus EventLog 316 and 317 for device 8 with `trigger_method=ButtonLong`; both were marked `false_alarm`, and latest status is `sos.active=false`.
+- V.fall.current=ok final SIMFALL path evidence remains EventLog 315 for device 8, handled as `false_alarm`, with latest status fall normal and no unhandled target fall events.
+- V.goal.audit.current=warn `scripts/audit_flycare_goal.ps1` at 2026-06-17T00:46:00 using active backend `http://127.0.0.1:8001`; all core checks passed except `display_runtime_stability` warning (`gatePopups=2`, `duplicateIgnored=2`, `uplinks=493`, `crashes=0`).
+- P.pwr_physical.current=partial: source policy and audit confirm PWR short press sleeps the screen and PWR long press toggles screen power, but the live bridge has no `PWR`/screen-off serial evidence and Codex cannot visually observe the watch screen. Final completion still needs human visual confirmation of PWR short-press screen-off without breaking long-press power behavior.
+
 ### 2026-06-17 00:11-00:13 FlyCare final freeze resumed audit
 
 - V.git.resumed=ok branch `Flycare`, HEAD `345ad6beafae318559b3d753ff5d409505509017`, `origin/Flycare...HEAD=0/0`; working tree only had the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs before this note.
