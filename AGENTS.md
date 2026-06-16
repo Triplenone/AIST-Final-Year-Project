@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 20:53-21:02 FlyCare final demo freeze smoke
+
+- V.git.final_freeze=ok branch `Flycare`, pre-smoke HEAD `ef6548bbdea85f9a1669e6b45acb0cecf0da0ecf`, `origin/Flycare...HEAD=0/0`; working tree only had the six pre-existing untracked `00_`-`06_FlyCare_*.md` audit docs.
+- D.backend.final_demo=use `http://127.0.0.1:8001` / `http://192.168.0.203:8001` for final hardware smoke because `8000` is healthy but stale/MQTT-disabled, while `8001` is the active backend connected to MQTT `192.168.0.203:1883`.
+- V.dashboard.final=ok browser `http://192.168.0.203:5173/flycare` shows NG WAI LUN Online/Live, Customer Services, CX910, Gate 10, `Gate Change to 10`, no loading state, and after SIMFALL clear no active fall/SOS overlay.
+- V.location.final=ok latest status `_id=6a31476cdde90a25b65b8241` mapped to MySQL device 8 with x=6.19, y=3.98, quality=high, beacon_count=5, SOS inactive, fall normal.
+- V.flight.final=ok Admin `POST /api/v1/flycare-admin/flight/publish` on 8001 saved Mongo `_id=6a314783dde90a25b65b8247`, published retained QoS1 to `ESP32_000048CA43A42298` and `ESP32_48CA43A42298`; serial bridge showed `[downlink] sent`, watch `[SERIAL_DOWNLINK]`, and duplicate payload ignored without reopening repeated popup.
+- V.fall.final=ok `bridge_flycare_serial.ps1 -SerialCommand SIMFALL -Seconds 45` on COM5 produced fall uplinks, `[FallDetection] SIMFALL alert displayed and uploaded`, backend EventLog 315, then EventLog 315 was marked `false_alarm`; persistent COM5 bridge was restarted afterward.
+- P.sos_pwr.final=partial: 70s live monitor during this freeze run did not observe a new device 8 SOS EventLog, so the fresh physical long-press trigger/cancel was not re-proven; current state is SOS inactive, audit still has historical `ButtonLong` evidence and source policy confirms SOS short press cycles pages, SOS long press toggles SOS, PWR short press sleeps screen, and PWR long press toggles screen.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` at 2026-06-16T21:01:46 using active backend `http://127.0.0.1:8001`; freshness age=0.1min, positioning high/5 beacons, flight serial sync, display/watch runtime 112.3s with 17 uplinks, invalidUplinks=0, crashes=0, fall path latestEvent=315/false_alarm.
+
 ### 2026-06-16 19:58-20:20 FlyCare persistent COM5 serial bridge + live dashboard pass
 
 - I.stack.serial_launcher=updated `scripts/start_flycare_local_stack.ps1` with `-StartSerialBridge`, `-RestartSerialBridge`, `-SerialPort`, and `logs/flycare-serial-bridge-process.json` PID tracking so local stack status records COM5 bridge PID/log evidence.
