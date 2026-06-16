@@ -27,6 +27,15 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-16 15:02-15:20 FlyCare serial JSON corruption fix + runtime stability gate
+
+- I.firmware.serial_json=updated `firmware/DataTransmitter.cpp/.h` so periodic status keeps the full MQTT/HTTP JSON but emits a compact status payload on `FLYCARE_UPLINK`; serial output is now built as one buffered line with a serial uplink mutex to reduce UART interleaving.
+- I.bridge.json_recovery=updated `scripts/bridge_flycare_serial.ps1` to parse the first balanced JSON object from a `FLYCARE_UPLINK` line, log invalid uplink previews plus raw sidecar `.invalid` files, and preserve evidence when normal watch logs are appended after JSON.
+- I.goal.audit.runtime=updated `scripts/audit_flycare_goal.ps1` with `watch_runtime_stability`; it checks task stack headroom plus the newest 60s+ bridge log for uplinks, invalid uplinks, and reset/panic/stack-overflow evidence.
+- V.firmware.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded; final sketch 1542235/3145728 bytes, RAM 55184/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.serial.bridge_json=ok final 90s COM5 bridge log `logs/flycare-serial-bridge-20260616-151759.log` parsed/sent 15 uplinks with `invalidUplinks=0`, duplicate retained flight payload ignored twice, one initial Gate Change popup, and no crash evidence.
+- V.goal.audit=pass `scripts/audit_flycare_goal.ps1` after final upload using active backend `http://127.0.0.1:8001`; `watch_runtime_stability` duration=90s/uplinks=15/invalidUplinks=0/crashes=0, and `display_runtime_stability` also passed.
+
 ### 2026-06-16 14:52-14:55 FlyCare display runtime audit hardening
 
 - I.goal.audit.display=updated `scripts/audit_flycare_goal.ps1` with `display_runtime_stability`, which verifies retained-flight payload de-duplication source, accepted-only flight logging, NAV/map redraw throttling, and the newest serial bridge runtime log containing `[Flight] duplicate flight payload ignored`.

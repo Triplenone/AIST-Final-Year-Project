@@ -444,3 +444,9 @@ V.flycare.audit.20260616T1434=pass scripts/audit_flycare_goal.ps1 timestamp=2026
 I.flycare.audit.display_runtime.20260616T1455=audit_flycare_goal adds display_runtime_stability source/runtime check for flight dedupe, accepted-only flight log, nav redraw throttling, and serial bridge duplicate-ignore/no-crash evidence
 V.flycare.display_runtime.20260616T1455=pass bridge log flycare-serial-bridge-20260616-145318.log DuplicateIgnored=3 Uplinks=14 Crashes=0 after COM5 90s bridge
 V.flycare.audit.20260616T1455=pass scripts/audit_flycare_goal.ps1 timestamp=2026-06-16T14:54:57 activeBackend=http://127.0.0.1:8001 freshnessAge=0.2min positioning=medium/beacons5 displayRuntime=pass
+I.flycare.serial_json.20260616T1520=DataTransmitter serial fallback now emits compact status JSON via one buffered FLYCARE_UPLINK line with serial uplink mutex; MQTT/HTTP keep full status JSON
+I.flycare.bridge_json.20260616T1520=bridge_flycare_serial parses first balanced JSON object from FLYCARE_UPLINK and logs invalid uplink preview/raw sidecar for diagnosis
+I.flycare.audit.watch_runtime.20260616T1520=audit_flycare_goal adds watch_runtime_stability for task stack headroom, 60s+ bridge uptime, invalidUplinks, uplinks, and crash markers
+V.flycare.serial_json.20260616T1520=ok final COM5 bridge log flycare-serial-bridge-20260616-151759.log parsed=15 sent=15 invalidUplinks=0 duplicateIgnored=2 crashes=0
+V.flycare.compile_upload.20260616T1520=ok COM5 ESP32-S3 MAC=48:ca:43:a4:22:98 sketch=1542235/3145728 RAM=55184/327680
+V.flycare.audit.20260616T1520=pass scripts/audit_flycare_goal.ps1 activeBackend=http://127.0.0.1:8001 watch_runtime=pass duration=90s uplinks=15 invalidUplinks=0 crashes=0

@@ -1,0 +1,6 @@
+I.flycare.serial_json=DataTransmitter keeps full MQTT/HTTP status JSON but emits compact serial fallback status JSON; FLYCARE_UPLINK is built as one buffered line with serial uplink mutex
+I.flycare.bridge_json=bridge_flycare_serial parses first balanced JSON object and records invalid uplink preview plus raw .invalid sidecar for future diagnosis
+I.flycare.audit.watch_runtime=audit_flycare_goal adds watch_runtime_stability with stack source checks, 60s+ bridge duration, uplink count, invalidUplinks, and crash marker checks
+V.flycare.compile_upload=ok COM5 MAC=48:ca:43:a4:22:98 sketch=1542235/3145728 RAM=55184/327680
+V.flycare.serial_bridge=ok logs/flycare-serial-bridge-20260616-151759.log parsed=15 sent=15 invalidUplinks=0 duplicateIgnored=2 crashes=0
+V.flycare.audit=pass logs/flycare-goal-audit.md activeBackend=http://127.0.0.1:8001 display_runtime=pass watch_runtime=pass

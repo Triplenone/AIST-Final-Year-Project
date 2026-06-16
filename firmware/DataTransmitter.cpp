@@ -61,6 +61,8 @@ static void buildMqttBrokerCandidates(String brokers[], int& count, int maxCount
 
 // ================ 构造函数 ================
 // 构造函数中修复 MAC 地址获取
+static SemaphoreHandle_t serialUplinkMutex = nullptr;
+
 static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
     client.disconnect();
     transport.stop();
@@ -68,10 +70,27 @@ static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
 }
 
 static void emitSerialUplink(const String& topic, const String& payload) {
-    Serial.print("FLYCARE_UPLINK ");
-    Serial.print(topic);
-    Serial.print(" ");
-    Serial.println(payload);
+    if (!serialUplinkMutex) {
+        serialUplinkMutex = xSemaphoreCreateMutex();
+    }
+
+    bool locked = false;
+    if (serialUplinkMutex) {
+        locked = xSemaphoreTake(serialUplinkMutex, pdMS_TO_TICKS(1000)) == pdTRUE;
+    }
+
+    String line;
+    line.reserve(topic.length() + payload.length() + 18);
+    line += "FLYCARE_UPLINK ";
+    line += topic;
+    line += " ";
+    line += payload;
+    line += "\n";
+    Serial.write(reinterpret_cast<const uint8_t*>(line.c_str()), line.length());
+
+    if (locked) {
+        xSemaphoreGive(serialUplinkMutex);
+    }
 }
 
 DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
@@ -277,7 +296,12 @@ bool DataTransmitter::publishToMQTT(const String& topic, const String& payload) 
 
 // ================ 发布到 MQTT（三个参数，带重试机制） ================
 bool DataTransmitter::publishToMQTT(const String& topic, const String& payload, bool retained) {
-    emitSerialUplink(topic, payload);
+    return publishToMQTTWithSerialPayload(topic, payload, retained, payload);
+}
+
+bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const String& payload,
+                                                     bool retained, const String& serialPayload) {
+    emitSerialUplink(topic, serialPayload.length() > 0 ? serialPayload : payload);
 
     bool locked = false;
     if (mqttMutex) {
@@ -766,14 +790,86 @@ String DataTransmitter::getStatusSummaryJSON() {
     return json;
 }
 
+String DataTransmitter::getSerialStatusSummaryJSON() {
+    String json = "{";
+
+    json += "\"device_id\":\"" + device_id + "\",";
+    json += "\"timestamp\":" + String(getCurrentTimestamp()) + ",";
+    json += "\"data_type\":\"status_update\",";
+
+    json += "\"location\":{";
+    json += "\"current\":{";
+    json += "\"x\":" + String(current_x, 2) + ",";
+    json += "\"y\":" + String(current_y, 2) + ",";
+    json += "\"accuracy\":" + String(accuracy, 2) + ",";
+    json += "\"quality\":\"" + location_quality + "\",";
+    json += "\"beacon_count\":" + String(beacon_count);
+    json += "},";
+    json += "\"target\":{";
+    json += "\"active\":";
+    json += navigation_active ? "true" : "false";
+    json += ",";
+    json += "\"x\":" + String(target_x, 2) + ",";
+    json += "\"y\":" + String(target_y, 2) + ",";
+    json += "\"name\":\"" + target_name + "\",";
+    json += "\"distance\":" + String(calculateDistanceToTarget(), 2) + ",";
+    json += "\"direction\":\"" + calculateDirectionToTarget() + "\"";
+    json += "}";
+    json += "},";
+
+    json += "\"fall_detection\":{";
+    if (fall_detector) {
+        FallEvent event = fall_detector->getFallEvent();
+        if (event.is_fall_confirmed) {
+            json += "\"state\":" + String(event.state) + ",";
+            json += "\"state_description\":\"" + event.description + "\",";
+            json += "\"is_fall_confirmed\":true,";
+            json += "\"confidence\":" + String(event.confidence, 2);
+        } else {
+            json += "\"state\":0,\"state_description\":\"normal\",\"is_fall_confirmed\":false,\"confidence\":0.0";
+        }
+    } else {
+        json += "\"state\":0,\"state_description\":\"normal\",\"is_fall_confirmed\":false,\"confidence\":0.0";
+    }
+    json += "},";
+
+    json += "\"sos\":{";
+    json += "\"active\":" + String(sos_active ? "true" : "false") + ",";
+    json += "\"trigger_method\":\"" + sos_trigger_method + "\",";
+    json += "\"trigger_count\":" + String(sos_trigger_count) + ",";
+    json += "\"duration\":" + String(sos_active ? (getCurrentTimestamp() - sos_trigger_time) : 0);
+    json += "},";
+
+    json += "\"sensors\":{";
+    json += "\"heart_rate\":{";
+    json += "\"bpm\":" + String(heart_rate.bpm) + ",";
+    json += "\"valid\":" + String(heart_rate.valid ? "true" : "false");
+    json += "},";
+    json += "\"spo2\":{";
+    json += "\"percentage\":" + String(spo2.percentage) + ",";
+    json += "\"valid\":" + String(spo2.valid ? "true" : "false");
+    json += "}";
+    json += "},";
+
+    json += "\"system\":{";
+    json += "\"battery\":{";
+    json += "\"level\":" + (power ? String(power->getBatteryPercent()) : "0");
+    json += "}";
+    json += "}";
+    json += "}";
+
+    return json;
+}
+
 void DataTransmitter::transmitStatusSummary() {
     String jsonData = getStatusSummaryJSON();
+    String serialJsonData = getSerialStatusSummaryJSON();
 
     String topic = getDeviceTopic(MQTT_TOPIC_STATUS);
     Serial.print("status topic: ");
     Serial.println(topic);
     Serial.printf("status bytes: %d\n", jsonData.length());
-    publishToMQTT(topic, jsonData);
+    publishToMQTTWithSerialPayload(topic, jsonData, false, serialJsonData);
 
     if (ENABLE_HTTP_UPLOAD && network && network->isConnected()) {
         network->sendHTTPData(jsonData);
@@ -782,6 +878,7 @@ void DataTransmitter::transmitStatusSummary() {
 
 void DataTransmitter::transmitAllData() {
     String jsonData = getAllDataJSON();
+    String serialJsonData = getSerialStatusSummaryJSON();
     
     // 通过 MQTT 发布
     String topic = getDeviceTopic(MQTT_TOPIC_STATUS);
@@ -789,7 +886,7 @@ void DataTransmitter::transmitAllData() {
     Serial.println(topic);
     Serial.print("数据: ");
     Serial.println(jsonData);
-    publishToMQTT(topic, jsonData);
+    publishToMQTTWithSerialPayload(topic, jsonData, false, serialJsonData);
     
     // 同时保留 HTTP 作为备选
     if (ENABLE_HTTP_UPLOAD && network && network->isConnected()) {

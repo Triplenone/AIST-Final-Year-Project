@@ -263,6 +263,7 @@ public:
     // 获取完整的JSON数据
     String getAllDataJSON();
     String getStatusSummaryJSON();
+    String getSerialStatusSummaryJSON();
     String getFallJSON(const FallEvent& fall_event);
     String getSOSJSON();
     String getLocationJSON();
@@ -284,6 +285,8 @@ private:
     // MQTT 辅助
     static void mqttCallbackStatic(char* topic, byte* payload, unsigned int length);
     void mqttCallback(char* topic, byte* payload, unsigned int length);
+    bool publishToMQTTWithSerialPayload(const String& topic, const String& payload,
+                                        bool retained, const String& serialPayload);
     String getDeviceTopic(const char* baseTopic);
 };
 

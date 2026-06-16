@@ -151,13 +151,20 @@ function Send-Uplink {
 function Parse-UplinkLine {
     param([string]$Line)
 
-    $match = [regex]::Match($Line, '^FLYCARE_UPLINK\s+(\S+)\s+(\{.*\})\s*$')
+    $match = [regex]::Match($Line, '^FLYCARE_UPLINK\s+(\S+)\s+(.+)$')
     if (-not $match.Success) {
         return $null
     }
 
+    $rawPayload = $match.Groups[2].Value.Trim()
+    $jsonPayload = Get-JsonObjectPrefix -Text $rawPayload
+    if ([string]::IsNullOrWhiteSpace($jsonPayload)) {
+        Write-Warning "Invalid FLYCARE_UPLINK JSON framing"
+        return $null
+    }
+
     try {
-        $payload = $match.Groups[2].Value | ConvertFrom-Json
+        $payload = $jsonPayload | ConvertFrom-Json
         return [pscustomobject]@{
             topic = $match.Groups[1].Value
             payload = $payload
@@ -166,6 +173,51 @@ function Parse-UplinkLine {
         Write-Warning "Invalid FLYCARE_UPLINK JSON: $($_.Exception.Message)"
         return $null
     }
+}
+
+function Get-JsonObjectPrefix {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $null
+    }
+
+    $start = $Text.IndexOf("{")
+    if ($start -lt 0) {
+        return $null
+    }
+
+    $depth = 0
+    $inString = $false
+    $escaped = $false
+    for ($i = $start; $i -lt $Text.Length; $i++) {
+        $ch = $Text[$i]
+        if ($escaped) {
+            $escaped = $false
+            continue
+        }
+        if ($ch -eq "\") {
+            $escaped = $true
+            continue
+        }
+        if ($ch -eq '"') {
+            $inString = -not $inString
+            continue
+        }
+        if ($inString) {
+            continue
+        }
+        if ($ch -eq "{") {
+            $depth++
+        } elseif ($ch -eq "}") {
+            $depth--
+            if ($depth -eq 0) {
+                return $Text.Substring($start, $i - $start + 1)
+            }
+        }
+    }
+
+    return $null
 }
 
 $downlinkPayloadByTopic = @{}
@@ -377,6 +429,13 @@ try {
 
         $uplink = Parse-UplinkLine -Line $line
         if (-not $uplink) {
+            if ($line -match '^FLYCARE_UPLINK\s+') {
+                $preview = $line
+                if ($preview.Length -gt 240) { $preview = $preview.Substring(0, 240) + "..." }
+                "[serial] invalid uplink preview=$preview" |
+                    Tee-Object -FilePath $LogPath -Append | Out-Host
+                $line | Add-Content -Path "$LogPath.invalid" -Encoding UTF8
+            }
             if ($line -match '^\[SERIAL_DOWNLINK\]|\[Flight\]|Flight info updated|Gate Change|\[FallDetection\]|\[FALL\]|\[SOS\]') {
                 "[watch] $line" |
                     Tee-Object -FilePath $LogPath -Append | Out-Host

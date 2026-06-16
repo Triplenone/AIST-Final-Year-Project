@@ -385,6 +385,114 @@ function Test-DisplayRuntimeStability {
     }
 }
 
+function Get-FirmwareTaskStackSize {
+    param(
+        [string]$FirmwareText,
+        [string]$TaskFunction
+    )
+
+    $match = [regex]::Match(
+        $FirmwareText,
+        "xTaskCreatePinnedToCore\(\s*$([regex]::Escape($TaskFunction))\s*,\s*""[^""]+""\s*,\s*(?<stack>\d+|AUDIO_TASK_STACK_SIZE)",
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    if (-not $match.Success) { return $null }
+    return $match.Groups["stack"].Value
+}
+
+function Test-WatchRuntimeStability {
+    param([string]$RepoRoot)
+
+    $firmwarePath = Join-Path $RepoRoot "firmware\firmware.ino"
+    $configPath = Join-Path $RepoRoot "firmware\Config.h"
+    $firmwareText = Get-Content -Path $firmwarePath -Raw
+    $configText = Get-Content -Path $configPath -Raw
+
+    $audioStackValue = Get-FirmwareDefineValue -ConfigText $configText -Name "AUDIO_TASK_STACK_SIZE"
+    $audioStackConfigured = $audioStackValue -ge 8192
+    $audioUsesConfig = (Get-FirmwareTaskStackSize -FirmwareText $firmwareText -TaskFunction "audioTask") -eq "AUDIO_TASK_STACK_SIZE"
+    $displayStackValue = Get-FirmwareTaskStackSize -FirmwareText $firmwareText -TaskFunction "mapDisplayTask"
+    $bleStackValue = Get-FirmwareTaskStackSize -FirmwareText $firmwareText -TaskFunction "bleLocationTask"
+    $networkStackValue = Get-FirmwareTaskStackSize -FirmwareText $firmwareText -TaskFunction "networkTask"
+    $fallStackValue = Get-FirmwareTaskStackSize -FirmwareText $firmwareText -TaskFunction "fallDetectionTask"
+    $imuStackValue = Get-FirmwareTaskStackSize -FirmwareText $firmwareText -TaskFunction "imuSamplingTask"
+
+    $displayStackOk = $null -ne $displayStackValue -and [int]$displayStackValue -ge 16384
+    $bleStackOk = $null -ne $bleStackValue -and [int]$bleStackValue -ge 12288
+    $networkStackOk = $null -ne $networkStackValue -and [int]$networkStackValue -ge 6144
+    $fallStackOk = $null -ne $fallStackValue -and [int]$fallStackValue -ge 4096
+    $imuStackOk = $null -ne $imuStackValue -and [int]$imuStackValue -ge 4096
+    $sourceOk = $audioStackConfigured -and $audioUsesConfig -and $displayStackOk -and
+        $bleStackOk -and $networkStackOk -and $fallStackOk -and $imuStackOk
+
+    $logRoot = Join-Path $RepoRoot "logs"
+    $latestLog = $null
+    $uplinkCount = 0
+    $invalidUplinkCount = 0
+    $crashCount = 0
+    $durationSeconds = $null
+    if (Test-Path $logRoot) {
+        $latestLog = Get-ChildItem -Path $logRoot -File -Filter "flycare-serial-bridge-*.log" |
+            Sort-Object LastWriteTime -Descending |
+            Where-Object {
+                (Select-String -Path $_.FullName -Pattern "^\[serial\] ok\b" -Quiet -ErrorAction SilentlyContinue)
+            } |
+            Select-Object -First 1
+    }
+
+    if ($latestLog) {
+        $lines = @(Get-Content -Path $latestLog.FullName)
+        $uplinkCount = @($lines | Where-Object { $_ -match "^\[serial\] ok\b" }).Count
+        $invalidUplinkCount = @($lines | Where-Object { $_ -match "^\[serial\] invalid uplink\b" }).Count
+        $crashCount = @($lines | Where-Object {
+            $_ -match "rst:|Guru Meditation|stack overflow|Stack canary|panic|abort\(\)|Brownout|LoadProhibited|StoreProhibited|IllegalInstruction|Exception"
+        }).Count
+
+        $startMatch = [regex]::Match($lines[0], "^\[(?<ts>[^\]]+)\]\s+bridge start")
+        $stopLine = @($lines | Where-Object { $_ -match "bridge stop" } | Select-Object -Last 1)
+        $stopMatch = if ($stopLine.Count -gt 0) { [regex]::Match($stopLine[0], "^\[(?<ts>[^\]]+)\]\s+bridge stop") } else { $null }
+        if ($startMatch.Success -and $stopMatch -and $stopMatch.Success) {
+            try {
+                $startTime = [DateTimeOffset]::Parse($startMatch.Groups["ts"].Value, [System.Globalization.CultureInfo]::InvariantCulture)
+                $stopTime = [DateTimeOffset]::Parse($stopMatch.Groups["ts"].Value, [System.Globalization.CultureInfo]::InvariantCulture)
+                $durationSeconds = ($stopTime - $startTime).TotalSeconds
+            } catch {
+                $durationSeconds = $null
+            }
+        }
+    }
+
+    $runtimeEvidenceFound = $null -ne $latestLog
+    $runtimeOk = $runtimeEvidenceFound -and $uplinkCount -ge 5 -and
+        $null -ne $durationSeconds -and $durationSeconds -ge 60 -and
+        $crashCount -eq 0 -and $invalidUplinkCount -eq 0
+
+    return [pscustomobject]@{
+        audioStackValue = $audioStackValue
+        audioStackConfigured = $audioStackConfigured
+        audioUsesConfig = $audioUsesConfig
+        displayStackValue = $displayStackValue
+        displayStackOk = $displayStackOk
+        bleStackValue = $bleStackValue
+        bleStackOk = $bleStackOk
+        networkStackValue = $networkStackValue
+        networkStackOk = $networkStackOk
+        fallStackValue = $fallStackValue
+        fallStackOk = $fallStackOk
+        imuStackValue = $imuStackValue
+        imuStackOk = $imuStackOk
+        sourceOk = $sourceOk
+        runtimeEvidenceFound = $runtimeEvidenceFound
+        runtimeOk = $runtimeOk
+        latestLog = if ($latestLog) { $latestLog.FullName } else { $null }
+        durationSeconds = $durationSeconds
+        uplinkCount = $uplinkCount
+        invalidUplinkCount = $invalidUplinkCount
+        crashCount = $crashCount
+        ok = $sourceOk -and $runtimeOk
+    }
+}
+
 function Find-SosNavigationMenuEvidence {
     param([string]$RepoRoot)
 
@@ -551,6 +659,7 @@ $smartCare = Test-VisibleSmartCareReferences -RepoRoot $repoRoot
 $buttonPolicy = Test-ButtonPolicyAndNavigationDisabled -RepoRoot $repoRoot
 $watchPopupUi = Test-WatchPopupUiSource -RepoRoot $repoRoot
 $displayRuntimeStability = Test-DisplayRuntimeStability -RepoRoot $repoRoot
+$watchRuntimeStability = Test-WatchRuntimeStability -RepoRoot $repoRoot
 $arrivalEvidence = Find-ArrivalEvidence -RepoRoot $repoRoot
 $flightSyncEvidence = Find-FlightSyncEvidence -RepoRoot $repoRoot
 
@@ -603,6 +712,21 @@ $checks += New-AuditCheck `
     -Status $displayRuntimeStatus `
     -Evidence "sourceOk=$($displayRuntimeStability.sourceOk); navPeriodicRefreshDisabled=$($displayRuntimeStability.navPeriodicRefreshDisabled); duplicateIgnored=$($displayRuntimeStability.duplicateIgnoredCount); uplinks=$($displayRuntimeStability.uplinkCount); crashes=$($displayRuntimeStability.crashCount); latestLog=$($displayRuntimeStability.latestLog)" `
     -Details $displayRuntimeStability
+
+$watchRuntimeStatus = if ($watchRuntimeStability.ok) {
+    "pass"
+} elseif (-not $watchRuntimeStability.sourceOk -or ($watchRuntimeStability.runtimeEvidenceFound -and $watchRuntimeStability.crashCount -gt 0)) {
+    "fail"
+} elseif ($watchRuntimeStability.runtimeEvidenceFound -and $watchRuntimeStability.invalidUplinkCount -gt 0) {
+    "fail"
+} else {
+    "warn"
+}
+$checks += New-AuditCheck `
+    -Name "watch_runtime_stability" `
+    -Status $watchRuntimeStatus `
+    -Evidence "sourceOk=$($watchRuntimeStability.sourceOk); durationSeconds=$(Format-NullableNumber $watchRuntimeStability.durationSeconds); uplinks=$($watchRuntimeStability.uplinkCount); invalidUplinks=$($watchRuntimeStability.invalidUplinkCount); crashes=$($watchRuntimeStability.crashCount); audioStack=$($watchRuntimeStability.audioStackValue); displayStack=$($watchRuntimeStability.displayStackValue); latestLog=$($watchRuntimeStability.latestLog)" `
+    -Details $watchRuntimeStability
 
 $targetUnhandledEvents = if ($unhandledEvents.ok -and $mysqlDeviceId) {
     @((Get-CollectionItems $unhandledEvents.value) | Where-Object { "$($_.trigger_device_id)" -eq "$mysqlDeviceId" })
