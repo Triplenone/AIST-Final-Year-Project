@@ -32,9 +32,9 @@ The local `libraries/` folder is an Arduino Library Manager cache and is intenti
 `Config.h` keeps a WiFi candidate list. The firmware tries each configured SSID in order and uses the first one that connects:
 
 ```text
-MILLION1
+flycare
 MILLION
-MILLION 1
+MILLION1
 Triple-None
 ```
 
@@ -61,12 +61,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_e
 
 Local LAN mode requires the watch and PC to be on the same SSID/subnet. If the PC is on `MILLION1` but the watch falls back to `Triple-None`, a broker on the PC is normally unreachable from the watch. Cloud MQTT mode works across different networks only when both sides have internet access. It uses a private demo topic root (`flycare-demo-20260614/smartwatch`) on the public broker so unrelated `smartwatch/...` retained messages are ignored. Use a private authenticated broker instead of the public demo broker for production.
 
-For the offline path, keep the PC and watch on the same local network. Firmware always tries `MILLION1` before `MILLION`, `MILLION 1`, and `Triple-None`; when MQTT connects it now prefers the broker configured for the connected SSID:
+For the offline path, keep the PC and watch on the same local network. The router build tries `flycare` first, then keeps `MILLION`, `MILLION1`, and `Triple-None` as fallback SSIDs; when MQTT connects it prefers the broker configured for the connected SSID:
 
 ```text
-MILLION1 / MILLION / MILLION 1 -> MQTT_BROKER_MILLION1
-Triple-None                   -> MQTT_BROKER_TRIPLE_NONE
-Fallback order                -> MQTT_BROKER, MQTT_BROKER_FALLBACK_1, MQTT_BROKER_FALLBACK_2
+flycare                     -> MQTT_BROKER
+MILLION / MILLION1          -> MQTT_BROKER_MILLION1
+Triple-None                 -> MQTT_BROKER_TRIPLE_NONE
+Fallback order              -> MQTT_BROKER, MQTT_BROKER_FALLBACK_1, MQTT_BROKER_FALLBACK_2
 ```
 
 To make one firmware build work on both `MILLION1` and `Triple-None`, collect the PC IP on each SSID and write both broker hosts before upload:
@@ -87,7 +88,7 @@ smartwatch/ESP32_48CA43A42298/heartbeat
 smartwatch/ESP32_48CA43A42298/sos
 ```
 
-`DataTransmitter` is the only runtime owner of the FlyCare MQTT session. `MyNetworkManager` keeps Wi-Fi/NTP alive but does not auto-connect its own MQTT client, because two `PubSubClient` instances on the watch can race and leave publishes disconnected. Serial publish diagnostics use `[MQTT_PUB]` lines. Reconnect attempts use a short exponential backoff so a failed direct-Wi-Fi broker connect does not create overlapping half-open MQTT sockets while status telemetry keeps running.
+`DataTransmitter` is the only runtime owner of the FlyCare MQTT session. `MyNetworkManager` keeps Wi-Fi/NTP alive but does not auto-connect its own MQTT client, because two `PubSubClient` instances on the watch can race and leave publishes disconnected. Serial publish diagnostics use `[MQTT_PUB]` lines. Reconnect attempts use a short exponential backoff so a failed direct-Wi-Fi broker connect does not create overlapping half-open MQTT sockets while status telemetry keeps running. The MQTT client id is fixed to the watch `device_id` so Mosquitto closes any stale same-watch session before accepting the new one.
 
 The committed local demo config leaves `MQTT_BROKER_FALLBACK_1` empty so an offline `Triple-None` run does not block on the public broker. Use `scripts/set_flycare_mqtt_endpoint.ps1 -Mode Cloud` before uploading when a public broker is intentionally required.
 

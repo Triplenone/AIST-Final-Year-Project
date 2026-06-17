@@ -27,6 +27,18 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-18 00:40-01:08 FlyCare NG WAI LUN fixed-client MQTT attempt
+
+- I.mqtt.client_id=updated `firmware/DataTransmitter.cpp` so the watch uses its stable `device_id` as the MQTT client id, closes/flushed stale transports before reconnecting, pumps MQTT loop after subscribe, and drains loop briefly after publish; backend API/routes/schema/database and frontend contract were not changed.
+- D.mqtt.docs=updated `firmware/README.md` to document router SSID priority and stable MQTT client id behavior; docs/AGENTS still do not write the router Wi-Fi password value.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; final sketch `1553631/3145728` bytes, RAM `55240/327680` bytes.
+- V.backend.8001=pass `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status` reports `connected=true`, broker `192.168.1.232`, port `1883`.
+- V.direct_mqtt=blocked with COM5 bridge stopped: direct `mosquitto_sub -h 192.168.1.232 -p 1883 -t smartwatch/#` timed out with zero watch payloads in `logs/flycare-direct-mqtt-stable-client-20260618-005303.log` and `logs/flycare-direct-mqtt-stable-client-live-20260618-005828.log`; latest Mongo status stayed `2026-06-17T12:39:33.025000+00:00` and location stayed `2026-06-17T13:42:12.507000+00:00`.
+- E.broker=after the stable-client build, Mosquitto verbose log shows watch IP `192.168.1.59` connects as client `ESP32_48CA43A42298` and subscribes to `/flight` and `/alert`, but still shows no `Received PUBLISH` for watch status/location.
+- E.serial=diagnostic-only serial monitor `logs/flycare-serial-monitor-stable-client-20260618-005631.log` shows SSID `flycare`, IP `192.168.1.59`, broker `192.168.1.232:1883`, intermittent `[MQTT_PUB] ok=1` status publishes, and later reconnect/backoff; COM5 was not used as a bridge or telemetry forwarder.
+- V.gate_sos_fall=not-run per direct-Wi-Fi rule because broker/Mongo direct status refresh did not pass; Gate 11, SOS, and SIMFALL hardware smoke must wait for direct `smartwatch/#` payload proof.
+- R.remaining=direct Wi-Fi MQTT remains blocked for NG WAI LUN/device 8 even though endpoint alignment, Mosquitto LAN listener, backend MQTT, and watch SSID/broker selection are correct. Next checks should use router/AP diagnostics or a second known-good MQTT client on SSID `flycare`; COM5 serial bridge remains fallback only.
+
 ### 2026-06-18 00:18-00:40 FlyCare NG WAI LUN direct MQTT backoff attempt
 
 - I.mqtt.backoff=updated `firmware/DataTransmitter.cpp` and `.h` with MQTT reconnect backoff, longer socket timeout, and TCP no-delay for the direct router path; backend API/routes/schema/database and frontend contract were not changed.

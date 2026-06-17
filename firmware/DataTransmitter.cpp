@@ -126,8 +126,9 @@ static String buildFlightDownlinkSignature(JsonObject flight) {
 
 static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
     client.disconnect();
+    transport.flush();
     transport.stop();
-    delay(20);
+    delay(250);
 }
 
 static void emitSerialUplink(const String& topic, const String& payload) {
@@ -315,7 +316,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     mqttClient.setKeepAlive(30);       // 30秒保活
     mqttClient.setSocketTimeout(8);
     
-    String clientId = "ESP32_" + String(random(0xffff), HEX) + "_" + String(getCurrentTimestamp() % 10000);
+    String clientId = device_id;
     
     bool connected = mqttUser.length() > 0
         ? mqttClient.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
@@ -332,6 +333,10 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
 #if ENABLE_NAVIGATION_DOWNLINK
         mqttClient.subscribe((topicBase + "/navigation").c_str());
 #endif
+        for (int i = 0; i < 4; i++) {
+            mqttClient.loop();
+            delay(25);
+        }
         return true;
     } else {
         Serial.printf("[MQTT] connect failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
@@ -341,7 +346,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
             mqttClient.setServer(mqttServer.c_str(), mqttPort);
             Serial.printf("[MQTT] fallback connecting %s:%d\n", mqttServer.c_str(), mqttPort);
 
-            String fallbackClientId = "ESP32_" + String(random(0xffff), HEX) + "_" + String(getCurrentTimestamp() % 10000);
+            String fallbackClientId = device_id;
             bool fallbackConnected = mqttUser.length() > 0
                 ? mqttClient.connect(fallbackClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
                 : mqttClient.connect(fallbackClientId.c_str());
@@ -357,6 +362,10 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
 #if ENABLE_NAVIGATION_DOWNLINK
                 mqttClient.subscribe((topicBase + "/navigation").c_str());
 #endif
+                for (int i = 0; i < 4; i++) {
+                    mqttClient.loop();
+                    delay(25);
+                }
                 return true;
             }
 
@@ -436,8 +445,10 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         success = mqttClient.publish(topic.c_str(), payloadBytes, payloadSize, retained);
         if (success) {
             written = payloadSize;
-            mqttClient.loop();
-            delay(5);
+            for (int i = 0; i < 12; i++) {
+                mqttClient.loop();
+                delay(25);
+            }
         }
     } else {
         const size_t chunkSize = 128;
@@ -461,8 +472,10 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         }
         if (success) {
             mqttClient.endPublish();
-            mqttClient.loop();
-            delay(5);
+            for (int i = 0; i < 12; i++) {
+                mqttClient.loop();
+                delay(25);
+            }
         }
     }
     if (!success) {
