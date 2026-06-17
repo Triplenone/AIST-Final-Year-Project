@@ -169,6 +169,7 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
       current_x(0), current_y(0), reported_x(0), reported_y(0),
       has_reported_position(false), accuracy(0), beacon_count(0), location_quality("unknown"),
       last_beacon_count(0), log_index(0), log_count(0),
+      last_mqtt_connect_attempt_ms(0), mqtt_connect_backoff_ms(0),
       ble_scan_started_at_ms(0), ble_scanning_active(false) {
     
     // 生成唯一的设备ID - 修复 MAC 地址获取
@@ -283,6 +284,16 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     
     if (mqttClient.connected()) return true;
 
+    unsigned long nowMs = millis();
+    if (mqtt_connect_backoff_ms > 0 && last_mqtt_connect_attempt_ms > 0 &&
+        nowMs - last_mqtt_connect_attempt_ms < mqtt_connect_backoff_ms) {
+        Serial.printf("[MQTT] connect backoff %lu/%lu ms\n",
+                      nowMs - last_mqtt_connect_attempt_ms,
+                      mqtt_connect_backoff_ms);
+        return false;
+    }
+    last_mqtt_connect_attempt_ms = nowMs;
+
     closeMqttTransport(mqttClient, mqttWifiClient);
     if (!waitForBLEIdle(3500)) return false;
 
@@ -297,10 +308,12 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     Serial.printf("连接 MQTT 服务器 %s:%d...\n", mqttServer.c_str(), mqttPort);
     
     // ===== 关键：设置超大缓冲区（10KB）=====
+    mqttWifiClient.setTimeout(8000);
+    mqttWifiClient.setNoDelay(true);
     mqttClient.setBufferSize(512);  // MQTT CONNECT is small; grow after CONNACK.
     
     mqttClient.setKeepAlive(30);       // 30秒保活
-    mqttClient.setSocketTimeout(4);
+    mqttClient.setSocketTimeout(8);
     
     String clientId = "ESP32_" + String(random(0xffff), HEX) + "_" + String(getCurrentTimestamp() % 10000);
     
@@ -310,6 +323,8 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     
     if (connected) {
         Serial.println("✅ MQTT 连接成功");
+        mqtt_connect_backoff_ms = 0;
+        last_mqtt_connect_attempt_ms = 0;
         mqttClient.setBufferSize(4096);
         String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
         mqttClient.subscribe((topicBase + "/flight").c_str());
@@ -333,6 +348,8 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
 
             if (fallbackConnected) {
                 Serial.printf("[MQTT] connected broker=%s\n", mqttServer.c_str());
+                mqtt_connect_backoff_ms = 0;
+                last_mqtt_connect_attempt_ms = 0;
                 mqttClient.setBufferSize(4096);
                 String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
                 mqttClient.subscribe((topicBase + "/flight").c_str());
@@ -346,6 +363,10 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
             Serial.printf("[MQTT] fallback failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
             closeMqttTransport(mqttClient, mqttWifiClient);
         }
+        mqtt_connect_backoff_ms = mqtt_connect_backoff_ms == 0
+            ? 5000UL
+            : min(mqtt_connect_backoff_ms * 2UL, 30000UL);
+        Serial.printf("[MQTT] next reconnect backoff=%lu ms\n", mqtt_connect_backoff_ms);
         Serial.printf("❌ MQTT 连接失败, 状态码: %d\n", mqttClient.state());
         return false;
     }
