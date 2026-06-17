@@ -90,6 +90,8 @@ smartwatch/ESP32_48CA43A42298/sos
 
 `DataTransmitter` is the only runtime owner of the FlyCare MQTT session. `MyNetworkManager` keeps Wi-Fi/NTP alive but does not auto-connect its own MQTT client, because two `PubSubClient` instances on the watch can race and leave publishes disconnected. Serial publish diagnostics use `[MQTT_PUB]` lines. Reconnect attempts use a short exponential backoff so a failed direct-Wi-Fi broker connect does not create overlapping half-open MQTT sockets while status telemetry keeps running. The MQTT client id is fixed to the watch `device_id` so Mosquitto closes any stale same-watch session before accepting the new one.
 
+During router migration, `DataTransmitter` also has a narrow one-shot MQTT uplink fallback. If the persistent `PubSubClient` session is disconnected, status/location publishes can open a short `WiFiClient`, send MQTT 3.1.1 CONNECT + QoS 0 PUBLISH to the same `smartwatch/<device_id>/...` topic, flush, then disconnect. This does not replace the persistent session used for retained flight downlinks, and `[MQTT_RAW] publish ok` is only firmware-side diagnostic evidence; direct proof still requires seeing the payload on the broker and Mongo latest refresh.
+
 The committed local demo config leaves `MQTT_BROKER_FALLBACK_1` empty so an offline `Triple-None` run does not block on the public broker. Use `scripts/set_flycare_mqtt_endpoint.ps1 -Mode Cloud` before uploading when a public broker is intentionally required.
 
 Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:

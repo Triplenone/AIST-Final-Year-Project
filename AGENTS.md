@@ -27,6 +27,19 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-18 02:18-02:45 FlyCare NG WAI LUN raw MQTT uplink fallback + AP blocker proof
+
+- I.mqtt.raw_uplink=updated `firmware/DataTransmitter.cpp` with a one-shot MQTT 3.1.1 QoS 0 `WiFiClient` uplink fallback for status/location when the persistent `PubSubClient` session cannot connect; COM5 `FLYCARE_UPLINK` serial fallback remains unchanged and backend API/routes/schema/database were not changed.
+- I.mqtt.location_topic=updated `DataTransmitter::update()` to publish `smartwatch/ESP32_48CA43A42298/location` every 6s alongside the existing status updates, so direct Wi-Fi proof can require both status and location topics.
+- D.mqtt.docs=updated `docs/FLYCARE_MQTT.md` and `firmware/README.md` with router direct proof steps, raw-uplink diagnostic limits, and the AP/client-isolation blocker check; docs/AGENTS do not contain the router Wi-Fi password.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; final sketch `1555603/3145728` bytes, RAM `55240/327680` bytes, upload wrote `1555744` bytes.
+- V.backend.8001=pass `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status` reports `connected=true`, broker `192.168.1.232`, port `1883`; PC broker self-test through `192.168.1.232:1883` received `flycare/selftest ok-20260618-024129`.
+- V.direct_mqtt=blocked with COM5 bridge stopped: full-topic captures `logs/flycare-direct-mqtt-rawuplink-20260618-022812.log`, `logs/flycare-direct-mqtt-rawuplink-passcheck-20260618-023246.log`, and `logs/flycare-direct-mqtt-rawuplink-flush-20260618-023727.log` all timed out with no `smartwatch/#` watch payloads; Mongo latest status/location did not refresh.
+- E.serial.raw=diagnostic-only serial logs showed watch on SSID `flycare` with IP `192.168.1.59`; early raw attempts logged `[MQTT_RAW] publish ok` for `/status` and `/location`, but later attempts logged `[MQTT_RAW] tcp connect failed broker=192.168.1.232:1883`, proving the firmware can build the correct topics but the watch-to-PC TCP path is unstable.
+- B.router_ap=blocked current PC neighbor table shows `192.168.1.59` on Wi-Fi with `State=Incomplete` and no watch TCP session on `:1883`, while Mosquitto listens on `0.0.0.0:1883` and PC self-test passes. This points to router/AP client isolation or Wi-Fi link reachability, not frontend/backend/database.
+- V.gate_sos_fall=not-run per direct-Wi-Fi rule because broker/Mongo direct status refresh did not pass; Gate 11, SOS, and SIMFALL smoke remain gated on direct `smartwatch/#` payload proof.
+- R.remaining=manual router/AP action is required before backup watch or 6-watch rollout: disable guest/AP/client isolation, ensure watch and PC are on the same non-isolated LAN, or connect the Server PC by Ethernet/regular LAN so Wi-Fi clients can reach `192.168.1.232:1883`.
+
 ### 2026-06-18 02:03-02:15 FlyCare NG WAI LUN clean firmware direct MQTT block
 
 - V.upload.clean=ok after reverting uncommitted raw MQTT fallback experiments, ESP32-S3 clean firmware compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; final sketch `1553631/3145728` bytes, RAM `55240/327680` bytes, upload wrote `1553776` bytes.

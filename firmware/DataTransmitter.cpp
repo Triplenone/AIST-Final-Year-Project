@@ -131,6 +131,150 @@ static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
     delay(250);
 }
 
+static size_t encodeMqttRemainingLength(size_t value, uint8_t* out, size_t outSize) {
+    size_t written = 0;
+    do {
+        if (written >= outSize) return 0;
+        uint8_t encoded = value % 128;
+        value /= 128;
+        if (value > 0) encoded |= 128;
+        out[written++] = encoded;
+    } while (value > 0);
+    return written;
+}
+
+static bool writeMqttBytes(WiFiClient& client, const uint8_t* bytes, size_t length) {
+    size_t written = 0;
+    while (written < length) {
+        size_t next = min((size_t)256, length - written);
+        size_t rc = client.write(bytes + written, next);
+        if (rc != next) {
+            return false;
+        }
+        written += rc;
+        delay(1);
+    }
+    return true;
+}
+
+static bool writeMqttString(WiFiClient& client, const String& value) {
+    uint16_t len = value.length();
+    uint8_t prefix[2] = {
+        static_cast<uint8_t>((len >> 8) & 0xff),
+        static_cast<uint8_t>(len & 0xff)
+    };
+    return writeMqttBytes(client, prefix, sizeof(prefix)) &&
+           writeMqttBytes(client, reinterpret_cast<const uint8_t*>(value.c_str()), len);
+}
+
+static bool readMqttConnack(WiFiClient& client, uint32_t timeoutMs, uint8_t* out) {
+    size_t got = 0;
+    uint32_t start = millis();
+    while (got < 4 && millis() - start < timeoutMs) {
+        while (client.available() && got < 4) {
+            out[got++] = static_cast<uint8_t>(client.read());
+        }
+        if (got < 4) delay(10);
+    }
+    return got == 4;
+}
+
+static bool publishRawMqttUplink(const String& broker, int port, const String& deviceId,
+                                 const String& topic, const String& payload, bool retained) {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.printf("[MQTT_RAW] skipped topic=%s wifi_status=%d\n", topic.c_str(), WiFi.status());
+        return false;
+    }
+    if (broker.length() == 0 || topic.length() == 0 || payload.length() == 0) {
+        Serial.printf("[MQTT_RAW] skipped invalid broker/topic/payload topic=%s\n", topic.c_str());
+        return false;
+    }
+
+    WiFiClient rawClient;
+    rawClient.setTimeout(7000);
+    rawClient.setNoDelay(true);
+
+    String rawClientId = deviceId + "_uplink_" + String((uint32_t)millis(), HEX);
+    Serial.printf("[MQTT_RAW] connecting broker=%s:%d client=%s topic=%s len=%u\n",
+                  broker.c_str(), port, rawClientId.c_str(), topic.c_str(),
+                  (unsigned)payload.length());
+
+    if (!rawClient.connect(broker.c_str(), port, 7000)) {
+        Serial.printf("[MQTT_RAW] tcp connect failed broker=%s:%d\n", broker.c_str(), port);
+        rawClient.stop();
+        return false;
+    }
+
+    const size_t connectRemaining = 10 + 2 + rawClientId.length();
+    uint8_t rem[4];
+    size_t remLen = encodeMqttRemainingLength(connectRemaining, rem, sizeof(rem));
+    if (remLen == 0) {
+        rawClient.stop();
+        return false;
+    }
+
+    const uint8_t connectHeader[] = {
+        0x10,
+    };
+    const uint8_t protocolHeader[] = {
+        0x00, 0x04, 'M', 'Q', 'T', 'T',
+        0x04,
+        0x02,
+        0x00, 0x3c
+    };
+    bool ok = writeMqttBytes(rawClient, connectHeader, sizeof(connectHeader)) &&
+              writeMqttBytes(rawClient, rem, remLen) &&
+              writeMqttBytes(rawClient, protocolHeader, sizeof(protocolHeader)) &&
+              writeMqttString(rawClient, rawClientId);
+    if (!ok) {
+        Serial.println("[MQTT_RAW] CONNECT write failed");
+        rawClient.stop();
+        return false;
+    }
+
+    uint8_t connack[4] = {0};
+    if (!readMqttConnack(rawClient, 7000, connack)) {
+        Serial.println("[MQTT_RAW] CONNACK timeout");
+        rawClient.stop();
+        return false;
+    }
+    if (connack[0] != 0x20 || connack[1] != 0x02 || connack[3] != 0x00) {
+        Serial.printf("[MQTT_RAW] CONNACK rejected bytes=%02x %02x %02x %02x\n",
+                      connack[0], connack[1], connack[2], connack[3]);
+        rawClient.stop();
+        return false;
+    }
+
+    const size_t publishRemaining = 2 + topic.length() + payload.length();
+    remLen = encodeMqttRemainingLength(publishRemaining, rem, sizeof(rem));
+    if (remLen == 0) {
+        rawClient.stop();
+        return false;
+    }
+
+    uint8_t publishHeader = retained ? 0x31 : 0x30;
+    ok = writeMqttBytes(rawClient, &publishHeader, 1) &&
+         writeMqttBytes(rawClient, rem, remLen) &&
+         writeMqttString(rawClient, topic) &&
+         writeMqttBytes(rawClient, reinterpret_cast<const uint8_t*>(payload.c_str()), payload.length());
+    if (!ok) {
+        Serial.printf("[MQTT_RAW] PUBLISH write failed topic=%s\n", topic.c_str());
+        rawClient.stop();
+        return false;
+    }
+
+    rawClient.flush();
+    delay(800);
+    const uint8_t disconnectPacket[] = {0xe0, 0x00};
+    writeMqttBytes(rawClient, disconnectPacket, sizeof(disconnectPacket));
+    rawClient.flush();
+    delay(100);
+    rawClient.stop();
+    Serial.printf("[MQTT_RAW] publish ok topic=%s bytes=%u\n",
+                  topic.c_str(), (unsigned)payload.length());
+    return true;
+}
+
 static void emitSerialUplink(const String& topic, const String& payload) {
     if (!serialUplinkMutex) {
         serialUplinkMutex = xSemaphoreCreateMutex();
@@ -405,12 +549,13 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
     }
 
     if (!waitForBLEIdle(3500) || !ensureMQTTConnectedUnlocked()) {
+        bool rawSuccess = publishRawMqttUplink(mqttServer, mqttPort, device_id, topic, payload, retained);
         Serial.printf("[MQTT_PUB] skipped topic=%s connected=0 state=%d\n",
                       topic.c_str(),
                       mqttClient.state());
         Serial.println("MQTT 未连接");
         if (locked) xSemaphoreGive(mqttMutex);
-        return false;
+        return rawSuccess;
     }
     
     // Check packet/header size. Payload is written in chunks below so large
@@ -478,6 +623,14 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
             }
         }
     }
+    if (!success) {
+        bool rawSuccess = publishRawMqttUplink(mqttServer, mqttPort, device_id, topic, payload, retained);
+        if (rawSuccess) {
+            success = true;
+            written = payloadSize;
+        }
+    }
+
     if (!success) {
         mqttClient.disconnect();
         mqttWifiClient.stop();
@@ -1115,6 +1268,7 @@ void DataTransmitter::update() {
     unsigned long current_time = nowMs;
     static unsigned long lastMqttReconnect = 0;
     static unsigned long lastStatusUpload = 0;
+    static unsigned long lastLocationUpload = 0;
     
     // MQTT 循环
     mqttLoop();
@@ -1143,6 +1297,10 @@ void DataTransmitter::update() {
             
             // 非阻塞发送
             lastStatusUpload = current_time;
+        }
+        if (current_time - lastLocationUpload >= 6000) {
+            transmitLocation();
+            lastLocationUpload = current_time;
         }
     }
     

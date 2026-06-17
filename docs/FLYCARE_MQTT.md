@@ -119,8 +119,19 @@ For the router-based local demo, use one local network at a time:
 2. Run `set_flycare_mqtt_endpoint.ps1 -Mode OfflineLan` with explicit broker hosts if the PC IP changes, then restart backend `8001` and upload the firmware.
 3. Confirm Mosquitto listens on `0.0.0.0:1883`, not only `127.0.0.1:1883`.
 4. Stop the COM5 serial bridge before claiming direct Wi-Fi MQTT; COM5 is a fallback proof path only.
+5. Subscribe on the PC with `mosquitto_sub -h 192.168.1.232 -p 1883 -t "#" -v`; direct Wi-Fi proof requires fresh `smartwatch/<device_id>/status` and `smartwatch/<device_id>/location` payloads plus refreshed Mongo latest status/location.
+6. If the watch Serial log shows the router SSID and a `192.168.1.x` address but the PC shows `Get-NetNeighbor -IPAddress <watch-ip>` as `Incomplete`, treat it as a router/AP client-isolation or Wi-Fi link blocker. Fix the router/AP path before debugging backend, frontend, or database code.
 
 Firmware now keeps SSID-specific broker candidates. The NG WAI LUN router build tries `flycare` first, then keeps `MILLION`, `MILLION1`, and `Triple-None` as fallback SSIDs. When connected to `MILLION` or `MILLION1`, it tries `MQTT_BROKER_MILLION1` first. When connected to `Triple-None`, it tries `MQTT_BROKER_TRIPLE_NONE` first. It then falls back to `MQTT_BROKER`, `MQTT_BROKER_FALLBACK_1`, and `MQTT_BROKER_FALLBACK_2`.
+
+For NG WAI LUN / device 8, firmware publishes compact status and location uplinks on:
+
+```text
+smartwatch/ESP32_48CA43A42298/status
+smartwatch/ESP32_48CA43A42298/location
+```
+
+`DataTransmitter` first uses the persistent `PubSubClient` session for normal downlinks and uplinks. If that session cannot connect during a router migration test, it attempts a one-shot MQTT 3.1.1 QoS 0 uplink over a separate `WiFiClient` and then keeps the existing COM5 `FLYCARE_UPLINK` serial fallback. A one-shot `[MQTT_RAW] publish ok` Serial line is diagnostic only; final direct proof is still the broker/Mongo evidence above.
 
 If both demo SSIDs must work from one firmware build, collect the PC broker IP for each SSID and write both values before upload:
 
