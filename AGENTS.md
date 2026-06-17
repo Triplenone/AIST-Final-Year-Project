@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-18 02:03-02:15 FlyCare NG WAI LUN clean firmware direct MQTT block
+
+- V.upload.clean=ok after reverting uncommitted raw MQTT fallback experiments, ESP32-S3 clean firmware compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; final sketch `1553631/3145728` bytes, RAM `55240/327680` bytes, upload wrote `1553776` bytes.
+- V.backend.8001=pass `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status` reports `connected=true`, broker `192.168.1.232`, port `1883`; hardware backend remains `8001`, not `8000`.
+- V.direct_mqtt=blocked with COM5 bridge stopped and no bridge process running: `logs/flycare-direct-mqtt-clean-20260618-020328.log` and `logs/flycare-direct-mqtt-clean-retry-20260618-021041.log` both timed out on `mosquitto_sub -h 192.168.1.232 -p 1883 -t smartwatch/#`, and latest Mongo status/location for `ESP32_48CA43A42298` did not refresh.
+- E.network=partial PC could ping watch IP `192.168.1.59` with 3/4 replies, Mosquitto listens on `0.0.0.0:1883`, and firewall allow rules for Mosquitto/FlyCare MQTT are present.
+- E.serial=diagnostic-only serial read `logs/flycare-serial-dotnet-diagnose-20260618-021332.log` shows watch joined SSID `flycare`, IP `192.168.1.59`, broker candidate `192.168.1.232:1883`, repeated `connect failed ... state=-2`, and `[MQTT_PUB] skipped ... connected=0 state=-1`; serial was not used as a telemetry bridge.
+- V.gate_sos_fall=not-run per direct-Wi-Fi rule because broker/Mongo direct status refresh did not pass; Gate 11, SOS, and SIMFALL hardware smoke must wait for direct `smartwatch/#` payload proof.
+- R.remaining=direct Wi-Fi MQTT remains blocked at the watch-to-broker MQTT connection/publish layer for NG WAI LUN/device 8. Router/AP isolation, broker process behavior, or ESP32 TCP/MQTT path must be inspected before backup watch or 6-watch rollout.
+
 ### 2026-06-18 00:40-01:08 FlyCare NG WAI LUN fixed-client MQTT attempt
 
 - I.mqtt.client_id=updated `firmware/DataTransmitter.cpp` so the watch uses its stable `device_id` as the MQTT client id, closes/flushed stale transports before reconnecting, pumps MQTT loop after subscribe, and drains loop briefly after publish; backend API/routes/schema/database and frontend contract were not changed.
