@@ -27,6 +27,20 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 14:11-14:39 FlyCare Gate 10->11 popup proof + BLE status smoothing
+
+- B.gate11.no_popup=latest API evidence before retest showed flight had been overwritten back to Gate 10 / `gate_changed=false`; live serial log also showed Gate 11 had previously reached the watch, so the visible miss was caused by state overwrite or an already-Gate-11 duplicate, not a missing `FlightInfoManager` gate-change path.
+- I.ble.smoothing=updated `firmware/BLELocation.cpp/.h` to actually apply the existing `PositionSmoother`, preserve raw coordinates, clamp implausible per-location BLE jumps, and report speed/heading from the stabilized point.
+- I.status.report_smoothing=updated `firmware/DataTransmitter.cpp/.h` so status JSON sent to MQTT/serial is clamped against the last reported position; this prevents `/flycare` and Mongo from seeing multi-scan accumulated BLE jumps as one large dashboard jump.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded after the final smoothing patch; sketch `1550883/3145728` bytes, RAM `55224/327680`, upload wrote `1551024` bytes, MAC `48:ca:43:a4:22:98`.
+- V.location.smoothing=partial-pass bounded bridge `logs/flycare-serial-bridge-20260617-142827.log` ran 150s with `parsed=24`, `sent=24`, `downlinks=1`; after the expected post-upload startup `0,0 -> first BLE fix` jump, status steps were capped around `1.6m` or below instead of the earlier 3-7m jumps.
+- V.gate10.baseline=ok Admin publish to Gate 10 returned MQTT/Mongo ok and `logs/flycare-serial-bridge-20260617-143247.log` showed `[SERIAL_DOWNLINK] handled=1` plus `Gate Change - 10`.
+- V.gate11.popup=ok Admin publish to Gate 11 returned MQTT/Mongo ok and `logs/flycare-serial-bridge-20260617-143334.log` showed `Gate Change to 11`, `Gate Change - 11`, `delay popup suppressed for gate change notice`, and `[SERIAL_DOWNLINK] handled=1`.
+- V.retained.flight=ok after final correction, `mosquitto_sub` showed both retained topics `smartwatch/ESP32_000048CA43A42298/flight` and `smartwatch/ESP32_48CA43A42298/flight` contain the same `Gate Change to 11` payload.
+- V.stack.live=ok persistent COM5 fallback restarted with live log `logs/flycare-serial-bridge-live-20260617-143818.log`; active backend remains `http://127.0.0.1:8001`, MQTT connected to `192.168.0.203:1883`, and latest status refreshed for device 8 with high quality / 5 beacons.
+- V.audit=warn not fail: `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` had `watch_runtime_stability` pass with `invalidUplinks=0`, `crashes=0`, and `flight_information_update` pass at Gate 11; remaining warnings were latest beacon count/quality and a short latest display-runtime duplicate-evidence window.
+- R.remaining=Triple-None direct Wi-Fi MQTT is still not the primary proof path; COM5 serial bridge fallback must remain running for this network, and physical placement/RSSI can still affect absolute beacon accuracy even though large dashboard jumps are now damped.
+
 ### 2026-06-17 13:04-13:43 FlyCare Gate 11 popup + DB residue audit + Triple-None router simulation
 
 - V.git=ok preflight branch `Flycare`, HEAD `ec66181e7b9018d80522ad077d8f2dc7fbaac872`, working tree clean before edits except repeated Git warnings that `C:\Users\user/.config/git/ignore` was permission-denied.

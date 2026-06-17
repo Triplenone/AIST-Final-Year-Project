@@ -120,6 +120,86 @@ void PositionSmoother::reset() {
 }
 
 // ================ BLELocation 实现 ================
+float BLELocation::calculateLocationConfidence(const Location& loc) {
+    float confidence = 0.25f;
+
+    if (loc.quality == "high") {
+        confidence += 0.35f;
+    } else if (loc.quality == "medium") {
+        confidence += 0.20f;
+    }
+
+    confidence += min(loc.beacon_count, 6) * 0.05f;
+
+    if (loc.accuracy <= 1.5f) {
+        confidence += 0.15f;
+    } else if (loc.accuracy <= 3.0f) {
+        confidence += 0.10f;
+    }
+
+    return constrain(confidence, 0.15f, 1.0f);
+}
+
+Location BLELocation::stabilizeLocation(Location loc) {
+    if (loc.beacon_count <= 0) {
+        return loc;
+    }
+
+    loc.raw_x = loc.x;
+    loc.raw_y = loc.y;
+    loc.timestamp = millis();
+
+    const float confidence = calculateLocationConfidence(loc);
+    if (last_location.beacon_count <= 0 || last_location.timestamp == 0) {
+        smoother.reset();
+        smoother.addPoint(loc.x, loc.y, confidence);
+        loc.speed = 0.0f;
+        loc.heading = 0.0f;
+        return loc;
+    }
+
+    float dx = loc.x - last_location.x;
+    float dy = loc.y - last_location.y;
+    float distance = sqrt(dx * dx + dy * dy);
+    float elapsedSec = (loc.timestamp > last_location.timestamp)
+        ? (loc.timestamp - last_location.timestamp) / 1000.0f
+        : 1.0f;
+    elapsedSec = max(elapsedSec, 1.0f);
+
+    const float maxStep = constrain(0.8f + elapsedSec * 0.15f, 1.2f, 1.8f);
+    if (distance > maxStep && distance > 0.01f) {
+        float ratio = maxStep / distance;
+        loc.x = last_location.x + dx * ratio;
+        loc.y = last_location.y + dy * ratio;
+        loc.x = constrain(loc.x, 0, MAP_REAL_WIDTH);
+        loc.y = constrain(loc.y, 0, MAP_REAL_HEIGHT);
+        if (loc.quality == "high") {
+            loc.quality = "medium";
+        }
+        loc.accuracy = max(loc.accuracy, 3.0f);
+        Serial.printf("[BLE] location jump clamped: raw=(%.2f,%.2f) last=(%.2f,%.2f) stable=(%.2f,%.2f) step=%.2f\n",
+                      loc.raw_x, loc.raw_y, last_location.x, last_location.y,
+                      loc.x, loc.y, distance);
+    }
+
+    smoother.addPoint(loc.x, loc.y, confidence);
+    float smoothX = loc.x;
+    float smoothY = loc.y;
+    if (smoother.getSmoothedPosition(smoothX, smoothY)) {
+        loc.x = constrain(smoothX, 0, MAP_REAL_WIDTH);
+        loc.y = constrain(smoothY, 0, MAP_REAL_HEIGHT);
+    }
+
+    float stableDx = loc.x - last_location.x;
+    float stableDy = loc.y - last_location.y;
+    loc.speed = sqrt(stableDx * stableDx + stableDy * stableDy) / elapsedSec;
+    loc.heading = (fabs(stableDx) > 0.01f || fabs(stableDy) > 0.01f)
+        ? atan2(stableDy, stableDx) * 180.0f / PI
+        : last_location.heading;
+
+    return loc;
+}
+
 BLELocation::BLELocation() : beacon_count(0), last_scan_time(0), smoother(8) {
     // 不再在这里初始化 pBLEScan，因为已经在 initBLE() 中初始化了
     // pBLEScan 使用全局变量
@@ -510,9 +590,10 @@ Location BLELocation::getLocation() {
         pBLEScan->clearResults();
         Location loc = trilateration();
         if (loc.beacon_count > 0) {
-            last_location = loc;
+            last_location = stabilizeLocation(loc);
             Serial.printf("[BLE] location updated from recent beacons: x=%.2f y=%.2f accuracy=%.1f quality=%s beacons=%d\n",
-                          loc.x, loc.y, loc.accuracy, loc.quality.c_str(), loc.beacon_count);
+                          last_location.x, last_location.y, last_location.accuracy,
+                          last_location.quality.c_str(), last_location.beacon_count);
         }
         return last_location;
     }
@@ -524,9 +605,10 @@ Location BLELocation::getLocation() {
     if (scanned_beacons.empty()) {
         Location loc = trilateration();
         if (loc.beacon_count > 0) {
-            last_location = loc;
+            last_location = stabilizeLocation(loc);
             Serial.printf("[BLE] location updated from recent beacons: x=%.2f y=%.2f accuracy=%.1f quality=%s beacons=%d\n",
-                          loc.x, loc.y, loc.accuracy, loc.quality.c_str(), loc.beacon_count);
+                          last_location.x, last_location.y, last_location.accuracy,
+                          last_location.quality.c_str(), last_location.beacon_count);
         }
         Serial.println("⚠️ 没有匹配到目标信标");
         return last_location;
@@ -545,9 +627,10 @@ Location BLELocation::getLocation() {
                  loc.x, loc.y, loc.accuracy, loc.beacon_count);
     
     if (loc.beacon_count > 0) {
-        last_location = loc;
+        last_location = stabilizeLocation(loc);
         Serial.printf("[BLE] location updated: x=%.2f y=%.2f accuracy=%.1f quality=%s beacons=%d\n",
-                      loc.x, loc.y, loc.accuracy, loc.quality.c_str(), loc.beacon_count);
+                      last_location.x, last_location.y, last_location.accuracy,
+                      last_location.quality.c_str(), last_location.beacon_count);
     }
     
     return last_location;

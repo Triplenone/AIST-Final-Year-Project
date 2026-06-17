@@ -145,6 +145,9 @@ private:
     // 当前位置
     float current_x;
     float current_y;
+    float reported_x;
+    float reported_y;
+    bool has_reported_position;
     int beacon_count;
     String location_quality;
     float accuracy;
@@ -163,6 +166,7 @@ private:
     
     bool ensureMQTTConnectedUnlocked();
     bool waitForBLEIdle(unsigned long maxWaitMs);
+    void stabilizeReportPosition();
 
 public:
     DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
@@ -197,8 +201,23 @@ public:
     // 更新当前位置（带信标信息）
     void setCurrentPosition(float x, float y, float acc, int beacons, const String& quality, 
                            const std::vector<Beacon>& beacon_list) {
-        current_x = x;
-        current_y = y;
+        float next_x = x;
+        float next_y = y;
+        if (beacon_count > 0) {
+            const float max_report_step = 1.6f;
+            float dx = x - current_x;
+            float dy = y - current_y;
+            float step = sqrt(dx * dx + dy * dy);
+            if (step > max_report_step && step > 0.01f) {
+                float ratio = max_report_step / step;
+                next_x = current_x + dx * ratio;
+                next_y = current_y + dy * ratio;
+                Serial.printf("[BLE] outbound location clamped: raw=(%.2f,%.2f) last=(%.2f,%.2f) sent=(%.2f,%.2f) step=%.2f\n",
+                              x, y, current_x, current_y, next_x, next_y, step);
+            }
+        }
+        current_x = next_x;
+        current_y = next_y;
         accuracy = acc;
         beacon_count = beacons;
         location_quality = quality;

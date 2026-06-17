@@ -123,6 +123,8 @@ public:
 private:
     void processScanResults(BLEScanResults* results);
     Location trilateration();
+    Location stabilizeLocation(Location loc);
+    float calculateLocationConfidence(const Location& loc);
     void setupBeacons();
     float calculateWeight(float distance, float confidence);
 };

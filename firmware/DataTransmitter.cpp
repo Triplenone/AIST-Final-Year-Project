@@ -166,7 +166,8 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
       sos_active(false), sos_trigger_time(0), sos_trigger_count(0), sos_trigger_method("none"),
       door_count(0), night_mode_active(false), light_triggered_tonight(false),
       movement_threshold(2.0), heartbeat_detected(false), heartbeat_interval(30000),
-      current_x(0), current_y(0), accuracy(0), beacon_count(0), location_quality("unknown"),
+      current_x(0), current_y(0), reported_x(0), reported_y(0),
+      has_reported_position(false), accuracy(0), beacon_count(0), location_quality("unknown"),
       last_beacon_count(0), log_index(0), log_count(0),
       ble_scan_started_at_ms(0), ble_scanning_active(false) {
     
@@ -658,6 +659,35 @@ String DataTransmitter::getNavigationJSON() {
 }
 
 // ================ 获取所有数据的完整JSON ================
+void DataTransmitter::stabilizeReportPosition() {
+    if (beacon_count <= 0) {
+        return;
+    }
+
+    if (!has_reported_position) {
+        reported_x = current_x;
+        reported_y = current_y;
+        has_reported_position = true;
+        return;
+    }
+
+    const float maxReportStep = 1.6f;
+    float dx = current_x - reported_x;
+    float dy = current_y - reported_y;
+    float step = sqrt(dx * dx + dy * dy);
+    if (step > maxReportStep && step > 0.01f) {
+        float ratio = maxReportStep / step;
+        current_x = reported_x + dx * ratio;
+        current_y = reported_y + dy * ratio;
+        Serial.printf("[BLE] status report clamped: raw=(%.2f,%.2f) last_report=(%.2f,%.2f) sent=(%.2f,%.2f) step=%.2f\n",
+                      reported_x + dx, reported_y + dy, reported_x, reported_y,
+                      current_x, current_y, step);
+    }
+
+    reported_x = current_x;
+    reported_y = current_y;
+}
+
 String DataTransmitter::getAllDataJSON() {
     String json = "{";
     
@@ -937,6 +967,7 @@ String DataTransmitter::getSerialStatusSummaryJSON() {
 }
 
 void DataTransmitter::transmitStatusSummary() {
+    stabilizeReportPosition();
     String jsonData = getStatusSummaryJSON();
     String serialJsonData = getSerialStatusSummaryJSON();
 
@@ -952,6 +983,7 @@ void DataTransmitter::transmitStatusSummary() {
 }
 
 void DataTransmitter::transmitAllData() {
+    stabilizeReportPosition();
     String jsonData = getAllDataJSON();
     String serialJsonData = getSerialStatusSummaryJSON();
     
