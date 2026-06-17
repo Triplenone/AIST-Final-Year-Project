@@ -169,7 +169,9 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     }
     
     // 保存旧信息用于比较
+    bool hadFlightInfo = flight_info_received && current_flight.valid;
     String oldGate = current_flight.boarding_gate;
+    String oldGateLabel = formatFlightGateLabel(oldGate);
     int oldDelay = current_flight.delay_minutes;
     String oldStatus = current_flight.status;
     bool oldGateChanged = current_flight.gate_changed;
@@ -280,7 +282,12 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     // ========== 检查各种变更并调用对应的 notify 函数 ==========
     
     // 1. 登机口变更
-    bool gateChangeEvent = current_flight.gate_changed && !oldGateChanged;
+    String newGateLabel = formatFlightGateLabel(current_flight.boarding_gate);
+    bool gateLabelChanged = hadFlightInfo &&
+        oldGateLabel.length() > 0 &&
+        newGateLabel.length() > 0 &&
+        oldGateLabel != newGateLabel;
+    bool gateChangeEvent = current_flight.gate_changed && (!oldGateChanged || gateLabelChanged);
     if (gateChangeEvent) {
         notifyGateChange();
     }
