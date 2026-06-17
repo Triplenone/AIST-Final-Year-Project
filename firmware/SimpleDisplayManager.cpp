@@ -534,6 +534,7 @@ void SimpleDisplayManager::drawNavPage() {
         gfx->setTextSize(2);
         gfx->setTextColor(RGB565_WHITE);
         gfx->print("Map not ready");
+        drawStatusBar();
         drawSideButtons();
         return;
     }
@@ -644,6 +645,7 @@ void SimpleDisplayManager::drawNavPage() {
         drawProgressBar(infoY + infoHeight - 20, navInfo.pathProgress);
     }
     
+    drawStatusBar();
     drawSideButtons();
 }
 
@@ -955,8 +957,8 @@ void SimpleDisplayManager::drawHomePage() {
                                clockDeviceLabel, RGB565_YELLOW, 1, 1);
     }
     
-    // 不绘制状态栏和侧边按钮
-    // drawStatusBar();
+    // Keep the clock face clean: show only compact top status icons.
+    drawStatusBar();
     // drawSideButtons();
 }
 
@@ -1146,24 +1148,24 @@ void SimpleDisplayManager::clearFlightInfo() {
 }
 
 void SimpleDisplayManager::drawStatusBar() {
-    const int TOP_Y = 8, SIDE_PADDING = 10;
-    gfx->fillRect(SIDE_PADDING, 0, SCREEN_WIDTH - SIDE_PADDING * 2, 34, RGB565_BLACK);
-    drawWiFiIcon(SIDE_PADDING + 10, TOP_Y);
-    
-    char time_str[10];
-    snprintf(time_str, sizeof(time_str), "%02d:%02d", hour, minute);
-    gfx->setCursor(SCREEN_WIDTH - 90 - SIDE_PADDING, TOP_Y);
-    gfx->setTextColor(RGB565_WHITE);
-    gfx->setTextSize(2);
-    gfx->print(time_str);
-    drawBatteryIcon(SCREEN_WIDTH - 30 - SIDE_PADDING, TOP_Y + 2);
+    const int capsuleY = 2;
+    const int capsuleH = 18;
+    const int capsuleW = 30;
+
+    gfx->fillRoundRect(3, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
+    gfx->drawRoundRect(3, capsuleY, capsuleW, capsuleH, 4, 0x3186);
+    drawWiFiIcon(8, capsuleY + 3);
+
+    gfx->fillRoundRect(SCREEN_WIDTH - capsuleW - 3, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
+    gfx->drawRoundRect(SCREEN_WIDTH - capsuleW - 3, capsuleY, capsuleW, capsuleH, 4, 0x3186);
+    drawBatteryIcon(SCREEN_WIDTH - 28, capsuleY + 5);
 }
 
 void SimpleDisplayManager::drawWiFiIcon(int x, int y) {
     if (!wifi_connected) {
         // WiFi 断开：画一个带叉的图标
-        gfx->drawLine(x, y, x + 20, y + 15, RGB565_RED);
-        gfx->drawLine(x + 20, y, x, y + 15, RGB565_RED);
+        gfx->drawCircle(x + 8, y + 8, 4, 0x528A);
+        gfx->drawLine(x + 2, y + 2, x + 16, y + 13, RGB565_RED);
         return;
     }
     
@@ -1176,40 +1178,36 @@ void SimpleDisplayManager::drawWiFiIcon(int x, int y) {
     else bars = 0;
     
     // 中心点
-    int cx = x + 12;
-    int cy = y + 12;
-    
     // 如果没有信号
     if (bars == 0) {
-        gfx->drawCircle(cx, cy, 8, RGB565_WHITE);
-        gfx->drawLine(cx - 6, cy - 6, cx + 6, cy + 6, RGB565_WHITE);
-        gfx->drawLine(cx + 6, cy - 6, cx - 6, cy + 6, RGB565_WHITE);
+        gfx->drawCircle(x + 8, y + 8, 4, RGB565_WHITE);
+        gfx->drawLine(x + 4, y + 4, x + 12, y + 12, RGB565_WHITE);
         return;
     }
     
-    // 绘制扇形（弧线朝上，角度从 240 到 300 度）
-    // 最外层弧线（4格信号）
-    gfx->drawArc(cx, cy, 16, 16, 235, 305, bars >= 4 ? RGB565_WHITE : 0x528A);
-    
-    // 第二层弧线（3格信号）
-    gfx->drawArc(cx, cy, 12, 12, 240, 300, bars >= 3 ? RGB565_WHITE : 0x528A);
-    
-    // 第三层弧线（2格信号）
-    gfx->drawArc(cx, cy, 8, 8, 245, 295, bars >= 2 ? RGB565_WHITE : 0x528A);
-    
-    // 最内层弧线（1格信号）
-    gfx->drawArc(cx, cy, 4, 4, 250, 290, bars >= 1 ? RGB565_WHITE : 0x528A);
-    
-    // 中心圆点
-    gfx->fillCircle(cx, cy, 1, RGB565_WHITE);
+    // Compact signal bars for the top-left status capsule.
+    for (int i = 0; i < 4; i++) {
+        int barHeight = 3 + i * 3;
+        int barX = x + i * 4;
+        int barY = y + 13 - barHeight;
+        uint16_t color = (i < bars) ? RGB565_WHITE : 0x528A;
+        gfx->fillRect(barX, barY, 3, barHeight, color);
+    }
+    gfx->fillCircle(x + 17, y + 12, 1, RGB565_WHITE);
 }
 
 void SimpleDisplayManager::drawBatteryIcon(int x, int y) {
-    gfx->drawRect(x, y, 25, 12, RGB565_WHITE);
-    gfx->fillRect(x + 25, y + 3, 3, 6, RGB565_WHITE);
-    int fillWidth = (battery_level * 23) / 100;
-    uint16_t color = battery_level < 20 ? RGB565_RED : (battery_level < 50 ? RGB565_YELLOW : RGB565_GREEN);
-    gfx->fillRect(x + 1, y + 1, fillWidth, 10, color);
+    const int bodyW = 18;
+    const int bodyH = 9;
+    int safeBattery = constrain(battery_level, 0, 100);
+
+    gfx->drawRect(x, y, bodyW, bodyH, RGB565_WHITE);
+    gfx->fillRect(x + bodyW, y + 3, 2, 3, RGB565_WHITE);
+    int fillWidth = (safeBattery * (bodyW - 2)) / 100;
+    uint16_t color = safeBattery < 20 ? RGB565_RED : (safeBattery < 50 ? RGB565_YELLOW : RGB565_GREEN);
+    if (fillWidth > 0) {
+        gfx->fillRect(x + 1, y + 1, fillWidth, bodyH - 2, color);
+    }
 }
 
 void SimpleDisplayManager::drawSideButtons() {
