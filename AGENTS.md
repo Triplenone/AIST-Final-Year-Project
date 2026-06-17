@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 12:39-12:46 FlyCare final smoke invalid uplink closeout
+
+- B.invalid_uplink.previous=treated the prior `invalidUplinks=1` as a one-off UART/status-line corruption after a clean bounded rerun; no firmware, frontend, backend contract, route, env, or schema changes were made.
+- V.bridge.bounded_clean=ok after stopping the stale persistent COM5 owner, `bridge_flycare_serial.ps1 -SerialPort COM5 -Seconds 90` wrote `logs/flycare-serial-bridge-20260617-123920.log` with 91.0s runtime, 13 uplinks, `invalidUplinks=0`, `crashes=0`, `downlinks=1`, and duplicate retained flight payloads ignored.
+- V.audit.clean=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` at 2026-06-17T12:41:02; freshness age=0.2min, positioning high/6 beacons, flight serial sync, display/watch runtime crashes=0, and fall path latestEvent=319/false_alarm.
+- V.flight.min_smoke=ok Admin Gate Change publish on `http://127.0.0.1:8001` returned `status=ok`, MQTT alias topics `ok=true`, Mongo inserted `_id=6a322585dde90a25b65b8d6d`; COM5 capture `logs/flycare-serial-bridge-20260617-124147.log` showed `[SERIAL_DOWNLINK] handled=1`, duplicate flight payload ignored, 5 status uplinks, and no invalid/crash output.
+- V.sos.min_smoke=ok COM5 `SOSON` / `SOSOFF` through the serial bridge published `smartwatch/ESP32_48CA43A42298/sos`; EventLog `320` for device 8 was created and handled as `false_alarm`, with latest SOS state inactive.
+- V.fall.min_smoke=ok COM5 `SIMFALL` through `logs/flycare-serial-bridge-20260617-124405.log` published two fall payloads, showed `[FallDetection] SIMFALL alert displayed and uploaded`, and EventLog `321` for device 8 was handled as `false_alarm`.
+- V.audit.final=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` at 2026-06-17T12:45:30; watch runtime duration=60.0s, uplinks=8, `invalidUplinks=0`, `crashes=0`, latest log `logs/flycare-serial-bridge-20260617-124405.log`, fall latestEvent=321/false_alarm, SOS inactive, and button policy passed.
+
 ### 2026-06-17 02:05-03:10 FlyCare final freeze Gate Change reboot closeout
 
 - B.gate_audio_abort=confirmed the repeated Gate Change vibration/black-screen loop was a watch reboot path, not a dashboard retry loop: serial evidence showed `abort()` / `RTC_SW_CPU_RST`, and `addr2line` mapped the backtrace to `AudioManager::fileExists()` from `audioTask` during the SD_MMC alert-file lookup.
