@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 17:10-17:14 FlyCare watch status icons bezel inset
+
+- I.watch.status_inset=updated `firmware/SimpleDisplayManager.cpp` to move the compact WiFi/battery status capsules farther inside the active display area and lower from the top edge, avoiding the watch's black bezel/rounded-corner clipping.
+- D.watch.ui=updated `firmware/README.md` to document that the compact status indicators are inset from the black bezel.
+- V.compile=ok ESP32-S3 firmware compile passed; sketch `1549059/3145728` bytes and RAM `55224/327680`.
+- V.upload=ok ESP32-S3 upload to COM5 succeeded for MAC `48:ca:43:a4:22:98`; upload wrote `1549200` bytes and hard-reset the watch.
+- V.serial.runtime=ok bounded COM5 bridge `logs/flycare-serial-bridge-20260617-171234.log` ran 60s with `parsed=8`, `sent=8`, `downlinks=1`; no invalid uplink/crash marker appeared in the bridge output.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` passed overall after upload; persistent COM5 fallback was restarted with live log `logs/flycare-serial-bridge-live-20260617-171402.log`.
+- R.remaining=physical screen visibility must still be confirmed by looking at the watch because the repo cannot capture the display pixels directly.
+
 ### 2026-06-17 17:00-17:04 FlyCare compact watch status icons
 
 - I.watch.status_icons=updated `firmware/SimpleDisplayManager.cpp` so the watch draws a compact WiFi indicator in the top-left corner and a compact battery indicator in the top-right corner instead of the previous large status bar with time text.

@@ -1148,17 +1148,19 @@ void SimpleDisplayManager::clearFlightInfo() {
 }
 
 void SimpleDisplayManager::drawStatusBar() {
-    const int capsuleY = 2;
+    const int capsuleX = 12;
+    const int capsuleY = 14;
     const int capsuleH = 18;
     const int capsuleW = 30;
 
-    gfx->fillRoundRect(3, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
-    gfx->drawRoundRect(3, capsuleY, capsuleW, capsuleH, 4, 0x3186);
-    drawWiFiIcon(8, capsuleY + 3);
+    gfx->fillRoundRect(capsuleX, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
+    gfx->drawRoundRect(capsuleX, capsuleY, capsuleW, capsuleH, 4, 0x3186);
+    drawWiFiIcon(capsuleX + 5, capsuleY + 3);
 
-    gfx->fillRoundRect(SCREEN_WIDTH - capsuleW - 3, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
-    gfx->drawRoundRect(SCREEN_WIDTH - capsuleW - 3, capsuleY, capsuleW, capsuleH, 4, 0x3186);
-    drawBatteryIcon(SCREEN_WIDTH - 28, capsuleY + 5);
+    int batteryCapsuleX = SCREEN_WIDTH - capsuleW - capsuleX;
+    gfx->fillRoundRect(batteryCapsuleX, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
+    gfx->drawRoundRect(batteryCapsuleX, capsuleY, capsuleW, capsuleH, 4, 0x3186);
+    drawBatteryIcon(batteryCapsuleX + 5, capsuleY + 5);
 }
 
 void SimpleDisplayManager::drawWiFiIcon(int x, int y) {
