@@ -27,6 +27,19 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 23:21-2026-06-18 00:18 FlyCare NG WAI LUN router direct MQTT closeout
+
+- V.git.closeout=ok branch `Flycare`, HEAD `d0578b78ae9b5b95e728c17d45d027dddbd06490`; previous router endpoint commit is pushed to `origin/Flycare`.
+- V.backend.8001=pass after elevated restart, both `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status` and `http://192.168.1.232:8001/api/v1/data-reception/mqtt/status` report `connected=true`, broker `192.168.1.232`, port `1883`.
+- V.upload.main_watch=ok final restored ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; restored build is the committed router endpoint firmware, sketch `1553911/3145728` bytes and RAM `55240/327680` bytes.
+- V.direct_mqtt=blocked with COM5 bridge stopped: `mosquitto_sub -h 192.168.1.232 -p 1883 -t smartwatch/#` timed out with 0 `smartwatch/` payloads in `logs/flycare-direct-mqtt-router-rawfix-20260617-235244.log`, `logs/flycare-direct-mqtt-router-rawfix2-20260617-235910.log`, `logs/flycare-direct-mqtt-router-pass2-20260618-000512.log`, and `logs/flycare-direct-mqtt-router-compact-20260618-001107.log`.
+- V.mongo.freshness=blocked latest Mongo status/location for alias `ESP32_48CA43A42298` remained stale at `2026-06-17T13:42:12Z` throughout direct-only tests, so `/flycare` cannot show NG WAI LUN Online/Live from direct Wi-Fi MQTT yet.
+- E.router.watch_tcp=partial Mosquitto verbose log shows watch IP `192.168.1.59` opens TCP/MQTT connections and subscribes to `smartwatch/ESP32_48CA43A42298/flight` and `/alert`, but no `Received PUBLISH` from the watch was observed; many ESP32 MQTT clients disconnect by timeout.
+- D.failed_experiment=reverted uncommitted `firmware/DataTransmitter.cpp` raw/compact MQTT experiments after they did not produce broker PUBLISH evidence, then recompiled/reuploaded the committed router endpoint firmware so the repo and watch are not left on an unverified socket-storm build.
+- V.gate_sos_fall=not-run per demo rule because direct Wi-Fi MQTT did not pass; Gate 11, SOS, and SIMFALL hardware smoke must wait until direct `smartwatch/#` publish and Mongo refresh are proven.
+- V.audit=fail `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` at 2026-06-18T00:16; `watch_status_freshness` failed with age `216.8` minutes, `watch_runtime_stability` failed with `crashes=4` from the old live bridge log, and stale unhandled SOS/fall residues remain.
+- R.remaining=likely blocker is router/AP or ESP32 Wi-Fi socket path after TCP/MQTT connect: backend/Mosquitto/listener endpoints are correct, but direct PUBLISH is not reaching broker. Next evidence step is router/AP isolation/firewall inspection or a second known-good MQTT client on the same SSID before 6-watch rollout.
+
 ### 2026-06-17 23:02-23:21 FlyCare NG WAI LUN router MQTT migration attempt
 
 - V.git.preflight=ok branch `Flycare`, HEAD `d5b5b6e`, working tree clean before migration edits.
