@@ -26,19 +26,19 @@
 #define HR_UPLOAD_INTERVAL_MS 2000
 
 // ?????謕?
-#define WIFI_SSID "MILLION1"
-#define WIFI_PASSWORD "wml6949619"
+#define WIFI_SSID "flycare"
+#define WIFI_PASSWORD "flycare888"
 #define WIFI_ALT1_SSID "MILLION"
 #define WIFI_ALT1_PASSWORD "wml6949619"
-#define WIFI_ALT2_SSID "MILLION 1"
+#define WIFI_ALT2_SSID "MILLION1"
 #define WIFI_ALT2_PASSWORD "wml6949619"
 #define WIFI_FALLBACK_SSID "Triple-None"
 #define WIFI_FALLBACK_PASSWORD "08080606"
 #define ENABLE_HTTP_UPLOAD 0
-#define SERVER_URL "http://192.168.0.203:8000/api/v1/data-reception/receive"
-#define MQTT_BROKER "192.168.0.203"
-#define MQTT_BROKER_MILLION1 "192.168.0.203"
-#define MQTT_BROKER_TRIPLE_NONE "192.168.0.203"
+#define SERVER_URL "http://192.168.1.232:8001/api/v1/data-reception/receive"
+#define MQTT_BROKER "192.168.1.232"
+#define MQTT_BROKER_MILLION1 "192.168.1.232"
+#define MQTT_BROKER_TRIPLE_NONE "192.168.1.232"
 #define MQTT_BROKER_FALLBACK_1 ""
 #define MQTT_BROKER_FALLBACK_2 ""
 #define MQTT_PORT 1883

@@ -27,6 +27,21 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 23:02-23:21 FlyCare NG WAI LUN router MQTT migration attempt
+
+- V.git.preflight=ok branch `Flycare`, HEAD `d5b5b6e`, working tree clean before migration edits.
+- V.network.router=ok Server PC Wi-Fi IPv4 `192.168.1.232`, gateway `192.168.1.1`; `Test-NetConnection` passed for `github.com:443`, `192.168.1.232:1883`, `192.168.1.232:8001`, and `192.168.1.232:5173`.
+- I.endpoint.router=updated `backend/backend/.env`, `frontend/.env.local`, and `firmware/Config.h` for router endpoint `192.168.1.232`; firmware now prioritizes SSID `flycare` with credentials stored only in firmware/local config, while keeping `MILLION`, `MILLION1`, and `Triple-None` as fallback SSIDs.
+- D.router.docs=updated `docs/FLYCARE_MQTT.md` with final router LAN URLs and direct Wi-Fi vs COM5 fallback boundaries; docs/AGENTS intentionally do not include the Wi-Fi password value.
+- B.backend.restart=blocked current shell could not stop elevated backend PID `11372` on `8001` (`Access is denied`), so live `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status` still reports broker `192.168.0.203`, `mqttConnected=false`; hardware backend was not moved to `8000`.
+- B.mosquitto.restart=blocked current shell could not stop elevated Mosquitto PID `20168` (`Access is denied`), but listener evidence still shows `0.0.0.0:1883` and PC-side `smartwatch/#` pub/sub self-test received a payload through `192.168.1.232:1883`.
+- V.firmware.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; sketch `1553911/3145728` bytes, RAM `55240/327680` bytes.
+- V.direct_wifi.partial=blocked for PASS: COM5 serial bridge PID `30676` was stopped before direct MQTT testing. Raw serial diagnosis showed watch connected to SSID `flycare`, IP `192.168.1.59`, and attempted MQTT broker `192.168.1.232:1883`; one capture saw intermittent `[MQTT_PUB] ok=1`, but `mosquitto_sub` fresh-payload captures `logs/flycare-direct-mqtt-router-20260617-230651.log`, `logs/flycare-direct-mqtt-router-20260617-231100.log`, and `logs/flycare-direct-mqtt-router-exact-20260617-231726.log` all timed out with zero watch payloads. Direct Wi-Fi MQTT is not PASS.
+- B.direct_wifi.cause=classified as not SSID and not firmware-old-IP: firmware/serial evidence shows `SSID=flycare` and broker `192.168.1.232`. Mosquitto is not localhost-only and PC-side broker self-test passes. Remaining likely causes are router/client path instability, Windows/elevated broker process behavior, or watch MQTT reconnect instability under this router.
+- V.frontend.validation=pass `npm.cmd run build`, `npm.cmd run lint`, and `npm.cmd run test` passed; tests `62/62` passed with only existing Vite warnings.
+- V.audit=fail `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` failed because live `8001` still reports old broker `192.168.0.203` and `mqttConnected=false`; direct Wi-Fi proof remains incomplete.
+- N.next=rerun from an Administrator PowerShell or stop/restart the elevated `8001` and Mosquitto processes manually, then verify `8001` reports broker `192.168.1.232` with `mqttConnected=true`; after that repeat direct `mosquitto_sub` proof before Gate 11/SOS/SIMFALL smoke.
+
 ### 2026-06-17 17:25-19:02 FlyCare watch safe-area UI + flight status popup stability
 
 - I.watch.safe_area=updated `firmware/SimpleDisplayManager.cpp` so map/flight WiFi and battery indicators are inset from the rounded black bezel, the flight page content is shifted down into the visible safe area, and the clock face no longer draws WiFi/battery icons over the 11/1 numerals.

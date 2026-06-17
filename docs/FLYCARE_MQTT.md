@@ -84,6 +84,18 @@ For local Windows demos with a real ESP32 on Wi-Fi, Mosquitto must listen on the
 
 The ESP32 firmware and backend must use the same MQTT broker host. For a local Windows demo, that host is the PC Wi-Fi/LAN IP, not `localhost` or `127.0.0.1`; those point back to the ESP32/backend process itself. If the PC changes network, the broker IP changes too.
 
+Current router-based final demo endpoint for the NG WAI LUN phase-1 watch migration is:
+
+```text
+SSID:        flycare
+MQTT:        192.168.1.232:1883
+Backend:     http://192.168.1.232:8001
+Frontend:    http://192.168.1.232:5173/flycare
+Admin:       http://192.168.1.232:5173/admin
+```
+
+Keep the router Wi-Fi password in firmware/local config only; do not copy credential values into docs or AGENTS.md.
+
 Use the endpoint helper before rebuilding firmware or restarting the backend:
 
 ```powershell
@@ -101,22 +113,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_e
 
 Local LAN/hotspot mode only works when the PC and watch are on the same SSID/subnet and the access point allows client-to-client traffic. If the PC is on a phone hotspot such as `MILLION1` but the watch is on another SSID such as `Triple-None`, a local broker on the PC is normally not reachable from the watch. In that case, either connect both devices to the same hotspot/LAN, or use Cloud MQTT / a private internet-reachable broker.
 
-For a fully offline demo, use one local network at a time:
+For the router-based local demo, use one local network at a time:
 
-1. Connect the PC to `MILLION1` first when available; firmware tries `MILLION1` before all other SSIDs.
-2. Run `set_flycare_mqtt_endpoint.ps1 -Mode OfflineLan`, then restart the backend and upload the firmware.
+1. Connect the PC and watch to router SSID `flycare`; current final broker host is `192.168.1.232`.
+2. Run `set_flycare_mqtt_endpoint.ps1 -Mode OfflineLan` with explicit broker hosts if the PC IP changes, then restart backend `8001` and upload the firmware.
 3. Confirm Mosquitto listens on `0.0.0.0:1883`, not only `127.0.0.1:1883`.
-4. Connect the watch to the same SSID/subnet as the PC. The watch cannot reach a PC-local broker from `Triple-None` while the PC is on `MILLION1`, unless those networks are bridged/routed.
+4. Stop the COM5 serial bridge before claiming direct Wi-Fi MQTT; COM5 is a fallback proof path only.
 
-Firmware now keeps SSID-specific broker candidates. When connected to `MILLION1` or its aliases (`MILLION`, `MILLION 1`), it tries `MQTT_BROKER_MILLION1` first. When connected to `Triple-None`, it tries `MQTT_BROKER_TRIPLE_NONE` first. It then falls back to `MQTT_BROKER`, `MQTT_BROKER_FALLBACK_1`, and `MQTT_BROKER_FALLBACK_2`.
+Firmware now keeps SSID-specific broker candidates. The NG WAI LUN router build tries `flycare` first, then keeps `MILLION`, `MILLION1`, and `Triple-None` as fallback SSIDs. When connected to `MILLION` or `MILLION1`, it tries `MQTT_BROKER_MILLION1` first. When connected to `Triple-None`, it tries `MQTT_BROKER_TRIPLE_NONE` first. It then falls back to `MQTT_BROKER`, `MQTT_BROKER_FALLBACK_1`, and `MQTT_BROKER_FALLBACK_2`.
 
 If both demo SSIDs must work from one firmware build, collect the PC broker IP for each SSID and write both values before upload:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set_flycare_mqtt_endpoint.ps1 `
   -Mode OfflineLan `
-  -Million1BrokerHost 172.20.10.3 `
-  -TripleNoneBrokerHost <pc-ip-when-connected-to-Triple-None>
+  -BrokerHost 192.168.1.232 `
+  -ServerHost 192.168.1.232 `
+  -Million1BrokerHost 192.168.1.232 `
+  -TripleNoneBrokerHost 192.168.1.232
 ```
 
 If the PC IP changes after switching hotspot/router, rerun the helper and re-upload firmware, or use a fixed travel router/static DHCP lease so the PC broker address stays stable.
@@ -195,14 +209,14 @@ cd E:\flycare\backend\backend
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
-Verify the bridge with `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status`. The expected MQTT state is `enabled=true`, `connected=true`, broker `192.168.0.203`, port `1883`.
+Verify the bridge with `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status`. The expected MQTT state is `enabled=true`, `connected=true`, broker `192.168.1.232`, port `1883`.
 
 After running the launcher, `scripts/audit_flycare_goal.ps1` automatically uses `logs/flycare-local-stack-status.json.activeBackend.baseUrl` when no explicit `-BaseUrl` is supplied and that backend reports MQTT connected. Pass `-BaseUrl` only when you intentionally want to audit a specific backend port.
 
 For a Vite dev dashboard during that ghost-listener recovery, set `frontend\.env.local` to the LAN bridge URL before restarting `5173`:
 
 ```text
-VITE_BACKEND_BASE_URL=http://192.168.0.203:8001
+VITE_BACKEND_BASE_URL=http://192.168.1.232:8001
 ```
 
 The frontend still defaults to the same host on `:8000` when this override is absent.
@@ -214,7 +228,7 @@ cd E:\flycare
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bridge_flycare_serial.ps1 -SerialPort COM5
 ```
 
-For a bounded capture during verification, add `-Seconds 60`. The bridge auto-uses `logs/flycare-local-stack-status.json.mqttStatus.broker` / `port`; in the current stack that is `192.168.0.203:1883`. This is a local USB-to-MQTT fallback for blocked networks only; the normal demo path remains direct watch MQTT over `192.168.0.203:1883`. `-Transport Http` is available for direct backend serial ingest after restarting a backend that includes `/api/v1/mongo-upstream/serial-ingest`, but MQTT transport is the recommended demo fallback because it exercises the same subscriber path. Use `-DisableDownlink` only when you need uplink-only serial capture; otherwise leave downlink enabled so Admin Gate Change reaches the connected watch. For the simplified gate-change demo, publish `delay_reason="Gate Change to 10"` and `gate_changed=true`; firmware suppresses the extra long delay popup and keeps the visible watch notification as the large `Gate Change` popup. Gate Change audio/TTS is intentionally skipped on the watch; use the popup plus short vibration as the hardware confirmation.
+For a bounded capture during verification, add `-Seconds 60`. The bridge auto-uses `logs/flycare-local-stack-status.json.mqttStatus.broker` / `port`; for the router demo this should be `192.168.1.232:1883`. This is a local USB-to-MQTT fallback for blocked networks only; the normal demo path remains direct watch MQTT over `192.168.1.232:1883`. `-Transport Http` is available for direct backend serial ingest after restarting a backend that includes `/api/v1/mongo-upstream/serial-ingest`, but MQTT transport is the recommended demo fallback because it exercises the same subscriber path. Use `-DisableDownlink` only when you need uplink-only serial capture; otherwise leave downlink enabled so Admin Gate Change reaches the connected watch. For the simplified gate-change demo, publish `delay_reason="Gate Change to 10"` and `gate_changed=true`; firmware suppresses the extra long delay popup and keeps the visible watch notification as the large `Gate Change` popup. Gate Change audio/TTS is intentionally skipped on the watch; use the popup plus short vibration as the hardware confirmation.
 
 The downlink poll intentionally consumes one retained/new flight message per poll. This keeps `mosquitto_sub` from blocking serial reads while still delivering the retained Gate Change payload; repeated alias payloads are de-duplicated by payload and topic.
 
@@ -296,9 +310,9 @@ npm run build
 Current local runtime:
 
 ```text
-Backend API:     http://127.0.0.1:8001 (active MQTT bridge; 8000 may be a stale listener)
-Frontend Vite:   http://127.0.0.1:5173
-MQTT broker:     See `backend/backend/.env`, `firmware/Config.h`, and `logs/flycare-mqtt-endpoint.json`
+Backend API:     http://127.0.0.1:8001 / http://192.168.1.232:8001 (active hardware backend; 8000 is not the final hardware backend)
+Frontend Vite:   http://127.0.0.1:5173 / http://192.168.1.232:5173/flycare
+MQTT broker:     192.168.1.232:1883 for the router demo; see `backend/backend/.env`, `firmware/Config.h`, and `logs/flycare-mqtt-endpoint.json`
 Watch serial:    COM5, ESP32_48CA43A42298, MySQL device 8, NG WAI LUN
 Fall detection:  enabled with ENABLE_FALL_DETECTION 1; `SIMFALL` uploads a fall payload for software-path smoke testing; status telemetry normalizes non-confirmed transient fall states to normal and confirmed falls still use the fall topic/event path
 ```
