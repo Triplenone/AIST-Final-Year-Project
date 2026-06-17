@@ -27,6 +27,15 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 16:28-16:43 FlyCare passenger rail count stability
+
+- B.flycare.user_count_flicker=read-only API sampling against `http://127.0.0.1:8001/api/v1` showed `/devices/2..9` stable at 8 tracked devices, `/flycare-admin/presets` stable at 8, and `/residents/?limit=500` stable at 12; the observed `Total users` flicker was therefore not caused by DB rows changing or Admin preset count changing.
+- I.flycare.registry_stability=updated `frontend/src/adapters/position-command-center.ts` with `stabilizePositionResidentRegistry()` so a partial registry refresh is merged back onto the 8-entry FlyCare tracked registry instead of shrinking the passenger rail to the subset of successful API calls.
+- I.flycare.refresh_race=updated `frontend/src/pages/FlyCarePage.tsx` with an in-flight snapshot guard and request sequence check, preventing overlapping 2s polling requests from letting an older/partial refresh overwrite a newer complete passenger snapshot.
+- V.api.sample=ok 15 consecutive backend samples returned `deviceCount=8`, user bindings `6,4,8,10,13,14,15,16`, `residentCount=12`, and `presetCount=8` with no request errors.
+- V.frontend.tests=ok `npm.cmd run test -- src/adapters/position-command-center.test.ts` passed 28/28, full `npm.cmd run test` passed 62/62, `npm.cmd run lint` passed, and `npm.cmd run build` passed with the existing Vite dynamic-import chunk warning only.
+- V.browser.flycare=ok in-app browser at `http://192.168.0.203:5173/flycare` was reloaded and sampled for 10 refresh cycles; after initial loading, Passenger Rail stayed at `Total8`, `itemCount=8`, and did not flicker to 2. `Online1` reflected current freshness state, not total registry count.
+
 ### 2026-06-17 15:45-16:12 FlyCare Gate 11 arrival popup immediate trigger
 
 - B.arrival.not_immediate=latest evidence showed the watch had Gate 11 flight target armed, but the direct flight-arrival threshold was still hard-coded at `0.6m`; with BLE-derived positioning this was too strict for the physical gate area, and a newly armed flight target only rechecked arrival on the next position update.

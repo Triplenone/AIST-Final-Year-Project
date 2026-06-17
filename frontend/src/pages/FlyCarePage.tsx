@@ -68,6 +68,8 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   const [showAllOnMap, setShowAllOnMap] = useState(false);
   const [residentGateById, setResidentGateById] = useState<Map<string, string | null>>(() => new Map());
   const previousAlertRef = useRef(false);
+  const snapshotRefreshInFlightRef = useRef(false);
+  const snapshotRequestSequenceRef = useRef(0);
   const activityRequestSequenceRef = useRef(0);
   const flightRequestSequenceRef = useRef(0);
   const lastConfirmedFlightIdRef = useRef<string | null>(null);
@@ -89,6 +91,10 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   }, [pendingFlightUpdate]);
 
   const refreshSnapshot = useCallback(async () => {
+    if (snapshotRefreshInFlightRef.current) return;
+    snapshotRefreshInFlightRef.current = true;
+    const requestId = snapshotRequestSequenceRef.current + 1;
+    snapshotRequestSequenceRef.current = requestId;
     setLoading(true);
     let nextRegistry: PositionResidentRegistryEntry[];
     try {
@@ -96,9 +102,12 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     } catch {
       nextRegistry = initialRegistry();
     }
+    if (snapshotRequestSequenceRef.current !== requestId) return;
     const regForSnapshot = nextRegistry.length > 0 ? nextRegistry : initialRegistry();
 
     try {
+      const nextSnapshot = await loadPositionCommandCenterSnapshot(regForSnapshot);
+      if (snapshotRequestSequenceRef.current !== requestId) return;
       setRegistry(nextRegistry);
       setSelectedResidentId((current) => {
         if (current != null && nextRegistry.some((r) => r.residentId === current)) {
@@ -106,9 +115,9 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
         }
         return getPreferredFlyCareResidentId(nextRegistry) ?? nextRegistry[0]?.residentId ?? null;
       });
-      const nextSnapshot = await loadPositionCommandCenterSnapshot(regForSnapshot);
       setSnapshot(nextSnapshot);
     } catch (error) {
+      if (snapshotRequestSequenceRef.current !== requestId) return;
       const message = error instanceof Error ? error.message : 'Request failed';
       setSnapshot({
         fetchedAt: new Date().toISOString(),
@@ -120,7 +129,10 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
         loadError: message
       });
     } finally {
-      setLoading(false);
+      if (snapshotRequestSequenceRef.current === requestId) {
+        setLoading(false);
+        snapshotRefreshInFlightRef.current = false;
+      }
     }
   }, []);
 

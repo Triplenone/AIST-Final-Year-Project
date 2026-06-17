@@ -270,6 +270,38 @@ function clonePositionRegistryFallback(): PositionResidentRegistryEntry[] {
   return POSITION_RESIDENT_REGISTRY.map((entry) => ({ ...entry }));
 }
 
+export function stabilizePositionResidentRegistry(
+  registry: readonly PositionResidentRegistryEntry[],
+  fallback: readonly PositionResidentRegistryEntry[] = POSITION_RESIDENT_REGISTRY
+): PositionResidentRegistryEntry[] {
+  const fallbackList = fallback.length > 0 ? fallback : POSITION_RESIDENT_REGISTRY;
+  const cloned = registry.map((entry) => ({ ...entry }));
+  if (cloned.length >= fallbackList.length) {
+    return cloned;
+  }
+
+  const byDeviceId = new Map(cloned.map((entry) => [entry.deviceId, entry]));
+  const byResidentId = new Map(cloned.map((entry) => [entry.residentId, entry]));
+  const used = new Set<PositionResidentRegistryEntry>();
+
+  const merged = fallbackList.map((entry) => {
+    const resolved = byDeviceId.get(entry.deviceId) ?? byResidentId.get(entry.residentId);
+    if (resolved) {
+      used.add(resolved);
+      return { ...resolved };
+    }
+    return { ...entry };
+  });
+
+  for (const entry of cloned) {
+    if (!used.has(entry) && !merged.some((item) => item.deviceId === entry.deviceId)) {
+      merged.push({ ...entry });
+    }
+  }
+
+  return merged;
+}
+
 function readPositiveMetric(...candidates: unknown[]): number | null {
   for (const candidate of candidates) {
     const value = toFiniteNumber(candidate);
@@ -358,7 +390,7 @@ export async function resolvePositionResidentRegistry(): Promise<PositionResiden
   if (out.length === 0) {
     return clonePositionRegistryFallback();
   }
-  return out;
+  return stabilizePositionResidentRegistry(out);
 }
 
 export const POSITION_ZONES: readonly PositionZoneDefinition[] = [

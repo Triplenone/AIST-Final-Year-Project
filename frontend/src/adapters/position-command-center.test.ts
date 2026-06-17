@@ -11,6 +11,7 @@ import {
   mergeUpstreamDocsForPosition,
   resolvePositionSelection,
   sortPositionResidents,
+  stabilizePositionResidentRegistry,
   type PositionResidentViewModel
 } from './position-command-center';
 
@@ -79,6 +80,29 @@ describe('position-command-center adapter', () => {
         'NG WAI LUN',
         'LEE KA YAN'
       ])
+    );
+  });
+
+  it('keeps the FlyCare registry at the tracked demo size when a refresh is partial', () => {
+    const partial = [
+      {
+        ...POSITION_RESIDENT_REGISTRY[6],
+        displayName: 'NG WAI LUN LIVE'
+      },
+      {
+        ...POSITION_RESIDENT_REGISTRY[7],
+        displayName: 'LEE KA YAN LIVE'
+      }
+    ];
+
+    const stabilized = stabilizePositionResidentRegistry(partial);
+
+    expect(stabilized).toHaveLength(POSITION_RESIDENT_REGISTRY.length);
+    expect(stabilized.map((entry) => entry.deviceId)).toEqual(
+      POSITION_RESIDENT_REGISTRY.map((entry) => entry.deviceId)
+    );
+    expect(stabilized.find((entry) => entry.deviceId === POSITION_RESIDENT_REGISTRY[6].deviceId)?.displayName).toBe(
+      'NG WAI LUN LIVE'
     );
   });
 
