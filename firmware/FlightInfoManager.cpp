@@ -36,6 +36,48 @@ static String formatGateChangeDestination(const String& gate) {
     return normalized.length() > 0 ? normalized : gate;
 }
 
+static String normalizedFlightField(JsonObject flight, const char* key);
+
+static String normalizeFlightStatusValue(String value) {
+    value.trim();
+    value.toLowerCase();
+    value.replace("_", " ");
+    value.replace("-", " ");
+    while (value.indexOf("  ") >= 0) {
+        value.replace("  ", " ");
+    }
+    if (value == "canceled") {
+        return "cancelled";
+    }
+    if (value == "ontime") {
+        return "on time";
+    }
+    return value;
+}
+
+static bool isLegacyDemoFlight(JsonObject flight) {
+    String flightNumber = normalizedFlightField(flight, "flight_number");
+    flightNumber.trim();
+    flightNumber.toUpperCase();
+
+    String airline = normalizedFlightField(flight, "airline");
+    airline.trim();
+    airline.toUpperCase();
+
+    String destination = normalizedFlightField(flight, "destination");
+    destination.trim();
+    destination.toUpperCase();
+
+    return flightNumber == "CA1234" || airline == "AIR CHINA" || destination == "BEIJING";
+}
+
+static bool isProtectedDemoFlight(const FlightInfo& flight) {
+    String flightNumber = flight.flight_number;
+    flightNumber.trim();
+    flightNumber.toUpperCase();
+    return flight.valid && flightNumber == "CX910";
+}
+
 static uint32_t hashFlightPayload(const String& payload) {
     uint32_t hash = 2166136261UL;
     for (size_t i = 0; i < payload.length(); i++) {
@@ -77,7 +119,7 @@ static String buildFlightSignature(JsonObject flight) {
     signature += "|";
     signature += normalizedFlightField(flight, "checkin_counter");
     signature += "|";
-    signature += normalizedFlightField(flight, "status");
+    signature += normalizeFlightStatusValue(normalizedFlightField(flight, "status"));
     signature += "|";
     signature += String((int)(flight["delay_minutes"] | 0));
     signature += "|";
@@ -110,7 +152,7 @@ static String buildCurrentFlightSignature(const FlightInfo& flight) {
     signature += "|";
     signature += flight.checkin_counter;
     signature += "|";
-    signature += flight.status;
+    signature += normalizeFlightStatusValue(flight.status);
     signature += "|";
     signature += String(flight.delay_minutes);
     signature += "|";
@@ -158,6 +200,17 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
 
     String flightSignature = buildFlightSignature(flight);
     uint32_t payloadHash = hashFlightPayload(flightSignature);
+    bool forceFlightIdentity = flight["force_flight_identity"] | false;
+    if (!forceFlightIdentity && flight_info_received && current_flight.valid &&
+        isProtectedDemoFlight(current_flight) && isLegacyDemoFlight(flight)) {
+        last_payload_hash = payloadHash;
+        has_last_payload_hash = true;
+        Serial.printf("[Flight] stale legacy demo payload ignored: active=%s incoming=%s\n",
+                      current_flight.flight_number.c_str(),
+                      normalizedFlightField(flight, "flight_number").c_str());
+        return false;
+    }
+
     bool sameAsLastPayload = has_last_payload_hash && payloadHash == last_payload_hash;
     bool sameAsCurrentFlight = flight_info_received && current_flight.valid &&
         flightSignature == buildCurrentFlightSignature(current_flight);
@@ -175,6 +228,7 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     int oldDelay = current_flight.delay_minutes;
     String oldStatus = current_flight.status;
     bool oldGateChanged = current_flight.gate_changed;
+    String oldDelayReason = current_flight.delay_reason;
     
     // 解析所有字段
     current_flight.flight_number = flight["flight_number"] | "Unknown";
@@ -189,7 +243,7 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     current_flight.terminal = flight["terminal"] | "";
     current_flight.checkin_counter = flight["checkin_counter"] | "";
     
-    current_flight.status = flight["status"] | "";
+    current_flight.status = normalizeFlightStatusValue(flight["status"] | "");
     current_flight.delay_minutes = flight["delay_minutes"] | 0;
     current_flight.delay_reason = flight["delay_reason"] | "";
     current_flight.gate_changed = flight["gate_changed"] | false;
@@ -279,6 +333,59 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
             current_flight.delay_reason
         );
     }
+
+    // One accepted flight update may show only one primary popup.
+    String primaryNewGateLabel = formatFlightGateLabel(current_flight.boarding_gate);
+    bool primaryGateLabelChanged = hadFlightInfo &&
+        oldGateLabel.length() > 0 &&
+        primaryNewGateLabel.length() > 0 &&
+        oldGateLabel != primaryNewGateLabel;
+    bool primaryGateChangeEvent = current_flight.gate_changed && (!oldGateChanged || primaryGateLabelChanged);
+
+    String primaryDelayReasonLower = current_flight.delay_reason;
+    primaryDelayReasonLower.toLowerCase();
+    bool primaryDelayIsGateChangeNotice = current_flight.gate_changed &&
+        (primaryGateChangeEvent || primaryDelayReasonLower.indexOf("gate change") >= 0);
+
+    String primaryNewStatus = current_flight.status;
+    String primaryOldStatus = normalizeFlightStatusValue(oldStatus);
+    bool primaryStatusChanged = primaryNewStatus != primaryOldStatus;
+    bool primaryDelayChanged = current_flight.delay_minutes != oldDelay ||
+                               current_flight.delay_reason != oldDelayReason;
+
+    bool shouldNotifyCancelled = (primaryNewStatus == "cancelled") && primaryStatusChanged;
+    bool shouldNotifyDelayed = (primaryNewStatus == "delayed") &&
+                               current_flight.delay_minutes > 0 &&
+                               (primaryStatusChanged || primaryDelayChanged);
+    bool shouldNotifyBoarding = (primaryNewStatus == "boarding") && primaryStatusChanged;
+    bool shouldNotifyFinalCall = (primaryNewStatus == "final call") && primaryStatusChanged;
+    bool shouldNotifyOnTime = (primaryNewStatus == "scheduled" || primaryNewStatus == "on time") &&
+                              current_flight.delay_minutes == 0 &&
+                              oldDelay > 0 &&
+                              primaryOldStatus == "delayed";
+
+    if (shouldNotifyCancelled) {
+        notifyCancelled();
+    } else if (primaryGateChangeEvent) {
+        notifyGateChange();
+    } else if (shouldNotifyDelayed && !primaryDelayIsGateChangeNotice) {
+        notifyDelay();
+    } else if (shouldNotifyDelayed && primaryDelayIsGateChangeNotice) {
+        Serial.println("[Flight] delay popup suppressed for gate change notice");
+    } else if (shouldNotifyBoarding) {
+        notifyBoarding();
+    } else if (shouldNotifyFinalCall) {
+        notifyFinalCall();
+    } else if (shouldNotifyOnTime) {
+        notifyOnTime();
+    } else {
+        Serial.printf("[Flight] accepted without primary popup status=%s gateChanged=%d delay=%d\n",
+                      primaryNewStatus.c_str(),
+                      current_flight.gate_changed ? 1 : 0,
+                      current_flight.delay_minutes);
+    }
+
+    return true;
     
     // ========== 检查各种变更并调用对应的 notify 函数 ==========
     
@@ -354,6 +461,9 @@ void FlightInfoManager::notifyGateChange() {
              sizeof(last_gate_change_notice_signature),
              "%s",
              noticeSignature.c_str());
+    Serial.printf("[FlightPopup] gate_change flight=%s gate=%s\n",
+                  current_flight.flight_number.c_str(),
+                  gateLabel.c_str());
     
     Serial.printf("[航班提醒] %s\n", message.c_str());
     
@@ -377,6 +487,10 @@ void FlightInfoManager::notifyDelay() {
     if (current_flight.delay_reason.length() > 0) {
         message += " - " + current_flight.delay_reason;
     }
+    Serial.printf("[FlightPopup] delayed flight=%s minutes=%d reason=%s\n",
+                  current_flight.flight_number.c_str(),
+                  current_flight.delay_minutes,
+                  current_flight.delay_reason.c_str());
     
     Serial.printf("[航班提醒] %s\n", message.c_str());
     
@@ -386,8 +500,7 @@ void FlightInfoManager::notifyDelay() {
     }
     
     // 语音播报
-    playAlertSound("/alerts/delay.wav");
-    speakAlert("Flight delayed " + String(current_flight.delay_minutes) + " minutes");
+    Serial.println("[Flight] delay audio skipped for display stability");
     
     // 振动
     if (display) {
@@ -399,6 +512,9 @@ void FlightInfoManager::notifyBoarding() {
     String title = "Boarding";
     String message = "Boarding for flight " + current_flight.flight_number + "\n" +
                      "has started at gate " + current_flight.boarding_gate;
+    Serial.printf("[FlightPopup] boarding flight=%s gate=%s\n",
+                  current_flight.flight_number.c_str(),
+                  current_flight.boarding_gate.c_str());
     
     Serial.printf("[登机提醒] %s\n", message.c_str());
     
@@ -408,10 +524,7 @@ void FlightInfoManager::notifyBoarding() {
     }
     
     // 语音播报
-    playAlertSound("/alerts/boarding.wav");
-    String alertMsg = "Boarding for flight " + current_flight.flight_number + 
-                      " has started at gate " + current_flight.boarding_gate;
-    speakAlert(alertMsg);
+    Serial.println("[Flight] boarding audio skipped for display stability");
     
     // 振动提醒
     if (display) {
@@ -420,7 +533,7 @@ void FlightInfoManager::notifyBoarding() {
 }
 
 void FlightInfoManager::notifyFinalCall() {
-    String title = "最后登机提醒";
+    String title = "Final Call";
     String message = "Final call for flight " + current_flight.flight_number + " \n" +
                      "Please proceed to gate " + current_flight.boarding_gate + " immediately";
     
@@ -432,10 +545,7 @@ void FlightInfoManager::notifyFinalCall() {
     }
     
     // 语音播报（更紧急的语气）
-    playAlertSound("/alerts/final_call.wav");
-    String alertMsg = "Final call for flight " + current_flight.flight_number + 
-                      ". Please proceed to gate " + current_flight.boarding_gate + " immediately";
-    speakAlert(alertMsg);
+    Serial.println("[Flight] final call audio skipped for display stability");
     
     // 长振动提醒
     if (display) {
@@ -454,6 +564,9 @@ void FlightInfoManager::notifyCancelled() {
     } else {
         message += "\nPlease contact the airline!";
     }
+    Serial.printf("[FlightPopup] cancelled flight=%s reason=%s\n",
+                  current_flight.flight_number.c_str(),
+                  current_flight.delay_reason.c_str());
     
     Serial.printf("[航班取消] %s\n", message.c_str());
     
@@ -463,9 +576,7 @@ void FlightInfoManager::notifyCancelled() {
     }
     
     // 语音播报
-    playAlertSound("/alerts/cancelled.wav");
-    String alertMsg = "Flight " + current_flight.flight_number + " has been cancelled";
-    speakAlert(alertMsg);
+    Serial.println("[Flight] cancelled audio skipped for display stability");
     
     // 振动提醒（三次短振）
     if (display) {
@@ -480,6 +591,9 @@ void FlightInfoManager::notifyOnTime() {
     String title = "On Time";
     String message = "Flight " + current_flight.flight_number + " is now on time\n" +
                      "scheduled " + current_flight.scheduled_departure + " departure";
+    Serial.printf("[FlightPopup] on_time flight=%s scheduled=%s\n",
+                  current_flight.flight_number.c_str(),
+                  current_flight.scheduled_departure.c_str());
     
     Serial.printf("[航班准点] %s\n", message.c_str());
     
@@ -489,9 +603,7 @@ void FlightInfoManager::notifyOnTime() {
     }
     
     // 语音播报
-    playAlertSound("/alerts/on_time.wav");
-    String alertMsg = "Flight " + current_flight.flight_number + " is now on time";
-    speakAlert(alertMsg);
+    Serial.println("[Flight] on-time audio skipped for display stability");
     
     // 短振动
     if (display) {
@@ -573,23 +685,23 @@ void FlightInfoManager::checkForAlerts(const String& json) {
             if (type == "gate_change" && display) {
                 String compactMessage = formatGateChangeDestination(message);
                 display->showPopup(SimpleDisplayManager::POPUP_GATE_CHANGE, "Gate Change", compactMessage);
-                playAlertSound("/alerts/gate_change.wav");
-                speakAlert(message);
+                display->vibrateShort();
+                Serial.println("[Flight] alert audio skipped for display stability");
             } 
             else if (type == "delay" && display) {
                 display->showPopup(SimpleDisplayManager::POPUP_FLIGHT_DELAY, "Delay", message);
-                playAlertSound("/alerts/delay.wav");
-                speakAlert(message);
+                display->vibrateShort();
+                Serial.println("[Flight] alert audio skipped for display stability");
             }
             else if (type == "boarding" && display) {
                 display->showPopup(SimpleDisplayManager::POPUP_BOARDING, "Boarding", message);
-                playAlertSound("/alerts/boarding.wav");
-                speakAlert(message);
+                display->vibrateShort();
+                Serial.println("[Flight] alert audio skipped for display stability");
             }
             else if (type == "cancelled" && display) {
                 display->showPopup(SimpleDisplayManager::POPUP_FLIGHT_CANCELLED, "Cancelled", message);
-                playAlertSound("/alerts/cancelled.wav");
-                speakAlert(message);
+                display->vibrateShort();
+                Serial.println("[Flight] alert audio skipped for display stability");
             }
         }
     }

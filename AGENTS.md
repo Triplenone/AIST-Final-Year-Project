@@ -27,6 +27,21 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 17:25-19:02 FlyCare watch safe-area UI + flight status popup stability
+
+- I.watch.safe_area=updated `firmware/SimpleDisplayManager.cpp` so map/flight WiFi and battery indicators are inset from the rounded black bezel, the flight page content is shifted down into the visible safe area, and the clock face no longer draws WiFi/battery icons over the 11/1 numerals.
+- I.flight.state_machine=updated `firmware/FlightInfoManager.cpp` so accepted flight updates use normalized status values and show only one primary popup in priority order: cancelled, gate change, delayed, boarding, final call, then on-time recovery.
+- I.flight.legacy_guard=updated `firmware/FlightInfoManager.cpp` to ignore stale CA1234/Air China/Beijing retained demo payloads when the active demo flight is CX910, unless a payload explicitly sets `force_flight_identity=true`.
+- I.flight.audio_stability=kept Gate Change as popup plus vibration and removed executable flight update audio/TTS calls for Gate Change, Delay, Boarding, Cancellation, Final Call, On Time, and generic flight alerts; serial logs now record the skipped audio path.
+- I.ble.runtime_guard=updated `firmware/BLELocation.cpp` and `firmware/firmware.ino` to guard null/oversized BLE scan results and avoid stopping the blocking scan immediately before copying results.
+- D.firmware_notes=updated `firmware/README.md` to document the inset status icons, clock cleanup, single-primary-popup policy, and flight popup audio/TTS suppression.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded after the final fix; sketch 1553911/3145728 bytes, RAM 55240/327680 bytes, MAC `48:ca:43:a4:22:98`.
+- V.flight_sequence=pass `logs/flycare-flight-sequence-20260617-185525.log` used backend `http://127.0.0.1:8001` to publish CX910 scheduled Gate 10, Gate Change to 11, cancelled, boarding, cancelled again, and delayed 15/idk; every API/Mongo step returned ok and latest flight stayed CX910/Gate 11.
+- V.watch_popup_runtime=pass the same flight sequence log captured 5 serial flight downlinks, Gate Change/Cancelled/Boarding/Delay audio-skipped evidence, `invalid=0`, and `crash=0` with no `abort`, `Guru`, `Backtrace`, `panic`, or `rst:` markers.
+- V.frontend=pass `npm.cmd run build`, `npm.cmd run lint`, and `npm.cmd run test` passed; tests were 62/62 with only the existing Vite CJS/dynamic-import warnings.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` at 2026-06-17T19:01 used latest live bridge `logs/flycare-serial-bridge-live-20260617-190006.log`; `watch_runtime_stability` duration=182.4s, uplinks=20, invalidUplinks=0, crashes=0, `positioning_arrival` quality=high/beacons=6, and overall=pass.
+- R.remaining=final visual confirmation must still be done on the physical watch face after upload; router/direct-WiFi handoff remains separate from this COM5 serial fallback smoke, and `8000` remains healthy but not the final hardware backend because MQTT is disconnected there.
+
 ### 2026-06-17 17:10-17:14 FlyCare watch status icons bezel inset
 
 - I.watch.status_inset=updated `firmware/SimpleDisplayManager.cpp` to move the compact WiFi/battery status capsules farther inside the active display area and lower from the top edge, avoiding the watch's black bezel/rounded-corner clipping.

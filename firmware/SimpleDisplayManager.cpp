@@ -957,8 +957,7 @@ void SimpleDisplayManager::drawHomePage() {
                                clockDeviceLabel, RGB565_YELLOW, 1, 1);
     }
     
-    // Keep the clock face clean: show only compact top status icons.
-    drawStatusBar();
+    // Keep the clock face clean; map/flight pages carry WiFi and battery status.
     // drawSideButtons();
 }
 
@@ -990,10 +989,10 @@ void SimpleDisplayManager::drawFlightPage() {
             flightDisplay = flightInfo.airline + " " + flightInfo.flight_number;
         }
 
-        drawCenteredFittedText(gfx, 8, 42, SCREEN_WIDTH - 16,
+        drawCenteredFittedText(gfx, 8, 54, SCREEN_WIDTH - 16,
                                flightDisplay, RGB565_WHITE, 2, 1);
 
-        const int topY = 82;
+        const int topY = 94;
         const int leftX = 12;
         const int rightX = 144;
         const int leftW = 118;
@@ -1006,25 +1005,25 @@ void SimpleDisplayManager::drawFlightPage() {
         uint16_t gateColor = flightInfo.gate_changed ? RGB565_YELLOW : RGB565_WHITE;
         drawFittedText(gfx, rightX, topY + 18, formatGateLabel(flightInfo.boarding_gate), rightW, gateColor, 2, 1);
 
-        gfx->drawLine(14, 132, SCREEN_WIDTH - 14, 132, 0x3186);
+        gfx->drawLine(14, 144, SCREEN_WIDTH - 14, 144, 0x3186);
 
-        drawFittedText(gfx, leftX, 142, "SCHEDULED", leftW, 0x528A, 1, 1);
-        drawFittedText(gfx, leftX, 158, flightInfo.scheduled_departure, leftW, RGB565_WHITE, 2, 1);
+        drawFittedText(gfx, leftX, 154, "SCHEDULED", leftW, 0x528A, 1, 1);
+        drawFittedText(gfx, leftX, 170, flightInfo.scheduled_departure, leftW, RGB565_WHITE, 2, 1);
 
         String estimated = flightInfo.estimated_departure.length() > 0
             ? flightInfo.estimated_departure
             : "--:--";
-        drawFittedText(gfx, rightX, 142, "ESTIMATED", rightW, 0x528A, 1, 1);
-        drawFittedText(gfx, rightX, 158, estimated, rightW, RGB565_YELLOW, 2, 1);
+        drawFittedText(gfx, rightX, 154, "ESTIMATED", rightW, 0x528A, 1, 1);
+        drawFittedText(gfx, rightX, 170, estimated, rightW, RGB565_YELLOW, 2, 1);
 
-        drawFittedText(gfx, leftX, 190, "BOARDING", leftW, 0x528A, 1, 1);
-        drawFittedText(gfx, leftX, 206, flightInfo.boarding_time, leftW, 0x07E0, 2, 1);
+        drawFittedText(gfx, leftX, 202, "BOARDING", leftW, 0x528A, 1, 1);
+        drawFittedText(gfx, leftX, 218, flightInfo.boarding_time, leftW, 0x07E0, 2, 1);
 
         drawFlightStatusBadge();
 
         if (flightInfo.delay_minutes > 0) {
             const int panelX = 8;
-            const int panelY = 236;
+            const int panelY = 246;
             const int panelW = SCREEN_WIDTH - 16;
             const int panelH = 54;
             gfx->fillRoundRect(panelX, panelY, panelW, panelH, 8, RGB565_YELLOW);
@@ -1046,7 +1045,7 @@ void SimpleDisplayManager::drawFlightPage() {
 
 void SimpleDisplayManager::drawFlightStatusBadge() {
     int badgeX = SCREEN_WIDTH - 115;
-    int badgeY = 200;
+    int badgeY = 212;
     int badgeWidth = 106;
     int badgeHeight = 30;
     
@@ -1148,8 +1147,8 @@ void SimpleDisplayManager::clearFlightInfo() {
 }
 
 void SimpleDisplayManager::drawStatusBar() {
-    const int capsuleX = 12;
-    const int capsuleY = 14;
+    const int capsuleX = 20;
+    const int capsuleY = 26;
     const int capsuleH = 18;
     const int capsuleW = 30;
 

@@ -317,6 +317,14 @@ void BLELocation::processScanResults(BLEScanResults* results) {
     scanned_beacons.clear();
     
     int count = results->getCount();
+    if (count <= 0) {
+        BLE_DEBUG_PRINT("[BLE] scan result: devices=0\n");
+        return;
+    }
+    if (count > 80) {
+        Serial.printf("[BLE] scan result count clipped: %d -> 80\n", count);
+        count = 80;
+    }
     BLE_DEBUG_PRINT("[BLE] scan result: devices=%d\n", count);
     Serial.printf("\n📡 扫描到 %d 个BLE设备\n", count);
     
@@ -582,6 +590,10 @@ Location BLELocation::getLocation() {
     
     // 获取扫描结果
     BLEScanResults* foundDevices = pBLEScan->getResults();
+    if (!foundDevices) {
+        Serial.println("[BLE] getResults returned null");
+        return last_location;
+    }
     int totalDevices = foundDevices->getCount();
     Serial.printf("getResults() 返回 %d 个设备\n", totalDevices);
     

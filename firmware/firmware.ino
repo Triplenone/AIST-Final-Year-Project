@@ -860,7 +860,6 @@ void bleLocationTask(void* param) {
             lastBleScanMs = millis();
             if (data_transmitter) data_transmitter->setBLEScanning(true);
             ble_location->startScan();
-            ble_location->stopScan();
             if (data_transmitter) data_transmitter->setBLEScanning(false);
             
             Location loc = ble_location->getLocation();
