@@ -64,6 +64,8 @@
 #define MAP_PIXEL_HEIGHT 800
 #define MAP_REAL_WIDTH 12.0
 #define MAP_REAL_HEIGHT 16.0
+// BLE-derived flight arrival tolerance. Keep below adjacent FlyCare zone spacing.
+#define FLIGHT_ARRIVAL_RADIUS_METERS 2.4f
 
 // ??賃????謕?
 #define SCREEN_WIDTH 240

@@ -168,6 +168,7 @@ public:
     void setNavigationPath(const std::vector<Waypoint>& path);
     void setDestination(float x, float y, const String& name, const String& gate);
     void setTargetGate(const String& gate, float x, float y);
+    void checkArrivalAtCurrentPosition();
     bool setSmartNavigationDestination(const String& destinationKey, bool fromFlightInfo = false);
     void openDestinationPicker();
     bool isDestinationPickerActive() const { return destinationPickerActive; }

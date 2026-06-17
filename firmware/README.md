@@ -187,7 +187,7 @@ You have arrived at Gate 10.
 ```
 
 If backend flight JSON says `Gate 11`, only Gate 11 can trigger the arrival reminder.
-Arrival popup uses the large dedicated `ARRIVED` layout, auto-closes after 5 seconds, clears the active route plus `location.target.active`, and returns to the map page. Flight and arrival popups are rendered from a separate popup dirty flag so live BLE/MQTT updates do not repeatedly repaint the full popup surface.
+Arrival uses `FLIGHT_ARRIVAL_RADIUS_METERS` from `Config.h` to tolerate BLE-derived positioning noise, and the current position is checked immediately when a flight update arms a Gate 10/Gate 11 target. Arrival popup uses the large dedicated `ARRIVED` layout, auto-closes after 5 seconds, clears the active route plus `location.target.active`, and returns to the map page. Flight and arrival popups are rendered from a separate popup dirty flag so live BLE/MQTT updates do not repeatedly repaint the full popup surface.
 
 Flight display layout uses fixed destination/gate columns, a top status bar that stays above the flight title, and a bounded delay panel kept above the rounded bottom edge. Long airline, destination, gate, and delay reason text is fitted or wrapped inside its panel rather than drawing into the next column or off the bottom edge.
 

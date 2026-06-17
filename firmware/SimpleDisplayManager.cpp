@@ -1518,7 +1518,7 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
 #if ENABLE_FLIGHT_ARRIVAL_TARGET
         bool directArrived = !navManager->isActive() &&
                              directArrivalTargetArmed &&
-                             directArrivalDistance <= 0.6f;
+                             directArrivalDistance <= FLIGHT_ARRIVAL_RADIUS_METERS;
 #else
         bool directArrived = false;
 #endif
@@ -1872,6 +1872,10 @@ void SimpleDisplayManager::setTargetGate(const String& gate, float x, float y) {
     needRedraw = true;
     
     Serial.printf("登机口已设置: %s @ (%.1f, %.1f)\n", target_name, x, y);
+}
+
+void SimpleDisplayManager::checkArrivalAtCurrentPosition() {
+    setCurrentPosition(current_x, current_y);
 }
 
 void SimpleDisplayManager::drawNavigationPanel(int x, int y, int width, int height) {

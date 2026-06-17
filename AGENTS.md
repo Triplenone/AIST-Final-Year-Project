@@ -27,6 +27,18 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-17 15:45-16:12 FlyCare Gate 11 arrival popup immediate trigger
+
+- B.arrival.not_immediate=latest evidence showed the watch had Gate 11 flight target armed, but the direct flight-arrival threshold was still hard-coded at `0.6m`; with BLE-derived positioning this was too strict for the physical gate area, and a newly armed flight target only rechecked arrival on the next position update.
+- I.arrival.radius=added `FLIGHT_ARRIVAL_RADIUS_METERS=2.4f` in `firmware/Config.h` and changed `SimpleDisplayManager::setCurrentPosition()` to use that tolerance for direct flight arrival, keeping it below adjacent FlyCare zone spacing.
+- I.arrival.immediate_check=added `SimpleDisplayManager::checkArrivalAtCurrentPosition()` and called it from `FlightInfoManager` immediately after arming a Gate 10/Gate 11 flight target; `setTargetGate()` itself remains target-only so debug route commands do not double-trigger.
+- D.arrival.docs=updated `firmware/README.md` and `docs/FLYCARE_MQTT.md` to document the configurable arrival radius and immediate target-arm check.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded for MAC `48:ca:43:a4:22:98`; final sketch used `1550947/3145728` bytes and RAM `55224/327680`, upload wrote `1551088` bytes and hard-reset the watch.
+- V.arrival.test=ok direct COM5 capture `logs/flycare-arrival-test-20260617-160650.log` sent `TESTARRIVAL Gate11` after a 10s post-open delay and showed `[NAV] arrival popup shown: You've arrived at Gate 11`, `[NAV] arrival route cleared: Gate 11`, followed by status payloads with `target.active=false`.
+- V.serial.runtime=ok final bounded bridge `logs/flycare-serial-bridge-20260617-160953.log` ran 90s with `parsed=13`, `sent=13`, `downlinks=1`, duplicate retained flight payloads ignored, `invalidUplinks=0`, and `crashes=0`; the prior `logs/flycare-serial-bridge-20260617-160807.log` had one invalid uplink framing and was treated as one-off after the clean rerun.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` at 2026-06-17T16:11:43; `watch_runtime_stability` passed with `invalidUplinks=0` and `crashes=0`, `positioning_arrival` passed with `arrivalEvidence=True`, and `flight_information_update` passed at Gate 11.
+- R.remaining=physical live arrival timing still depends on beacon placement/RSSI and current BLE-derived coordinates; if arrival fires early or late in the real gate area, tune beacon coordinates/RSSI references before changing the 2.4m threshold.
+
 ### 2026-06-17 14:11-14:39 FlyCare Gate 10->11 popup proof + BLE status smoothing
 
 - B.gate11.no_popup=latest API evidence before retest showed flight had been overwritten back to Gate 10 / `gate_changed=false`; live serial log also showed Gate 11 had previously reached the watch, so the visible miss was caused by state overwrite or an already-Gate-11 duplicate, not a missing `FlightInfoManager` gate-change path.

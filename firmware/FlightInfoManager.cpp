@@ -239,6 +239,7 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
         display->setSmartNavigationDestination(navKey, true);
 #else
         display->setTargetGate(formatFlightGateLabel(current_flight.boarding_gate), gateX, gateY);
+        display->checkArrivalAtCurrentPosition();
         Serial.printf("[Flight] arrival target armed: %s @ (%.1f, %.1f)\n",
                       formatFlightGateLabel(current_flight.boarding_gate).c_str(), gateX, gateY);
 #endif
