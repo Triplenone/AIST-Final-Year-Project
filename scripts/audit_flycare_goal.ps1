@@ -408,9 +408,14 @@ function Test-DisplayRuntimeStability {
         $flightHText -match "last_payload_hash"
     $flightLogAcceptedOnly = $dataTransmitterText -match "if \(flight_manager->parseFlightInfo\(payload\)\)" -and
         $dataTransmitterText -match 'addLog\("info", "Flight info updated"\)'
+    $navPositionThreshold = "DISPLAY_POSITION_REDRAW_THRESHOLD_METERS"
     $navPeriodicRefreshDisabled = $displayCppText -match "currentPage != PAGE_NAV" -and
-        $displayCppText -match "fabs\(current_x - lastNavX\) >= 0\.15f" -and
-        $displayCppText -match "fabs\(current_y - lastNavY\) >= 0\.15f"
+        (
+            ($displayCppText -match "fabs\(current_x - lastNavX\) >= 0\.15f" -and
+             $displayCppText -match "fabs\(current_y - lastNavY\) >= 0\.15f") -or
+            ($displayCppText -match "fabs\(current_x - lastNavX\) >= $navPositionThreshold" -and
+             $displayCppText -match "fabs\(current_y - lastNavY\) >= $navPositionThreshold")
+        )
 
     $logRoot = Join-Path $RepoRoot "logs"
     $latestLog = $null

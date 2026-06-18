@@ -510,8 +510,8 @@ void SimpleDisplayManager::update() {
             }
             break;
         case PAGE_NAV:
-            if (fabs(current_x - lastNavX) >= 0.15f ||
-                fabs(current_y - lastNavY) >= 0.15f) {
+            if (fabs(current_x - lastNavX) >= DISPLAY_POSITION_REDRAW_THRESHOLD_METERS ||
+                fabs(current_y - lastNavY) >= DISPLAY_POSITION_REDRAW_THRESHOLD_METERS) {
                 needRefresh = true;
                 lastNavX = current_x;
                 lastNavY = current_y;
@@ -1441,6 +1441,8 @@ bool SimpleDisplayManager::setSmartNavigationDestination(const String& destinati
     activeNavigationFromFlight = fromFlightInfo;
     arrivalPopupShown = false;
     arrivalPopupTarget = "";
+    arrivalConfirmTarget = "";
+    arrivalConfirmCount = 0;
     destinationPickerActive = false;
     destinationPickerIntentSeen = false;
     destinationPickerLastActivity = 0;
@@ -1487,7 +1489,8 @@ void SimpleDisplayManager::setStatus(const char* status) {
 void SimpleDisplayManager::setCurrentPosition(float x, float y) {
     float new_x = constrain(x, 0, MAP_REAL_WIDTH);
     float new_y = constrain(y, 0, MAP_REAL_HEIGHT);
-    bool moved = (fabs(new_x - current_x) >= 0.15f || fabs(new_y - current_y) >= 0.15f);
+    bool moved = (fabs(new_x - current_x) >= DISPLAY_POSITION_REDRAW_THRESHOLD_METERS ||
+                  fabs(new_y - current_y) >= DISPLAY_POSITION_REDRAW_THRESHOLD_METERS);
     current_x = new_x;
     current_y = new_y;
 
@@ -1528,11 +1531,32 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
 #else
         bool directArrived = false;
 #endif
-        bool arrived = routeArrived || directArrived;
+        bool arrivalCandidate = expectedKey.length() > 0 && (routeArrived || directArrived);
+        bool arrived = false;
+        if (arrivalCandidate) {
+            if (arrivalConfirmTarget != expectedKey) {
+                arrivalConfirmTarget = expectedKey;
+                arrivalConfirmCount = 1;
+            } else if (arrivalConfirmCount < FLIGHT_ARRIVAL_CONFIRMATIONS) {
+                arrivalConfirmCount++;
+            }
+
+            arrived = arrivalConfirmCount >= FLIGHT_ARRIVAL_CONFIRMATIONS;
+            if (!arrived) {
+                Serial.printf("[NAV] arrival pending: target=%s confirm=%d/%d pos=(%.2f,%.2f)\n",
+                              expectedKey.c_str(), arrivalConfirmCount,
+                              FLIGHT_ARRIVAL_CONFIRMATIONS, current_x, current_y);
+            }
+        } else if (arrivalConfirmCount > 0) {
+            arrivalConfirmTarget = "";
+            arrivalConfirmCount = 0;
+        }
 
         if (arrived && (!arrivalPopupShown || arrivalPopupTarget != expectedKey)) {
             arrivalPopupShown = true;
             arrivalPopupTarget = expectedKey;
+            arrivalConfirmTarget = "";
+            arrivalConfirmCount = 0;
             String popupMessage = "You've arrived at " + targetLabel;
             navigationPath.clear();
             hasNavigationPath = false;
@@ -1867,6 +1891,8 @@ void SimpleDisplayManager::setTargetGate(const String& gate, float x, float y) {
     target_y = y;
     arrivalPopupShown = false;
     arrivalPopupTarget = "";
+    arrivalConfirmTarget = "";
+    arrivalConfirmCount = 0;
     activeArrivalKey = SmartNavigationPlanner::normalizeKey(gate);
     activeArrivalLabel = label;
     needRedraw = true;
@@ -1987,6 +2013,8 @@ void SimpleDisplayManager::clearNavigationPath() {
     activeArrivalLabel = "";
     arrivalPopupShown = false;
     arrivalPopupTarget = "";
+    arrivalConfirmTarget = "";
+    arrivalConfirmCount = 0;
     needRedraw = true;
 }
 

@@ -5,6 +5,64 @@
 static int debug_scan_count = 0;
 static int debug_beacon_match_count = 0;
 
+enum FlyCareBeaconZone {
+    ZONE_CHECKIN = 0,
+    ZONE_CUSTOMER,
+    ZONE_SECURITY,
+    ZONE_TOILET,
+    ZONE_GATE11,
+    ZONE_GATE10,
+    ZONE_COUNT
+};
+
+struct BLEZoneSignal {
+    int zone = -1;
+    const char* label = "";
+    float x = 0.0f;
+    float y = 0.0f;
+    int beacon_count = 0;
+    int strongest_rssi = -120;
+    int second_rssi = -120;
+    unsigned long last_seen = 0;
+    float confidence = 0.0f;
+    float weight = 0.0f;
+    float best_distance = 20.0f;
+};
+
+static const char* zoneLabel(int zone) {
+    switch (zone) {
+        case ZONE_CHECKIN: return "Check-in";
+        case ZONE_CUSTOMER: return "Customer Services";
+        case ZONE_SECURITY: return "Security Check";
+        case ZONE_TOILET: return "Toilet";
+        case ZONE_GATE11: return "Gate 11";
+        case ZONE_GATE10: return "Gate 10";
+        default: return "Unknown";
+    }
+}
+
+static void zoneCenter(int zone, float& x, float& y) {
+    switch (zone) {
+        case ZONE_CHECKIN: x = 7.6f; y = 14.6f; break;
+        case ZONE_CUSTOMER: x = 6.2f; y = 4.0f; break;
+        case ZONE_SECURITY: x = 6.6f; y = 10.4f; break;
+        case ZONE_TOILET: x = 1.6f; y = 2.2f; break;
+        case ZONE_GATE11: x = 4.4f; y = 1.8f; break;
+        case ZONE_GATE10: x = 8.0f; y = 1.8f; break;
+        default: x = 0.0f; y = 0.0f; break;
+    }
+}
+
+static int zoneForBeaconMac(const String& uuid) {
+    if (uuid == "20:a7:16:60:f7:c4" || uuid == "20:a7:16:60:eb:73") return ZONE_CHECKIN;
+    if (uuid == "20:a7:16:60:f7:ca" || uuid == "20:a7:16:61:02:42") return ZONE_CUSTOMER;
+    if (uuid == "20:a7:16:5e:ef:24" || uuid == "20:a7:16:61:02:03") return ZONE_SECURITY;
+    if (uuid == "20:a7:16:61:02:3f" || uuid == "20:a7:16:61:02:2a") return ZONE_TOILET;
+    if (uuid == "20:a7:16:61:09:40" || uuid == "20:a7:16:60:fb:ff") return ZONE_GATE11;
+    if (uuid == "20:a7:16:5e:bc:32" || uuid == "20:a7:16:60:f3:d9") return ZONE_GATE10;
+    return -1;
+}
+
 // ================ 调试回调函数实现 ================
 void DebugScanCallback::onResult(BLEAdvertisedDevice advertisedDevice) {
     String address = advertisedDevice.getAddress().toString().c_str();
@@ -145,8 +203,6 @@ Location BLELocation::stabilizeLocation(Location loc) {
         return loc;
     }
 
-    loc.raw_x = loc.x;
-    loc.raw_y = loc.y;
     loc.timestamp = millis();
 
     const float confidence = calculateLocationConfidence(loc);
@@ -200,7 +256,15 @@ Location BLELocation::stabilizeLocation(Location loc) {
     return loc;
 }
 
-BLELocation::BLELocation() : beacon_count(0), last_scan_time(0), smoother(8) {
+BLELocation::BLELocation()
+    : beacon_count(0),
+      last_scan_time(0),
+      smoother(8),
+      stable_zone_index(-1),
+      candidate_zone_index(-1),
+      candidate_zone_hits(0),
+      stable_zone_confidence(0.0f),
+      stable_zone_since(0) {
     // 不再在这里初始化 pBLEScan，因为已经在 initBLE() 中初始化了
     // pBLEScan 使用全局变量
     
@@ -419,6 +483,8 @@ Location BLELocation::trilateration() {
     Location loc;
     loc.x = last_location.x;
     loc.y = last_location.y;
+    loc.raw_x = last_location.x;
+    loc.raw_y = last_location.y;
     loc.accuracy = 100.0;
     loc.quality = "none";
     loc.beacon_count = 0;
@@ -465,20 +531,16 @@ Location BLELocation::trilateration() {
     }
     scanned_beacons = usable_beacons;
 
-    float weightedX = 0.0f;
-    float weightedY = 0.0f;
-    float totalWeight = 0.0f;
-    int strongestIndex = 0;
-    int secondStrongestRssi = -120;
+    BLEZoneSignal zones[ZONE_COUNT];
+    for (int i = 0; i < ZONE_COUNT; i++) {
+        zones[i].zone = i;
+        zones[i].label = zoneLabel(i);
+        zoneCenter(i, zones[i].x, zones[i].y);
+    }
 
-    for (int i = 0; i < (int)usable_beacons.size(); i++) {
-        const Beacon& beacon = usable_beacons[i];
-        if (beacon.last_rssi > usable_beacons[strongestIndex].last_rssi) {
-            secondStrongestRssi = usable_beacons[strongestIndex].last_rssi;
-            strongestIndex = i;
-        } else if (i != strongestIndex && beacon.last_rssi > secondStrongestRssi) {
-            secondStrongestRssi = beacon.last_rssi;
-        }
+    for (const auto& beacon : usable_beacons) {
+        int zone = zoneForBeaconMac(beacon.uuid);
+        if (zone < 0 || zone >= ZONE_COUNT) continue;
 
         unsigned long age = (now > beacon.last_seen) ? (now - beacon.last_seen) : 0;
         float ageWeight = 1.0f - ((float)age / (float)recentWindowMs);
@@ -487,41 +549,111 @@ Location BLELocation::trilateration() {
         float distanceWeight = 1.0f / (0.25f + beacon.distance * beacon.distance);
         float weight = beacon.confidence * ageWeight * signalWeight * distanceWeight;
 
-        weightedX += beacon.x * weight;
-        weightedY += beacon.y * weight;
-        totalWeight += weight;
+        BLEZoneSignal& signal = zones[zone];
+        signal.beacon_count++;
+        signal.last_seen = max(signal.last_seen, beacon.last_seen);
+        signal.best_distance = min(signal.best_distance, beacon.distance);
+        signal.confidence = max(signal.confidence, beacon.confidence);
+        signal.weight = max(signal.weight, weight);
+
+        if (beacon.last_rssi > signal.strongest_rssi) {
+            signal.second_rssi = signal.strongest_rssi;
+            signal.strongest_rssi = beacon.last_rssi;
+        } else if (beacon.last_rssi > signal.second_rssi) {
+            signal.second_rssi = beacon.last_rssi;
+        }
     }
 
-    if (totalWeight <= 0.0f) {
-        Serial.println("[BLE] location skipped: invalid beacon weights");
+    float weightedX = 0.0f;
+    float weightedY = 0.0f;
+    float totalWeight = 0.0f;
+    int activeZones = 0;
+    int bestZone = -1;
+    float bestWeight = 0.0f;
+    float secondBestWeight = 0.0f;
+
+    for (int i = 0; i < ZONE_COUNT; i++) {
+        if (zones[i].beacon_count <= 0) continue;
+
+        if (zones[i].beacon_count >= 2) {
+            zones[i].confidence = constrain(zones[i].confidence + 0.12f, 0.1f, 1.0f);
+            zones[i].weight *= 1.12f;
+        }
+
+        activeZones++;
+        weightedX += zones[i].x * zones[i].weight;
+        weightedY += zones[i].y * zones[i].weight;
+        totalWeight += zones[i].weight;
+
+        if (zones[i].weight > bestWeight) {
+            secondBestWeight = bestWeight;
+            bestWeight = zones[i].weight;
+            bestZone = i;
+        } else if (zones[i].weight > secondBestWeight) {
+            secondBestWeight = zones[i].weight;
+        }
+    }
+
+    if (totalWeight <= 0.0f || bestZone < 0) {
+        Serial.println("[BLE] location skipped: invalid zone weights");
         return loc;
     }
 
     loc.x = weightedX / totalWeight;
     loc.y = weightedY / totalWeight;
+    loc.raw_x = loc.x;
+    loc.raw_y = loc.y;
 
-    const Beacon& strongest = usable_beacons[strongestIndex];
-    int rssiLead = strongest.last_rssi - secondStrongestRssi;
-    float snapRatio = 0.0f;
-    if (strongest.last_rssi >= -60 || (strongest.last_rssi >= -70 && rssiLead >= 10)) {
-        snapRatio = 0.75f;
-    } else if (strongest.last_rssi >= -75 || rssiLead >= 8) {
-        snapRatio = 0.45f;
+    if (stable_zone_index < 0) {
+        stable_zone_index = bestZone;
+        candidate_zone_index = bestZone;
+        candidate_zone_hits = BLE_ZONE_SWITCH_CONFIRMATIONS;
+        stable_zone_since = now;
+    } else if (bestZone == stable_zone_index) {
+        candidate_zone_index = bestZone;
+        candidate_zone_hits = BLE_ZONE_SWITCH_CONFIRMATIONS;
+    } else if (bestZone == candidate_zone_index) {
+        candidate_zone_hits++;
+    } else {
+        candidate_zone_index = bestZone;
+        candidate_zone_hits = 1;
     }
 
-    if (snapRatio > 0.0f) {
-        loc.x = loc.x * (1.0f - snapRatio) + strongest.x * snapRatio;
-        loc.y = loc.y * (1.0f - snapRatio) + strongest.y * snapRatio;
+    if (candidate_zone_index != stable_zone_index &&
+        candidate_zone_hits >= BLE_ZONE_SWITCH_CONFIRMATIONS) {
+        stable_zone_index = candidate_zone_index;
+        stable_zone_since = now;
+        Serial.printf("[BLE] stable zone switched: %s hits=%d\n",
+                      zoneLabel(stable_zone_index), candidate_zone_hits);
     }
 
+    int referenceZone = (stable_zone_index >= 0 && stable_zone_index < ZONE_COUNT &&
+                         zones[stable_zone_index].beacon_count > 0)
+        ? stable_zone_index
+        : bestZone;
+    BLEZoneSignal& reference = zones[referenceZone];
+    stable_zone_confidence = reference.confidence;
+
+    int rssiLead = reference.second_rssi > -120
+        ? reference.strongest_rssi - reference.second_rssi
+        : BLE_ZONE_SNAP_RSSI_LEAD_DB;
+    float referenceBlend = reference.confidence >= BLE_ZONE_STRONG_CONFIDENCE
+        ? BLE_ZONE_REFERENCE_BLEND_HIGH
+        : BLE_ZONE_REFERENCE_BLEND_MEDIUM;
+    if (reference.strongest_rssi >= -60 || rssiLead >= BLE_ZONE_SNAP_RSSI_LEAD_DB) {
+        referenceBlend = max(referenceBlend, BLE_ZONE_REFERENCE_BLEND_HIGH);
+    }
+
+    loc.x = loc.x * (1.0f - referenceBlend) + reference.x * referenceBlend;
+    loc.y = loc.y * (1.0f - referenceBlend) + reference.y * referenceBlend;
     loc.x = constrain(loc.x, 0, MAP_REAL_WIDTH);
     loc.y = constrain(loc.y, 0, MAP_REAL_HEIGHT);
-    loc.beacon_count = usable_beacons.size();
+    loc.beacon_count = activeZones;
 
-    if (strongest.last_rssi >= -65 && loc.beacon_count >= 3) {
+    if (reference.confidence >= BLE_ZONE_STRONG_CONFIDENCE && activeZones >= 3) {
         loc.accuracy = 1.5f;
         loc.quality = "high";
-    } else if (loc.beacon_count >= 4) {
+    } else if (activeZones >= 2) {
         loc.accuracy = 3.0f;
         loc.quality = "medium";
     } else {
@@ -529,9 +661,10 @@ Location BLELocation::trilateration() {
         loc.quality = "medium";
     }
 
-    Serial.printf("[BLE] weighted location: x=%.2f y=%.2f beacons=%d strongest=%s rssi=%d snap=%.2f\n",
-                  loc.x, loc.y, loc.beacon_count, strongest.uuid.c_str(),
-                  strongest.last_rssi, snapRatio);
+    Serial.printf("[BLE] zone location: raw=(%.2f,%.2f) stable=(%.2f,%.2f) zones=%d best=%s stable=%s hits=%d conf=%.2f blend=%.2f\n",
+                  loc.raw_x, loc.raw_y, loc.x, loc.y, activeZones,
+                  zoneLabel(bestZone), zoneLabel(referenceZone),
+                  candidate_zone_hits, reference.confidence, referenceBlend);
     return loc;
     
     // 取前三个最强的信标

@@ -216,6 +216,8 @@ private:
     bool follow_mode = false;
     bool arrivalPopupShown = false;
     String arrivalPopupTarget;
+    String arrivalConfirmTarget;
+    int arrivalConfirmCount = 0;
     String activeArrivalKey;
     String activeArrivalLabel;
     bool activeNavigationFromFlight = false;
