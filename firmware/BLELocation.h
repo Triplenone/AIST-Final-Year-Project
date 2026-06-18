@@ -91,12 +91,6 @@ private:
     unsigned long last_scan_time;
     std::vector<Beacon> scanned_beacons;
     PositionSmoother smoother;
-    int stable_zone_index;
-    int candidate_zone_index;
-    int candidate_zone_hits;
-    float stable_zone_confidence;
-    unsigned long stable_zone_since;
-    unsigned long candidate_zone_since;
     
     static const unsigned long BEACON_TIMEOUT = 10000;
     
@@ -128,7 +122,6 @@ public:
     
 private:
     void processScanResults(BLEScanResults* results);
-    void refreshScannedBeaconsFromRecent();
     Location trilateration();
     Location stabilizeLocation(Location loc);
     float calculateLocationConfidence(const Location& loc);

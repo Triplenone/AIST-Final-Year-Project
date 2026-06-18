@@ -5,8 +5,6 @@
 #include "NavigationManager.h"
 #include "SmartNavigationPlanner.h"
 
-static char last_gate_change_notice_signature[32] = "";
-
 static String formatFlightGateLabel(const String& gate) {
     String normalized = gate;
     normalized.trim();
@@ -164,10 +162,6 @@ static String buildCurrentFlightSignature(const FlightInfo& flight) {
     return signature;
 }
 
-static String buildGateChangeNoticeSignature(const FlightInfo& flight) {
-    return formatFlightGateLabel(flight.boarding_gate);
-}
-
 FlightInfoManager::FlightInfoManager() 
     : flight_info_received(false), last_display_time(0), display_interval(30000),
       last_update_time(0), has_last_payload_hash(false), last_payload_hash(0) {
@@ -287,15 +281,17 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     bool hasGateCoordinates = getGateCoordinates(current_flight.boarding_gate, gateX, gateY);
     String navKey = SmartNavigationPlanner::normalizeKey(current_flight.boarding_gate);
     bool hasManualNavigation = display && display->hasManualNavigationDestination();
+    String gateLabel = formatFlightGateLabel(current_flight.boarding_gate);
+    String flightTargetKey = navKey.length() > 0 ? navKey : gateLabel;
 
     if (hasGateCoordinates && display) {
 #if ENABLE_FLIGHT_ROUTE_NAVIGATION
         display->setSmartNavigationDestination(navKey, true);
 #else
-        display->setTargetGate(formatFlightGateLabel(current_flight.boarding_gate), gateX, gateY);
+        display->setTargetGate(gateLabel, gateX, gateY);
         display->checkArrivalAtCurrentPosition();
         Serial.printf("[Flight] arrival target armed: %s @ (%.1f, %.1f)\n",
-                      formatFlightGateLabel(current_flight.boarding_gate).c_str(), gateX, gateY);
+                      gateLabel.c_str(), gateX, gateY);
 #endif
     } else if (hasGateCoordinates && navManager && !hasManualNavigation) {
 #if ENABLE_FLIGHT_ROUTE_NAVIGATION
@@ -304,15 +300,22 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
                       current_flight.boarding_gate.c_str(), gateX, gateY);
 #endif
     }
+#if !ENABLE_FLIGHT_ROUTE_NAVIGATION
+    if (hasGateCoordinates && navManager) {
+        navManager->setTarget(gateX, gateY, flightTargetKey);
+        Serial.printf("[Flight] navigation target forced: %s @ (%.1f, %.1f)\n",
+                      flightTargetKey.c_str(), gateX, gateY);
+    }
+#endif
     if (hasGateCoordinates && data_transmitter) {
-        data_transmitter->setTargetPosition(gateX, gateY, formatFlightGateLabel(current_flight.boarding_gate));
+        data_transmitter->setTargetPosition(gateX, gateY, gateLabel);
 #if ENABLE_FLIGHT_ROUTE_NAVIGATION
         data_transmitter->setNavigationActive(true);
 #else
         data_transmitter->setNavigationActive(false);
 #endif
         Serial.printf("[Flight] telemetry target synced: %s @ (%.1f, %.1f)\n",
-                      formatFlightGateLabel(current_flight.boarding_gate).c_str(), gateX, gateY);
+                      gateLabel.c_str(), gateX, gateY);
     }
     
     // 更新到显示器
@@ -449,16 +452,6 @@ void FlightInfoManager::notifyGateChange() {
     String title = "Gate Change";
     String gateLabel = formatFlightGateLabel(current_flight.boarding_gate);
     String message = formatGateChangeDestination(gateLabel);
-    String noticeSignature = buildGateChangeNoticeSignature(current_flight);
-    if (strncmp(last_gate_change_notice_signature, noticeSignature.c_str(),
-                sizeof(last_gate_change_notice_signature) - 1) == 0) {
-        Serial.println("[Flight] duplicate flight payload ignored");
-        return;
-    }
-    snprintf(last_gate_change_notice_signature,
-             sizeof(last_gate_change_notice_signature),
-             "%s",
-             noticeSignature.c_str());
     Serial.printf("[FlightPopup] gate_change flight=%s gate=%s\n",
                   current_flight.flight_number.c_str(),
                   gateLabel.c_str());
@@ -607,7 +600,6 @@ void FlightInfoManager::speakAlert(const String& message) {
 void FlightInfoManager::clearFlightInfo() {
     current_flight.valid = false;
     flight_info_received = false;
-    last_gate_change_notice_signature[0] = '\0';
     
     if (display) {
         display->clearFlightInfo();

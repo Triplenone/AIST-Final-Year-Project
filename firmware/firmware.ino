@@ -220,7 +220,6 @@ void activateSOSAlert(const String& method) {
         AudioCommand audio_cmd;
         memset(&audio_cmd, 0, sizeof(audio_cmd));
         audio_cmd.command = AudioCommand::AUDIO_PLAY_ALERT;
-        snprintf(audio_cmd.text, sizeof(audio_cmd.text), "%s", "tone:sos");
         xQueueSend(audioCommandQueue, &audio_cmd, 0);
     }
 
@@ -437,14 +436,11 @@ void initPower() {
 
 void initAudio() {
     Serial.println("初始化音频管理...");
-#if ENABLE_AUDIO_ALERTS || ENABLE_TONE_ALERTS
+#if ENABLE_AUDIO_ALERTS
     audio = new AudioManager();
     audio->init();
     pinMode(PA_EN, OUTPUT);
     digitalWrite(PA_EN, HIGH);
-    if (!ENABLE_AUDIO_ALERTS && ENABLE_TONE_ALERTS) {
-        Serial.println("[Audio] tone-only alerts enabled; SD/TTS playback remains disabled");
-    }
 #else
     audio = nullptr;
     pinMode(PA_EN, OUTPUT);
@@ -861,6 +857,13 @@ void bleLocationTask(void* param) {
         Serial.println("\n=== BLE定位任务开始 ===");
         
         if (ble_location) {
+            if (data_transmitter && network && network->isConnected() &&
+                !data_transmitter->isMQTTConnected() &&
+                millis() - lastBleScanMs < 15000) {
+                data_transmitter->setBLEScanning(false);
+                Serial.println("[BLE] skipped: MQTT reconnect pending");
+                continue;
+            }
             lastBleScanMs = millis();
             if (data_transmitter) data_transmitter->setBLEScanning(true);
             if (data_transmitter && !data_transmitter->isBLEScanning()) {
@@ -948,50 +951,6 @@ void networkTask(void* param) {
     vTaskDelete(NULL);
 }
 
-void playGeneratedToneCue(const char* cueText) {
-    if (!audio) return;
-    const char* cue = cueText;
-    if (cue && strncmp(cue, "tone:", 5) == 0) {
-        cue += 5;
-    }
-    if (!cue || cue[0] == '\0') {
-        cue = "popup";
-    }
-
-    if (strcmp(cue, "sos") == 0) {
-        audio->playTone(880, 120);
-        delay(60);
-        audio->playTone(1320, 160);
-        delay(60);
-        audio->playTone(880, 120);
-    } else if (strcmp(cue, "gate") == 0) {
-        audio->playTone(1320, 120);
-        delay(60);
-        audio->playTone(880, 120);
-    } else if (strcmp(cue, "delay") == 0) {
-        audio->playTone(660, 140);
-        delay(80);
-        audio->playTone(660, 140);
-    } else if (strcmp(cue, "boarding") == 0) {
-        audio->playTone(1047, 120);
-        delay(60);
-        audio->playTone(1319, 160);
-    } else if (strcmp(cue, "cancelled") == 0) {
-        audio->playTone(330, 180);
-        delay(70);
-        audio->playTone(220, 180);
-    } else if (strcmp(cue, "arrival") == 0) {
-        audio->playTone(1568, 120);
-        delay(60);
-        audio->playTone(1760, 160);
-    } else {
-        audio->playTone(880, 120);
-        delay(60);
-        audio->playTone(1320, 120);
-    }
-    Serial.printf("[Audio] tone cue played: %s\n", cue);
-}
-
 void audioTask(void* param) {
     while (systemRunning) {
         AudioCommand audio_cmd;
@@ -1027,21 +986,6 @@ void audioTask(void* param) {
                         break;
                     case AudioCommand::AUDIO_STOP:
                         audio->stop();
-                        break;
-                }
-            }
-#elif ENABLE_TONE_ALERTS
-            if (audio) {
-                switch (audio_cmd.command) {
-                    case AudioCommand::AUDIO_PLAY_ALERT:
-                        playGeneratedToneCue(audio_cmd.text);
-                        break;
-                    case AudioCommand::AUDIO_STOP:
-                        audio->stop();
-                        Serial.println("[Audio] tone cue stopped");
-                        break;
-                    case AudioCommand::AUDIO_PLAY_TTS:
-                        Serial.println("[Audio] TTS ignored in tone-only mode");
                         break;
                 }
             }

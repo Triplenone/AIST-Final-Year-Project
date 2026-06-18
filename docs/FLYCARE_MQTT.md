@@ -338,7 +338,7 @@ Current final-demo watch behavior after the small-field stabilization pass:
 
 - BLE display position uses strongest-beacon snap as the primary output. Zone grouping remains for labels and arrival safety, but ambiguous scans hold the previous marker instead of drifting through Toilet or the adjacent gate.
 - Flight `boarding_gate` is the watch map destination authority. A Gate 10/Gate 11 downlink updates the flight page, map DEST card, arrival target, and telemetry target together.
-- Alert sound is generated tone only (`ENABLE_TONE_ALERTS 1`, `ENABLE_AUDIO_ALERTS 0`). Gate Change, Delay, Boarding, Cancelled, Arrival, and SOS use popup + tone + vibration without SD/TTS playback.
+- Alert sound is disabled in the current direct-MQTT final demo build (`ENABLE_TONE_ALERTS 0`, `ENABLE_AUDIO_ALERTS 0`) because the available tone route still initializes ES8311/I2S and has caused direct MQTT loss on the NG WAI LUN watch. Gate Change, Delay, Boarding, Cancelled, Arrival, and SOS use popup + vibration; do not re-enable SD/TTS/I2S audio without a separate direct-MQTT regression proof.
 - Watch `/location` publishes every 3 seconds or when stable/display XY moves by about 0.5m. `/flycare` keeps the 2-second full snapshot but adds a selected-resident latest-location refresh so NG WAI LUN's live marker can update faster without changing API routes or database schema.
 
 Verified in the latest COM5 run and current firmware source:

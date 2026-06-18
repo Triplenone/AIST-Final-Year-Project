@@ -17,10 +17,10 @@
 #define ENABLE_NAVIGATION_DOWNLINK 0
 #define ENABLE_FLIGHT_ROUTE_NAVIGATION 0
 #define ENABLE_FLIGHT_ARRIVAL_TARGET 1
-// Final demo keeps SD/TTS alert playback disabled because SD_MMC audio lookups
-// have caused runtime aborts on this watch. Safe generated tones are allowed.
+// Final demo keeps SD/TTS/I2S alert playback disabled because audio init has
+// caused runtime aborts or direct MQTT loss on this watch.
 #define ENABLE_AUDIO_ALERTS 0
-#define ENABLE_TONE_ALERTS 1
+#define ENABLE_TONE_ALERTS 0
 
 // MAX30102 heart-rate contact/sampling settings.
 // Keep HR validity gated by contact; do not lower this to fake a BPM reading.
@@ -88,6 +88,8 @@
 #define BLE_STRONGEST_SNAP_LEAD_DB 3
 #define BLE_STRONGEST_SNAP_IMMEDIATE_RSSI -65
 #define BLE_STRONGEST_SNAP_BLEND 0.92f
+#define BLE_CORRIDOR_CUSTOMER_OVERRIDE_RSSI -60
+#define BLE_CORRIDOR_CUSTOMER_OVERRIDE_LEAD_DB 8
 #define DISPLAY_POSITION_REDRAW_THRESHOLD_METERS 0.45f
 #define FLIGHT_ARRIVAL_CONFIRMATIONS 1
 #define DATA_STATUS_UPLOAD_INTERVAL_MS 5000UL

@@ -27,6 +27,23 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 00:58-02:14 FlyCare direct MQTT recovery + strongest snap target fix
+
+- V.git.pre=ok branch `Flycare`, HEAD `c185de99`, branch ahead of `origin/Flycare` by 5 commits before this working-tree fix; no backend API route/schema, database schema, MQTT topic, or raw DB cleanup was changed.
+- B.direct_mqtt.regression=isolated the router direct-MQTT breakage by uploading an `origin/Flycare` probe build, which passed broker-side direct `/status` and `/location`; the current tone/audio + newer BLE build failed direct broker capture. Reverting the audio/tone startup path and BLE scanner ownership back to the direct-stable baseline restored direct MQTT.
+- I.ble.snap=kept the direct-stable BLE scanner and added small-field strongest-beacon snap plus a Customer Services corridor guard in `firmware/BLELocation.cpp` and `Config.h`; ambiguous scans hold the previous marker instead of weighted-XY drifting through Toilet/Gate 10/Gate 11.
+- I.flight.dest=updated `firmware/FlightInfoManager.cpp` and `SimpleDisplayManager.cpp` so accepted flight `boarding_gate` forces the display target, internal `NavigationManager` target, telemetry target, and destination card. Gate Change 10->11 now logs `[Flight] navigation target forced: GATE11` and subsequent `drawNavPage` logs `targetGate: GATE11`.
+- I.flight.popup=removed the extra gate-change notice signature dedupe from `FlightInfoManager`; retained/alias duplicate protection remains covered by payload-hash dedupe, and real Gate Change 10->11 now logs `[FlightPopup] gate_change flight=CX910 gate=Gate 11`.
+- I.mqtt.freshness=kept fast direct `/location` publishing in `DataTransmitter` at `DATA_LOCATION_UPLOAD_INTERVAL_MS=3000` or movement over `DATA_LOCATION_MOVED_THRESHOLD_METERS`, and skipped invalid `/location` publishes when beacon count is zero or quality is unknown.
+- I.audio.scope=corrected `Config.h` and `firmware/README.md`: `ENABLE_AUDIO_ALERTS=0` and `ENABLE_TONE_ALERTS=0` for this final demo build. The available tone path still initializes ES8311/I2S and was proven to break direct MQTT, so final demo keeps popup/vibration and defers audible tones to a separate hardware-safe fix.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; final compile used `1536619/3145728` bytes and RAM `55200/327680`, upload wrote `1536768` bytes.
+- V.direct_mqtt=pass with COM5 bridge stopped after final reupload: `logs/flycare-direct-mqtt-post-reupload-targetfix-20260619-020928.log` captured broker-side `smartwatch/ESP32_48CA43A42298/status` count=16 and `/location` count=18.
+- V.gate11.downlink=pass direct MQTT test logs `logs/flycare-flight-downlink-targetfix-20260619-020015.mqtt.log`, `.serial.log`, and `.api.jsonl` showed API `status=ok`/`mqtt.ok=true`, broker `/flight` topics for Gate 10 and Gate 11, serial `/flight` callback, `[FlightPopup] gate_change`, `navigation target forced: GATE11`, `targetGate: GATE11`, and crash=0.
+- V.serial.fallback=pass bounded COM5 bridge `logs/flycare-serial-bridge-20260619-021153.log` ran 90s with parsed/sent `15/15`, downlinks=1, duplicate retained flight ignored, invalidUplinks=0, and crashes=0.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` after the latest bridge reported overall `pass`; `watch_runtime_stability` evidence uses `logs/flycare-serial-bridge-20260619-021153.log` with invalidUplinks=0/crashes=0, and `flight_information_update` reports apiGate=11.
+- V.frontend=pass `npm.cmd run build`, `npm.cmd run lint`, and `npm.cmd run test` passed in `frontend`; Vitest reported 5 files and 63/63 tests passed. No frontend files were changed in this fix.
+- R.remaining=physical walking validation still needs user observation for Customer Services -> Gate 10/Gate 11 strongest-beacon behavior; audible tones are intentionally not fixed in this build because the only available tone route conflicts with direct MQTT; avoid treating COM5 serial capture as direct proof because opening COM5 can reset the ESP32-S3.
+
 ### 2026-06-18 21:40-23:07 FlyCare final demo BLE snap, cue sync, dashboard freshness stabilization
 
 - V.git.pre=ok branch `Flycare`, prechange HEAD `aa355ac`; working tree was clean except the branch was already ahead of `origin/Flycare` by 4 commits. No backend API route/schema, database schema, MQTT topic, or raw DB cleanup was changed.

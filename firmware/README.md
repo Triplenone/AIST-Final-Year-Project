@@ -187,7 +187,7 @@ Map display layout is intentionally bounded for the 240x310 active watch surface
 
 BLE positioning is strongest-beacon-first for the small FlyCare demo field. The 12 registered beacon MACs remain grouped into six airport zones for labels and arrival safety, but the displayed/stable XY now follows the strongest beacon when its RSSI is at least `BLE_STRONGEST_SNAP_MIN_RSSI` and either leads the second strongest beacon by `BLE_STRONGEST_SNAP_LEAD_DB` or is stronger than `BLE_STRONGEST_SNAP_IMMEDIATE_RSSI`. Ambiguous scans hold the previous marker instead of weighted-XY drifting through Toilet or the adjacent gate. Raw weighted XY and zone evidence are still logged for tuning. Small display movements under `DISPLAY_POSITION_REDRAW_THRESHOLD_METERS` do not repaint the map.
 
-Flight JSON updates are connected to `FlightInfoManager`. When `boarding_gate` maps to a known destination, the watch stores that gate as the arrival target without opening the manual navigation route UI:
+Flight JSON updates are connected to `FlightInfoManager`. When `boarding_gate` maps to a known destination, the watch stores that gate as the arrival target without opening the manual navigation route UI. The latest flight gate also forces the internal `NavigationManager` target and display destination, so the map `DEST` card and arrival checks follow Gate 10/Gate 11 changes instead of a stale boot-time route:
 
 ```text
 Gate 10 / 10 / A10 -> GATE10
@@ -210,7 +210,7 @@ Flight display layout uses the flight number as the main title, places the airli
 
 When a backend update is explicitly a gate-change notice (`gate_changed=true` and a `delay_reason` such as `Gate Change to 10`), the firmware keeps the large simplified Gate Change popup and suppresses the extra verbose delay popup. Identical retained flight payloads are ignored by `FlightInfoManager`, so MQTT reconnects or USB serial downlink fallback do not repeatedly reopen the same Gate Change popup.
 
-Flight update, arrival, and SOS cues use generated tone alerts plus vibration and popup. SD file playback and TTS remain disabled with `ENABLE_AUDIO_ALERTS 0`; `ENABLE_TONE_ALERTS 1` keeps the watch on the safe `playTone()` path and avoids SD_MMC alert-file lookup during retained flight downlinks. `showSOS()` is visual-only; `activateSOSAlert()` and `clearSOSAlert()` own SOS popup, tone, and vibration timing so activate/clear cues stay synchronized.
+Flight update, arrival, and SOS cues keep popup plus vibration active. Audio remains disabled with `ENABLE_AUDIO_ALERTS 0` and `ENABLE_TONE_ALERTS 0` for the router direct-MQTT demo, because the available alert tone path still initializes the ES8311/I2S audio stack and has caused direct MQTT loss on this watch. Do not re-enable SD/TTS/I2S audio for the final demo without a separate direct-MQTT regression proof.
 
 Location freshness is tuned for the live dashboard: the watch publishes `/location` every `DATA_LOCATION_UPLOAD_INTERVAL_MS` (3 seconds) or immediately when the displayed position moves by `DATA_LOCATION_MOVED_THRESHOLD_METERS`. Status telemetry keeps carrying the latest stable/display XY, while `/flycare` performs a 1-second latest-location refresh for the selected resident only.
 

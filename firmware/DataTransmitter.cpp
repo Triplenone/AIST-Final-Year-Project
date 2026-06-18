@@ -201,7 +201,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     WiFiClient rawClient;
-    rawClient.setTimeout(DATA_MQTT_CONNECT_TIMEOUT_MS);
+    rawClient.setTimeout(15000);
     rawClient.setNoDelay(true);
 
     String rawClientId = deviceId + "_uplink_" + String((uint32_t)millis(), HEX);
@@ -212,8 +212,8 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     IPAddress brokerIp;
     bool brokerIsIp = brokerIp.fromString(broker);
     bool tcpConnected = brokerIsIp
-        ? rawClient.connect(brokerIp, port, DATA_MQTT_CONNECT_TIMEOUT_MS)
-        : rawClient.connect(broker.c_str(), port, DATA_MQTT_CONNECT_TIMEOUT_MS);
+        ? rawClient.connect(brokerIp, port, 15000)
+        : rawClient.connect(broker.c_str(), port, 15000);
     if (!tcpConnected) {
         Serial.printf("[MQTT_RAW] tcp connect failed broker=%s:%d connected=%d\n",
                       broker.c_str(),
@@ -254,7 +254,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     delay(300);
 
     uint8_t connack[4] = {0};
-    bool connackSeen = readMqttConnack(rawClient, 300, connack);
+    bool connackSeen = readMqttConnack(rawClient, 750, connack);
     if (connackSeen) {
         Serial.printf("[MQTT_RAW] CONNACK bytes=%02x %02x %02x %02x\n",
                       connack[0], connack[1], connack[2], connack[3]);
@@ -287,7 +287,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     rawClient.flush();
-    delay(150);
+    delay(800);
     const uint8_t disconnectPacket[] = {0xe0, 0x00};
     writeMqttBytes(rawClient, disconnectPacket, sizeof(disconnectPacket));
     rawClient.flush();
@@ -315,9 +315,7 @@ static void emitSerialUplink(const String& topic, const String& payload) {
     line += " ";
     line += payload;
     line += "\n";
-    Serial.flush();
     Serial.write(reinterpret_cast<const uint8_t*>(line.c_str()), line.length());
-    Serial.flush();
 
     if (locked) {
         xSemaphoreGive(serialUplinkMutex);
@@ -518,7 +516,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     last_mqtt_connect_attempt_ms = nowMs;
 
     closeMqttTransport(mqttClient, mqttWifiClient);
-    if (!waitForBLEIdle(250)) return false;
+    if (!waitForBLEIdle(3500)) return false;
 
     String brokerCandidates[6];
     int brokerCount = 0;
@@ -541,12 +539,12 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     Serial.printf("连接 MQTT 服务器 %s:%d...\n", mqttServer.c_str(), mqttPort);
     
     // ===== 关键：设置超大缓冲区（10KB）=====
-    mqttWifiClient.setTimeout(DATA_MQTT_CONNECT_TIMEOUT_MS);
+    mqttWifiClient.setTimeout(25000);
     mqttWifiClient.setNoDelay(true);
     mqttClient.setBufferSize(1024);
     
     mqttClient.setKeepAlive(30);       // 30秒保活
-    mqttClient.setSocketTimeout(max(1UL, DATA_MQTT_CONNECT_TIMEOUT_MS / 1000UL));
+    mqttClient.setSocketTimeout(25);
     
     bool connected = mqttUser.length() > 0
         ? mqttClient.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
@@ -604,8 +602,8 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
             closeMqttTransport(mqttClient, mqttWifiClient);
         }
         mqtt_connect_backoff_ms = mqtt_connect_backoff_ms == 0
-            ? DATA_MQTT_FAILURE_BACKOFF_MS
-            : min(mqtt_connect_backoff_ms * 2UL, DATA_MQTT_FAILURE_BACKOFF_MS);
+            ? 15000UL
+            : min(mqtt_connect_backoff_ms * 2UL, 15000UL);
         Serial.printf("[MQTT] next reconnect backoff=%lu ms\n", mqtt_connect_backoff_ms);
         Serial.printf("❌ MQTT 连接失败, 状态码: %d\n", mqttClient.state());
         noteMqttTransportFailure("connect");
@@ -669,23 +667,6 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         Serial.println("[SERIAL_UPLINK] location skipped; status carries location and direct MQTT publishes location");
     }
 
-    const bool directTelemetryTopic = directStatusTopic || directLocationTopic;
-    if (directTelemetryTopic && !mqttClient.connected()) {
-        return false;
-    }
-
-    if (directTelemetryTopic && !mqttClient.connected() &&
-        mqtt_consecutive_transport_failures >= 2 &&
-        last_mqtt_connect_attempt_ms > 0 &&
-        millis() - last_mqtt_connect_attempt_ms < DATA_MQTT_FAILURE_BACKOFF_MS) {
-        Serial.printf("[MQTT_PUB] direct skipped topic=%s failureBackoff=%lu/%lu failures=%u\n",
-                      topic.c_str(),
-                      millis() - last_mqtt_connect_attempt_ms,
-                      DATA_MQTT_FAILURE_BACKOFF_MS,
-                      mqtt_consecutive_transport_failures);
-        return false;
-    }
-
     bool locked = false;
     if (mqttMutex) {
         if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(8000)) != pdTRUE) {
@@ -697,7 +678,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
 
     bool rfLocked = false;
     if (rfMutex) {
-        if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(250)) != pdTRUE) {
+        if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) != pdTRUE) {
             Serial.printf("[MQTT_PUB] skipped topic=%s rf=busy\n", topic.c_str());
             if (locked) xSemaphoreGive(mqttMutex);
             return false;
@@ -1632,11 +1613,11 @@ void DataTransmitter::update() {
     
     // 自动重连 MQTT
     if (network && network->isConnected() && !mqttClient.connected()) {
-        if (current_time - lastMqttReconnect > DATA_MQTT_FAILURE_BACKOFF_MS) {
+        if (current_time - lastMqttReconnect > 15000) {
             lastMqttReconnect = current_time;
             Serial.println("尝试重连MQTT...");
             bool reconnectRfLocked = false;
-            if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(250)) == pdTRUE) {
+            if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) == pdTRUE) {
                 reconnectRfLocked = true;
                 ble_scanning_active = false;
                 ble_scan_started_at_ms = 0;
@@ -1817,6 +1798,12 @@ String DataTransmitter::getHeartbeatJSON() {
 
 // ================ 上传位置 ================
 void DataTransmitter::transmitLocation() {
+    if (beacon_count <= 0 || location_quality == "unknown") {
+        Serial.printf("[MQTT_PUB] location skipped: invalid location quality=%s beacons=%d\n",
+                      location_quality.c_str(), beacon_count);
+        return;
+    }
+
     String jsonData = getLocationJSON();
     
     String topic = getDeviceTopic(MQTT_TOPIC_LOCATION);

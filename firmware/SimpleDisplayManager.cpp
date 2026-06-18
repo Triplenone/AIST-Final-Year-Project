@@ -820,8 +820,8 @@ void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
     gfx->fillRoundRect(cardX, cardY, cardW, cardH, 10, cardFill);
     gfx->drawRoundRect(cardX, cardY, cardW, cardH, 10, lightBorder);
 
-    drawCenteredFittedText(gfx, cardX + 8, cardY + 11, cardW - 16, "DEST", subtleGreen, 2, 1);
-    drawCenteredFittedText(gfx, cardX + 9, cardY + 11, cardW - 16, "DEST", subtleGreen, 2, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 8, cardW - 16, "DEST", subtleGreen, 3, 2);
+    drawCenteredFittedText(gfx, cardX + 9, cardY + 8, cardW - 16, "DEST", subtleGreen, 3, 2);
     drawCenteredFittedText(gfx, cardX + 8, cardY + 40, cardW - 16, "Gate", darkGray, 1, 1);
     drawCenteredFittedText(gfx, cardX + 8, cardY + 59, cardW - 16, gateNo, gateNumberColor, 3, 2);
     drawCenteredFittedText(gfx, cardX + 6, cardY + 99, cardW - 12, "1 min walk", softGray, 1, 1);
@@ -1931,6 +1931,10 @@ void SimpleDisplayManager::setTargetGate(const String& gate, float x, float y) {
     arrivalConfirmCount = 0;
     activeArrivalKey = SmartNavigationPlanner::normalizeKey(gate);
     activeArrivalLabel = label;
+    destination.x = x;
+    destination.y = y;
+    destination.name = label;
+    destination.gate = activeArrivalKey.length() > 0 ? activeArrivalKey : label;
     needRedraw = true;
     
     Serial.printf("登机口已设置: %s @ (%.1f, %.1f)\n", target_name, x, y);
