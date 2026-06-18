@@ -27,6 +27,15 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 03:20-03:35 FlyCare forced alternative BLE snap smoothing
+
+- B.positioning.customer_hold=after the Customer Services guard blocked a weak Customer candidate, the selected non-Customer alternative could still be treated as ambiguous because Customer Services remained the second strongest RSSI reference; that preserved the stale Customer marker instead of moving through the Check-in/Security corridor.
+- I.positioning.forced_alt=updated `firmware/BLELocation.cpp` so corridor/customer guard replacements are marked as forced alternatives and are allowed to snap away from Customer Services immediately. Normal strongest-beacon snap still uses `BLE_STRONGEST_SNAP_BLEND=0.92`, while forced alternatives use the new `BLE_FORCED_ALTERNATIVE_SNAP_BLEND=0.68` for smoother Check-in/Security movement.
+- V.compile_upload=pass ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN MAC `48:ca:43:a4:22:98`; final compile used `1537555/3145728` bytes and RAM `55200/327680`, upload wrote `1537696` bytes.
+- V.direct_mqtt=pass with COM5 bridge stopped: `logs/direct-mqtt-forced-alt-blend-20260619-032834.log` captured broker-side status=12 and location=19 from `smartwatch/ESP32_48CA43A42298` over `192.168.1.232:1883`.
+- V.serial.diagnostic=pass diagnostic-only COM5 read `logs/serial-ble-forced-alt-blend-20260619-033020.log` showed `CUSTOMER_SNAP_COUNT=0`, `FORCED_SNAP_COUNT=82`, `RF_BUSY_COUNT=0`, `DIRECT_PUB_OK_COUNT=25`, and `CRASH_MARKERS=0`. COM5 was not used as an MQTT bridge for direct proof.
+- R.remaining=direct Wi-Fi MQTT and firmware diagnostics pass after this fix, but the full physical walking route from Check-in/Security to Gate 10/Gate 11 still needs user visual confirmation in the demo field.
+
 ### 2026-06-19 02:50-03:16 FlyCare BLE RF scheduling + Customer Services snap guard
 
 - B.positioning.stuck=direct MQTT was still working, but physical/serial evidence showed the displayed location could stay near Customer Services while walking because direct MQTT publish held the shared RF path long enough for BLE scans to be skipped, and Customer Services at about `-68dBm` could still use the strongest-beacon snap.

@@ -581,15 +581,16 @@ Location BLELocation::trilateration() {
         (nonCustomerBestIndex < 0 &&
          customerVisibleCount >= 2 &&
          customerBestRssi >= BLE_CUSTOMER_SINGLE_SNAP_RSSI);
+    bool forcedAlternativeSnap = false;
 
     if (strongestIsCustomer && corridorContext && corridorBestIndex >= 0 && !customerDominatesCorridor) {
-        secondStrongestRssi = max(secondStrongestRssi, customerBestRssi);
         strongestIndex = corridorBestIndex;
+        forcedAlternativeSnap = true;
         Serial.printf("[BLE] corridor guard: customer blocked rssi=%d corridor=%d age=%lu\n",
                       customerBestRssi, corridorBestRssi, corridorBestAgeMs);
     } else if (strongestIsCustomer && !customerClear && nonCustomerBestIndex >= 0) {
-        secondStrongestRssi = max(secondStrongestRssi, customerBestRssi);
         strongestIndex = nonCustomerBestIndex;
+        forcedAlternativeSnap = true;
         Serial.printf("[BLE] customer guard: using non-customer rssi=%d customer=%d\n",
                       nonCustomerBestRssi, customerBestRssi);
     } else if (strongestIsCustomer &&
@@ -619,9 +620,9 @@ Location BLELocation::trilateration() {
          strongest.last_rssi >= BLE_CUSTOMER_SINGLE_SNAP_RSSI);
     const bool strongestClear =
         strongest.last_rssi >= BLE_STRONGEST_SNAP_MIN_RSSI &&
-        (strongestImmediate || rssiLead >= BLE_STRONGEST_SNAP_LEAD_DB || singleBeaconClear);
+        (forcedAlternativeSnap || strongestImmediate || rssiLead >= BLE_STRONGEST_SNAP_LEAD_DB || singleBeaconClear);
     if (strongestClear) {
-        snapRatio = BLE_STRONGEST_SNAP_BLEND;
+        snapRatio = forcedAlternativeSnap ? BLE_FORCED_ALTERNATIVE_SNAP_BLEND : BLE_STRONGEST_SNAP_BLEND;
     } else if (last_location.beacon_count > 0 && usable_beacons.size() > 1) {
         loc.x = last_location.x;
         loc.y = last_location.y;
