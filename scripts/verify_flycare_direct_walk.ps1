@@ -187,7 +187,17 @@ if ([string]::IsNullOrWhiteSpace($AnalyzeLogPath)) {
 
     Write-Host "Direct MQTT walk capture: ${BrokerHost}:$MqttPort for $Seconds seconds"
     Write-Host "Move the watch through Check-in/Security toward Gate 10 or Gate 11 now."
-    & $MosquittoSub -h $BrokerHost -p $MqttPort -t "smartwatch/#" -v -R -W $Seconds *> $LogPath
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $MosquittoSub -h $BrokerHost -p $MqttPort -t "smartwatch/#" -v -R -W $Seconds *> $LogPath
+        $subExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($subExitCode -ne 0) {
+        Write-Host "mosquitto_sub exited with code $subExitCode after bounded capture; analyzing captured log."
+    }
     $AnalyzeLogPath = $LogPath
 }
 
