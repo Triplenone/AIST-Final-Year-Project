@@ -92,6 +92,24 @@ static String compactPlaceLabel(const String& label) {
     return cleaned.length() > 0 ? cleaned : "Destination";
 }
 
+static String nearestDestinationKey(float x, float y) {
+    float bestDistance = 100000.0f;
+    String bestKey = "";
+
+    for (int i = 0; i < SmartNavigationPlanner::destinationCount(); i++) {
+        const SmartDestination& destination = SmartNavigationPlanner::destinationAt(i);
+        float dx = x - destination.x;
+        float dy = y - destination.y;
+        float distance = sqrtf(dx * dx + dy * dy);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestKey = destination.key;
+        }
+    }
+
+    return bestKey;
+}
+
 static String gateNumberForDisplay(const String& gate) {
     String label = formatGateLabel(gate);
     String key = SmartNavigationPlanner::normalizeKey(label);
@@ -1488,9 +1506,25 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
         bool directArrivalTargetArmed = activeArrivalKey.length() > 0;
         float directArrivalDistance = sqrt(pow(current_x - target_x, 2) + pow(current_y - target_y, 2));
 #if ENABLE_FLIGHT_ARRIVAL_TARGET
+        bool arrivalZoneMatches = true;
+        if (directArrivalTargetArmed && directArrivalDistance <= FLIGHT_ARRIVAL_RADIUS_METERS) {
+            String nearestKey = nearestDestinationKey(current_x, current_y);
+            arrivalZoneMatches = nearestKey == expectedKey;
+            if (!arrivalZoneMatches) {
+                static unsigned long lastArrivalRejectLogMs = 0;
+                unsigned long now = millis();
+                if (now - lastArrivalRejectLogMs > 3000) {
+                    Serial.printf("[NAV] arrival ignored: target=%s nearest=%s pos=(%.2f,%.2f) distance=%.2f\n",
+                                  expectedKey.c_str(), nearestKey.c_str(), current_x, current_y,
+                                  directArrivalDistance);
+                    lastArrivalRejectLogMs = now;
+                }
+            }
+        }
         bool directArrived = !navManager->isActive() &&
                              directArrivalTargetArmed &&
-                             directArrivalDistance <= FLIGHT_ARRIVAL_RADIUS_METERS;
+                             directArrivalDistance <= FLIGHT_ARRIVAL_RADIUS_METERS &&
+                             arrivalZoneMatches;
 #else
         bool directArrived = false;
 #endif
