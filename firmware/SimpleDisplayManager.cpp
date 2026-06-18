@@ -92,6 +92,18 @@ static String compactPlaceLabel(const String& label) {
     return cleaned.length() > 0 ? cleaned : "Destination";
 }
 
+static String gateNumberForDisplay(const String& gate) {
+    String label = formatGateLabel(gate);
+    String key = SmartNavigationPlanner::normalizeKey(label);
+    if (key == "GATE10") return "10";
+    if (key == "GATE11") return "11";
+
+    label.toUpperCase();
+    if (label.indexOf("10") >= 0) return "10";
+    if (label.indexOf("11") >= 0) return "11";
+    return "";
+}
+
 static String compactStepAction(const String& instruction) {
     String value = instruction;
     value.trim();
@@ -535,7 +547,6 @@ void SimpleDisplayManager::drawNavPage() {
         gfx->setTextColor(RGB565_WHITE);
         gfx->print("Map not ready");
         drawStatusBar();
-        drawSideButtons();
         return;
     }
     
@@ -575,29 +586,26 @@ void SimpleDisplayManager::drawNavPage() {
         // 显示地图
         gfx->draw16bitRGBBitmap(0, mapY, screenBuffer, SCREEN_WIDTH, mapHeight);
         
-        // 显示提示文字
-        gfx->fillRect(SCREEN_WIDTH/2 - 80, SCREEN_HEIGHT - 30, 160, 20, 0x0000);
-        gfx->setCursor(SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT - 25);
-        gfx->setTextSize(1);
-        gfx->setTextColor(0x528A);
-        gfx->print("No active navigation");
-
         drawPlayerMarker(playerX, playerY);
+        String cardGate = flightInfo.valid ? flightInfo.boarding_gate : "";
+        if (cardGate.length() == 0 && activeArrivalLabel.length() > 0) {
+            cardGate = activeArrivalLabel;
+        }
+        if (cardGate.length() == 0) {
+            cardGate = String(target_name);
+        }
+        drawGateDisplay(cardGate, 0.0f);
 
     } else {
         // ========== 有导航：50%地图 + 50%导航信息 ==========
         const NavDisplayInfo& navInfo = navManager->getDisplayInfo();
         
-        int mapHeight = SCREEN_HEIGHT / 2;
+        int mapHeight = SCREEN_HEIGHT;
         int mapY = 0;
         
         // 计算地图视口
         int startX, startY, playerX, playerY;
-        if (navInfo.active && navInfo.currentDistance > 0) {
-            calculateMapViewByDirection(startX, startY, playerX, playerY, mapHeight, navInfo);
-        } else {
-            calculateMapViewCentered(startX, startY, playerX, playerY, mapHeight);
-        }
+        calculateMapViewCentered(startX, startY, playerX, playerY, mapHeight);
         
         // 复制地图数据
         for (int y = 0; y < mapHeight; y++) {
@@ -609,44 +617,15 @@ void SimpleDisplayManager::drawNavPage() {
         }
         
         gfx->draw16bitRGBBitmap(0, mapY, screenBuffer, SCREEN_WIDTH, mapHeight);
-        gfx->drawRect(0, mapY, SCREEN_WIDTH, mapHeight, RGB565_WHITE);
 
-        // ========== ⭐ 关键：绘制导航路径 ==========
-        drawNavigationPath(startX, startY, playerX, playerY, mapY, mapHeight);
-        
         // 绘制玩家标记
         drawPlayerMarker(playerX, playerY);
         
-        // 绘制目标标记
-        int targetPixelX = (int)(navInfo.targetX / MAP_REAL_WIDTH * MAP_PIXEL_WIDTH);
-        int targetPixelY = (int)(navInfo.targetY / MAP_REAL_HEIGHT * MAP_PIXEL_HEIGHT);
-        int targetScreenX = targetPixelX - startX;
-        int targetScreenY = targetPixelY - startY;
-        
-        if (targetScreenX >= 0 && targetScreenX < SCREEN_WIDTH && 
-            targetScreenY >= 0 && targetScreenY < mapHeight) {
-            drawTargetMarker(targetScreenX, targetScreenY, navInfo.targetGate);
-        }
-        
-        // 下半部分：导航信息
-        int infoY = mapHeight;
-        int infoHeight = SCREEN_HEIGHT - mapHeight;
-        
-        gfx->fillRect(0, infoY, SCREEN_WIDTH, infoHeight, RGB565_BLACK);
-        gfx->drawLine(0, infoY, SCREEN_WIDTH, infoY, 0x3186);
-        
         // 显示登机口
         drawGateDisplay(navInfo.targetGate, navInfo.currentDistance);
-        
-        // 显示导航指引
-        drawNavigationGuides(navInfo);
-        
-        // 显示进度条
-        drawProgressBar(infoY + infoHeight - 20, navInfo.pathProgress);
     }
     
     drawStatusBar();
-    drawSideButtons();
 }
 
 void SimpleDisplayManager::calculateMapViewByDirection(int& startX, int& startY, 
@@ -775,46 +754,40 @@ void SimpleDisplayManager::drawDestinationPicker() {
 }
 
 void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
-    String gateLabel = SmartNavigationPlanner::normalizeLabel(gate);
-    String gateKey = SmartNavigationPlanner::normalizeKey(gate);
-    String label = compactPlaceLabel(gateLabel);
-    const int infoY = SCREEN_HEIGHT / 2;
-    const int cardX = SCREEN_WIDTH - 86;
-    const int cardY = infoY + 8;
-    const int cardW = 78;
-    const int cardH = 122;
+    (void)distance;
 
-    gfx->fillRoundRect(cardX, cardY, cardW, cardH, 8, 0x0000);
-    gfx->drawRoundRect(cardX, cardY, cardW, cardH, 8, 0x07E0);
-
-    drawCenteredFittedText(gfx, cardX + 4, cardY + 10, cardW - 8, "DEST", 0x07E0, 1, 1);
-
-    if (gateKey == "GATE10" || gateKey == "GATE11") {
-        String gateNo = gateKey == "GATE10" ? "10" : "11";
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Gate", RGB565_WHITE, 1, 1);
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 55, cardW - 8, gateNo, RGB565_WHITE, 3, 2);
-    } else if (gateKey == "CUSTOMERSERVICES") {
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Customer", RGB565_WHITE, 1, 1);
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 56, cardW - 8, "Svc", RGB565_WHITE, 2, 1);
-    } else if (gateKey == "SECURITY") {
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Security", RGB565_WHITE, 1, 1);
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 56, cardW - 8, "Check", RGB565_WHITE, 2, 1);
-    } else if (gateKey == "CHECKIN") {
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 38, cardW - 8, "Check", RGB565_WHITE, 2, 1);
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 62, cardW - 8, "In", RGB565_WHITE, 2, 1);
-    } else if (label == "Immigration") {
-        drawCenteredFittedText(gfx, cardX + 4, cardY + 48, cardW - 8, "Immigr.", RGB565_WHITE, 2, 1);
-    } else {
-        drawCenteredFittedText(gfx, cardX + 3, cardY + 52, cardW - 6, label, RGB565_WHITE, 2, 1);
+    String gateNo = gateNumberForDisplay(gate);
+    if (gateNo.length() == 0 && flightInfo.valid) {
+        gateNo = gateNumberForDisplay(flightInfo.boarding_gate);
+    }
+    if (gateNo.length() == 0 && activeArrivalLabel.length() > 0) {
+        gateNo = gateNumberForDisplay(activeArrivalLabel);
+    }
+    if (gateNo.length() == 0) {
+        gateNo = gateNumberForDisplay(String(target_name));
+    }
+    if (gateNo.length() == 0) {
+        gateNo = "11";
     }
 
-    String distanceText = String((int)round(distance)) + " m";
-    int distanceSize = fittingTextSize(distanceText, cardW - 14, 2, 1);
-    uint16_t distanceColor = distance < 1.0f ? 0x07E0 : RGB565_RED;
-    gfx->setTextSize(distanceSize);
-    gfx->setTextColor(distanceColor);
-    gfx->setCursor(cardX + max(0, (cardW - textWidthPx(distanceText, distanceSize)) / 2), cardY + 92);
-    gfx->print(distanceText);
+    const int cardX = 14;
+    const int cardY = SCREEN_HEIGHT - 146;
+    const int cardW = 96;
+    const int cardH = 116;
+    const uint16_t subtleGreen = 0x5D4B;
+    const uint16_t darkGray = 0x4208;
+    const uint16_t gateNumberColor = 0xB420;
+    const uint16_t softGray = 0x8C51;
+    const uint16_t lightBorder = 0xDEFB;
+
+    gfx->fillRoundRect(cardX + 3, cardY + 4, cardW, cardH, 10, 0x8410);
+    gfx->fillRoundRect(cardX, cardY, cardW, cardH, 10, RGB565_WHITE);
+    gfx->drawRoundRect(cardX, cardY, cardW, cardH, 10, lightBorder);
+
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 13, cardW - 16, "DEST", subtleGreen, 1, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 41, cardW - 16, "Gate", darkGray, 1, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 59, cardW - 16, gateNo, gateNumberColor, 3, 2);
+    drawCenteredFittedText(gfx, cardX + 6, cardY + 99, cardW - 12, "1 min walk", softGray, 1, 1);
 }
 
 void SimpleDisplayManager::drawProgressBar(int y, float progress) {
@@ -979,107 +952,106 @@ void SimpleDisplayManager::drawFlightPage() {
         gfx->print("Waiting for server data...");
         
         drawStatusBar();
-        drawSideButtons();
         return;
     }
     
     {
-        String flightDisplay = flightInfo.flight_number;
-        if (flightInfo.airline.length() > 0) {
-            flightDisplay = flightInfo.airline + " " + flightInfo.flight_number;
-        }
+        String flightNumber = flightInfo.flight_number.length() > 0
+            ? flightInfo.flight_number
+            : "--";
+        drawCenteredFittedText(gfx, 12, 52, SCREEN_WIDTH - 24,
+                               flightNumber, 0xEFFF, 4, 2);
 
-        drawCenteredFittedText(gfx, 8, 54, SCREEN_WIDTH - 16,
-                               flightDisplay, RGB565_WHITE, 2, 1);
+        String airline = flightInfo.airline.length() > 0
+            ? flightInfo.airline
+            : "Airline pending";
+        drawCenteredFittedText(gfx, 18, 88, SCREEN_WIDTH - 36,
+                               airline, 0x07FF, 2, 1);
 
-        const int topY = 94;
-        const int leftX = 12;
-        const int rightX = 144;
-        const int leftW = 118;
-        const int rightW = 84;
+        const int leftX = 16;
+        const int rightX = 142;
+        const int leftW = 108;
+        const int rightW = 82;
 
-        drawFittedText(gfx, leftX, topY, "DESTINATION", leftW, 0x528A, 1, 1);
-        drawFittedText(gfx, leftX, topY + 18, compactPlaceLabel(flightInfo.destination), leftW, 0x07FF, 2, 1);
+        drawFittedText(gfx, leftX, 124, "GATE", leftW, 0x5D4B, 1, 1);
+        drawFittedText(gfx, leftX, 142, formatGateLabel(flightInfo.boarding_gate), leftW, 0xFEA0, 3, 2);
 
-        drawFittedText(gfx, rightX, topY, "GATE", rightW, 0x528A, 1, 1);
-        uint16_t gateColor = flightInfo.gate_changed ? RGB565_YELLOW : RGB565_WHITE;
-        drawFittedText(gfx, rightX, topY + 18, formatGateLabel(flightInfo.boarding_gate), rightW, gateColor, 2, 1);
+        drawFittedText(gfx, rightX, 124, "BOARDING", rightW, 0x8E7D, 1, 1);
+        drawFittedText(gfx, rightX, 146, flightInfo.boarding_time, rightW, 0x5D4B, 2, 1);
 
-        gfx->drawLine(14, 144, SCREEN_WIDTH - 14, 144, 0x3186);
+        gfx->drawLine(16, 178, SCREEN_WIDTH - 16, 178, 0x2945);
 
-        drawFittedText(gfx, leftX, 154, "SCHEDULED", leftW, 0x528A, 1, 1);
-        drawFittedText(gfx, leftX, 170, flightInfo.scheduled_departure, leftW, RGB565_WHITE, 2, 1);
+        drawFittedText(gfx, leftX, 190, "SCHEDULED", leftW, 0x8410, 1, 1);
+        drawFittedText(gfx, leftX, 206, flightInfo.scheduled_departure, leftW, 0xC618, 2, 1);
 
         String estimated = flightInfo.estimated_departure.length() > 0
             ? flightInfo.estimated_departure
             : "--:--";
-        drawFittedText(gfx, rightX, 154, "ESTIMATED", rightW, 0x528A, 1, 1);
-        drawFittedText(gfx, rightX, 170, estimated, rightW, RGB565_YELLOW, 2, 1);
-
-        drawFittedText(gfx, leftX, 202, "BOARDING", leftW, 0x528A, 1, 1);
-        drawFittedText(gfx, leftX, 218, flightInfo.boarding_time, leftW, 0x07E0, 2, 1);
+        drawFittedText(gfx, rightX, 190, "ESTIMATED", rightW, 0x8410, 1, 1);
+        drawFittedText(gfx, rightX, 206, estimated, rightW, 0xFEA0, 2, 1);
 
         drawFlightStatusBadge();
 
-        if (flightInfo.delay_minutes > 0) {
-            const int panelX = 8;
-            const int panelY = 246;
-            const int panelW = SCREEN_WIDTH - 16;
-            const int panelH = 54;
-            gfx->fillRoundRect(panelX, panelY, panelW, panelH, 8, RGB565_YELLOW);
-            gfx->drawRoundRect(panelX, panelY, panelW, panelH, 8, 0xC600);
-
-            String delayLine = "DELAYED " + String(flightInfo.delay_minutes) + "m";
-            drawFittedText(gfx, panelX + 10, panelY + 7, delayLine, panelW - 20, RGB565_BLACK, 2, 1);
-            if (flightInfo.delay_reason.length() > 0) {
-                drawWrappedText(gfx, panelX + 10, panelY + 30, panelW - 20,
-                                flightInfo.delay_reason, RGB565_BLACK, 1, 10, 2);
-            }
-        }
-
         drawStatusBar();
-        drawSideButtons();
         return;
     }
 }
 
 void SimpleDisplayManager::drawFlightStatusBadge() {
-    int badgeX = SCREEN_WIDTH - 115;
-    int badgeY = 212;
-    int badgeWidth = 106;
-    int badgeHeight = 30;
+    int cardX = 12;
+    int cardY = 232;
+    int cardWidth = SCREEN_WIDTH - 24;
+    int cardHeight = 62;
     
-    uint16_t bgColor;
+    uint16_t accentColor;
     const char* statusText;
     
     String status = flightInfo.status;
     status.toLowerCase();
     
     if (status == "boarding") {
-        bgColor = 0x07E0;  // 绿色
+        accentColor = 0x07FF;
         statusText = "BOARDING";
     } else if (status == "delayed") {
-        bgColor = RGB565_YELLOW;
+        accentColor = 0xFEA0;
         statusText = "DELAYED";
     } else if (status == "cancelled") {
-        bgColor = RGB565_RED;
+        accentColor = 0xF9E7;
         statusText = "CANCELLED";
     } else if (status == "scheduled") {
-        bgColor = 0x07E0;
+        accentColor = 0x5D4B;
         statusText = "SCHEDULED";
     } else if (status == "final call") {
-        bgColor = RGB565_RED;
+        accentColor = 0xF9E7;
         statusText = "FINAL CALL";
     } else {
-        bgColor = 0x528A;  // 灰色
+        accentColor = 0x8410;
         statusText = "PENDING";
     }
     
     // 绘制圆角矩形
-    gfx->fillRoundRect(badgeX, badgeY, badgeWidth, badgeHeight, 5, bgColor);
-    
-    drawCenteredFittedText(gfx, badgeX + 4, badgeY + 7, badgeWidth - 8,
-                           String(statusText), RGB565_BLACK, 2, 1);
+    gfx->fillRoundRect(cardX, cardY, cardWidth, cardHeight, 8, 0x0841);
+    gfx->drawRoundRect(cardX, cardY, cardWidth, cardHeight, 8, 0x2945);
+    gfx->fillRoundRect(cardX + 8, cardY + 10, 4, cardHeight - 20, 2, accentColor);
+
+    drawFittedText(gfx, cardX + 20, cardY + 9, "STATUS", cardWidth - 34, 0xBDF7, 1, 1);
+    drawFittedText(gfx, cardX + 20, cardY + 25, String(statusText), cardWidth - 34, accentColor, 2, 1);
+
+    String detail = "On schedule";
+    if (status == "delayed" && flightInfo.delay_minutes > 0) {
+        detail = String(flightInfo.delay_minutes) + " min";
+        if (flightInfo.delay_reason.length() > 0) {
+            detail += " - ";
+            detail += flightInfo.delay_reason;
+        }
+    } else if (status == "boarding" && flightInfo.boarding_time.length() > 0) {
+        detail = "Boarding " + flightInfo.boarding_time;
+    } else if (status == "cancelled" && flightInfo.delay_reason.length() > 0) {
+        detail = flightInfo.delay_reason;
+    } else if (status == "final call") {
+        detail = "Proceed to gate";
+    }
+    drawFittedText(gfx, cardX + 20, cardY + 47, detail, cardWidth - 34, 0xDEFB, 1, 1);
 }
 
 // 添加航班信息设置方法
@@ -1147,67 +1119,68 @@ void SimpleDisplayManager::clearFlightInfo() {
 }
 
 void SimpleDisplayManager::drawStatusBar() {
-    const int capsuleX = 20;
-    const int capsuleY = 26;
-    const int capsuleH = 18;
-    const int capsuleW = 30;
+    const int statusH = 42;
+    gfx->fillRect(0, 0, SCREEN_WIDTH, statusH, RGB565_BLACK);
 
-    gfx->fillRoundRect(capsuleX, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
-    gfx->drawRoundRect(capsuleX, capsuleY, capsuleW, capsuleH, 4, 0x3186);
-    drawWiFiIcon(capsuleX + 5, capsuleY + 3);
+    drawWiFiIcon(24, 23);
 
-    int batteryCapsuleX = SCREEN_WIDTH - capsuleW - capsuleX;
-    gfx->fillRoundRect(batteryCapsuleX, capsuleY, capsuleW, capsuleH, 4, RGB565_BLACK);
-    gfx->drawRoundRect(batteryCapsuleX, capsuleY, capsuleW, capsuleH, 4, 0x3186);
-    drawBatteryIcon(batteryCapsuleX + 5, capsuleY + 5);
+    char timeStr[6];
+    snprintf(timeStr, sizeof(timeStr), "%02d:%02d", hour, minute);
+    String timeText(timeStr);
+    gfx->setTextSize(2);
+    gfx->setTextColor(RGB565_WHITE);
+    gfx->setCursor((SCREEN_WIDTH - textWidthPx(timeText, 2)) / 2, 20);
+    gfx->print(timeText);
+
+    drawBatteryIcon(SCREEN_WIDTH - 48, 23);
 }
 
 void SimpleDisplayManager::drawWiFiIcon(int x, int y) {
     if (!wifi_connected) {
         // WiFi 断开：画一个带叉的图标
-        gfx->drawCircle(x + 8, y + 8, 4, 0x528A);
-        gfx->drawLine(x + 2, y + 2, x + 16, y + 13, RGB565_RED);
+        gfx->drawCircle(x + 6, y + 5, 3, 0x8410);
+        gfx->drawLine(x + 2, y + 1, x + 11, y + 10, RGB565_RED);
         return;
     }
     
     // 根据信号强度确定显示多少条弧线
     int bars;
     if (wifi_rssi > -45) bars = 4;
-    else if (wifi_rssi > -55) bars = 3;
-    else if (wifi_rssi > -65) bars = 2;
-    else if (wifi_rssi > -75) bars = 1;
+    else if (wifi_rssi > -55) bars = 4;
+    else if (wifi_rssi > -65) bars = 3;
+    else if (wifi_rssi > -75) bars = 2;
+    else if (wifi_rssi > -85) bars = 1;
     else bars = 0;
     
     // 中心点
     // 如果没有信号
     if (bars == 0) {
-        gfx->drawCircle(x + 8, y + 8, 4, RGB565_WHITE);
-        gfx->drawLine(x + 4, y + 4, x + 12, y + 12, RGB565_WHITE);
+        gfx->drawCircle(x + 6, y + 5, 3, 0xC618);
+        gfx->drawLine(x + 3, y + 2, x + 9, y + 8, 0xC618);
         return;
     }
     
     // Compact signal bars for the top-left status capsule.
     for (int i = 0; i < 4; i++) {
-        int barHeight = 3 + i * 3;
-        int barX = x + i * 4;
-        int barY = y + 13 - barHeight;
+        int barHeight = 4 + i * 3;
+        int barX = x + i * 5;
+        int barY = y + 17 - barHeight;
         uint16_t color = (i < bars) ? RGB565_WHITE : 0x528A;
         gfx->fillRect(barX, barY, 3, barHeight, color);
     }
-    gfx->fillCircle(x + 17, y + 12, 1, RGB565_WHITE);
 }
 
 void SimpleDisplayManager::drawBatteryIcon(int x, int y) {
-    const int bodyW = 18;
-    const int bodyH = 9;
+    const int bodyW = 24;
+    const int bodyH = 12;
     int safeBattery = constrain(battery_level, 0, 100);
 
     gfx->drawRect(x, y, bodyW, bodyH, RGB565_WHITE);
-    gfx->fillRect(x + bodyW, y + 3, 2, 3, RGB565_WHITE);
-    int fillWidth = (safeBattery * (bodyW - 2)) / 100;
-    uint16_t color = safeBattery < 20 ? RGB565_RED : (safeBattery < 50 ? RGB565_YELLOW : RGB565_GREEN);
+    gfx->fillRect(x + bodyW, y + 4, 3, 4, RGB565_WHITE);
+    int fillWidth = (safeBattery * (bodyW - 4)) / 100;
+    uint16_t color = safeBattery < 20 ? RGB565_RED : (safeBattery < 50 ? 0xFEA0 : RGB565_GREEN);
     if (fillWidth > 0) {
-        gfx->fillRect(x + 1, y + 1, fillWidth, bodyH - 2, color);
+        gfx->fillRect(x + 2, y + 2, fillWidth, bodyH - 4, color);
     }
 }
 
@@ -1527,7 +1500,6 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
             arrivalPopupShown = true;
             arrivalPopupTarget = expectedKey;
             String popupMessage = "You've arrived at " + targetLabel;
-            String spokenMessage = "You have arrived at " + targetLabel + ".";
             navigationPath.clear();
             hasNavigationPath = false;
             activeNavigationFromFlight = false;
@@ -1543,12 +1515,7 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
             pageManager.setPage(PAGE_HOME);
 #endif
             showPopup(POPUP_ARRIVAL, "Arrived", popupMessage);
-            if (audioCommandQueue) {
-                AudioCommand tts_cmd;
-                tts_cmd.command = AudioCommand::AUDIO_PLAY_TTS;
-                snprintf(tts_cmd.text, sizeof(tts_cmd.text), "%s", spokenMessage.c_str());
-                xQueueSend(audioCommandQueue, &tts_cmd, 0);
-            }
+            Serial.println("[NAV] arrival audio skipped for display stability");
             Serial.printf("[NAV] arrival popup shown: %s\n", popupMessage.c_str());
             Serial.printf("[NAV] arrival route cleared: %s\n", targetLabel.c_str());
         }
