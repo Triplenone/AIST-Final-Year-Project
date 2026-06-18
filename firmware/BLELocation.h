@@ -96,6 +96,7 @@ private:
     int candidate_zone_hits;
     float stable_zone_confidence;
     unsigned long stable_zone_since;
+    unsigned long candidate_zone_since;
     
     static const unsigned long BEACON_TIMEOUT = 10000;
     

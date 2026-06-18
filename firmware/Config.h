@@ -73,14 +73,17 @@
 #define MAP_REAL_HEIGHT 16.0
 // BLE-derived flight arrival tolerance. Keep below adjacent FlyCare zone spacing.
 #define FLIGHT_ARRIVAL_RADIUS_METERS 2.4f
-// Zone-first BLE positioning keeps the demo stable without changing MQTT/API contracts.
-#define BLE_ZONE_SWITCH_CONFIRMATIONS 2
+// Zone-first BLE positioning keeps the small-field demo stable without changing MQTT/API contracts.
+#define BLE_ZONE_SWITCH_CONFIRMATIONS 3
 #define BLE_ZONE_REFERENCE_BLEND_HIGH 0.35f
 #define BLE_ZONE_REFERENCE_BLEND_MEDIUM 0.20f
 #define BLE_ZONE_STRONG_CONFIDENCE 0.78f
-#define BLE_ZONE_SNAP_RSSI_LEAD_DB 10
-#define DISPLAY_POSITION_REDRAW_THRESHOLD_METERS 0.50f
-#define FLIGHT_ARRIVAL_CONFIRMATIONS 2
+#define BLE_ZONE_SNAP_RSSI_LEAD_DB 6
+#define BLE_ZONE_SNAP_BLEND 0.78f
+#define BLE_ZONE_SCORE_RATIO_FOR_SWITCH 1.35f
+#define BLE_MARKER_LOCK_HOLD_MS 10000UL
+#define DISPLAY_POSITION_REDRAW_THRESHOLD_METERS 0.80f
+#define FLIGHT_ARRIVAL_CONFIRMATIONS 3
 
 // ??賃????謕?
 #define SCREEN_WIDTH 240

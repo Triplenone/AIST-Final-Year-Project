@@ -264,7 +264,8 @@ BLELocation::BLELocation()
       candidate_zone_index(-1),
       candidate_zone_hits(0),
       stable_zone_confidence(0.0f),
-      stable_zone_since(0) {
+      stable_zone_since(0),
+      candidate_zone_since(0) {
     // 不再在这里初始化 pBLEScan，因为已经在 initBLE() 中初始化了
     // pBLEScan 使用全局变量
     
@@ -569,6 +570,7 @@ Location BLELocation::trilateration() {
     float totalWeight = 0.0f;
     int activeZones = 0;
     int bestZone = -1;
+    int secondBestZone = -1;
     float bestWeight = 0.0f;
     float secondBestWeight = 0.0f;
 
@@ -587,10 +589,12 @@ Location BLELocation::trilateration() {
 
         if (zones[i].weight > bestWeight) {
             secondBestWeight = bestWeight;
+            secondBestZone = bestZone;
             bestWeight = zones[i].weight;
             bestZone = i;
         } else if (zones[i].weight > secondBestWeight) {
             secondBestWeight = zones[i].weight;
+            secondBestZone = i;
         }
     }
 
@@ -604,27 +608,48 @@ Location BLELocation::trilateration() {
     loc.raw_x = loc.x;
     loc.raw_y = loc.y;
 
+    const float zoneScoreRatio = (secondBestWeight > 0.0001f)
+        ? (bestWeight / secondBestWeight)
+        : 99.0f;
+    const int zoneRssiLead = (secondBestZone >= 0 && zones[secondBestZone].strongest_rssi > -120)
+        ? (zones[bestZone].strongest_rssi - zones[secondBestZone].strongest_rssi)
+        : BLE_ZONE_SNAP_RSSI_LEAD_DB;
+    const bool bestZoneHasPair = zones[bestZone].beacon_count >= 2;
+    const bool zoneEvidenceClear = zoneRssiLead >= BLE_ZONE_SNAP_RSSI_LEAD_DB ||
+                                   zoneScoreRatio >= BLE_ZONE_SCORE_RATIO_FOR_SWITCH ||
+                                   bestZoneHasPair;
+    bool stableZoneSwitched = false;
+
     if (stable_zone_index < 0) {
         stable_zone_index = bestZone;
         candidate_zone_index = bestZone;
         candidate_zone_hits = BLE_ZONE_SWITCH_CONFIRMATIONS;
+        candidate_zone_since = now;
         stable_zone_since = now;
     } else if (bestZone == stable_zone_index) {
         candidate_zone_index = bestZone;
         candidate_zone_hits = BLE_ZONE_SWITCH_CONFIRMATIONS;
+        candidate_zone_since = now;
     } else if (bestZone == candidate_zone_index) {
         candidate_zone_hits++;
     } else {
         candidate_zone_index = bestZone;
         candidate_zone_hits = 1;
+        candidate_zone_since = now;
     }
 
+    const bool candidateHeldLongEnough = candidate_zone_since > 0 &&
+        (now - candidate_zone_since) >= BLE_MARKER_LOCK_HOLD_MS;
     if (candidate_zone_index != stable_zone_index &&
-        candidate_zone_hits >= BLE_ZONE_SWITCH_CONFIRMATIONS) {
+        candidate_zone_hits >= BLE_ZONE_SWITCH_CONFIRMATIONS &&
+        (zoneEvidenceClear || candidateHeldLongEnough)) {
         stable_zone_index = candidate_zone_index;
         stable_zone_since = now;
-        Serial.printf("[BLE] stable zone switched: %s hits=%d\n",
-                      zoneLabel(stable_zone_index), candidate_zone_hits);
+        stableZoneSwitched = true;
+        Serial.printf("[BLE] stable zone switched: %s hits=%d ratio=%.2f rssiLead=%d pair=%d held=%lu\n",
+                      zoneLabel(stable_zone_index), candidate_zone_hits,
+                      zoneScoreRatio, zoneRssiLead, bestZoneHasPair ? 1 : 0,
+                      candidate_zone_since > 0 ? (now - candidate_zone_since) : 0);
     }
 
     int referenceZone = (stable_zone_index >= 0 && stable_zone_index < ZONE_COUNT &&
@@ -634,13 +659,18 @@ Location BLELocation::trilateration() {
     BLEZoneSignal& reference = zones[referenceZone];
     stable_zone_confidence = reference.confidence;
 
-    int rssiLead = reference.second_rssi > -120
-        ? reference.strongest_rssi - reference.second_rssi
-        : BLE_ZONE_SNAP_RSSI_LEAD_DB;
+    const bool referenceIsBestZone = referenceZone == bestZone;
+    const bool stableZoneConfirmed = referenceIsBestZone &&
+                                     referenceZone == stable_zone_index &&
+                                     candidate_zone_hits >= BLE_ZONE_SWITCH_CONFIRMATIONS;
+    const bool strongestZoneSnap = stableZoneConfirmed && zoneEvidenceClear;
     float referenceBlend = reference.confidence >= BLE_ZONE_STRONG_CONFIDENCE
         ? BLE_ZONE_REFERENCE_BLEND_HIGH
         : BLE_ZONE_REFERENCE_BLEND_MEDIUM;
-    if (reference.strongest_rssi >= -60 || rssiLead >= BLE_ZONE_SNAP_RSSI_LEAD_DB) {
+    if (strongestZoneSnap) {
+        referenceBlend = max(referenceBlend, BLE_ZONE_SNAP_BLEND);
+    } else if (referenceIsBestZone &&
+               (reference.strongest_rssi >= -60 || zoneRssiLead >= BLE_ZONE_SNAP_RSSI_LEAD_DB)) {
         referenceBlend = max(referenceBlend, BLE_ZONE_REFERENCE_BLEND_HIGH);
     }
 
@@ -648,6 +678,19 @@ Location BLELocation::trilateration() {
     loc.y = loc.y * (1.0f - referenceBlend) + reference.y * referenceBlend;
     loc.x = constrain(loc.x, 0, MAP_REAL_WIDTH);
     loc.y = constrain(loc.y, 0, MAP_REAL_HEIGHT);
+
+    const bool candidatePending = candidate_zone_index != stable_zone_index && !stableZoneSwitched;
+    bool markerLocked = false;
+    if (candidatePending && last_location.beacon_count > 0 && last_location.timestamp > 0) {
+        loc.x = last_location.x;
+        loc.y = last_location.y;
+        markerLocked = true;
+        Serial.printf("[BLE] marker locked: stable=%s candidate=%s hits=%d/%d ratio=%.2f rssiLead=%d held=%lu\n",
+                      zoneLabel(stable_zone_index), zoneLabel(candidate_zone_index),
+                      candidate_zone_hits, BLE_ZONE_SWITCH_CONFIRMATIONS,
+                      zoneScoreRatio, zoneRssiLead,
+                      candidate_zone_since > 0 ? (now - candidate_zone_since) : 0);
+    }
     loc.beacon_count = activeZones;
 
     if (reference.confidence >= BLE_ZONE_STRONG_CONFIDENCE && activeZones >= 3) {
@@ -660,11 +703,16 @@ Location BLELocation::trilateration() {
         loc.accuracy = 5.0f;
         loc.quality = "medium";
     }
+    if (markerLocked) {
+        loc.accuracy = max(loc.accuracy, 3.0f);
+        loc.quality = "medium";
+    }
 
-    Serial.printf("[BLE] zone location: raw=(%.2f,%.2f) stable=(%.2f,%.2f) zones=%d best=%s stable=%s hits=%d conf=%.2f blend=%.2f\n",
+    Serial.printf("[BLE] zone location: raw=(%.2f,%.2f) stable=(%.2f,%.2f) zones=%d best=%s stable=%s hits=%d conf=%.2f blend=%.2f snap=%d ratio=%.2f rssiLead=%d\n",
                   loc.raw_x, loc.raw_y, loc.x, loc.y, activeZones,
                   zoneLabel(bestZone), zoneLabel(referenceZone),
-                  candidate_zone_hits, reference.confidence, referenceBlend);
+                  candidate_zone_hits, reference.confidence, referenceBlend,
+                  strongestZoneSnap ? 1 : 0, zoneScoreRatio, zoneRssiLead);
     return loc;
     
     // 取前三个最强的信标
