@@ -529,6 +529,8 @@ Location BLELocation::trilateration() {
     unsigned long corridorBestAgeMs = recentWindowMs + 1;
     int customerBestRssi = -120;
     int customerVisibleCount = 0;
+    int nonCustomerBestIndex = -1;
+    int nonCustomerBestRssi = -120;
 
     for (int i = 0; i < (int)usable_beacons.size(); i++) {
         const String& mac = usable_beacons[i].uuid;
@@ -551,6 +553,9 @@ Location BLELocation::trilateration() {
         }
         if (isCustomer) {
             customerVisibleCount++;
+        } else if (usable_beacons[i].last_rssi > nonCustomerBestRssi) {
+            nonCustomerBestRssi = usable_beacons[i].last_rssi;
+            nonCustomerBestIndex = i;
         }
     }
 
@@ -569,14 +574,26 @@ Location BLELocation::trilateration() {
         strongestIsCustomer &&
         customerVisibleCount == (int)usable_beacons.size() &&
         customerBestRssi < BLE_CUSTOMER_SINGLE_SNAP_RSSI;
+    const bool customerClear =
+        customerBestRssi >= BLE_CUSTOMER_SNAP_RSSI ||
+        (nonCustomerBestIndex >= 0 &&
+         (customerBestRssi - nonCustomerBestRssi) >= BLE_CUSTOMER_SNAP_LEAD_DB) ||
+        (nonCustomerBestIndex < 0 &&
+         customerVisibleCount >= 2 &&
+         customerBestRssi >= BLE_CUSTOMER_SINGLE_SNAP_RSSI);
 
     if (strongestIsCustomer && corridorContext && corridorBestIndex >= 0 && !customerDominatesCorridor) {
         secondStrongestRssi = max(secondStrongestRssi, customerBestRssi);
         strongestIndex = corridorBestIndex;
         Serial.printf("[BLE] corridor guard: customer blocked rssi=%d corridor=%d age=%lu\n",
                       customerBestRssi, corridorBestRssi, corridorBestAgeMs);
+    } else if (strongestIsCustomer && !customerClear && nonCustomerBestIndex >= 0) {
+        secondStrongestRssi = max(secondStrongestRssi, customerBestRssi);
+        strongestIndex = nonCustomerBestIndex;
+        Serial.printf("[BLE] customer guard: using non-customer rssi=%d customer=%d\n",
+                      nonCustomerBestRssi, customerBestRssi);
     } else if (strongestIsCustomer &&
-               (customerOnlyWeak || (corridorContext && !customerDominatesCorridor))) {
+               (customerOnlyWeak || !customerClear || (corridorContext && !customerDominatesCorridor))) {
         if (last_location.beacon_count > 0) {
             loc.x = last_location.x;
             loc.y = last_location.y;

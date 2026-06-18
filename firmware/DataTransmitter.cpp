@@ -768,9 +768,9 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         bool ok = false;
         if (mqttClient.connected()) {
             ok = mqttClient.publish(topic.c_str(), directPayload.c_str(), retained);
-            for (int loop = 0; loop < 80; loop++) {
+            for (int loop = 0; loop < MQTT_DIRECT_POST_PUBLISH_LOOP_COUNT; loop++) {
                 mqttClient.loop();
-                delay(25);
+                delay(MQTT_DIRECT_POST_PUBLISH_LOOP_DELAY_MS);
             }
         }
 
@@ -2166,7 +2166,7 @@ void DataTransmitter::addLog(const String& level, const String& message) {
 
 void DataTransmitter::setBLEScanning(bool scanning) {
     if (scanning) {
-        if (rfMutex && xSemaphoreTake(rfMutex, 0) != pdTRUE) {
+        if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(BLE_RF_MUTEX_WAIT_MS)) != pdTRUE) {
             ble_scanning_active = false;
             ble_scan_started_at_ms = 0;
             Serial.println("[BLE] scan skipped: RF busy with MQTT");

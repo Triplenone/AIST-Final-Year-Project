@@ -27,6 +27,18 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 02:50-03:16 FlyCare BLE RF scheduling + Customer Services snap guard
+
+- B.positioning.stuck=direct MQTT was still working, but physical/serial evidence showed the displayed location could stay near Customer Services while walking because direct MQTT publish held the shared RF path long enough for BLE scans to be skipped, and Customer Services at about `-68dBm` could still use the strongest-beacon snap.
+- I.rf.schedule=updated `firmware/DataTransmitter.cpp`, `firmware/firmware.ino`, and `firmware/Config.h` so BLE scans run every 3s, BLE waits briefly for the shared RF mutex, and MQTT publish pumps `client.loop()` only briefly after a direct publish instead of holding the RF path for roughly 2s.
+- I.customer.guard=updated `firmware/BLELocation.cpp` and `firmware/Config.h` so weak Customer Services readings are replaced by the best non-Customer beacon or held as ambiguous unless Customer Services is very strong (`BLE_CUSTOMER_SNAP_RSSI=-62`) or leads by `BLE_CUSTOMER_SNAP_LEAD_DB=10`.
+- V.compile_upload=pass ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN MAC `48:ca:43:a4:22:98`; final compile used `1537523/3145728` bytes and RAM `55200/327680`, upload wrote `1537664` bytes.
+- V.direct_mqtt=pass with COM5 bridge stopped: `logs/direct-mqtt-after-customer-threshold-20260619-031045.log` captured broker-side status=14 and location=16, and `logs/direct-mqtt-after-serial-threshold-20260619-031334.log` captured status=8 and location=11 from `smartwatch/ESP32_48CA43A42298`.
+- V.serial.diagnostic=pass diagnostic-only COM5 read `logs/serial-ble-customer-threshold-diagnostic-20260619-031219.log` showed `CUSTOMER_SNAP_COUNT=0`, `RF_BUSY_COUNT=0`, `DIRECT_PUB_OK_COUNT=25`, `CRASH_MARKERS=0`, plus repeated `customer guard` / `corridor guard` evidence. COM5 was not used as an MQTT bridge for direct proof.
+- V.mongo=pass latest Mongo location for alias `ESP32_48CA43A42298` refreshed to `_id=6a34439b2655085a8bacd5c6`, `x=6.21`, `y=4.02`, `server_received_at=2026-06-18T19:14:35.322000+00:00`.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` wrote `logs/flycare-goal-audit.json` with `overallStatus=pass`; backend `8001` reported MQTT connected to `192.168.1.232:1883`.
+- R.remaining=physical walking from Check-in/Security to Gate 10/Gate 11 still needs visual confirmation by moving the watch through the demo area. The firmware evidence now blocks weak Customer Services snap, but it cannot prove the full route without a live walk.
+
 ### 2026-06-19 02:22-02:39 FlyCare direct MQTT retest + Check-in/Security corridor guard
 
 - V.direct_mqtt.pre=pass with COM5 bridge stopped: `logs/direct-mqtt-retest-20260619-022208.log` captured 18 broker-side `smartwatch/ESP32_48CA43A42298` payloads over `192.168.1.232:1883`, including `/status` and `/location`; this was direct Wi-Fi MQTT, not serial fallback.

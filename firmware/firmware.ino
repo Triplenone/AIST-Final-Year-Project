@@ -827,7 +827,7 @@ void legacyButtonTask_old(void* param) {
 #endif
 
 void bleLocationTask(void* param) {
-    const TickType_t locationInterval = pdMS_TO_TICKS(6000);
+    const TickType_t locationInterval = pdMS_TO_TICKS(BLE_LOCATION_TASK_INTERVAL_MS);
     TickType_t lastWakeTime = xTaskGetTickCount();
 
     // 首次运行设置起始点
@@ -844,7 +844,7 @@ void bleLocationTask(void* param) {
             
     // 配置平滑器参数
     if (ble_location) {
-        ble_location->setSmootherParams(8, 2.5, 4.0);
+        ble_location->setSmootherParams(3, 5.0, 6.0);
         Serial.println("BLE定位平滑器已配置");
     } else {
         Serial.println("❌ ble_location 为空！");
