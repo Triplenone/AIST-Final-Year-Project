@@ -357,6 +357,15 @@ Verified in the latest COM5 run and current firmware source:
 
 Troubleshooting order:
 
+0. For direct Wi-Fi walk proof, do not run the COM5 bridge. Use the broker-side verifier so the test cannot pass through serial fallback:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_flycare_direct_walk.ps1 -Seconds 180 -RequireGate
+```
+
+During the 180-second window, move NG WAI LUN from Check-in/Security toward Gate 10 or Gate 11. The verifier subscribes to `smartwatch/#` on `192.168.1.232:1883`, requires fresh `/location` payloads from `ESP32_48CA43A42298`, fails if the serial bridge is running, and fails if Customer Services appears too often or for more than one consecutive point. To compare a previous capture, pass `-AnalyzeLogPath .\logs\<capture>.log`.
+
 1. For physical SOS, hold the SOS/BOOT button for 3 seconds and verify `smartwatch/<device_id>/sos` plus `/api/v1/events/?event_status=unhandled`. Then clear with `SOSOFF` or another 3-second SOS/BOOT hold and handle the event through `PUT /api/v1/events/{event_id}/handle`; `audit_flycare_goal.ps1` will still count the handled `ButtonLong` event as evidence.
 2. For PWR physical proof, observe the watch while pressing PWR once: the expected final-demo behavior is screen off if it was on, and screen on if it was off. Hold PWR for 3 seconds to verify the long-press screen toggle is not broken. The source-level audit confirms the active `buttonTask` intent, but final physical completion still needs human visual confirmation because the backend does not receive a PWR event.
 3. For heart rate, first validate physical contact: wear the watch tightly, clean the MAX3010x window, keep the wrist still for 20-30 seconds, then send `HRDEBUG` and `HRSENSOR` on COM5. Run `HRCAL` for a 10-second raw IR/red window or `HRSWEEP` for a repeatable `0x1F`/`0x3F`/`0x7F`/`0xFF` LED sweep. If `HRSENSOR` reports `part_id=0x15` and a plausible die temperature but IR never crosses `30000`, fix contact/window/hardware before changing BPM logic; if `saturated_pct` is high, reduce LED drive with `HRLED 0x1F` or improve placement; if signal remains too low even at `HRLED 0xFF`, inspect the sensor window, wrist contact geometry, cable/solder path, or MAX30102 module orientation; if contact is stable but `avg=0`, keep still longer and inspect beat detection.

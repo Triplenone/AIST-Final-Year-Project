@@ -27,6 +27,14 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 04:11-04:15 FlyCare direct walk verifier
+
+- I.walk.verifier=added `scripts/verify_flycare_direct_walk.ps1`, a broker-side direct Wi-Fi MQTT verifier for NG WAI LUN that captures or analyzes `smartwatch/#`, rejects a running COM5 serial bridge by default, maps `/location` points to FlyCare zones, and fails on excessive Customer Services dwell, insufficient movement, missing direct payloads, or missing Gate evidence when `-RequireGate` is used.
+- V.walk.verifier.pass=pass on the post-fix capture `logs/direct-mqtt-after-forced-blend084-20260619-040630.log`: status=20, location=29, Customer Services 1/29, maxCustomerRun=1, yRange=11.29m, gateSeen=true.
+- V.walk.verifier.fail=fail on the pre-fix capture `logs/direct-mqtt-walk-capture-20260619-035359.log`: status=30, location=45, failures `customer_run_gt_1` and `customer_share_gt_10`, proving the verifier catches the earlier Customer Services sticking behavior.
+- D.walk.docs=updated `docs/FLYCARE_MQTT.md` with the direct walk verifier command and the no-COM5-bridge proof boundary.
+- R.remaining=the verifier can produce objective broker-side evidence, but the final physical watch-screen UX still needs a user-observed walk through the real demo area.
+
 ### 2026-06-19 03:53-04:10 FlyCare Customer Services confirmation guard + direct MQTT walk capture
 
 - B.positioning.customer_blip=after the forced-alternative fix, direct Wi-Fi MQTT stayed connected but a 180s broker-only walk capture `logs/direct-mqtt-walk-capture-20260619-035359.log` still showed Customer Services in 8/45 location points with a max consecutive run of 4, so the goal was not complete.
