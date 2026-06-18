@@ -64,6 +64,24 @@ static int zoneForBeaconMac(const String& uuid) {
 }
 
 // ================ 调试回调函数实现 ================
+class FlyCareScanCallback : public BLEAdvertisedDeviceCallbacks {
+public:
+    void setOwner(BLELocation* location) {
+        owner = location;
+    }
+
+    void onResult(BLEAdvertisedDevice advertisedDevice) override {
+        if (!owner) return;
+        String address = advertisedDevice.getAddress().toString().c_str();
+        owner->updateBeaconRSSI(address, advertisedDevice.getRSSI());
+    }
+
+private:
+    BLELocation* owner = nullptr;
+};
+
+static FlyCareScanCallback flyCareScanCallback;
+
 void DebugScanCallback::onResult(BLEAdvertisedDevice advertisedDevice) {
     String address = advertisedDevice.getAddress().toString().c_str();
     int rssi = advertisedDevice.getRSSI();
@@ -222,7 +240,11 @@ Location BLELocation::stabilizeLocation(Location loc) {
         : 1.0f;
     elapsedSec = max(elapsedSec, 1.0f);
 
-    const float maxStep = constrain(0.8f + elapsedSec * 0.15f, 1.2f, 1.8f);
+    const bool clearStrongestSnap = loc.accuracy <= 2.0f &&
+        (loc.quality == "high" || loc.quality == "medium");
+    const float maxStep = clearStrongestSnap
+        ? max(MAP_REAL_WIDTH, MAP_REAL_HEIGHT)
+        : constrain(0.8f + elapsedSec * 0.15f, 1.2f, 1.8f);
     if (distance > maxStep && distance > 0.01f) {
         float ratio = maxStep / distance;
         loc.x = last_location.x + dx * ratio;
@@ -238,7 +260,10 @@ Location BLELocation::stabilizeLocation(Location loc) {
                       loc.x, loc.y, distance);
     }
 
-    smoother.addPoint(loc.x, loc.y, confidence);
+    if (clearStrongestSnap && distance >= DISPLAY_POSITION_REDRAW_THRESHOLD_METERS) {
+        smoother.reset();
+    }
+    smoother.addPoint(loc.x, loc.y, clearStrongestSnap ? 1.0f : confidence);
     float smoothX = loc.x;
     float smoothY = loc.y;
     if (smoother.getSmoothedPosition(smoothX, smoothY)) {
@@ -323,6 +348,8 @@ void BLELocation::init() {
     pBLEScan->setWindow(99);      // 扫描窗口 99ms
 
     setupBeacons();
+    flyCareScanCallback.setOwner(this);
+    pBLEScan->setAdvertisedDeviceCallbacks(&flyCareScanCallback, false);
     
     BLE_DEBUG_PRINT("=== BLELocation 初始化完成 ===\n");
 }
@@ -361,7 +388,9 @@ void BLELocation::startScan() {
         BLE_DEBUG_PRINT("❌ startScan: pBLEScan 为空！\n");
         return;
     }
-    Serial.println("[BLE] scan start: duration=2s");
+    if (BLE_POSITION_VERBOSE_LOGS) Serial.println("[BLE] scan start: duration=2s");
+    scanned_beacons.clear();
+    pBLEScan->clearResults();
     pBLEScan->start(2, false);
     last_scan_time = millis();
     BLE_DEBUG_PRINT("扫描已启动 (非阻塞模式)\n");
@@ -376,6 +405,7 @@ void BLELocation::stopScan() {
     BLE_DEBUG_PRINT("扫描已停止\n");
 }
 
+#if 0
 void BLELocation::processScanResults(BLEScanResults* results) {
     if (!results) return;
     
@@ -387,7 +417,7 @@ void BLELocation::processScanResults(BLEScanResults* results) {
         return;
     }
     if (count > 80) {
-        Serial.printf("[BLE] scan result count clipped: %d -> 80\n", count);
+        if (BLE_POSITION_VERBOSE_LOGS) Serial.printf("[BLE] scan result count clipped: %d -> 80\n", count);
         count = 80;
     }
     BLE_DEBUG_PRINT("[BLE] scan result: devices=%d\n", count);
@@ -431,6 +461,51 @@ void BLELocation::processScanResults(BLEScanResults* results) {
     }
     
     Serial.printf("找到 %d 个目标信标\n", scanned_beacons.size());
+}
+
+#endif
+
+void BLELocation::processScanResults(BLEScanResults* results) {
+    if (!results) return;
+
+    scanned_beacons.clear();
+
+    int count = results->getCount();
+    if (count <= 0) {
+        return;
+    }
+    if (count > 80) {
+        count = 80;
+    }
+
+    for (int i = 0; i < count; i++) {
+        BLEAdvertisedDevice device = results->getDevice(i);
+        String address = device.getAddress().toString().c_str();
+        address.toLowerCase();
+        int rssi = device.getRSSI();
+
+        for (int j = 0; j < beacon_count; j++) {
+            if (address.equals(beacons[j].uuid)) {
+                beacons[j].last_rssi = rssi;
+                beacons[j].last_seen = millis();
+                beacons[j].distance = rssiToDistance(rssi, beacons[j].rssi_ref);
+                beacons[j].confidence = calculateConfidence(rssi, beacons[j].distance);
+                scanned_beacons.push_back(beacons[j]);
+                break;
+            }
+        }
+    }
+}
+
+void BLELocation::refreshScannedBeaconsFromRecent() {
+    scanned_beacons.clear();
+
+    unsigned long now = millis();
+    for (int i = 0; i < beacon_count; i++) {
+        if (beacons[i].last_seen == 0) continue;
+        if (now - beacons[i].last_seen > BEACON_TIMEOUT) continue;
+        scanned_beacons.push_back(beacons[i]);
+    }
 }
 
 float BLELocation::rssiToDistance(int rssi, float rssi_ref) {
@@ -518,8 +593,10 @@ Location BLELocation::trilateration() {
         }
     }
 
-    Serial.printf("[BLE] location candidates: current=%d usable_recent=%d\n",
-                  scanned_beacons.size(), usable_beacons.size());
+    if (BLE_POSITION_VERBOSE_LOGS) {
+        Serial.printf("[BLE] location candidates: current=%d usable_recent=%d\n",
+                      scanned_beacons.size(), usable_beacons.size());
+    }
 
     // 安全检查
     if (usable_beacons.empty()) {
@@ -527,10 +604,31 @@ Location BLELocation::trilateration() {
         return loc;
     }    
     if (usable_beacons.size() < 1) {
-        Serial.printf("[BLE] location skipped: need targets, have %d\n", usable_beacons.size());
+        if (BLE_POSITION_VERBOSE_LOGS) Serial.printf("[BLE] location skipped: need targets, have %d\n", usable_beacons.size());
         return loc;
     }
     scanned_beacons = usable_beacons;
+
+    const Beacon* strongestBeacon = nullptr;
+    const Beacon* secondStrongestBeacon = nullptr;
+    for (const auto& beacon : usable_beacons) {
+        if (!strongestBeacon || beacon.last_rssi > strongestBeacon->last_rssi) {
+            secondStrongestBeacon = strongestBeacon;
+            strongestBeacon = &beacon;
+        } else if (!secondStrongestBeacon || beacon.last_rssi > secondStrongestBeacon->last_rssi) {
+            secondStrongestBeacon = &beacon;
+        }
+    }
+
+    const int strongestLead = (strongestBeacon && secondStrongestBeacon)
+        ? (strongestBeacon->last_rssi - secondStrongestBeacon->last_rssi)
+        : 99;
+    const int strongestZone = strongestBeacon ? zoneForBeaconMac(strongestBeacon->uuid) : -1;
+    const bool strongestImmediate = strongestBeacon &&
+        strongestBeacon->last_rssi >= BLE_STRONGEST_SNAP_IMMEDIATE_RSSI;
+    const bool strongestClear = strongestBeacon &&
+        strongestBeacon->last_rssi >= BLE_STRONGEST_SNAP_MIN_RSSI &&
+        (strongestImmediate || strongestLead >= BLE_STRONGEST_SNAP_LEAD_DB || usable_beacons.size() == 1);
 
     BLEZoneSignal zones[ZONE_COUNT];
     for (int i = 0; i < ZONE_COUNT; i++) {
@@ -599,7 +697,7 @@ Location BLELocation::trilateration() {
     }
 
     if (totalWeight <= 0.0f || bestZone < 0) {
-        Serial.println("[BLE] location skipped: invalid zone weights");
+        if (BLE_POSITION_VERBOSE_LOGS) Serial.println("[BLE] location skipped: invalid zone weights");
         return loc;
     }
 
@@ -646,10 +744,12 @@ Location BLELocation::trilateration() {
         stable_zone_index = candidate_zone_index;
         stable_zone_since = now;
         stableZoneSwitched = true;
-        Serial.printf("[BLE] stable zone switched: %s hits=%d ratio=%.2f rssiLead=%d pair=%d held=%lu\n",
-                      zoneLabel(stable_zone_index), candidate_zone_hits,
-                      zoneScoreRatio, zoneRssiLead, bestZoneHasPair ? 1 : 0,
-                      candidate_zone_since > 0 ? (now - candidate_zone_since) : 0);
+        if (BLE_POSITION_VERBOSE_LOGS) {
+            Serial.printf("[BLE] stable zone switched: %s hits=%d ratio=%.2f rssiLead=%d pair=%d held=%lu\n",
+                          zoneLabel(stable_zone_index), candidate_zone_hits,
+                          zoneScoreRatio, zoneRssiLead, bestZoneHasPair ? 1 : 0,
+                          candidate_zone_since > 0 ? (now - candidate_zone_since) : 0);
+        }
     }
 
     int referenceZone = (stable_zone_index >= 0 && stable_zone_index < ZONE_COUNT &&
@@ -679,21 +779,44 @@ Location BLELocation::trilateration() {
     loc.x = constrain(loc.x, 0, MAP_REAL_WIDTH);
     loc.y = constrain(loc.y, 0, MAP_REAL_HEIGHT);
 
+    bool strongestBeaconSnap = false;
+    bool ambiguousBeaconHold = false;
+    if (strongestClear && strongestBeacon) {
+        loc.x = loc.x * (1.0f - BLE_STRONGEST_SNAP_BLEND) + strongestBeacon->x * BLE_STRONGEST_SNAP_BLEND;
+        loc.y = loc.y * (1.0f - BLE_STRONGEST_SNAP_BLEND) + strongestBeacon->y * BLE_STRONGEST_SNAP_BLEND;
+        loc.x = constrain(loc.x, 0, MAP_REAL_WIDTH);
+        loc.y = constrain(loc.y, 0, MAP_REAL_HEIGHT);
+        loc.accuracy = strongestImmediate ? 1.2f : 2.0f;
+        loc.quality = strongestImmediate ? "high" : "medium";
+        strongestBeaconSnap = true;
+    } else if (last_location.beacon_count > 0 && last_location.timestamp > 0) {
+        loc.x = last_location.x;
+        loc.y = last_location.y;
+        loc.accuracy = max(loc.accuracy, 3.0f);
+        loc.quality = "medium";
+        ambiguousBeaconHold = true;
+    }
+
     const bool candidatePending = candidate_zone_index != stable_zone_index && !stableZoneSwitched;
     bool markerLocked = false;
-    if (candidatePending && last_location.beacon_count > 0 && last_location.timestamp > 0) {
+    if (candidatePending && !strongestBeaconSnap && last_location.beacon_count > 0 && last_location.timestamp > 0) {
         loc.x = last_location.x;
         loc.y = last_location.y;
         markerLocked = true;
-        Serial.printf("[BLE] marker locked: stable=%s candidate=%s hits=%d/%d ratio=%.2f rssiLead=%d held=%lu\n",
-                      zoneLabel(stable_zone_index), zoneLabel(candidate_zone_index),
-                      candidate_zone_hits, BLE_ZONE_SWITCH_CONFIRMATIONS,
-                      zoneScoreRatio, zoneRssiLead,
-                      candidate_zone_since > 0 ? (now - candidate_zone_since) : 0);
+        if (BLE_POSITION_VERBOSE_LOGS) {
+            Serial.printf("[BLE] marker locked: stable=%s candidate=%s hits=%d/%d ratio=%.2f rssiLead=%d held=%lu\n",
+                          zoneLabel(stable_zone_index), zoneLabel(candidate_zone_index),
+                          candidate_zone_hits, BLE_ZONE_SWITCH_CONFIRMATIONS,
+                          zoneScoreRatio, zoneRssiLead,
+                          candidate_zone_since > 0 ? (now - candidate_zone_since) : 0);
+        }
     }
     loc.beacon_count = activeZones;
 
-    if (reference.confidence >= BLE_ZONE_STRONG_CONFIDENCE && activeZones >= 3) {
+    if (strongestBeaconSnap) {
+        loc.quality = strongestImmediate ? "high" : "medium";
+        loc.accuracy = strongestImmediate ? min(loc.accuracy, 1.2f) : min(loc.accuracy, 2.0f);
+    } else if (reference.confidence >= BLE_ZONE_STRONG_CONFIDENCE && activeZones >= 3) {
         loc.accuracy = 1.5f;
         loc.quality = "high";
     } else if (activeZones >= 2) {
@@ -708,11 +831,27 @@ Location BLELocation::trilateration() {
         loc.quality = "medium";
     }
 
-    Serial.printf("[BLE] zone location: raw=(%.2f,%.2f) stable=(%.2f,%.2f) zones=%d best=%s stable=%s hits=%d conf=%.2f blend=%.2f snap=%d ratio=%.2f rssiLead=%d\n",
-                  loc.raw_x, loc.raw_y, loc.x, loc.y, activeZones,
-                  zoneLabel(bestZone), zoneLabel(referenceZone),
-                  candidate_zone_hits, reference.confidence, referenceBlend,
-                  strongestZoneSnap ? 1 : 0, zoneScoreRatio, zoneRssiLead);
+    if (BLE_POSITION_VERBOSE_LOGS) {
+        Serial.printf("[BLE] zone location: raw=(%.2f,%.2f) stable=(%.2f,%.2f) zones=%d best=%s stable=%s hits=%d conf=%.2f blend=%.2f snap=%d ratio=%.2f rssiLead=%d\n",
+                      loc.raw_x, loc.raw_y, loc.x, loc.y, activeZones,
+                      zoneLabel(bestZone), zoneLabel(referenceZone),
+                      candidate_zone_hits, reference.confidence, referenceBlend,
+                      strongestZoneSnap ? 1 : 0, zoneScoreRatio, zoneRssiLead);
+    }
+    if (strongestBeacon) {
+        if (BLE_POSITION_VERBOSE_LOGS) {
+            Serial.printf("[BLE] strongest beacon: mac=%s zone=%s rssi=%d lead=%d clear=%d snap=%d hold=%d output=(%.2f,%.2f)\n",
+                          strongestBeacon->uuid.c_str(),
+                          strongestZone >= 0 ? zoneLabel(strongestZone) : "unknown",
+                          strongestBeacon->last_rssi,
+                          strongestLead,
+                          strongestClear ? 1 : 0,
+                          strongestBeaconSnap ? 1 : 0,
+                          ambiguousBeaconHold ? 1 : 0,
+                          loc.x,
+                          loc.y);
+        }
+    }
     return loc;
     
     // 取前三个最强的信标
@@ -761,6 +900,7 @@ Location BLELocation::trilateration() {
     return loc;
 }
 
+#if 0
 Location BLELocation::getLocation() {
     Serial.println("\n========== getLocation 调用 ==========");
     
@@ -826,6 +966,31 @@ Location BLELocation::getLocation() {
                       last_location.quality.c_str(), last_location.beacon_count);
     }
     
+    return last_location;
+}
+
+#endif
+
+Location BLELocation::getLocation() {
+    if (!pBLEScan) {
+        return last_location;
+    }
+
+    refreshScannedBeaconsFromRecent();
+    pBLEScan->clearResults();
+
+    if (scanned_beacons.empty()) {
+        Location loc = trilateration();
+        if (loc.beacon_count > 0) {
+            last_location = stabilizeLocation(loc);
+        }
+        return last_location;
+    }
+
+    Location loc = trilateration();
+    if (loc.beacon_count > 0) {
+        last_location = stabilizeLocation(loc);
+    }
     return last_location;
 }
 
@@ -899,8 +1064,11 @@ void BLELocation::updateBeaconRSSI(String mac, int rssi) {
             beacons[i].last_seen = millis();
             beacons[i].distance = rssiToDistance(rssi, beacons[i].rssi_ref);
             beacons[i].confidence = calculateConfidence(rssi, beacons[i].distance);
-            
-            Serial.printf("  更新信标%d: %s, 距离=%.2fm\n", i, mac.c_str(), beacons[i].distance);
+
+            if (BLE_POSITION_VERBOSE_LOGS) {
+                Serial.printf("[BLE] beacon update: index=%d mac=%s rssi=%d distance=%.2f confidence=%.2f\n",
+                              i, mac.c_str(), rssi, beacons[i].distance, beacons[i].confidence);
+            }
             break;
         }
     }

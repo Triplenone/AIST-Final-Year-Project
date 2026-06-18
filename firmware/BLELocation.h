@@ -128,6 +128,7 @@ public:
     
 private:
     void processScanResults(BLEScanResults* results);
+    void refreshScannedBeaconsFromRecent();
     Location trilateration();
     Location stabilizeLocation(Location loc);
     float calculateLocationConfidence(const Location& loc);

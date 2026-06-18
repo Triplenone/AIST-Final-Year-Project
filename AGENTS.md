@@ -27,6 +27,21 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-18 21:40-23:07 FlyCare final demo BLE snap, cue sync, dashboard freshness stabilization
+
+- V.git.pre=ok branch `Flycare`, prechange HEAD `aa355ac`; working tree was clean except the branch was already ahead of `origin/Flycare` by 4 commits. No backend API route/schema, database schema, MQTT topic, or raw DB cleanup was changed.
+- I.ble.snap=updated `firmware/BLELocation.cpp/.h` and `firmware/Config.h` so final demo positioning prioritizes strongest-beacon snap with ambiguity hold instead of slow zone confirmation; zone data remains for labels/arrival safety. Added callback-based BLE scan capture so the runtime no longer reads `BLEScanResults::getDevice(i)` after scan completion.
+- B.ble.crash=pre-fix Gate 10->11 smoke caught `Guru Meditation Error: LoadProhibited` with backtrace into `BLELocation::processScanResults()`; post-fix bounded smoke `logs/flycare-serial-bridge-20260618-230154.log` ran 101s with parsed/sent `15/15`, downlinks=2, invalidUplinks=0, and crashes=0.
+- I.flight.dest=updated `firmware/FlightInfoManager.cpp`, `SimpleDisplayManager.cpp`, and `DataTransmitter.cpp/.h` so latest flight `boarding_gate` re-arms the map arrival target and telemetry target; the watch DEST card now uses the flight gate first, uses `#CBE3DB`-style background, and has larger/bolder `DEST` text.
+- I.alert.cue=updated `firmware/firmware.ino` and `SimpleDisplayManager.cpp` to restore generated tone cues without SD/TTS playback: `ENABLE_AUDIO_ALERTS` remains `0`, `ENABLE_TONE_ALERTS` is `1`, and SOS activate/clear now owns popup/tone/vibration cue timing in one path.
+- I.dashboard.fast_location=updated `frontend/src/pages/FlyCarePage.tsx` and `frontend/src/adapters/position-command-center.ts` so `/flycare` keeps the existing 2s full snapshot but overlays the selected resident with a 1s `/mongo-upstream/location/latest` refresh; added adapter unit coverage.
+- V.compile_upload=ok ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN main watch MAC `48:ca:43:a4:22:98`; final compile used `1555191/3145728` bytes and RAM `55264/327680`, upload wrote `1555344` bytes.
+- V.gate11=pass backend `8001` Gate 11 duplicate smoke `logs/flycare-serial-bridge-20260618-230441.log` ran 100s with parsed/sent `16/16`, downlinks=1, `[Flight] duplicate flight payload ignored`, invalidUplinks=0, and crashes=0. API publish returned `status=ok` and `mqtt.ok=true`.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` at 2026-06-18T23:06:33 wrote `logs/flycare-goal-audit.md` with overall `pass`, `positioning_arrival` high/beaconCount=4, `flight_information_update` apiGate=11, `display_runtime_stability` pass, and `watch_runtime_stability` invalidUplinks=0/crashes=0.
+- V.frontend=pass `npm.cmd run build`, `npm.cmd run lint`, and `npm.cmd run test` passed in `frontend`; Vitest reported 5 files and 63/63 tests passed. `npm.cmd run test -- src/adapters/position-command-center.test.ts` also passed 29/29.
+- D.docs=updated `firmware/README.md` and `docs/FLYCARE_MQTT.md` for strongest-beacon-first demo behavior, generated-tone alert scope, faster selected-location refresh, and COM5 fallback boundaries. Docs do not include Wi-Fi passwords.
+- R.remaining=physical walking validation still needs user observation for Customer Services -> Gate 10/Gate 11 drift and audible/vibration timing; direct Wi-Fi MQTT was not re-proven in this final bounded smoke, so COM5 fallback remains the validated hardware path for this run; 8000 remains not the final hardware backend while `mqttConnected=false`.
+
 ### 2026-06-18 11:45-15:06 FlyCare NG WAI LUN direct MQTT + BLE/serial stability pass
 
 - V.git.precommit=ok branch `Flycare`, precommit HEAD `300550c`; working tree changes were scoped to firmware direct MQTT/BLE/serial stability, `scripts/bridge_flycare_serial.ps1`, and docs/AGENTS updates. No frontend/backend API route/schema/database cleanup was made.

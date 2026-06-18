@@ -226,7 +226,8 @@ public:
 
         float next_x = x;
         float next_y = y;
-        if (beacon_count > 0) {
+        const bool stable_ble_fix = (quality == "high" || quality == "medium") && beacons > 0;
+        if (!stable_ble_fix && beacon_count > 0) {
             const float max_report_step = 1.6f;
             float dx = x - current_x;
             float dy = y - current_y;

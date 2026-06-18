@@ -17,9 +17,10 @@
 #define ENABLE_NAVIGATION_DOWNLINK 0
 #define ENABLE_FLIGHT_ROUTE_NAVIGATION 0
 #define ENABLE_FLIGHT_ARRIVAL_TARGET 1
-// Final demo uses popup + vibration only. Keep audio/SD alert playback disabled
-// because SD_MMC audio lookups have caused runtime aborts on this watch.
+// Final demo keeps SD/TTS alert playback disabled because SD_MMC audio lookups
+// have caused runtime aborts on this watch. Safe generated tones are allowed.
 #define ENABLE_AUDIO_ALERTS 0
+#define ENABLE_TONE_ALERTS 1
 
 // MAX30102 heart-rate contact/sampling settings.
 // Keep HR validity gated by contact; do not lower this to fake a BPM reading.
@@ -73,17 +74,28 @@
 #define MAP_REAL_HEIGHT 16.0
 // BLE-derived flight arrival tolerance. Keep below adjacent FlyCare zone spacing.
 #define FLIGHT_ARRIVAL_RADIUS_METERS 2.4f
-// Zone-first BLE positioning keeps the small-field demo stable without changing MQTT/API contracts.
-#define BLE_ZONE_SWITCH_CONFIRMATIONS 3
-#define BLE_ZONE_REFERENCE_BLEND_HIGH 0.35f
-#define BLE_ZONE_REFERENCE_BLEND_MEDIUM 0.20f
+// Small-field demo positioning: strongest-beacon snap drives the displayed
+// marker; zones remain a guard for labels and arrival confirmation.
+#define BLE_ZONE_SWITCH_CONFIRMATIONS 1
+#define BLE_ZONE_REFERENCE_BLEND_HIGH 0.10f
+#define BLE_ZONE_REFERENCE_BLEND_MEDIUM 0.05f
 #define BLE_ZONE_STRONG_CONFIDENCE 0.78f
 #define BLE_ZONE_SNAP_RSSI_LEAD_DB 6
-#define BLE_ZONE_SNAP_BLEND 0.78f
+#define BLE_ZONE_SNAP_BLEND 0.20f
 #define BLE_ZONE_SCORE_RATIO_FOR_SWITCH 1.35f
-#define BLE_MARKER_LOCK_HOLD_MS 10000UL
-#define DISPLAY_POSITION_REDRAW_THRESHOLD_METERS 0.80f
-#define FLIGHT_ARRIVAL_CONFIRMATIONS 3
+#define BLE_MARKER_LOCK_HOLD_MS 0UL
+#define BLE_STRONGEST_SNAP_MIN_RSSI -82
+#define BLE_STRONGEST_SNAP_LEAD_DB 3
+#define BLE_STRONGEST_SNAP_IMMEDIATE_RSSI -65
+#define BLE_STRONGEST_SNAP_BLEND 0.92f
+#define DISPLAY_POSITION_REDRAW_THRESHOLD_METERS 0.45f
+#define FLIGHT_ARRIVAL_CONFIRMATIONS 1
+#define DATA_STATUS_UPLOAD_INTERVAL_MS 5000UL
+#define DATA_LOCATION_UPLOAD_INTERVAL_MS 3000UL
+#define DATA_LOCATION_MOVED_THRESHOLD_METERS 0.50f
+#define DATA_MQTT_FAILURE_BACKOFF_MS 30000UL
+#define DATA_MQTT_CONNECT_TIMEOUT_MS 2500UL
+#define BLE_POSITION_VERBOSE_LOGS 0
 
 // ??賃????謕?
 #define SCREEN_WIDTH 240

@@ -334,6 +334,13 @@ Watch serial:    COM5, ESP32_48CA43A42298, MySQL device 8, NG WAI LUN
 Fall detection:  source path enabled with ENABLE_FALL_DETECTION 1; automatic runtime detector disabled with ENABLE_AUTO_FALL_DETECTION 0 for final demo scope; `SIMFALL` still uploads a fall payload for software-path smoke testing
 ```
 
+Current final-demo watch behavior after the small-field stabilization pass:
+
+- BLE display position uses strongest-beacon snap as the primary output. Zone grouping remains for labels and arrival safety, but ambiguous scans hold the previous marker instead of drifting through Toilet or the adjacent gate.
+- Flight `boarding_gate` is the watch map destination authority. A Gate 10/Gate 11 downlink updates the flight page, map DEST card, arrival target, and telemetry target together.
+- Alert sound is generated tone only (`ENABLE_TONE_ALERTS 1`, `ENABLE_AUDIO_ALERTS 0`). Gate Change, Delay, Boarding, Cancelled, Arrival, and SOS use popup + tone + vibration without SD/TTS playback.
+- Watch `/location` publishes every 3 seconds or when stable/display XY moves by about 0.5m. `/flycare` keeps the 2-second full snapshot but adds a selected-resident latest-location refresh so NG WAI LUN's live marker can update faster without changing API routes or database schema.
+
 Verified in the latest COM5 run and current firmware source:
 
 - Current stack proof in `logs/flycare-local-stack-status.json` from 2026-06-14 12:25:58 shows ports 1883, 3306, 5173, 8000, and 27017 listening, `/health=healthy`, and MQTT connected to `192.168.0.203:1883`. That check ran from a non-admin shell (`isAdmin=false`) and therefore confirmed existing services rather than restarting Windows services. Earlier elevated proof is available from 2026-06-13 19:23:31 with `isAdmin=true`.

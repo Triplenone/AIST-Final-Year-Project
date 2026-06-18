@@ -8,6 +8,7 @@ import {
   getPositionNavigationTargetDisplay,
   getPositionZoneDisplayForResident,
   getZoneCommandState,
+  mergeLatestLocationResponseIntoPositionSnapshot,
   mergeUpstreamDocsForPosition,
   resolvePositionSelection,
   sortPositionResidents,
@@ -135,6 +136,68 @@ describe('position-command-center adapter', () => {
 
     expect(viewModel.selectedResident?.currentCoords).toEqual({ x: 4, y: 12 });
     expect(viewModel.selectedResident?.battery).toBe(90);
+  });
+
+  it('merges selected FlyCare location refresh without replacing other residents', () => {
+    const selected = POSITION_RESIDENT_REGISTRY[6];
+    const other = POSITION_RESIDENT_REGISTRY[7];
+    const snapshot = {
+      fetchedAt: '2026-03-28T00:02:05.000Z',
+      loadError: null,
+      records: [
+        {
+          resident: selected,
+          latestStatus: {
+            _id: 'status-selected',
+            device_id: selected.deviceId,
+            server_received_at: '2026-03-28T00:02:00.000Z',
+            data_type: 'status_update',
+            system: { battery: { level: 75 } },
+            location: { current: { x: 2, y: 3 } }
+          },
+          error: null
+        },
+        {
+          resident: other,
+          latestStatus: {
+            _id: 'status-other',
+            device_id: other.deviceId,
+            server_received_at: '2026-03-28T00:02:00.000Z',
+            data_type: 'status_update',
+            location: { current: { x: 9, y: 10 } }
+          },
+          error: null
+        }
+      ]
+    };
+
+    const merged = mergeLatestLocationResponseIntoPositionSnapshot(snapshot, selected.residentId, {
+      found: true,
+      _id: 'location-selected-new',
+      device_id: selected.deviceId,
+      mysql_device_id: 8,
+      x: 6.1,
+      y: 3.9,
+      server_received_at: '2026-03-28T00:02:10.000Z',
+      location_name: 'Customer Services',
+      location_zone_id: null
+    });
+
+    const viewModel = buildPositionCommandCenterViewModel(merged, {
+      selectedResidentId: selected.residentId,
+      now: Date.parse('2026-03-28T00:02:11.000Z'),
+      mapProfile: 'flycare'
+    });
+
+    expect(merged?.records).toHaveLength(2);
+    expect(viewModel.selectedResident?.currentCoords).toEqual({ x: 6.1, y: 3.9 });
+    expect(
+      buildPositionCommandCenterViewModel(merged, {
+        selectedResidentId: other.residentId,
+        now: Date.parse('2026-03-28T00:02:11.000Z'),
+        mapProfile: 'flycare'
+      }).selectedResident?.currentCoords
+    ).toEqual({ x: 9, y: 10 });
   });
 
   it('exposes FlyCare navigation target details from location.target', () => {

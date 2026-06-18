@@ -21,6 +21,15 @@ extern BLELocation* ble_location;
 
 SimpleDisplayManager* SimpleDisplayManager::instance = nullptr;
 
+static void queueToneCue(const char* cueName) {
+    if (!audioCommandQueue) return;
+    AudioCommand audio_cmd;
+    memset(&audio_cmd, 0, sizeof(audio_cmd));
+    audio_cmd.command = AudioCommand::AUDIO_PLAY_ALERT;
+    snprintf(audio_cmd.text, sizeof(audio_cmd.text), "tone:%s", cueName);
+    xQueueSend(audioCommandQueue, &audio_cmd, 0);
+}
+
 static String formatGateLabel(const String& gate) {
     String normalized = gate;
     normalized.trim();
@@ -641,6 +650,14 @@ void SimpleDisplayManager::drawNavPage() {
         
         // 显示登机口
         drawGateDisplay(navInfo.targetGate, navInfo.currentDistance);
+        String navCardGate = flightInfo.valid ? flightInfo.boarding_gate : "";
+        if (navCardGate.length() == 0 && activeArrivalLabel.length() > 0) {
+            navCardGate = activeArrivalLabel;
+        }
+        if (navCardGate.length() == 0) {
+            navCardGate = navInfo.targetGate;
+        }
+        drawGateDisplay(navCardGate, navInfo.currentDistance);
     }
     
     drawStatusBar();
@@ -792,18 +809,20 @@ void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
     const int cardY = SCREEN_HEIGHT - 146;
     const int cardW = 96;
     const int cardH = 116;
-    const uint16_t subtleGreen = 0x5D4B;
+    const uint16_t cardFill = 0xCF1B;  // #CBE3DB
+    const uint16_t subtleGreen = 0x3C67;
     const uint16_t darkGray = 0x4208;
     const uint16_t gateNumberColor = 0xB420;
     const uint16_t softGray = 0x8C51;
     const uint16_t lightBorder = 0xDEFB;
 
     gfx->fillRoundRect(cardX + 3, cardY + 4, cardW, cardH, 10, 0x8410);
-    gfx->fillRoundRect(cardX, cardY, cardW, cardH, 10, RGB565_WHITE);
+    gfx->fillRoundRect(cardX, cardY, cardW, cardH, 10, cardFill);
     gfx->drawRoundRect(cardX, cardY, cardW, cardH, 10, lightBorder);
 
-    drawCenteredFittedText(gfx, cardX + 8, cardY + 13, cardW - 16, "DEST", subtleGreen, 1, 1);
-    drawCenteredFittedText(gfx, cardX + 8, cardY + 41, cardW - 16, "Gate", darkGray, 1, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 11, cardW - 16, "DEST", subtleGreen, 2, 1);
+    drawCenteredFittedText(gfx, cardX + 9, cardY + 11, cardW - 16, "DEST", subtleGreen, 2, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 40, cardW - 16, "Gate", darkGray, 1, 1);
     drawCenteredFittedText(gfx, cardX + 8, cardY + 59, cardW - 16, gateNo, gateNumberColor, 3, 2);
     drawCenteredFittedText(gfx, cardX + 6, cardY + 99, cardW - 12, "1 min walk", softGray, 1, 1);
 }
@@ -1573,7 +1592,7 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
             pageManager.setPage(PAGE_HOME);
 #endif
             showPopup(POPUP_ARRIVAL, "Arrived", popupMessage);
-            Serial.println("[NAV] arrival audio skipped for display stability");
+            Serial.println("[NAV] arrival cue handled by display popup");
             Serial.printf("[NAV] arrival popup shown: %s\n", popupMessage.c_str());
             Serial.printf("[NAV] arrival route cleared: %s\n", targetLabel.c_str());
         }
@@ -1583,6 +1602,23 @@ void SimpleDisplayManager::setCurrentPosition(float x, float y) {
 }
 
 void SimpleDisplayManager::showSOS(bool active) {
+    if (active) {
+        sos_emergency_mode = true;
+        alarmDisplayActive = true;
+        alarmTriggerTime = millis();
+        alarmReportPending = true;
+        needRedraw = true;
+        Serial.println("[SOS] display active; cue is owned by activateSOSAlert()");
+        return;
+    }
+
+    sos_emergency_mode = false;
+    alarmDisplayActive = false;
+    alarmReportPending = false;
+    needRedraw = true;
+    Serial.println("[SOS] display cleared; cue is owned by clearSOSAlert()");
+    return;
+
     if (active) {
         sos_emergency_mode = true;
         alarmDisplayActive = true;
@@ -1601,7 +1637,7 @@ void SimpleDisplayManager::showSOS(bool active) {
         if (audioCommandQueue) {
             AudioCommand audio_cmd;
             audio_cmd.command = AudioCommand::AUDIO_PLAY_ALERT;
-            strcpy(audio_cmd.text, "/sos.wav");
+            strcpy(audio_cmd.text, "tone:sos");
             xQueueSend(audioCommandQueue, &audio_cmd, 0);
         }
         Serial.println("[SOS] 触发，振动+声音+闪屏，15秒后上报");
@@ -2210,27 +2246,33 @@ void SimpleDisplayManager::showPopup(PopupType type, const String& title, const 
     
     // 振动提醒
     vibrateShort();
+    const char* cueName = "popup";
     
     // 根据类型选择颜色和图标
     uint16_t color;
     switch (type) {
         case POPUP_FLIGHT_DELAY:
+            cueName = "delay";
             color = RGB565_YELLOW;
             Serial.printf("[弹窗] 航班延误: %s\n", message.c_str());
             break;
         case POPUP_GATE_CHANGE:
+            cueName = "gate";
             color = 0x001F;  // 蓝色
             Serial.printf("[弹窗] 登机口变更: %s\n", message.c_str());
             break;
         case POPUP_BOARDING:
+            cueName = "boarding";
             color = 0x07E0;  // 绿色
             Serial.printf("[弹窗] 登机提醒: %s\n", message.c_str());
             break;
         case POPUP_FLIGHT_CANCELLED:
+            cueName = "cancelled";
             color = RGB565_RED;
             Serial.printf("[弹窗] 航班取消: %s\n", message.c_str());
             break;
         case POPUP_ARRIVAL:
+            cueName = "arrival";
             color = 0x07E0;
             Serial.printf("[Popup] arrival: %s\n", message.c_str());
             break;
@@ -2238,6 +2280,7 @@ void SimpleDisplayManager::showPopup(PopupType type, const String& title, const 
             color = 0x001F;
             break;
     }
+    queueToneCue(cueName);
     
     unsigned long timeoutMs = (type == POPUP_ARRIVAL) ? POPUP_ARRIVAL_AUTO_CLOSE_MS : POPUP_AUTO_CLOSE_MS;
     Serial.printf("[弹窗] 显示: %s - %s (%lu秒后自动关闭)\n",

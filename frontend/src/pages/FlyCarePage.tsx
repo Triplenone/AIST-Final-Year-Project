@@ -8,6 +8,7 @@ import {
   loadPositionCommandCenterSnapshot,
   loadPositionResidentActivity,
   POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID,
+  mergeLatestLocationResponseIntoPositionSnapshot,
   resolvePositionResidentRegistry,
   type PositionCommandCenterSnapshot,
   type PositionResidentActivitySnapshot,
@@ -30,6 +31,7 @@ import {
 
 const FLYCARE_MAP_PROFILE = 'flycare' as const;
 const FLYCARE_SNAPSHOT_REFRESH_MS = 2_000;
+const FLYCARE_SELECTED_LOCATION_REFRESH_MS = 1_000;
 const FLYCARE_FLIGHT_REFRESH_MS = 5_000;
 const FLYCARE_ALERT_EVENT_REFRESH_MS = 5_000;
 const FLYCARE_PREFERRED_DEVICE_IDS = new Set(['ESP32_000048CA43A42298', 'ESP32_48CA43A42298']);
@@ -180,6 +182,38 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
         : null,
     [selectedFlightDeviceId, viewModel.selectedResident?.displayName]
   );
+
+  useEffect(() => {
+    if (!selectedResidentId || !selectedFlightDeviceId) return;
+    let cancelled = false;
+    let inFlight = false;
+
+    const refreshSelectedLocation = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const location = await mongoUpstreamApi.getLatestValidLocation(selectedFlightDeviceId);
+        if (cancelled) return;
+        setSnapshot((current) =>
+          mergeLatestLocationResponseIntoPositionSnapshot(current, selectedResidentId, location)
+        );
+      } catch {
+        // Keep the full snapshot refresh as the fallback path.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void refreshSelectedLocation();
+    const intervalId = window.setInterval(() => {
+      void refreshSelectedLocation();
+    }, FLYCARE_SELECTED_LOCATION_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [selectedFlightDeviceId, selectedResidentId]);
 
   useEffect(() => {
     const deviceId = viewModel.selectedResident?.deviceId ?? null;

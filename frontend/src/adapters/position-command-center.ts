@@ -1077,7 +1077,7 @@ function isLatestLocationResponse(data: unknown): data is MongoLatestValidLocati
   );
 }
 
-function latestLocationResponseToDoc(location: MongoLatestValidLocationResponse): MongoUpstreamLatest {
+export function latestLocationResponseToDoc(location: MongoLatestValidLocationResponse): MongoUpstreamLatest {
   return {
     _id: location._id,
     device_id: location.device_id,
@@ -1114,6 +1114,36 @@ function normalizeError(error: unknown): string {
 
 function cloneUpstreamDoc(doc: MongoUpstreamLatest): MongoUpstreamLatest {
   return JSON.parse(JSON.stringify(doc)) as MongoUpstreamLatest;
+}
+
+export function mergeLatestLocationResponseIntoPositionSnapshot(
+  snapshot: PositionCommandCenterSnapshot | null,
+  residentId: string | null,
+  location: MongoLatestValidLocationResponse
+): PositionCommandCenterSnapshot | null {
+  if (!snapshot || !residentId || !isLatestLocationResponse(location)) return snapshot;
+  const locationDoc = latestLocationResponseToDoc(location);
+  let changed = false;
+  const records = snapshot.records.map((record) => {
+    const sameResident = record.resident.residentId === residentId;
+    const sameDevice = record.resident.deviceId === location.device_id;
+    if (!sameResident && !sameDevice) return record;
+
+    const docs = record.latestStatus ? [record.latestStatus, locationDoc] : [locationDoc];
+    changed = true;
+    return {
+      ...record,
+      latestStatus: mergeUpstreamDocsForPosition(docs),
+      error: null
+    };
+  });
+
+  if (!changed) return snapshot;
+  return {
+    ...snapshot,
+    fetchedAt: new Date().toISOString(),
+    records
+  };
 }
 
 function shouldKeepExistingMetricSensor(key: string, existing: unknown, next: unknown): boolean {

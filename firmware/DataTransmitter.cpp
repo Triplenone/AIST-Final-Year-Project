@@ -201,7 +201,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     WiFiClient rawClient;
-    rawClient.setTimeout(15000);
+    rawClient.setTimeout(DATA_MQTT_CONNECT_TIMEOUT_MS);
     rawClient.setNoDelay(true);
 
     String rawClientId = deviceId + "_uplink_" + String((uint32_t)millis(), HEX);
@@ -212,8 +212,8 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     IPAddress brokerIp;
     bool brokerIsIp = brokerIp.fromString(broker);
     bool tcpConnected = brokerIsIp
-        ? rawClient.connect(brokerIp, port, 15000)
-        : rawClient.connect(broker.c_str(), port, 15000);
+        ? rawClient.connect(brokerIp, port, DATA_MQTT_CONNECT_TIMEOUT_MS)
+        : rawClient.connect(broker.c_str(), port, DATA_MQTT_CONNECT_TIMEOUT_MS);
     if (!tcpConnected) {
         Serial.printf("[MQTT_RAW] tcp connect failed broker=%s:%d connected=%d\n",
                       broker.c_str(),
@@ -254,7 +254,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     delay(300);
 
     uint8_t connack[4] = {0};
-    bool connackSeen = readMqttConnack(rawClient, 750, connack);
+    bool connackSeen = readMqttConnack(rawClient, 300, connack);
     if (connackSeen) {
         Serial.printf("[MQTT_RAW] CONNACK bytes=%02x %02x %02x %02x\n",
                       connack[0], connack[1], connack[2], connack[3]);
@@ -287,7 +287,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     rawClient.flush();
-    delay(800);
+    delay(150);
     const uint8_t disconnectPacket[] = {0xe0, 0x00};
     writeMqttBytes(rawClient, disconnectPacket, sizeof(disconnectPacket));
     rawClient.flush();
@@ -315,7 +315,9 @@ static void emitSerialUplink(const String& topic, const String& payload) {
     line += " ";
     line += payload;
     line += "\n";
+    Serial.flush();
     Serial.write(reinterpret_cast<const uint8_t*>(line.c_str()), line.length());
+    Serial.flush();
 
     if (locked) {
         xSemaphoreGive(serialUplinkMutex);
@@ -516,7 +518,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     last_mqtt_connect_attempt_ms = nowMs;
 
     closeMqttTransport(mqttClient, mqttWifiClient);
-    if (!waitForBLEIdle(3500)) return false;
+    if (!waitForBLEIdle(250)) return false;
 
     String brokerCandidates[6];
     int brokerCount = 0;
@@ -539,12 +541,12 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     Serial.printf("连接 MQTT 服务器 %s:%d...\n", mqttServer.c_str(), mqttPort);
     
     // ===== 关键：设置超大缓冲区（10KB）=====
-    mqttWifiClient.setTimeout(25000);
+    mqttWifiClient.setTimeout(DATA_MQTT_CONNECT_TIMEOUT_MS);
     mqttWifiClient.setNoDelay(true);
     mqttClient.setBufferSize(1024);
     
     mqttClient.setKeepAlive(30);       // 30秒保活
-    mqttClient.setSocketTimeout(25);
+    mqttClient.setSocketTimeout(max(1UL, DATA_MQTT_CONNECT_TIMEOUT_MS / 1000UL));
     
     bool connected = mqttUser.length() > 0
         ? mqttClient.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
@@ -602,8 +604,8 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
             closeMqttTransport(mqttClient, mqttWifiClient);
         }
         mqtt_connect_backoff_ms = mqtt_connect_backoff_ms == 0
-            ? 15000UL
-            : min(mqtt_connect_backoff_ms * 2UL, 15000UL);
+            ? DATA_MQTT_FAILURE_BACKOFF_MS
+            : min(mqtt_connect_backoff_ms * 2UL, DATA_MQTT_FAILURE_BACKOFF_MS);
         Serial.printf("[MQTT] next reconnect backoff=%lu ms\n", mqtt_connect_backoff_ms);
         Serial.printf("❌ MQTT 连接失败, 状态码: %d\n", mqttClient.state());
         noteMqttTransportFailure("connect");
@@ -667,6 +669,23 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         Serial.println("[SERIAL_UPLINK] location skipped; status carries location and direct MQTT publishes location");
     }
 
+    const bool directTelemetryTopic = directStatusTopic || directLocationTopic;
+    if (directTelemetryTopic && !mqttClient.connected()) {
+        return false;
+    }
+
+    if (directTelemetryTopic && !mqttClient.connected() &&
+        mqtt_consecutive_transport_failures >= 2 &&
+        last_mqtt_connect_attempt_ms > 0 &&
+        millis() - last_mqtt_connect_attempt_ms < DATA_MQTT_FAILURE_BACKOFF_MS) {
+        Serial.printf("[MQTT_PUB] direct skipped topic=%s failureBackoff=%lu/%lu failures=%u\n",
+                      topic.c_str(),
+                      millis() - last_mqtt_connect_attempt_ms,
+                      DATA_MQTT_FAILURE_BACKOFF_MS,
+                      mqtt_consecutive_transport_failures);
+        return false;
+    }
+
     bool locked = false;
     if (mqttMutex) {
         if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(8000)) != pdTRUE) {
@@ -678,7 +697,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
 
     bool rfLocked = false;
     if (rfMutex) {
-        if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) != pdTRUE) {
+        if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(250)) != pdTRUE) {
             Serial.printf("[MQTT_PUB] skipped topic=%s rf=busy\n", topic.c_str());
             if (locked) xSemaphoreGive(mqttMutex);
             return false;
@@ -1128,6 +1147,12 @@ void DataTransmitter::stabilizeReportPosition() {
         reported_x = current_x;
         reported_y = current_y;
         has_reported_position = true;
+        return;
+    }
+
+    if (location_quality == "high" || location_quality == "medium") {
+        reported_x = current_x;
+        reported_y = current_y;
         return;
     }
 
@@ -1590,6 +1615,9 @@ void DataTransmitter::update() {
     static unsigned long lastMqttReconnect = 0;
     static unsigned long lastStatusUpload = 0;
     static unsigned long lastLocationUpload = 0;
+    static bool hasPublishedLocation = false;
+    static float lastPublishedLocationX = 0.0f;
+    static float lastPublishedLocationY = 0.0f;
     
     // MQTT 循环
     mqttLoop();
@@ -1604,11 +1632,11 @@ void DataTransmitter::update() {
     
     // 自动重连 MQTT
     if (network && network->isConnected() && !mqttClient.connected()) {
-        if (current_time - lastMqttReconnect > 15000) {
+        if (current_time - lastMqttReconnect > DATA_MQTT_FAILURE_BACKOFF_MS) {
             lastMqttReconnect = current_time;
             Serial.println("尝试重连MQTT...");
             bool reconnectRfLocked = false;
-            if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) == pdTRUE) {
+            if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(250)) == pdTRUE) {
                 reconnectRfLocked = true;
                 ble_scanning_active = false;
                 ble_scan_started_at_ms = 0;
@@ -1626,15 +1654,22 @@ void DataTransmitter::update() {
 
     // 改为每2秒上传一次（而不是每秒）
     if (network && network->isConnected()) {
-        if (current_time - lastStatusUpload >= 10000) {  // Keep MQTT reconnect windows clear on router Wi-Fi.
+        if (current_time - lastStatusUpload >= DATA_STATUS_UPLOAD_INTERVAL_MS) {
             transmitStatusSummary();
             
             // 非阻塞发送
             lastStatusUpload = current_time;
         }
-        if (current_time - lastLocationUpload >= 12000) {
+        float locationDx = current_x - lastPublishedLocationX;
+        float locationDy = current_y - lastPublishedLocationY;
+        bool locationMoved = !hasPublishedLocation ||
+            sqrt(locationDx * locationDx + locationDy * locationDy) >= DATA_LOCATION_MOVED_THRESHOLD_METERS;
+        if (current_time - lastLocationUpload >= DATA_LOCATION_UPLOAD_INTERVAL_MS || locationMoved) {
             transmitLocation();
             lastLocationUpload = current_time;
+            lastPublishedLocationX = current_x;
+            lastPublishedLocationY = current_y;
+            hasPublishedLocation = true;
         }
     }
     

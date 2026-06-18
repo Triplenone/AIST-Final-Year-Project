@@ -288,7 +288,7 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
     String navKey = SmartNavigationPlanner::normalizeKey(current_flight.boarding_gate);
     bool hasManualNavigation = display && display->hasManualNavigationDestination();
 
-    if (hasGateCoordinates && display && !hasManualNavigation) {
+    if (hasGateCoordinates && display) {
 #if ENABLE_FLIGHT_ROUTE_NAVIGATION
         display->setSmartNavigationDestination(navKey, true);
 #else
@@ -304,7 +304,7 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
                       current_flight.boarding_gate.c_str(), gateX, gateY);
 #endif
     }
-    if (hasGateCoordinates && data_transmitter && !hasManualNavigation) {
+    if (hasGateCoordinates && data_transmitter) {
         data_transmitter->setTargetPosition(gateX, gateY, formatFlightGateLabel(current_flight.boarding_gate));
 #if ENABLE_FLIGHT_ROUTE_NAVIGATION
         data_transmitter->setNavigationActive(true);
@@ -313,8 +313,6 @@ bool FlightInfoManager::parseFlightInfo(const String& json) {
 #endif
         Serial.printf("[Flight] telemetry target synced: %s @ (%.1f, %.1f)\n",
                       formatFlightGateLabel(current_flight.boarding_gate).c_str(), gateX, gateY);
-    } else if (hasGateCoordinates && hasManualNavigation) {
-        Serial.println("[Flight] gate target sync skipped: manual navigation is active");
     }
     
     // 更新到显示器
@@ -473,12 +471,9 @@ void FlightInfoManager::notifyGateChange() {
     }
     
     // 语音播报
-    Serial.println("[Flight] gate change audio skipped for display stability");
+    Serial.println("[Flight] gate change cue handled by display popup");
     
     // 振动
-    if (display) {
-        display->vibrateShort();
-    }
 }
 
 void FlightInfoManager::notifyDelay() {
@@ -500,12 +495,9 @@ void FlightInfoManager::notifyDelay() {
     }
     
     // 语音播报
-    Serial.println("[Flight] delay audio skipped for display stability");
+    Serial.println("[Flight] delay cue handled by display popup");
     
     // 振动
-    if (display) {
-        display->vibrateShort();
-    }
 }
 
 void FlightInfoManager::notifyBoarding() {
@@ -524,12 +516,9 @@ void FlightInfoManager::notifyBoarding() {
     }
     
     // 语音播报
-    Serial.println("[Flight] boarding audio skipped for display stability");
+    Serial.println("[Flight] boarding cue handled by display popup");
     
     // 振动提醒
-    if (display) {
-        display->vibrateShort();
-    }
 }
 
 void FlightInfoManager::notifyFinalCall() {
@@ -545,14 +534,9 @@ void FlightInfoManager::notifyFinalCall() {
     }
     
     // 语音播报（更紧急的语气）
-    Serial.println("[Flight] final call audio skipped for display stability");
+    Serial.println("[Flight] final call cue handled by display popup");
     
     // 长振动提醒
-    if (display) {
-        display->vibrateShort();
-        delay(200);
-        display->vibrateShort();
-    }
 }
 
 void FlightInfoManager::notifyCancelled() {
@@ -576,15 +560,9 @@ void FlightInfoManager::notifyCancelled() {
     }
     
     // 语音播报
-    Serial.println("[Flight] cancelled audio skipped for display stability");
+    Serial.println("[Flight] cancelled cue handled by display popup");
     
     // 振动提醒（三次短振）
-    if (display) {
-        for (int i = 0; i < 3; i++) {
-            display->vibrateShort();
-            delay(150);
-        }
-    }
 }
 
 void FlightInfoManager::notifyOnTime() {
@@ -603,12 +581,9 @@ void FlightInfoManager::notifyOnTime() {
     }
     
     // 语音播报
-    Serial.println("[Flight] on-time audio skipped for display stability");
+    Serial.println("[Flight] on-time cue handled by display popup");
     
     // 短振动
-    if (display) {
-        display->vibrateShort();
-    }
 }
 
 void FlightInfoManager::playAlertSound(const char* filename) {
@@ -685,23 +660,19 @@ void FlightInfoManager::checkForAlerts(const String& json) {
             if (type == "gate_change" && display) {
                 String compactMessage = formatGateChangeDestination(message);
                 display->showPopup(SimpleDisplayManager::POPUP_GATE_CHANGE, "Gate Change", compactMessage);
-                display->vibrateShort();
-                Serial.println("[Flight] alert audio skipped for display stability");
+                Serial.println("[Flight] alert cue handled by display popup");
             } 
             else if (type == "delay" && display) {
                 display->showPopup(SimpleDisplayManager::POPUP_FLIGHT_DELAY, "Delay", message);
-                display->vibrateShort();
-                Serial.println("[Flight] alert audio skipped for display stability");
+                Serial.println("[Flight] alert cue handled by display popup");
             }
             else if (type == "boarding" && display) {
                 display->showPopup(SimpleDisplayManager::POPUP_BOARDING, "Boarding", message);
-                display->vibrateShort();
-                Serial.println("[Flight] alert audio skipped for display stability");
+                Serial.println("[Flight] alert cue handled by display popup");
             }
             else if (type == "cancelled" && display) {
                 display->showPopup(SimpleDisplayManager::POPUP_FLIGHT_CANCELLED, "Cancelled", message);
-                display->vibrateShort();
-                Serial.println("[Flight] alert audio skipped for display stability");
+                Serial.println("[Flight] alert cue handled by display popup");
             }
         }
     }
