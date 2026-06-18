@@ -27,6 +27,19 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 02:22-02:39 FlyCare direct MQTT retest + Check-in/Security corridor guard
+
+- V.direct_mqtt.pre=pass with COM5 bridge stopped: `logs/direct-mqtt-retest-20260619-022208.log` captured 18 broker-side `smartwatch/ESP32_48CA43A42298` payloads over `192.168.1.232:1883`, including `/status` and `/location`; this was direct Wi-Fi MQTT, not serial fallback.
+- B.positioning.corridor=the latest location stream showed weak/sparse beacon fixes can still publish a single displayed point, and the previous Customer Services guard only blocked Customer Services when both Check-in and Security were visible at the same time. In the Check-in/Security corridor, a missed scan could therefore still let a weak single Customer Services beacon move the marker.
+- I.positioning.corridor=updated `firmware/BLELocation.cpp` and `firmware/Config.h` so weak single Customer Services fixes are ignored/held, recent Check-in/Security corridor evidence blocks Customer Services unless it is very strong or clearly leads, clear strongest snaps use shorter smoothing history, and high-confidence snaps can move faster toward the beacon center.
+- V.compile_upload=pass ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN MAC `48:ca:43:a4:22:98`; compiled sketch used `1537307/3145728` bytes and upload wrote `1537456` bytes.
+- V.direct_mqtt.post=pass after upload with COM5 bridge stopped: `logs/direct-mqtt-after-corridor-fix-20260619-023656.log` captured status=10 and location=15 broker-side payloads from `ESP32_48CA43A42298`; Mongo latest location refreshed to `_id=6a343b2e2655085a8bacd27f`, `x=1.69`, `y=2.38`.
+- B.positioning.scan_result=serial diagnostic `logs/serial-ble-diagnostic-corridor-20260619-024020.log` showed repeated `current=1 usable_recent=0`, proving fresh BLE scan results were not reaching the location calculation and the watch could continue publishing stale coordinates.
+- I.positioning.scan_result=updated `BLELocation::startScan()` to process the `pBLEScan->start()` returned results immediately before `getLocation()` runs, so marker/MQTT location uses fresh scan matches instead of stale `scanned_beacons`.
+- V.direct_mqtt.scan_result=pass after the scan-result fix and COM5 upload: `logs/direct-mqtt-after-scanresult-fix-20260619-024552.log` captured status=10 and location=15 direct broker-side payloads, now with `quality=high` and `beacon_count=5`; Mongo latest refreshed to `_id=6a343d292655085a8bacd345`, `x=7.97`, `y=2.10`.
+- V.audit.scan_result=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` wrote `logs/audit-after-scanresult-fix-20260619-024552.txt` with `overallStatus=pass`.
+- R.remaining=physical walking still needs visual confirmation at the actual Check-in/Security corridor and Gate 10/Gate 11 positions. Audio remains intentionally disabled because the ES8311/I2S tone path previously broke direct MQTT.
+
 ### 2026-06-19 00:58-02:14 FlyCare direct MQTT recovery + strongest snap target fix
 
 - V.git.pre=ok branch `Flycare`, HEAD `c185de99`, branch ahead of `origin/Flycare` by 5 commits before this working-tree fix; no backend API route/schema, database schema, MQTT topic, or raw DB cleanup was changed.

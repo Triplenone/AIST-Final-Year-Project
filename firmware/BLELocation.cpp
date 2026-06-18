@@ -5,6 +5,18 @@
 static int debug_scan_count = 0;
 static int debug_beacon_match_count = 0;
 
+static bool isCheckinBeaconMac(const String& mac) {
+    return mac == "20:a7:16:60:f7:c4" || mac == "20:a7:16:60:eb:73";
+}
+
+static bool isSecurityBeaconMac(const String& mac) {
+    return mac == "20:a7:16:5e:ef:24" || mac == "20:a7:16:61:02:03";
+}
+
+static bool isCustomerServicesBeaconMac(const String& mac) {
+    return mac == "20:a7:16:60:f7:ca" || mac == "20:a7:16:61:02:42";
+}
+
 // ================ 调试回调函数实现 ================
 void DebugScanCallback::onResult(BLEAdvertisedDevice advertisedDevice) {
     String address = advertisedDevice.getAddress().toString().c_str();
@@ -166,7 +178,10 @@ Location BLELocation::stabilizeLocation(Location loc) {
         : 1.0f;
     elapsedSec = max(elapsedSec, 1.0f);
 
-    const float maxStep = constrain(0.8f + elapsedSec * 0.15f, 1.2f, 1.8f);
+    const bool highConfidenceSnap = loc.quality == "high" && loc.accuracy <= 1.5f;
+    const float maxStep = highConfidenceSnap
+        ? constrain(2.6f + elapsedSec * 0.35f, 3.0f, 4.5f)
+        : constrain(0.8f + elapsedSec * 0.15f, 1.2f, 1.8f);
     if (distance > maxStep && distance > 0.01f) {
         float ratio = maxStep / distance;
         loc.x = last_location.x + dx * ratio;
@@ -200,7 +215,7 @@ Location BLELocation::stabilizeLocation(Location loc) {
     return loc;
 }
 
-BLELocation::BLELocation() : beacon_count(0), last_scan_time(0), smoother(8) {
+BLELocation::BLELocation() : beacon_count(0), last_scan_time(0), smoother(3) {
     // 不再在这里初始化 pBLEScan，因为已经在 initBLE() 中初始化了
     // pBLEScan 使用全局变量
 
@@ -297,8 +312,15 @@ void BLELocation::startScan() {
         return;
     }
     Serial.println("[BLE] scan start: duration=2s");
-    pBLEScan->start(2, false);
+    BLEScanResults* results = pBLEScan->start(2, false);
     last_scan_time = millis();
+    if (results) {
+        processScanResults(results);
+        Serial.printf("[BLE] scan complete: matched=%d\n", scanned_beacons.size());
+        pBLEScan->clearResults();
+    } else {
+        Serial.println("[BLE] scan complete: null results");
+    }
     BLE_DEBUG_PRINT("扫描已启动 (非阻塞模式)\n");
 }
 
@@ -504,13 +526,16 @@ Location BLELocation::trilateration() {
     bool securityVisible = false;
     int corridorBestIndex = -1;
     int corridorBestRssi = -120;
+    unsigned long corridorBestAgeMs = recentWindowMs + 1;
     int customerBestRssi = -120;
+    int customerVisibleCount = 0;
 
     for (int i = 0; i < (int)usable_beacons.size(); i++) {
         const String& mac = usable_beacons[i].uuid;
-        const bool isCheckin = mac == "20:a7:16:60:f7:c4" || mac == "20:a7:16:60:eb:73";
-        const bool isSecurity = mac == "20:a7:16:5e:ef:24" || mac == "20:a7:16:61:02:03";
-        const bool isCustomer = mac == "20:a7:16:60:f7:ca" || mac == "20:a7:16:61:02:42";
+        const bool isCheckin = isCheckinBeaconMac(mac);
+        const bool isSecurity = isSecurityBeaconMac(mac);
+        const bool isCustomer = isCustomerServicesBeaconMac(mac);
+        unsigned long age = (now > usable_beacons[i].last_seen) ? (now - usable_beacons[i].last_seen) : 0;
 
         if (isCheckin) checkinVisible = true;
         if (isSecurity) securityVisible = true;
@@ -518,36 +543,66 @@ Location BLELocation::trilateration() {
             if (usable_beacons[i].last_rssi > corridorBestRssi) {
                 corridorBestRssi = usable_beacons[i].last_rssi;
                 corridorBestIndex = i;
+                corridorBestAgeMs = age;
             }
         }
         if (isCustomer && usable_beacons[i].last_rssi > customerBestRssi) {
             customerBestRssi = usable_beacons[i].last_rssi;
         }
+        if (isCustomer) {
+            customerVisibleCount++;
+        }
     }
 
     const String& initialStrongestMac = usable_beacons[strongestIndex].uuid;
-    const bool strongestIsCustomer =
-        initialStrongestMac == "20:a7:16:60:f7:ca" ||
-        initialStrongestMac == "20:a7:16:61:02:42";
+    const bool strongestIsCustomer = isCustomerServicesBeaconMac(initialStrongestMac);
     const bool customerDominatesCorridor =
         customerBestRssi >= BLE_CORRIDOR_CUSTOMER_OVERRIDE_RSSI ||
-        (customerBestRssi - corridorBestRssi) >= BLE_CORRIDOR_CUSTOMER_OVERRIDE_LEAD_DB;
+        (corridorBestIndex >= 0 &&
+         (customerBestRssi - corridorBestRssi) >= BLE_CORRIDOR_CUSTOMER_OVERRIDE_LEAD_DB);
+    const bool corridorRecent =
+        corridorBestIndex >= 0 && corridorBestAgeMs <= BLE_CORRIDOR_MEMORY_MS;
+    const bool lastWasCorridor =
+        last_location.beacon_count > 0 && last_location.y >= BLE_CORRIDOR_MIN_Y;
+    const bool corridorContext = corridorRecent || lastWasCorridor || checkinVisible || securityVisible;
+    const bool customerOnlyWeak =
+        strongestIsCustomer &&
+        customerVisibleCount == (int)usable_beacons.size() &&
+        customerBestRssi < BLE_CUSTOMER_SINGLE_SNAP_RSSI;
 
-    if (strongestIsCustomer && checkinVisible && securityVisible &&
-        corridorBestIndex >= 0 && !customerDominatesCorridor) {
+    if (strongestIsCustomer && corridorContext && corridorBestIndex >= 0 && !customerDominatesCorridor) {
         secondStrongestRssi = max(secondStrongestRssi, customerBestRssi);
         strongestIndex = corridorBestIndex;
-        Serial.printf("[BLE] corridor guard: customer blocked rssi=%d corridor=%d\n",
-                      customerBestRssi, corridorBestRssi);
+        Serial.printf("[BLE] corridor guard: customer blocked rssi=%d corridor=%d age=%lu\n",
+                      customerBestRssi, corridorBestRssi, corridorBestAgeMs);
+    } else if (strongestIsCustomer &&
+               (customerOnlyWeak || (corridorContext && !customerDominatesCorridor))) {
+        if (last_location.beacon_count > 0) {
+            loc.x = last_location.x;
+            loc.y = last_location.y;
+            loc.accuracy = max(5.0f, last_location.accuracy);
+            loc.quality = "medium";
+            loc.beacon_count = usable_beacons.size();
+            Serial.printf("[BLE] customer weak/ambiguous held: customer=%d corridor=%d last=(%.2f,%.2f)\n",
+                          customerBestRssi, corridorBestRssi, last_location.x, last_location.y);
+            return loc;
+        }
+        Serial.printf("[BLE] customer weak ignored: rssi=%d no previous corridor fix\n",
+                      customerBestRssi);
+        return loc;
     }
 
     const Beacon& strongest = usable_beacons[strongestIndex];
     int rssiLead = strongest.last_rssi - secondStrongestRssi;
     float snapRatio = 0.0f;
     const bool strongestImmediate = strongest.last_rssi >= BLE_STRONGEST_SNAP_IMMEDIATE_RSSI;
+    const bool singleBeaconClear =
+        usable_beacons.size() == 1 &&
+        (!isCustomerServicesBeaconMac(strongest.uuid) ||
+         strongest.last_rssi >= BLE_CUSTOMER_SINGLE_SNAP_RSSI);
     const bool strongestClear =
         strongest.last_rssi >= BLE_STRONGEST_SNAP_MIN_RSSI &&
-        (strongestImmediate || rssiLead >= BLE_STRONGEST_SNAP_LEAD_DB || usable_beacons.size() == 1);
+        (strongestImmediate || rssiLead >= BLE_STRONGEST_SNAP_LEAD_DB || singleBeaconClear);
     if (strongestClear) {
         snapRatio = BLE_STRONGEST_SNAP_BLEND;
     } else if (last_location.beacon_count > 0 && usable_beacons.size() > 1) {
@@ -566,7 +621,12 @@ Location BLELocation::trilateration() {
     loc.y = constrain(loc.y, 0, MAP_REAL_HEIGHT);
     loc.beacon_count = usable_beacons.size();
 
-    if (strongest.last_rssi >= -65 && loc.beacon_count >= 3) {
+    const bool clearSnapHigh =
+        snapRatio > 0.0f &&
+        strongest.last_rssi >= BLE_STRONGEST_SNAP_HIGH_RSSI &&
+        (strongestImmediate || rssiLead >= BLE_STRONGEST_SNAP_LEAD_DB);
+
+    if (clearSnapHigh || (strongest.last_rssi >= -65 && loc.beacon_count >= 3)) {
         loc.accuracy = 1.5f;
         loc.quality = "high";
     } else if (loc.beacon_count >= 4) {
