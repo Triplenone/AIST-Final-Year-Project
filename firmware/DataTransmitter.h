@@ -155,7 +155,11 @@ private:
     // 存储最近的信标信息
     BeaconInfo last_beacons[MAX_BEACON_STORE];
     int last_beacon_count;
+    unsigned long last_multi_beacon_fix_ms;
     SemaphoreHandle_t mqttMutex;
+    bool mqttDownlinksSubscribed;
+    unsigned int mqtt_consecutive_transport_failures;
+    unsigned long last_mqtt_wifi_recovery_ms;
     unsigned long last_mqtt_connect_attempt_ms;
     unsigned long mqtt_connect_backoff_ms;
     unsigned long ble_scan_started_at_ms;
@@ -167,6 +171,10 @@ private:
     unsigned long syncTimeMillis;   // 同步时的 millis() 值
     
     bool ensureMQTTConnectedUnlocked();
+    void subscribeMqttDownlinksUnlocked();
+    void noteMqttTransportSuccess();
+    void noteMqttTransportFailure(const char* reason);
+    bool recoverWiFiAfterMqttFailuresUnlocked(const char* reason);
     bool waitForBLEIdle(unsigned long maxWaitMs);
     void stabilizeReportPosition();
 
@@ -203,6 +211,19 @@ public:
     // 更新当前位置（带信标信息）
     void setCurrentPosition(float x, float y, float acc, int beacons, const String& quality, 
                            const std::vector<Beacon>& beacon_list) {
+        unsigned long nowMs = millis();
+        if (beacons >= 3) {
+            last_multi_beacon_fix_ms = nowMs;
+        } else if (beacon_count >= 3 &&
+                   last_multi_beacon_fix_ms > 0 &&
+                   nowMs - last_multi_beacon_fix_ms <= 30000UL) {
+            Serial.printf("[BLE] sparse fix held: new_beacons=%d previous_beacons=%d age=%lu ms\n",
+                          beacons,
+                          beacon_count,
+                          nowMs - last_multi_beacon_fix_ms);
+            return;
+        }
+
         float next_x = x;
         float next_y = y;
         if (beacon_count > 0) {
@@ -285,6 +306,8 @@ public:
     String getAllDataJSON();
     String getStatusSummaryJSON();
     String getSerialStatusSummaryJSON();
+    String getDirectStatusJSON();
+    String getDirectLocationJSON();
     String getFallJSON(const FallEvent& fall_event);
     String getSOSJSON();
     String getLocationJSON();

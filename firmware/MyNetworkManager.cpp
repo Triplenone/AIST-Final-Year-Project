@@ -241,7 +241,8 @@ static bool connectCandidate(const WiFiCandidate& candidate, int maxAttempts) {
             Serial.printf("[WiFi] esp_wifi_set_config failed: 0x%x\n", cfgErr);
         }
     } else {
-        Serial.printf("[WiFi] Locking to BSSID %s on channel %d\n", ap.bssidStr.c_str(), ap.channel);
+        Serial.printf("[WiFi] Locking to BSSID %s on channel %d\n",
+                      ap.bssidStr.c_str(), ap.channel);
         WiFi.begin(candidate.ssid, candidate.password, ap.channel, ap.bssid);
     }
 
@@ -260,6 +261,34 @@ static bool connectCandidate(const WiFiCandidate& candidate, int maxAttempts) {
 
     if (WiFi.status() == WL_CONNECTED) {
         Serial.printf("\n[WiFi] Connected using SSID: %s\n", WiFi.SSID().c_str());
+        Serial.printf("[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
+        return true;
+    }
+
+    Serial.printf("\n[WiFi] locked connect failed; retrying SSID without BSSID lock: %s\n",
+                  candidate.ssid);
+    WiFi.disconnect(false, false);
+    delay(500);
+    WiFi.begin(candidate.ssid, candidate.password);
+    attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+        if (attempts % 10 == 0) {
+            wl_status_t retryStatus = WiFi.status();
+            Serial.printf("\n[WiFi] unlocked %s status=%d (%s), attempts=%d/%d\n",
+                          candidate.ssid,
+                          retryStatus,
+                          wifiStatusName(retryStatus),
+                          attempts,
+                          maxAttempts);
+        }
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("\n[WiFi] Connected without BSSID lock using SSID: %s\n", WiFi.SSID().c_str());
         Serial.printf("[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
         Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
         return true;

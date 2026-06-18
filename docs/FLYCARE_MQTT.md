@@ -122,6 +122,8 @@ For the router-based local demo, use one local network at a time:
 5. Subscribe on the PC with `mosquitto_sub -h 192.168.1.232 -p 1883 -t "#" -v`; direct Wi-Fi proof requires fresh `smartwatch/<device_id>/status` and `smartwatch/<device_id>/location` payloads plus refreshed Mongo latest status/location.
 6. If the watch Serial log shows the router SSID and a `192.168.1.x` address but the PC shows `Get-NetNeighbor -IPAddress <watch-ip>` as `Incomplete`, treat it as a router/AP client-isolation or Wi-Fi link blocker. Fix the router/AP path before debugging backend, frontend, or database code.
 
+Latest NG WAI LUN phase-1 proof uses `192.168.1.232:1883` with COM5 bridge stopped: `logs/flycare-direct-mqtt-after-final-upload-20260618-151111.log` captured direct broker-side `/status` and `/location` payloads for `ESP32_48CA43A42298` after the final COM5 upload. Gate 11 direct smoke used `-DisableDownlink` and `logs/flycare-gate11-direct-final-20260618-145844.log`, so the watch popup evidence came from the direct MQTT flight subscription, not USB downlink. Retained alert cleanup proof is `logs/flycare-retained-alert-clear-check-20260618-151337.log`, which showed no retained `fall` or `sos` payload for the alias topic.
+
 Firmware now keeps SSID-specific broker candidates. The NG WAI LUN router build tries `flycare` first, then keeps `MILLION`, `MILLION1`, and `Triple-None` as fallback SSIDs. When connected to `MILLION` or `MILLION1`, it tries `MQTT_BROKER_MILLION1` first. When connected to `Triple-None`, it tries `MQTT_BROKER_TRIPLE_NONE` first. It then falls back to `MQTT_BROKER`, `MQTT_BROKER_FALLBACK_1`, and `MQTT_BROKER_FALLBACK_2`.
 
 For NG WAI LUN / device 8, firmware publishes compact status and location uplinks on:
@@ -132,6 +134,8 @@ smartwatch/ESP32_48CA43A42298/location
 ```
 
 `DataTransmitter` first uses the persistent `PubSubClient` session for normal downlinks and uplinks. If that session cannot connect during a router migration test, it attempts a one-shot MQTT 3.1.1 QoS 0 uplink over a separate `WiFiClient` and then keeps the existing COM5 `FLYCARE_UPLINK` serial fallback. A one-shot `[MQTT_RAW] publish ok` Serial line is diagnostic only; final direct proof is still the broker/Mongo evidence above.
+
+For stability, firmware builds periodic serial fallback from a compact status payload and embeds current location inside that status payload. Direct Wi-Fi MQTT still emits both `/status` and `/location`; the standalone serial `/location` line is intentionally suppressed to avoid UART JSON interleaving with watch logs. The bridge writes MQTT payloads through a temporary UTF-8 no-BOM file and `mosquitto_pub -f` so PowerShell does not add a BOM or strip JSON quotes.
 
 If both demo SSIDs must work from one firmware build, collect the PC broker IP for each SSID and write both values before upload:
 
@@ -232,7 +236,7 @@ VITE_BACKEND_BASE_URL=http://192.168.1.232:8001
 
 The frontend still defaults to the same host on `:8000` when this override is absent.
 
-If the watch is connected over USB but the current Wi-Fi/hotspot blocks watch-to-PC traffic, use the serial fallback bridge for local demo validation. Firmware emits every upstream payload as `FLYCARE_UPLINK <topic> <json>` on Serial before attempting MQTT; the bridge reads those lines from COM5 and republishes them into the local Mosquitto broker so the existing backend MQTT subscriber writes Mongo and EventLog exactly as if the watch had reached MQTT itself. The bridge is bidirectional for flight updates: it also polls retained `smartwatch/+/flight` MQTT downlinks, de-duplicates each topic and identical alias payload, and writes `FLYCARE_DOWNLINK <topic> <json>` back to the watch over USB. Firmware handles that serial downlink through `FlightInfoManager`, which also ignores identical retained flight payloads, so Gate Change popups still work when hotspot isolation blocks direct watch MQTT without flickering from repeat messages.
+If the watch is connected over USB but the current Wi-Fi/hotspot blocks watch-to-PC traffic, use the serial fallback bridge for local demo validation. Firmware emits compact `FLYCARE_UPLINK <topic> <json>` status/SOS/fall payloads on Serial before attempting MQTT; the bridge reads those lines from COM5 and republishes them into the local Mosquitto broker so the existing backend MQTT subscriber writes Mongo and EventLog exactly as if the watch had reached MQTT itself. The bridge is bidirectional for flight updates: it also polls retained `smartwatch/+/flight` MQTT downlinks, de-duplicates each topic and identical alias payload, and writes `FLYCARE_DOWNLINK <topic> <json>` back to the watch over USB. Firmware handles that serial downlink through `FlightInfoManager`, which also ignores identical retained flight payloads, so Gate Change popups still work when hotspot isolation blocks direct watch MQTT without flickering from repeat messages.
 
 ```powershell
 cd E:\flycare
@@ -325,7 +329,7 @@ Backend API:     http://127.0.0.1:8001 / http://192.168.1.232:8001 (active hardw
 Frontend Vite:   http://127.0.0.1:5173 / http://192.168.1.232:5173/flycare
 MQTT broker:     192.168.1.232:1883 for the router demo; see `backend/backend/.env`, `firmware/Config.h`, and `logs/flycare-mqtt-endpoint.json`
 Watch serial:    COM5, ESP32_48CA43A42298, MySQL device 8, NG WAI LUN
-Fall detection:  enabled with ENABLE_FALL_DETECTION 1; `SIMFALL` uploads a fall payload for software-path smoke testing; status telemetry normalizes non-confirmed transient fall states to normal and confirmed falls still use the fall topic/event path
+Fall detection:  source path enabled with ENABLE_FALL_DETECTION 1; automatic runtime detector disabled with ENABLE_AUTO_FALL_DETECTION 0 for final demo scope; `SIMFALL` still uploads a fall payload for software-path smoke testing
 ```
 
 Verified in the latest COM5 run and current firmware source:

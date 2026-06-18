@@ -4,6 +4,7 @@
 #include "VoiceMessageManager.h"
 #include <time.h>
 #include <esp_system.h>
+#include <esp_wifi.h>
 #include <ArduinoJson.h>
 
 static void addBrokerCandidate(String brokers[], int& count, int maxCount, const String& host) {
@@ -131,6 +132,15 @@ static void closeMqttTransport(PubSubClient& client, WiFiClient& transport) {
     delay(250);
 }
 
+static void setMqttServerTarget(PubSubClient& client, const String& host, int port) {
+    IPAddress ip;
+    if (ip.fromString(host)) {
+        client.setServer(ip, port);
+    } else {
+        client.setServer(host.c_str(), port);
+    }
+}
+
 static size_t encodeMqttRemainingLength(size_t value, uint8_t* out, size_t outSize) {
     size_t written = 0;
     do {
@@ -191,7 +201,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     WiFiClient rawClient;
-    rawClient.setTimeout(7000);
+    rawClient.setTimeout(15000);
     rawClient.setNoDelay(true);
 
     String rawClientId = deviceId + "_uplink_" + String((uint32_t)millis(), HEX);
@@ -199,8 +209,16 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
                   broker.c_str(), port, rawClientId.c_str(), topic.c_str(),
                   (unsigned)payload.length());
 
-    if (!rawClient.connect(broker.c_str(), port, 7000)) {
-        Serial.printf("[MQTT_RAW] tcp connect failed broker=%s:%d\n", broker.c_str(), port);
+    IPAddress brokerIp;
+    bool brokerIsIp = brokerIp.fromString(broker);
+    bool tcpConnected = brokerIsIp
+        ? rawClient.connect(brokerIp, port, 15000)
+        : rawClient.connect(broker.c_str(), port, 15000);
+    if (!tcpConnected) {
+        Serial.printf("[MQTT_RAW] tcp connect failed broker=%s:%d connected=%d\n",
+                      broker.c_str(),
+                      port,
+                      rawClient.connected() ? 1 : 0);
         rawClient.stop();
         return false;
     }
@@ -232,17 +250,22 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
         return false;
     }
 
+    rawClient.flush();
+    delay(300);
+
     uint8_t connack[4] = {0};
-    if (!readMqttConnack(rawClient, 7000, connack)) {
-        Serial.println("[MQTT_RAW] CONNACK timeout");
-        rawClient.stop();
-        return false;
-    }
-    if (connack[0] != 0x20 || connack[1] != 0x02 || connack[3] != 0x00) {
-        Serial.printf("[MQTT_RAW] CONNACK rejected bytes=%02x %02x %02x %02x\n",
+    bool connackSeen = readMqttConnack(rawClient, 750, connack);
+    if (connackSeen) {
+        Serial.printf("[MQTT_RAW] CONNACK bytes=%02x %02x %02x %02x\n",
                       connack[0], connack[1], connack[2], connack[3]);
-        rawClient.stop();
-        return false;
+        if (connack[0] != 0x20 || connack[1] != 0x02 || connack[3] != 0x00) {
+            Serial.println("[MQTT_RAW] CONNACK rejected");
+            rawClient.stop();
+            return false;
+        }
+    } else {
+        Serial.printf("[MQTT_RAW] CONNACK not read; sending QoS0 publish while tcpConnected=%d\n",
+                      rawClient.connected() ? 1 : 0);
     }
 
     const size_t publishRemaining = 2 + topic.length() + payload.length();
@@ -307,13 +330,15 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
       nav_manager(nullptr), flight_manager(nullptr), voice_manager(nullptr),
       relative_time(0), last_transmit(0), transmit_interval(5000),
       mqttClient(mqttWifiClient), mqttEnabled(false), mqttMutex(nullptr),
+      mqttDownlinksSubscribed(false), mqtt_consecutive_transport_failures(0),
+      last_mqtt_wifi_recovery_ms(0),
       target_x(4.4), target_y(1.8), target_name("Gate11"), navigation_active(false),
       sos_active(false), sos_trigger_time(0), sos_trigger_count(0), sos_trigger_method("none"),
       door_count(0), night_mode_active(false), light_triggered_tonight(false),
       movement_threshold(2.0), heartbeat_detected(false), heartbeat_interval(30000),
       current_x(0), current_y(0), reported_x(0), reported_y(0),
       has_reported_position(false), accuracy(0), beacon_count(0), location_quality("unknown"),
-      last_beacon_count(0), log_index(0), log_count(0),
+      last_beacon_count(0), last_multi_beacon_fix_ms(0), log_index(0), log_count(0),
       last_mqtt_connect_attempt_ms(0), mqtt_connect_backoff_ms(0),
       ble_scan_started_at_ms(0), ble_scanning_active(false) {
     
@@ -365,8 +390,10 @@ void DataTransmitter::setMQTTConfig(const String& server, int port,
     mqttPort = port;
     mqttUser = user;
     mqttPassword = password;
+    mqttDownlinksSubscribed = false;
     
-    mqttClient.setServer(mqttServer.c_str(), mqttPort);
+    setMqttServerTarget(mqttClient, mqttServer, mqttPort);
+    mqttClient.setBufferSize(1024);
     mqttClient.setCallback([this](char* topic, byte* payload, unsigned int length) {
         // 将 payload 转换为字符串
         char message[length + 1];
@@ -422,6 +449,55 @@ bool DataTransmitter::ensureMQTTConnected() {
     return connected;
 }
 
+void DataTransmitter::noteMqttTransportSuccess() {
+    mqtt_consecutive_transport_failures = 0;
+}
+
+void DataTransmitter::noteMqttTransportFailure(const char* reason) {
+    mqtt_consecutive_transport_failures++;
+    Serial.printf("[MQTT_DIAG] transport failure reason=%s count=%u ssid=%s ip=%s rssi=%d state=%d\n",
+                  reason ? reason : "unknown",
+                  mqtt_consecutive_transport_failures,
+                  WiFi.SSID().c_str(),
+                  WiFi.localIP().toString().c_str(),
+                  WiFi.RSSI(),
+                  mqttClient.state());
+}
+
+bool DataTransmitter::recoverWiFiAfterMqttFailuresUnlocked(const char* reason) {
+    if (mqtt_consecutive_transport_failures < 3) return false;
+
+    unsigned long nowMs = millis();
+    if (last_mqtt_wifi_recovery_ms > 0 && nowMs - last_mqtt_wifi_recovery_ms < 60000UL) {
+        Serial.printf("[MQTT_DIAG] wifi recovery throttled age=%lu failures=%u\n",
+                      nowMs - last_mqtt_wifi_recovery_ms,
+                      mqtt_consecutive_transport_failures);
+        return false;
+    }
+
+    last_mqtt_wifi_recovery_ms = nowMs;
+    Serial.printf("[MQTT_DIAG] wifi recovery begin reason=%s failures=%u ssid=%s ip=%s rssi=%d mqttState=%d\n",
+                  reason ? reason : "unknown",
+                  mqtt_consecutive_transport_failures,
+                  WiFi.SSID().c_str(),
+                  WiFi.localIP().toString().c_str(),
+                  WiFi.RSSI(),
+                  mqttClient.state());
+
+    closeMqttTransport(mqttClient, mqttWifiClient);
+    mqttDownlinksSubscribed = false;
+    mqtt_connect_backoff_ms = 15000UL;
+    last_mqtt_connect_attempt_ms = 0;
+    mqtt_consecutive_transport_failures = 0;
+
+    Serial.printf("[MQTT_DIAG] wifi recovery deferred to NetworkManager status=%d ssid=%s ip=%s rssi=%d\n",
+                  WiFi.status(),
+                  WiFi.SSID().c_str(),
+                  WiFi.localIP().toString().c_str(),
+                  WiFi.RSSI());
+    return false;
+}
+
 bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     if (!mqttEnabled) return false;
     
@@ -448,68 +524,77 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     if (brokerCount <= 0) return false;
     Serial.printf("[MQTT] SSID=%s broker candidates=%d\n", WiFi.SSID().c_str(), brokerCount);
     mqttServer = brokerCandidates[0];
-    mqttClient.setServer(mqttServer.c_str(), mqttPort);
+    setMqttServerTarget(mqttClient, mqttServer, mqttPort);
+    String clientId = device_id;
+    Serial.printf("[MQTT_DIAG] connect begin ssid=%s ip=%s rssi=%d broker=%s:%d clientId=%s connectedBefore=%d stateBefore=%d\n",
+                  WiFi.SSID().c_str(),
+                  WiFi.localIP().toString().c_str(),
+                  WiFi.RSSI(),
+                  mqttServer.c_str(),
+                  mqttPort,
+                  clientId.c_str(),
+                  mqttClient.connected() ? 1 : 0,
+                  mqttClient.state());
     
     Serial.printf("连接 MQTT 服务器 %s:%d...\n", mqttServer.c_str(), mqttPort);
     
     // ===== 关键：设置超大缓冲区（10KB）=====
-    mqttWifiClient.setTimeout(8000);
+    mqttWifiClient.setTimeout(25000);
     mqttWifiClient.setNoDelay(true);
-    mqttClient.setBufferSize(512);  // MQTT CONNECT is small; grow after CONNACK.
+    mqttClient.setBufferSize(1024);
     
     mqttClient.setKeepAlive(30);       // 30秒保活
-    mqttClient.setSocketTimeout(8);
-    
-    String clientId = device_id;
+    mqttClient.setSocketTimeout(25);
     
     bool connected = mqttUser.length() > 0
         ? mqttClient.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
         : mqttClient.connect(clientId.c_str());
+    Serial.printf("[MQTT_DIAG] connect result broker=%s clientId=%s connectedAfter=%d stateAfter=%d\n",
+                  mqttServer.c_str(),
+                  clientId.c_str(),
+                  mqttClient.connected() ? 1 : 0,
+                  mqttClient.state());
     
     if (connected) {
         Serial.println("✅ MQTT 连接成功");
+        noteMqttTransportSuccess();
         mqtt_connect_backoff_ms = 0;
         last_mqtt_connect_attempt_ms = 0;
-        mqttClient.setBufferSize(4096);
-        String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
-        mqttClient.subscribe((topicBase + "/flight").c_str());
-        mqttClient.subscribe((topicBase + "/alert").c_str());
-#if ENABLE_NAVIGATION_DOWNLINK
-        mqttClient.subscribe((topicBase + "/navigation").c_str());
-#endif
-        for (int i = 0; i < 4; i++) {
-            mqttClient.loop();
-            delay(25);
-        }
+        mqttDownlinksSubscribed = false;
         return true;
     } else {
         Serial.printf("[MQTT] connect failed broker=%s state=%d\n", mqttServer.c_str(), mqttClient.state());
         closeMqttTransport(mqttClient, mqttWifiClient);
         for (int i = 1; i < brokerCount; i++) {
             mqttServer = brokerCandidates[i];
-            mqttClient.setServer(mqttServer.c_str(), mqttPort);
+            setMqttServerTarget(mqttClient, mqttServer, mqttPort);
             Serial.printf("[MQTT] fallback connecting %s:%d\n", mqttServer.c_str(), mqttPort);
 
             String fallbackClientId = device_id;
+            Serial.printf("[MQTT_DIAG] fallback connect begin ssid=%s ip=%s rssi=%d broker=%s:%d clientId=%s connectedBefore=%d stateBefore=%d\n",
+                          WiFi.SSID().c_str(),
+                          WiFi.localIP().toString().c_str(),
+                          WiFi.RSSI(),
+                          mqttServer.c_str(),
+                          mqttPort,
+                          fallbackClientId.c_str(),
+                          mqttClient.connected() ? 1 : 0,
+                          mqttClient.state());
             bool fallbackConnected = mqttUser.length() > 0
                 ? mqttClient.connect(fallbackClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
                 : mqttClient.connect(fallbackClientId.c_str());
+            Serial.printf("[MQTT_DIAG] fallback connect result broker=%s clientId=%s connectedAfter=%d stateAfter=%d\n",
+                          mqttServer.c_str(),
+                          fallbackClientId.c_str(),
+                          mqttClient.connected() ? 1 : 0,
+                          mqttClient.state());
 
             if (fallbackConnected) {
                 Serial.printf("[MQTT] connected broker=%s\n", mqttServer.c_str());
+                noteMqttTransportSuccess();
                 mqtt_connect_backoff_ms = 0;
                 last_mqtt_connect_attempt_ms = 0;
-                mqttClient.setBufferSize(4096);
-                String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
-                mqttClient.subscribe((topicBase + "/flight").c_str());
-                mqttClient.subscribe((topicBase + "/alert").c_str());
-#if ENABLE_NAVIGATION_DOWNLINK
-                mqttClient.subscribe((topicBase + "/navigation").c_str());
-#endif
-                for (int i = 0; i < 4; i++) {
-                    mqttClient.loop();
-                    delay(25);
-                }
+                mqttDownlinksSubscribed = false;
                 return true;
             }
 
@@ -517,11 +602,35 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
             closeMqttTransport(mqttClient, mqttWifiClient);
         }
         mqtt_connect_backoff_ms = mqtt_connect_backoff_ms == 0
-            ? 5000UL
-            : min(mqtt_connect_backoff_ms * 2UL, 30000UL);
+            ? 15000UL
+            : min(mqtt_connect_backoff_ms * 2UL, 15000UL);
         Serial.printf("[MQTT] next reconnect backoff=%lu ms\n", mqtt_connect_backoff_ms);
         Serial.printf("❌ MQTT 连接失败, 状态码: %d\n", mqttClient.state());
+        noteMqttTransportFailure("connect");
+        recoverWiFiAfterMqttFailuresUnlocked("connect");
         return false;
+    }
+}
+
+void DataTransmitter::subscribeMqttDownlinksUnlocked() {
+    if (!mqttEnabled || !mqttClient.connected() || mqttDownlinksSubscribed) return;
+
+    String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
+    bool flightOk = mqttClient.subscribe((topicBase + "/flight").c_str());
+    bool alertOk = mqttClient.subscribe((topicBase + "/alert").c_str());
+    bool navOk = true;
+#if ENABLE_NAVIGATION_DOWNLINK
+    navOk = mqttClient.subscribe((topicBase + "/navigation").c_str());
+#endif
+    mqttDownlinksSubscribed = flightOk && alertOk && navOk;
+    Serial.printf("[MQTT_DIAG] downlinks subscribed flight=%d alert=%d nav=%d active=%d\n",
+                  flightOk ? 1 : 0,
+                  alertOk ? 1 : 0,
+                  navOk ? 1 : 0,
+                  mqttDownlinksSubscribed ? 1 : 0);
+    for (int i = 0; i < 8; i++) {
+        mqttClient.loop();
+        delay(25);
     }
 }
 
@@ -537,7 +646,26 @@ bool DataTransmitter::publishToMQTT(const String& topic, const String& payload, 
 
 bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const String& payload,
                                                      bool retained, const String& serialPayload) {
-    emitSerialUplink(topic, serialPayload.length() > 0 ? serialPayload : payload);
+    bool directUplinkTopic = topic.endsWith("/status") ||
+                             topic.endsWith("/location") ||
+                             topic.endsWith("/sos") ||
+                             topic.endsWith("/fall");
+    bool directStatusTopic = topic.endsWith("/status");
+    bool directLocationTopic = topic.endsWith("/location");
+    bool directAlertTopic = topic.endsWith("/sos") || topic.endsWith("/fall");
+
+    String compactUplinkPayload = serialPayload.length() > 0 ? serialPayload : payload;
+    if (directStatusTopic) {
+        compactUplinkPayload = getDirectStatusJSON();
+    } else if (directLocationTopic) {
+        compactUplinkPayload = getDirectLocationJSON();
+    }
+
+    if (!directLocationTopic) {
+        emitSerialUplink(topic, compactUplinkPayload);
+    } else {
+        Serial.println("[SERIAL_UPLINK] location skipped; status carries location and direct MQTT publishes location");
+    }
 
     bool locked = false;
     if (mqttMutex) {
@@ -548,15 +676,153 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         locked = true;
     }
 
+    bool rfLocked = false;
+    if (rfMutex) {
+        if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) != pdTRUE) {
+            Serial.printf("[MQTT_PUB] skipped topic=%s rf=busy\n", topic.c_str());
+            if (locked) xSemaphoreGive(mqttMutex);
+            return false;
+        }
+        rfLocked = true;
+        ble_scanning_active = false;
+        ble_scan_started_at_ms = 0;
+    }
+
+    WiFi.setSleep(false);
+    esp_wifi_set_ps(WIFI_PS_NONE);
+
+    auto releaseLocks = [&]() {
+        if (rfLocked && rfMutex) {
+            xSemaphoreGive(rfMutex);
+            rfLocked = false;
+        }
+        if (locked && mqttMutex) {
+            xSemaphoreGive(mqttMutex);
+            locked = false;
+        }
+    };
+
+    bool connectedBeforePublish = mqttClient.connected();
+    int stateBeforePublish = mqttClient.state();
+    Serial.printf("[MQTT_DIAG] publish begin ssid=%s ip=%s rssi=%d broker=%s:%d clientId=%s connectedBefore=%d stateBefore=%d topic=%s len=%u retained=%d\n",
+                  WiFi.SSID().c_str(),
+                  WiFi.localIP().toString().c_str(),
+                  WiFi.RSSI(),
+                  mqttServer.c_str(),
+                  mqttPort,
+                  device_id.c_str(),
+                  connectedBeforePublish ? 1 : 0,
+                  stateBeforePublish,
+                  topic.c_str(),
+                  (unsigned)payload.length(),
+                  retained ? 1 : 0);
+
+    String directPayload = payload;
+    if (directStatusTopic) {
+        directPayload = compactUplinkPayload;
+        Serial.printf("[MQTT_DIAG] status compact direct payload len=%u full_len=%u serial_len=%u\n",
+                      (unsigned)directPayload.length(),
+                      (unsigned)payload.length(),
+                      (unsigned)compactUplinkPayload.length());
+    } else if (directLocationTopic) {
+        directPayload = compactUplinkPayload;
+        Serial.printf("[MQTT_DIAG] location compact direct payload len=%u full_len=%u\n",
+                      (unsigned)directPayload.length(),
+                      (unsigned)payload.length());
+    }
+
+    if (directUplinkTopic) {
+        static unsigned long lastRawStatusMs = 0;
+        static unsigned long lastRawLocationMs = 0;
+        static unsigned long lastRawAlertMs = 0;
+        auto tryRawUplink = [&]() -> bool {
+            unsigned long nowMs = millis();
+            unsigned long* lastRawMs = directStatusTopic ? &lastRawStatusMs :
+                                      (directLocationTopic ? &lastRawLocationMs : &lastRawAlertMs);
+            const unsigned long rawMinGapMs = directAlertTopic ? 3000UL : 15000UL;
+            if (*lastRawMs != 0 && nowMs - *lastRawMs < rawMinGapMs) {
+                Serial.printf("[MQTT_RAW] throttled topic=%s age=%lu min=%lu\n",
+                              topic.c_str(),
+                              nowMs - *lastRawMs,
+                              rawMinGapMs);
+                return false;
+            }
+            *lastRawMs = nowMs;
+            return publishRawMqttUplink(mqttServer,
+                                        mqttPort,
+                                        device_id,
+                                        topic,
+                                        directPayload,
+                                        retained);
+        };
+
+        bool rawSuccess = false;
+        if (!mqttClient.connected()) {
+            rawSuccess = tryRawUplink();
+        }
+
+        if (!mqttClient.connected()) {
+            ensureMQTTConnectedUnlocked();
+        }
+
+        bool ok = false;
+        if (mqttClient.connected()) {
+            ok = mqttClient.publish(topic.c_str(), directPayload.c_str(), retained);
+            for (int loop = 0; loop < 80; loop++) {
+                mqttClient.loop();
+                delay(25);
+            }
+        }
+
+        bool persistentSuccess = ok && mqttClient.connected();
+        Serial.printf("[MQTT_PUB] direct_persistent=%d publishReturn=%d connectedAfter=%d stateAfter=%d topic=%s bytes=%u\n",
+                      persistentSuccess ? 1 : 0,
+                      ok ? 1 : 0,
+                      mqttClient.connected() ? 1 : 0,
+                      mqttClient.state(),
+                      topic.c_str(),
+                      (unsigned)directPayload.length());
+
+        if (persistentSuccess) {
+            noteMqttTransportSuccess();
+            subscribeMqttDownlinksUnlocked();
+        } else if (!rawSuccess) {
+            closeMqttTransport(mqttClient, mqttWifiClient);
+            mqttDownlinksSubscribed = false;
+            rawSuccess = tryRawUplink();
+            if (rawSuccess) {
+                noteMqttTransportSuccess();
+            } else {
+                noteMqttTransportFailure("publish");
+                recoverWiFiAfterMqttFailuresUnlocked("publish");
+            }
+        } else {
+            noteMqttTransportSuccess();
+        }
+
+        Serial.printf("[MQTT_PUB] direct_result persistent=%d oneshot=%d topic=%s bytes=%u\n",
+                      persistentSuccess ? 1 : 0,
+                      rawSuccess ? 1 : 0,
+                      topic.c_str(),
+                      (unsigned)directPayload.length());
+
+        releaseLocks();
+        return persistentSuccess || rawSuccess;
+    }
+
     if (!waitForBLEIdle(3500) || !ensureMQTTConnectedUnlocked()) {
-        bool rawSuccess = publishRawMqttUplink(mqttServer, mqttPort, device_id, topic, payload, retained);
         Serial.printf("[MQTT_PUB] skipped topic=%s connected=0 state=%d\n",
                       topic.c_str(),
                       mqttClient.state());
         Serial.println("MQTT 未连接");
-        if (locked) xSemaphoreGive(mqttMutex);
-        return rawSuccess;
+        releaseLocks();
+        return false;
     }
+
+    Serial.printf("[MQTT_DIAG] publish afterConnect connected=%d state=%d topic=%s\n",
+                  mqttClient.connected() ? 1 : 0,
+                  mqttClient.state(),
+                  topic.c_str());
     
     // Check packet/header size. Payload is written in chunks below so large
     // status JSON does not depend on one WiFiClient write completing at once.
@@ -571,7 +837,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
                       topic.c_str(),
                       headerSize,
                       maxSize);
-        if (locked) xSemaphoreGive(mqttMutex);
+        releaseLocks();
         return false;
     }
     
@@ -590,7 +856,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         success = mqttClient.publish(topic.c_str(), payloadBytes, payloadSize, retained);
         if (success) {
             written = payloadSize;
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < 40; i++) {
                 mqttClient.loop();
                 delay(25);
             }
@@ -617,42 +883,50 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         }
         if (success) {
             mqttClient.endPublish();
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < 40; i++) {
                 mqttClient.loop();
                 delay(25);
             }
         }
     }
-    if (!success) {
-        bool rawSuccess = publishRawMqttUplink(mqttServer, mqttPort, device_id, topic, payload, retained);
-        if (rawSuccess) {
-            success = true;
-            written = payloadSize;
-        }
+    bool persistentSuccess = success && mqttClient.connected();
+    if (success && !persistentSuccess) {
+        Serial.printf("[MQTT_PUB] publish returned true but disconnected after publish topic=%s state=%d\n",
+                      topic.c_str(),
+                      mqttClient.state());
+        success = false;
     }
 
-    if (!success) {
+    bool rawSuccess = false;
+    if (!persistentSuccess) {
         mqttClient.disconnect();
         mqttWifiClient.stop();
         delay(20);
     }
     
-    if (success) {
-        Serial.printf("[MQTT_PUB] ok=1 topic=%s bytes=%u state=%d\n",
+    if (persistentSuccess) {
+        noteMqttTransportSuccess();
+        Serial.printf("[MQTT_PUB] ok=1 topic=%s bytes=%u connectedAfter=%d stateAfter=%d raw_qos0=%d\n",
                       topic.c_str(),
                       (unsigned)written,
-                      mqttClient.state());
+                      mqttClient.connected() ? 1 : 0,
+                      mqttClient.state(),
+                      rawSuccess ? 1 : 0);
         Serial.println("✅ 发布成功");
     } else {
-        Serial.printf("[MQTT_PUB] ok=0 topic=%s bytes=%u state=%d\n",
+        noteMqttTransportFailure("publish_full");
+        recoverWiFiAfterMqttFailuresUnlocked("publish_full");
+        Serial.printf("[MQTT_PUB] ok=0 topic=%s bytes=%u connectedAfter=%d stateAfter=%d raw_qos0=%d\n",
                       topic.c_str(),
                       (unsigned)written,
-                      mqttClient.state());
+                      mqttClient.connected() ? 1 : 0,
+                      mqttClient.state(),
+                      rawSuccess ? 1 : 0);
         Serial.printf("❌ 发布失败, 状态码: %d\n", mqttClient.state());
     }
     
-    if (locked) xSemaphoreGive(mqttMutex);
-    return success;
+    releaseLocks();
+    return persistentSuccess || rawSuccess;
 }
 
 // ================ MQTT 循环 ================
@@ -823,14 +1097,13 @@ String DataTransmitter::getNavigationJSON() {
     json += navigation_active ? "true" : "false";
     json += ",";
     
-    if (navigation_active && ble_location) {
+    if (navigation_active) {
         json += "\"x\":" + String(target_x, 2) + ",";
         json += "\"y\":" + String(target_y, 2) + ",";
         json += "\"name\":\"" + target_name + "\",";
         float distance = calculateDistanceToTarget();
         String direction = calculateDirectionToTarget();
-        float bearing = atan2(target_y - ble_location->getLocation().y, 
-                              target_x - ble_location->getLocation().x) * 180 / PI;
+        float bearing = atan2(target_y - current_y, target_x - current_x) * 180 / PI;
         
         json += "\"distance\":" + String(distance, 2) + ",";
         json += "\"direction\":\"" + direction + "\",";
@@ -1153,6 +1426,54 @@ String DataTransmitter::getSerialStatusSummaryJSON() {
     return json;
 }
 
+String DataTransmitter::getDirectStatusJSON() {
+    String json = "{";
+    json += "\"device_id\":\"" + device_id + "\",";
+    json += "\"timestamp\":" + String(getCurrentTimestamp()) + ",";
+    json += "\"data_type\":\"status_update\",";
+    json += "\"location\":{";
+    json += "\"current\":{";
+    json += "\"x\":" + String(current_x, 2) + ",";
+    json += "\"y\":" + String(current_y, 2) + ",";
+    json += "\"accuracy\":" + String(accuracy, 2) + ",";
+    json += "\"quality\":\"" + location_quality + "\",";
+    json += "\"beacon_count\":" + String(beacon_count);
+    json += "}";
+    json += "},";
+    json += "\"fall_detection\":{";
+    json += "\"state\":0,\"is_fall_confirmed\":false";
+    json += "},";
+    json += "\"sos\":{";
+    json += "\"active\":" + String(sos_active ? "true" : "false");
+    json += "},";
+    json += "\"system\":{";
+    json += "\"battery\":{";
+    json += "\"level\":" + (power ? String(power->getBatteryPercent()) : "0");
+    json += "}";
+    json += "}";
+    json += "}";
+    return json;
+}
+
+String DataTransmitter::getDirectLocationJSON() {
+    String json = "{";
+    json += "\"device_id\":\"" + device_id + "\",";
+    json += "\"timestamp\":" + String(getCurrentTimestamp()) + ",";
+    json += "\"data_type\":\"location\",";
+    json += "\"location\":{";
+    json += "\"x\":" + String(current_x, 2) + ",";
+    json += "\"y\":" + String(current_y, 2) + ",";
+    json += "\"accuracy\":" + String(accuracy, 2) + ",";
+    json += "\"quality\":\"" + location_quality + "\",";
+    json += "\"beacon_count\":" + String(beacon_count);
+    json += "},";
+    json += "\"system\":{";
+    json += "\"battery\":" + (power ? String(power->getBatteryPercent()) : "0");
+    json += "}";
+    json += "}";
+    return json;
+}
+
 void DataTransmitter::transmitStatusSummary() {
     stabilizeReportPosition();
     String jsonData = getStatusSummaryJSON();
@@ -1283,22 +1604,35 @@ void DataTransmitter::update() {
     
     // 自动重连 MQTT
     if (network && network->isConnected() && !mqttClient.connected()) {
-        if (current_time - lastMqttReconnect > 5000) {  // 5秒尝试重连
+        if (current_time - lastMqttReconnect > 15000) {
             lastMqttReconnect = current_time;
             Serial.println("尝试重连MQTT...");
-            ensureMQTTConnected();
+            bool reconnectRfLocked = false;
+            if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) == pdTRUE) {
+                reconnectRfLocked = true;
+                ble_scanning_active = false;
+                ble_scan_started_at_ms = 0;
+            }
+            if (!rfMutex || reconnectRfLocked) {
+                ensureMQTTConnected();
+            } else {
+                Serial.println("[MQTT] reconnect skipped: RF busy");
+            }
+            if (reconnectRfLocked && rfMutex) {
+                xSemaphoreGive(rfMutex);
+            }
         }
     }
 
     // 改为每2秒上传一次（而不是每秒）
     if (network && network->isConnected()) {
-        if (current_time - lastStatusUpload >= 2000) {  // 2秒
+        if (current_time - lastStatusUpload >= 10000) {  // Keep MQTT reconnect windows clear on router Wi-Fi.
             transmitStatusSummary();
             
             // 非阻塞发送
             lastStatusUpload = current_time;
         }
-        if (current_time - lastLocationUpload >= 6000) {
+        if (current_time - lastLocationUpload >= 12000) {
             transmitLocation();
             lastLocationUpload = current_time;
         }
@@ -1353,14 +1687,9 @@ String DataTransmitter::getFallJSON(const FallEvent& fall_event) {
     json += "},";
     
     json += "\"location\":{";
-    if (ble_location) {
-        Location loc = ble_location->getLocation();
-        json += "\"x\":" + String(loc.x, 2) + ",";
-        json += "\"y\":" + String(loc.y, 2) + ",";
-        json += "\"accuracy\":" + String(loc.accuracy, 2);
-    } else {
-        json += "\"x\":0,\"y\":0,\"accuracy\":0";
-    }
+    json += "\"x\":" + String(current_x, 2) + ",";
+    json += "\"y\":" + String(current_y, 2) + ",";
+    json += "\"accuracy\":" + String(accuracy, 2);
     json += "},";
     
     json += "\"system\":{";
@@ -1387,14 +1716,9 @@ String DataTransmitter::getSOSJSON() {
     json += "},";
     
     json += "\"location\":{";
-    if (ble_location) {
-        Location loc = ble_location->getLocation();
-        json += "\"x\":" + String(loc.x, 2) + ",";
-        json += "\"y\":" + String(loc.y, 2) + ",";
-        json += "\"accuracy\":" + String(loc.accuracy, 2);
-    } else {
-        json += "\"x\":0,\"y\":0,\"accuracy\":0";
-    }
+    json += "\"x\":" + String(current_x, 2) + ",";
+    json += "\"y\":" + String(current_y, 2) + ",";
+    json += "\"accuracy\":" + String(accuracy, 2);
     json += "},";
     
     json += "\"system\":{";
@@ -1414,30 +1738,24 @@ String DataTransmitter::getLocationJSON() {
     json += "\"data_type\":\"location\",";
     
     json += "\"location\":{";
-    if (ble_location) {
-        Location loc = ble_location->getLocation();
-        json += "\"x\":" + String(loc.x, 2) + ",";
-        json += "\"y\":" + String(loc.y, 2) + ",";
-        json += "\"accuracy\":" + String(loc.accuracy, 2) + ",";
-        json += "\"quality\":\"" + loc.quality + "\",";
-        json += "\"beacon_count\":" + String(loc.beacon_count) + ",";
-        json += "\"beacons\":[";
-        const auto& beaconList = ble_location->getScannedBeacons();
-        for (size_t i = 0; i < beaconList.size(); i++) {
-            if (i > 0) json += ",";
-            json += "{";
-            json += "\"mac\":\"" + beaconList[i].uuid + "\",";
-            json += "\"rssi\":" + String(beaconList[i].last_rssi) + ",";
-            json += "\"distance\":" + String(beaconList[i].distance, 2) + ",";
-            json += "\"confidence\":" + String(beaconList[i].confidence, 2) + ",";
-            json += "\"x\":" + String(beaconList[i].x, 2) + ",";
-            json += "\"y\":" + String(beaconList[i].y, 2);
-            json += "}";
-        }
-        json += "]";
-    } else {
-        json += "\"x\":0,\"y\":0,\"accuracy\":0,\"quality\":\"unknown\"";
+    json += "\"x\":" + String(current_x, 2) + ",";
+    json += "\"y\":" + String(current_y, 2) + ",";
+    json += "\"accuracy\":" + String(accuracy, 2) + ",";
+    json += "\"quality\":\"" + location_quality + "\",";
+    json += "\"beacon_count\":" + String(beacon_count) + ",";
+    json += "\"beacons\":[";
+    for (int i = 0; i < last_beacon_count; i++) {
+        if (i > 0) json += ",";
+        json += "{";
+        json += "\"mac\":\"" + last_beacons[i].mac + "\",";
+        json += "\"rssi\":" + String(last_beacons[i].rssi) + ",";
+        json += "\"distance\":" + String(last_beacons[i].distance, 2) + ",";
+        json += "\"confidence\":" + String(last_beacons[i].confidence, 2) + ",";
+        json += "\"x\":" + String(last_beacons[i].x, 2) + ",";
+        json += "\"y\":" + String(last_beacons[i].y, 2);
+        json += "}";
     }
+    json += "]";
     json += "},";
     
     json += "\"system\":{";
@@ -1825,8 +2143,24 @@ void DataTransmitter::addLog(const String& level, const String& message) {
 }
 
 void DataTransmitter::setBLEScanning(bool scanning) {
-    ble_scanning_active = scanning;
-    ble_scan_started_at_ms = scanning ? millis() : 0;
+    if (scanning) {
+        if (rfMutex && xSemaphoreTake(rfMutex, 0) != pdTRUE) {
+            ble_scanning_active = false;
+            ble_scan_started_at_ms = 0;
+            Serial.println("[BLE] scan skipped: RF busy with MQTT");
+            return;
+        }
+        ble_scanning_active = true;
+        ble_scan_started_at_ms = millis();
+        return;
+    }
+
+    bool shouldRelease = ble_scanning_active;
+    ble_scanning_active = false;
+    ble_scan_started_at_ms = 0;
+    if (shouldRelease && rfMutex) {
+        xSemaphoreGive(rfMutex);
+    }
 }
 
 // 设置基准时间戳

@@ -120,9 +120,16 @@ function Send-Uplink {
 
     $payloadJson = $Payload | ConvertTo-Json -Depth 20 -Compress
     if ($Mode -eq "Mqtt") {
-        $payloadJson | & $Mqtt.pub -h $Mqtt.host -p $Mqtt.port -q 1 -t $Topic -s
-        if ($LASTEXITCODE -ne 0) {
-            throw "mosquitto_pub failed with exit code $LASTEXITCODE"
+        $tmpPayload = Join-Path ([System.IO.Path]::GetTempPath()) ("flycare-uplink-{0}.json" -f ([guid]::NewGuid().ToString("N")))
+        try {
+            $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText($tmpPayload, $payloadJson, $utf8NoBom)
+            & $Mqtt.pub -h $Mqtt.host -p $Mqtt.port -q 1 -t $Topic -f $tmpPayload
+            if ($LASTEXITCODE -ne 0) {
+                throw "mosquitto_pub failed with exit code $LASTEXITCODE"
+            }
+        } finally {
+            Remove-Item -LiteralPath $tmpPayload -Force -ErrorAction SilentlyContinue
         }
         return [pscustomobject]@{
             status = "ok"

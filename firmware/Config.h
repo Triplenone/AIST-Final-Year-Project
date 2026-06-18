@@ -9,10 +9,17 @@
 #define ENABLE_BLE_LOCATION 1
 #define ENABLE_IMU_SENSOR 0
 #define ENABLE_FALL_DETECTION 1
+// Final FlyCare smoke keeps SIMFALL available but does not run the continuous
+// fall detector, because accidental wrist movement creates demo-polluting false
+// fall events and Fall Detection is out of scope for this demo.
+#define ENABLE_AUTO_FALL_DETECTION 0
 #define ENABLE_MANUAL_NAVIGATION 0
 #define ENABLE_NAVIGATION_DOWNLINK 0
 #define ENABLE_FLIGHT_ROUTE_NAVIGATION 0
 #define ENABLE_FLIGHT_ARRIVAL_TARGET 1
+// Final demo uses popup + vibration only. Keep audio/SD alert playback disabled
+// because SD_MMC audio lookups have caused runtime aborts on this watch.
+#define ENABLE_AUDIO_ALERTS 0
 
 // MAX30102 heart-rate contact/sampling settings.
 // Keep HR validity gated by contact; do not lower this to fake a BPM reading.

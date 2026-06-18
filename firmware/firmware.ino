@@ -436,10 +436,17 @@ void initPower() {
 
 void initAudio() {
     Serial.println("初始化音频管理...");
+#if ENABLE_AUDIO_ALERTS
     audio = new AudioManager();
     audio->init();
     pinMode(PA_EN, OUTPUT);
     digitalWrite(PA_EN, HIGH);
+#else
+    audio = nullptr;
+    pinMode(PA_EN, OUTPUT);
+    digitalWrite(PA_EN, LOW);
+    Serial.println("[Audio] disabled for final demo stability; popup/vibration remain active");
+#endif
 }
 
 void initDataTransmitter() {
@@ -859,8 +866,11 @@ void bleLocationTask(void* param) {
             }
             lastBleScanMs = millis();
             if (data_transmitter) data_transmitter->setBLEScanning(true);
+            if (data_transmitter && !data_transmitter->isBLEScanning()) {
+                Serial.println("[BLE] skipped: RF held for MQTT");
+                continue;
+            }
             ble_location->startScan();
-            if (data_transmitter) data_transmitter->setBLEScanning(false);
             
             Location loc = ble_location->getLocation();
             
@@ -877,8 +887,8 @@ void bleLocationTask(void* param) {
                         ble_location->getScannedBeacons());
                 }
             }
+            if (data_transmitter) data_transmitter->setBLEScanning(false);
         }
-        pBLEScan->clearResults();
     }
 }
 
@@ -945,6 +955,7 @@ void audioTask(void* param) {
     while (systemRunning) {
         AudioCommand audio_cmd;
         if (audioCommandQueue && xQueueReceive(audioCommandQueue, &audio_cmd, pdMS_TO_TICKS(100)) == pdTRUE) {
+#if ENABLE_AUDIO_ALERTS
             if (audio) {
                 switch (audio_cmd.command) {
                     case AudioCommand::AUDIO_PLAY_ALERT:
@@ -978,6 +989,12 @@ void audioTask(void* param) {
                         break;
                 }
             }
+#else
+            if (audio_cmd.command != AudioCommand::AUDIO_STOP) {
+                Serial.printf("[Audio] skipped command=%d; audio disabled for final demo stability\n",
+                              static_cast<int>(audio_cmd.command));
+            }
+#endif
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }
@@ -1156,6 +1173,15 @@ void handleSerialCommands() {
 
         Serial.printf("[SERIAL_DOWNLINK] topic=%s len=%d\n", topic.c_str(), payload.length());
         bool handled = false;
+        if (topic.endsWith("/flight") && data_transmitter && data_transmitter->isBLEScanning()) {
+            unsigned long waitStart = millis();
+            while (data_transmitter->isBLEScanning() && millis() - waitStart < 5000UL) {
+                delay(50);
+            }
+            Serial.printf("[SERIAL_DOWNLINK] flight waited for BLE idle: %lu ms active=%d\n",
+                          millis() - waitStart,
+                          data_transmitter->isBLEScanning() ? 1 : 0);
+        }
         if (topic.endsWith("/flight") && data_transmitter) {
             data_transmitter->handleMQTTMessage(topic, payload);
             handled = true;
@@ -2250,7 +2276,7 @@ void setup() {
     // xTaskCreatePinnedToCore(mainCoordinatorTask, "Main", 6144, nullptr, 3, &mainCoordinatorTaskHandle, 0);
     xTaskCreatePinnedToCore(heartRateTask, "HeartRate", 4096, nullptr, 2, nullptr, 1);
     xTaskCreatePinnedToCore(mapDisplayTask, "Display", 16384, nullptr, 3, &mapDisplayTaskHandle, 1);
-#if ENABLE_FALL_DETECTION
+#if ENABLE_FALL_DETECTION && ENABLE_AUTO_FALL_DETECTION
     xTaskCreatePinnedToCore(fallDetectionTask, "Fall", 4096, nullptr, 2, &fallDetectionTaskHandle, 1);
 #endif
 #if ENABLE_IMU_SENSOR || ENABLE_FALL_DETECTION

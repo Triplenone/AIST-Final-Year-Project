@@ -14,6 +14,12 @@ On the current Windows workstation, Arduino CLI is installed with Arduino IDE an
 & 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' compile --fqbn "esp32:esp32:esp32s3:FlashSize=8M,PartitionScheme=huge_app,PSRAM=opi,CDCOnBoot=cdc" .
 ```
 
+For NG WAI LUN/device 8 uploads on the current COM5 watch, use a conservative USB upload speed if the default high-speed upload stalls:
+
+```powershell
+& 'C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe' upload -p COM5 --fqbn "esp32:esp32:esp32s3:FlashSize=8M,PartitionScheme=huge_app,PSRAM=opi,CDCOnBoot=cdc" --upload-property upload.speed=115200 .
+```
+
 The local `libraries/` folder is an Arduino Library Manager cache and is intentionally ignored by git. Recreate the required dependencies before compiling on a clean machine:
 
 ```powershell
@@ -92,6 +98,8 @@ smartwatch/ESP32_48CA43A42298/sos
 
 During router migration, `DataTransmitter` also has a narrow one-shot MQTT uplink fallback. If the persistent `PubSubClient` session is disconnected, status/location publishes can open a short `WiFiClient`, send MQTT 3.1.1 CONNECT + QoS 0 PUBLISH to the same `smartwatch/<device_id>/...` topic, flush, then disconnect. This does not replace the persistent session used for retained flight downlinks, and `[MQTT_RAW] publish ok` is only firmware-side diagnostic evidence; direct proof still requires seeing the payload on the broker and Mongo latest refresh.
 
+Status and location direct Wi-Fi uplinks use compact JSON for the router demo path. COM5 serial fallback keeps status as the single periodic telemetry carrier, with the current location embedded in that status payload; direct MQTT still publishes both `/status` and `/location`.
+
 The committed local demo config leaves `MQTT_BROKER_FALLBACK_1` empty so an offline `Triple-None` run does not block on the public broker. Use `scripts/set_flycare_mqtt_endpoint.ps1 -Mode Cloud` before uploading when a public broker is intentionally required.
 
 Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:
@@ -120,6 +128,8 @@ BLE positioning is enabled with `ENABLE_BLE_LOCATION 1`. The firmware uses these
 ```
 
 Positioning uses all registered beacons seen within the recent scan window, so the beacons do not need to appear in the same scan result. The status JSON includes `location.current.beacons[]` with each matched beacon's MAC, RSSI, estimated distance, confidence, and map coordinate.
+
+The BLE scan task is the only runtime owner of `BLELocation::getLocation()`. `DataTransmitter` uses the cached position supplied by `setCurrentLocation()` so MQTT/Serial status generation does not re-enter BLE scan-result cleanup while the BLE task is processing results.
 
 ## Smart navigation
 
@@ -198,7 +208,7 @@ When a backend update is explicitly a gate-change notice (`gate_changed=true` an
 
 Flight update popups intentionally skip alert audio/TTS and use the large popup plus vibration only. This applies to Gate Change, Delay, Boarding, Cancellation, Final Call, and On Time recovery because the final-demo watch must avoid the SD_MMC alert-file lookup path that can abort/reset during retained flight downlinks. SOS and arrival keep their existing alert behavior.
 
-Fall detection is enabled in this build (`ENABLE_FALL_DETECTION 1`) and uses the ISS source state machine from `D:\Download\SmartWatch_Project_S3R8_ISS_20260614163130`: freefall -> impact -> static -> orientation change. `IMPACT_THRESHOLD` is kept at the source value `1` for parity; optimize false-positive behavior later only after the demo path is stable. `SIMFALL` displays the fall alert and uploads a fall payload through the same `DataTransmitter` path used by a confirmed fall. Normal status telemetry reports fall as normal unless the state is confirmed, so transient Freefall/Impact/Static states do not leave the dashboard in a false alarm state.
+Fall detection source support remains enabled in this build (`ENABLE_FALL_DETECTION 1`), and `SIMFALL` still displays the fall alert and uploads a fall payload through the same `DataTransmitter` path used by a confirmed fall. The continuous automatic fall task is disabled for the final FlyCare demo with `ENABLE_AUTO_FALL_DETECTION 0`, because Fall Detection is out of scope and accidental wrist movement can create stale demo events. Normal status telemetry reports fall as normal unless the state is confirmed, so transient Freefall/Impact/Static states do not leave the dashboard in a false alarm state.
 
 Heart-rate sampling and MQTT upload cadence are intentionally separate: `HR_SAMPLE_INTERVAL_MS` controls MAX30102 sampling for pulse detection, while `HR_UPLOAD_INTERVAL_MS` keeps the existing 2-second vitals publish cadence. SpO2 starts as unknown and remains invalid until pulse-derived confidence is positive.
 
