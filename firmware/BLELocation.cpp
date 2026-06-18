@@ -215,7 +215,7 @@ Location BLELocation::stabilizeLocation(Location loc) {
     return loc;
 }
 
-BLELocation::BLELocation() : beacon_count(0), last_scan_time(0), smoother(3) {
+BLELocation::BLELocation() : beacon_count(0), last_scan_time(0), smoother(3), customer_candidate_streak(0) {
     // 不再在这里初始化 pBLEScan，因为已经在 initBLE() 中初始化了
     // pBLEScan 使用全局变量
 
@@ -581,6 +581,13 @@ Location BLELocation::trilateration() {
         (nonCustomerBestIndex < 0 &&
          customerVisibleCount >= 2 &&
          customerBestRssi >= BLE_CUSTOMER_SINGLE_SNAP_RSSI);
+    if (strongestIsCustomer && customerClear) {
+        customer_candidate_streak++;
+    } else if (!strongestIsCustomer) {
+        customer_candidate_streak = 0;
+    }
+    const bool customerConfirmed = !strongestIsCustomer ||
+        customer_candidate_streak >= BLE_CUSTOMER_SNAP_CONFIRMATIONS;
     bool forcedAlternativeSnap = false;
 
     if (strongestIsCustomer && corridorContext && corridorBestIndex >= 0 && !customerDominatesCorridor) {
@@ -588,6 +595,22 @@ Location BLELocation::trilateration() {
         forcedAlternativeSnap = true;
         Serial.printf("[BLE] corridor guard: customer blocked rssi=%d corridor=%d age=%lu\n",
                       customerBestRssi, corridorBestRssi, corridorBestAgeMs);
+    } else if (strongestIsCustomer && customerClear && !customerConfirmed && nonCustomerBestIndex >= 0) {
+        strongestIndex = nonCustomerBestIndex;
+        forcedAlternativeSnap = true;
+        Serial.printf("[BLE] customer confirmation pending: streak=%d/%d using non-customer rssi=%d customer=%d\n",
+                      customer_candidate_streak, BLE_CUSTOMER_SNAP_CONFIRMATIONS,
+                      nonCustomerBestRssi, customerBestRssi);
+    } else if (strongestIsCustomer && customerClear && !customerConfirmed && last_location.beacon_count > 0) {
+        loc.x = last_location.x;
+        loc.y = last_location.y;
+        loc.accuracy = max(5.0f, last_location.accuracy);
+        loc.quality = "medium";
+        loc.beacon_count = usable_beacons.size();
+        Serial.printf("[BLE] customer confirmation held: streak=%d/%d customer=%d last=(%.2f,%.2f)\n",
+                      customer_candidate_streak, BLE_CUSTOMER_SNAP_CONFIRMATIONS,
+                      customerBestRssi, last_location.x, last_location.y);
+        return loc;
     } else if (strongestIsCustomer && !customerClear && nonCustomerBestIndex >= 0) {
         strongestIndex = nonCustomerBestIndex;
         forcedAlternativeSnap = true;

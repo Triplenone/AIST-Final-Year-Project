@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 03:53-04:10 FlyCare Customer Services confirmation guard + direct MQTT walk capture
+
+- B.positioning.customer_blip=after the forced-alternative fix, direct Wi-Fi MQTT stayed connected but a 180s broker-only walk capture `logs/direct-mqtt-walk-capture-20260619-035359.log` still showed Customer Services in 8/45 location points with a max consecutive run of 4, so the goal was not complete.
+- I.positioning.customer_confirm=updated `firmware/BLELocation.cpp/.h` and `firmware/Config.h` so Customer Services needs `BLE_CUSTOMER_SNAP_CONFIRMATIONS=4` consecutive clear scans before it can take over the marker. Pending Customer scans use the best visible non-Customer beacon through the forced-alternative path.
+- I.positioning.forced_blend=raised `BLE_FORCED_ALTERNATIVE_SNAP_BLEND` from `0.68` to `0.84`, keeping normal strongest-beacon snap at `0.92` while reducing raw weighted Customer influence during Check-in/Security/Gate alternatives.
+- V.compile_upload=pass ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN MAC `48:ca:43:a4:22:98`; final compile used `1537855/3145728` bytes and RAM `55200/327680`, upload wrote `1538000` bytes.
+- V.direct_mqtt=pass with COM5 bridge stopped: `logs/direct-mqtt-after-forced-blend084-20260619-040630.log` captured broker-side status=20 and location=29 from `smartwatch/ESP32_48CA43A42298` over `192.168.1.232:1883`.
+- V.positioning.sample=improved in the post-fix direct capture: Customer Services appeared in 1/29 location points with max consecutive run 1, compared with 8/45 and max run 4 before the fix; Gate 10 also appeared in the direct stream, so the marker was not stuck in the Check-in/Security area.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` reported overall `pass` after upload and direct MQTT validation.
+- R.remaining=direct MQTT and broker-side movement telemetry pass, but final acceptance still needs user visual confirmation that the physical watch screen no longer appears stuck or wrongly parked on Customer Services during a real Check-in/Security to Gate walk.
+
 ### 2026-06-19 03:20-03:35 FlyCare forced alternative BLE snap smoothing
 
 - B.positioning.customer_hold=after the Customer Services guard blocked a weak Customer candidate, the selected non-Customer alternative could still be treated as ambiguous because Customer Services remained the second strongest RSSI reference; that preserved the stale Customer marker instead of moving through the Check-in/Security corridor.

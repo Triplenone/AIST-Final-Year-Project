@@ -91,6 +91,7 @@ private:
     unsigned long last_scan_time;
     std::vector<Beacon> scanned_beacons;
     PositionSmoother smoother;
+    int customer_candidate_streak;
     
     static const unsigned long BEACON_TIMEOUT = 10000;
     
