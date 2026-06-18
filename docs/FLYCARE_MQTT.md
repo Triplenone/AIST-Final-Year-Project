@@ -162,19 +162,19 @@ Flight downlink JSON on `smartwatch/{device_id}/flight`:
 {
   "command_type": "flight_info",
   "flight_info": {
-    "flight_number": "CA1234",
-    "airline": "Air China",
-    "departure_airport": "Hong Kong",
-    "destination": "Beijing",
+    "flight_number": "CX910",
+    "airline": "Cathay Pacific",
+    "departure_airport": "HKG",
+    "destination": "Singapore",
     "seat_number": "21C",
-    "scheduled_departure": "14:30",
-    "estimated_departure": "14:45",
-    "boarding_time": "14:00",
-    "boarding_gate": "A12",
-    "status": "boarding",
-    "delay_minutes": 15,
-    "delay_reason": "Weather conditions",
-    "gate_changed": true,
+    "scheduled_departure": "17:35",
+    "estimated_departure": "17:35",
+    "boarding_time": "17:05",
+    "boarding_gate": "11",
+    "status": "scheduled",
+    "delay_minutes": 0,
+    "delay_reason": "",
+    "gate_changed": false,
     "terminal": "T3",
     "checkin_counter": "C12-C18"
   }
@@ -182,6 +182,8 @@ Flight downlink JSON on `smartwatch/{device_id}/flight`:
 ```
 
 `POST /api/v1/flycare-admin/flight/publish` maps existing admin form fields into `flight_info` (for example `flightNumber` -> `flight_number`, `departureAirport` -> `departure_airport`, `arrivalAirport` -> `destination`, `seatNumber` -> `seat_number`, `gate` -> `boarding_gate`, `flightTime` -> `scheduled_departure`). Optional body fields can override: `airline`, `destination`, `scheduled_departure`, `estimated_departure`, `boarding_time`, `boarding_gate`, `status`, `delay_minutes`, `delay_reason`, `gate_changed`, `terminal`, `checkin_counter`.
+
+The FlyCare Admin default form uses the current watch demo flight identity (`CX910`, `Cathay Pacific`, `Singapore`, default gate `11`). Do not use the old `CA1234` / `Air China` / `Beijing` demo identity for hardware downlink checks because current firmware treats it as stale demo data when the active watch flight is `CX910`.
 
 `flight_info` is the canonical ISS JSON shape. For UI compatibility, Mongo flight reads may also expose legacy flat fields such as `flightNumber`, `gate`, `flightTime`, `departureAirport`, `arrivalAirport`, and `seatNumber`. The FlyCare page resolves the map destination from `gate` first, then falls back to `flight_info.boarding_gate`.
 

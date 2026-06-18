@@ -50,17 +50,17 @@ const defaultFlightFields = (): Omit<
   FlightFormState,
   'device_id' | 'mysql_device_id' | 'passengerName'
 > => ({
-  flightNumber: 'CA1234',
-  airline: 'Air China',
+  flightNumber: 'CX910',
+  airline: 'Cathay Pacific',
   departureAirport: 'HKG',
-  destination: 'Beijing',
+  destination: 'Singapore',
   seatNumber: '21C',
   ...defaultScheduleTimes(),
   boarding_gate: '11',
   status: 'scheduled',
-  delay_minutes: '15',
-  delay_reason: 'Weather conditions',
-  gate_changed: true,
+  delay_minutes: '0',
+  delay_reason: '',
+  gate_changed: false,
   terminal: 'T3',
   checkin_counter: 'C12-C18'
 });
