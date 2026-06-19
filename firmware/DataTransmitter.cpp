@@ -63,6 +63,19 @@ static void buildMqttBrokerCandidates(String brokers[], int& count, int maxCount
 
 // ================ 构造函数 ================
 // 构造函数中修复 MAC 地址获取
+static bool isFlyCareLocalLanHealthy() {
+#if FLYCARE_LOCAL_ROUTER_MODE
+    if (WiFi.status() != WL_CONNECTED) return false;
+    IPAddress ip = WiFi.localIP();
+    if (ip[0] != 192 || ip[1] != 168 || ip[2] != 1 || ip[3] == 0) return false;
+    String broker = String(MQTT_BROKER);
+    broker.trim();
+    return broker == "192.168.1.232";
+#else
+    return false;
+#endif
+}
+
 static SemaphoreHandle_t serialUplinkMutex = nullptr;
 static bool hasLastFlightDownlinkHash = false;
 static uint32_t lastFlightDownlinkHash = 0;
@@ -470,6 +483,18 @@ void DataTransmitter::noteMqttTransportFailure(const char* reason) {
 bool DataTransmitter::recoverWiFiAfterMqttFailuresUnlocked(const char* reason) {
     if (mqtt_consecutive_transport_failures < 3) return false;
 
+    if (isFlyCareLocalLanHealthy()) {
+        mqtt_connect_backoff_ms = DATA_MQTT_RECONNECT_BACKOFF_INITIAL_MS;
+        mqtt_consecutive_transport_failures = 0;
+        Serial.printf("[OfflineLAN] healthy=1 skip_wifi_recovery=1 reason=%s ssid=%s ip=%s broker=%s:%d\n",
+                      reason ? reason : "unknown",
+                      WiFi.SSID().c_str(),
+                      WiFi.localIP().toString().c_str(),
+                      MQTT_BROKER,
+                      MQTT_PORT);
+        return false;
+    }
+
     unsigned long nowMs = millis();
     if (last_mqtt_wifi_recovery_ms > 0 && nowMs - last_mqtt_wifi_recovery_ms < 60000UL) {
         Serial.printf("[MQTT_DIAG] wifi recovery throttled age=%lu failures=%u\n",
@@ -489,7 +514,7 @@ bool DataTransmitter::recoverWiFiAfterMqttFailuresUnlocked(const char* reason) {
 
     closeMqttTransport(mqttClient, mqttWifiClient);
     mqttDownlinksSubscribed = false;
-    mqtt_connect_backoff_ms = 15000UL;
+    mqtt_connect_backoff_ms = DATA_MQTT_RECONNECT_BACKOFF_INITIAL_MS;
     last_mqtt_connect_attempt_ms = 0;
     mqtt_consecutive_transport_failures = 0;
 
@@ -519,7 +544,7 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     last_mqtt_connect_attempt_ms = nowMs;
 
     closeMqttTransport(mqttClient, mqttWifiClient);
-    if (!waitForBLEIdle(3500)) return false;
+    if (!waitForBLEIdle(DATA_MQTT_BLE_IDLE_WAIT_MS)) return false;
 
     String brokerCandidates[6];
     int brokerCount = 0;
@@ -605,8 +630,8 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
             closeMqttTransport(mqttClient, mqttWifiClient);
         }
         mqtt_connect_backoff_ms = mqtt_connect_backoff_ms == 0
-            ? 15000UL
-            : min(mqtt_connect_backoff_ms * 2UL, 15000UL);
+            ? DATA_MQTT_RECONNECT_BACKOFF_INITIAL_MS
+            : min(mqtt_connect_backoff_ms * 2UL, (unsigned long)DATA_MQTT_RECONNECT_BACKOFF_MAX_MS);
         Serial.printf("[MQTT] next reconnect backoff=%lu ms\n", mqtt_connect_backoff_ms);
         Serial.printf("❌ MQTT 连接失败, 状态码: %d\n", mqttClient.state());
         noteMqttTransportFailure("connect");
@@ -785,7 +810,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
             rawSuccess = tryRawUplink();
         }
 
-        if (!mqttClient.connected()) {
+        if (!mqttClient.connected() && !rawSuccess) {
             ensureMQTTConnectedUnlocked();
         }
 
@@ -834,7 +859,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         return persistentSuccess || rawSuccess;
     }
 
-    if (!waitForBLEIdle(3500) || !ensureMQTTConnectedUnlocked()) {
+    if (!waitForBLEIdle(DATA_MQTT_BLE_IDLE_WAIT_MS) || !ensureMQTTConnectedUnlocked()) {
         Serial.printf("[MQTT_PUB] skipped topic=%s connected=0 state=%d\n",
                       topic.c_str(),
                       mqttClient.state());
@@ -1709,7 +1734,7 @@ void DataTransmitter::update() {
     
     // 自动重连 MQTT
     if (network && network->isConnected() && !mqttClient.connected()) {
-        if (current_time - lastMqttReconnect > 15000) {
+        if (current_time - lastMqttReconnect > DATA_MQTT_RECONNECT_BACKOFF_INITIAL_MS) {
             lastMqttReconnect = current_time;
             Serial.println("尝试重连MQTT...");
             bool reconnectRfLocked = false;
@@ -2068,6 +2093,9 @@ void DataTransmitter::updateNightMode() {
 
 // ================ 判断是否为夜间 ================
 bool DataTransmitter::isNightTime() {
+#if !FLYCARE_ENABLE_NTP_UPDATES
+    return false;
+#else
     time_t now;
     time(&now);
     struct tm timeinfo;
@@ -2085,6 +2113,7 @@ bool DataTransmitter::isNightTime() {
     } else {
         return (current_seconds >= night_start_time && current_seconds < night_end_time);
     }
+#endif
 }
 
 // ================ 更新心率数据 ================

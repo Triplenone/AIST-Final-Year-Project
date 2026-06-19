@@ -87,6 +87,7 @@ bool navigation_active = false;
 float current_x = 3.0, current_y = 14.0;
 float target_x = 4.4, target_y = 1.8;
 char target_name[30] = "Gate 11";
+volatile unsigned long lastUiInteractionMs = 0;
 
 // 外部声明
 extern SimpleDisplayManager* display;
@@ -194,6 +195,9 @@ void audioTask(void* param);
 void powerTask(void* param);
 void mainCoordinatorTask(void* param);
 
+void markUiInteraction(const char* eventName);
+bool isUiFastPathActive();
+void logUiLatency(const char* eventName, unsigned long startedAtMs, unsigned long redrawStartedAtMs);
 void handleButtonEvent(const ButtonEventData& event);
 void handleSerialCommands();
 void runWheelPinScan(unsigned long seconds);
@@ -460,6 +464,13 @@ void initDataTransmitter() {
 }
 
 void syncTime() {
+#if FLYCARE_LOCAL_ROUTER_MODE
+    Serial.println("[NTP] startup sync skipped in local router mode; using millis fallback");
+    if (data_transmitter) {
+        data_transmitter->setCurrentTimestamp(0);
+    }
+    return;
+#endif
     configTime(8 * 3600, 0, NTP_SERVER, "time.nist.gov");
     Serial.print("同步时间");
     
@@ -493,6 +504,26 @@ void syncTime() {
 }
 
 // ==================== FreeRTOS任务 ====================
+void markUiInteraction(const char* eventName) {
+    lastUiInteractionMs = millis();
+    Serial.printf("[UI_FAST_PATH] event=%s guard_ms=%lu\n",
+                  eventName ? eventName : "unknown",
+                  (unsigned long)UI_FAST_PATH_GUARD_MS);
+}
+
+bool isUiFastPathActive() {
+    unsigned long markedAt = lastUiInteractionMs;
+    return markedAt > 0 && millis() - markedAt < UI_FAST_PATH_GUARD_MS;
+}
+
+void logUiLatency(const char* eventName, unsigned long startedAtMs, unsigned long redrawStartedAtMs) {
+    unsigned long now = millis();
+    Serial.printf("[UI_LATENCY] event=%s handled_ms=%lu redraw_ms=%lu\n",
+                  eventName ? eventName : "unknown",
+                  now - startedAtMs,
+                  redrawStartedAtMs > 0 ? now - redrawStartedAtMs : 0);
+}
+
 void imuSamplingTask(void* param) {
     const TickType_t samplingInterval = pdMS_TO_TICKS(10);
     TickType_t lastWakeTime = xTaskGetTickCount();
@@ -599,6 +630,7 @@ void buttonTask(void* param) {
         } else if (bootState == LOW && !bootLongPressTriggered) {
             if (millis() - bootPressStart >= SOS_HOLD_TIME) {
                 bootLongPressTriggered = true;
+                markUiInteraction("sos_toggle");
                 toggleSOSAlert("ButtonLong");
                 Serial.println("[Button] SOS long press - SOS toggled");
             }
@@ -606,7 +638,12 @@ void buttonTask(void* param) {
             unsigned long duration = millis() - bootPressStart;
             if (!bootLongPressTriggered && duration >= 20 && duration < SOS_HOLD_TIME) {
                 if (display) {
+                    unsigned long uiStartMs = millis();
+                    markUiInteraction("page_switch");
                     display->nextPage();
+                    unsigned long redrawStartMs = millis();
+                    display->update();
+                    logUiLatency("page_switch", uiStartMs, redrawStartMs);
                     Serial.printf("[Button] SOS short press - next page: %d\n",
                                   display->getCurrentPage());
                 }
@@ -621,6 +658,8 @@ void buttonTask(void* param) {
             if (millis() - pwrPressStart >= SOS_HOLD_TIME) {
                 pwrLongPressTriggered = true;
                 if (display) {
+                    unsigned long uiStartMs = millis();
+                    markUiInteraction("screen_toggle");
                     if (display->isScreenOn()) {
                         display->sleepScreen();
                         Serial.println("[Button] PWR long press - screen off");
@@ -628,11 +667,16 @@ void buttonTask(void* param) {
                         display->wakeScreen();
                         Serial.println("[Button] PWR long press - screen on");
                     }
+                    unsigned long redrawStartMs = millis();
+                    display->update();
+                    logUiLatency("screen_toggle", uiStartMs, redrawStartMs);
                 }
             }
         } else if (pwrState == HIGH && lastPwrState == LOW) {
             unsigned long duration = millis() - pwrPressStart;
             if (!pwrLongPressTriggered && duration >= 20 && duration < SOS_HOLD_TIME && display) {
+                unsigned long uiStartMs = millis();
+                markUiInteraction("screen_toggle");
                 if (display->isScreenOn()) {
                     display->sleepScreen();
                     Serial.println("[Button] PWR short press - screen off");
@@ -640,6 +684,9 @@ void buttonTask(void* param) {
                     display->wakeScreen();
                     Serial.println("[Button] PWR short press - screen on");
                 }
+                unsigned long redrawStartMs = millis();
+                display->update();
+                logUiLatency("screen_toggle", uiStartMs, redrawStartMs);
             }
         }
         lastPwrState = pwrState;
@@ -853,6 +900,12 @@ void bleLocationTask(void* param) {
     unsigned long lastBleScanMs = 0;
     while (systemRunning) {
         vTaskDelayUntil(&lastWakeTime, locationInterval);
+
+        if (isUiFastPathActive()) {
+            if (data_transmitter) data_transmitter->setBLEScanning(false);
+            Serial.println("[UI_FAST_PATH] BLE scan deferred");
+            continue;
+        }
         
         Serial.println("\n=== BLE定位任务开始 ===");
         
@@ -912,7 +965,9 @@ void mapDisplayTask(void* param) {
         if (display) {
             display->update();
         }
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(isUiFastPathActive() ?
+            UI_FAST_PATH_DISPLAY_INTERVAL_MS :
+            UI_NORMAL_DISPLAY_INTERVAL_MS));
     }
     vTaskDelete(NULL);
 }
@@ -923,6 +978,11 @@ void networkTask(void* param) {
     
     while (systemRunning) {
         vTaskDelayUntil(&lastWakeTime, networkInterval);
+
+        if (isUiFastPathActive()) {
+            Serial.println("[UI_FAST_PATH] network update deferred");
+            continue;
+        }
         
         if (network) {
             network->update();

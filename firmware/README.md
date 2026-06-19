@@ -104,7 +104,9 @@ Status and location direct Wi-Fi uplinks use compact JSON for the router demo pa
 
 The committed local demo config leaves `MQTT_BROKER_FALLBACK_1` empty so an offline `Triple-None` run does not block on the public broker. Use `scripts/set_flycare_mqtt_endpoint.ps1 -Mode Cloud` before uploading when a public broker is intentionally required.
 
-For the router-only demo, `FLYCARE_LOCAL_ROUTER_MODE 1` disables runtime NTP access to `pool.ntp.org` and keeps MQTT connect/raw-uplink timeouts short. This prevents a powered router with no WAN cable from stalling page changes. Button handling remains the highest priority task, and the display task outranks network retry work so visible page switching should remain under the 100-200 ms demo target while direct MQTT status/location and flight downlinks continue on the local broker.
+For the router-only demo, `FLYCARE_LOCAL_ROUTER_MODE 1` disables startup and runtime NTP access to `pool.ntp.org` and keeps MQTT connect/raw-uplink timeouts short. This prevents a powered router with no WAN cable from stalling page changes. Button handling remains the highest priority task, and the display task outranks network retry work so visible page switching should remain under the 100-200 ms demo target while direct MQTT status/location and flight downlinks continue on the local broker.
+
+The UI fast path records `[UI_LATENCY] event=... handled_ms=... redraw_ms=...` after SOS short-press page changes and PWR screen toggles. During the short `UI_FAST_PATH_GUARD_MS` window, BLE scans and network updates defer one cycle, Wi-Fi reconnect is nonblocking with `WIFI_RECONNECT_BACKOFF_MS`, and local-LAN MQTT failures do not trigger expensive Wi-Fi recovery while the watch is already on `flycare` with a `192.168.1.x` address.
 
 Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:
 

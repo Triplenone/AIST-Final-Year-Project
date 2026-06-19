@@ -407,11 +407,17 @@ void SimpleDisplayManager::update() {
     // 实时更新时间
     static unsigned long lastTimeUpdate = 0;
     if (now - lastTimeUpdate >= 1000) {
+#if FLYCARE_ENABLE_NTP_UPDATES
         struct tm timeinfo;
         if (getLocalTime(&timeinfo)) {
             hour = timeinfo.tm_hour;
             minute = timeinfo.tm_min;
         }
+#else
+        unsigned long seconds = now / 1000UL;
+        hour = (seconds / 3600UL) % 24;
+        minute = (seconds / 60UL) % 60;
+#endif
         lastTimeUpdate = now;
     }
     

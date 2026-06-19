@@ -473,13 +473,19 @@ bool MyNetworkManager::ensureWiFiConnected() {
     
     // 尝试重连
     Serial.println("WiFi断开，尝试重连...");
-    WiFi.reconnect();
-    
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        attempts++;
+    static unsigned long lastEnsureReconnectMs = 0;
+    unsigned long nowMs = millis();
+    if (lastEnsureReconnectMs > 0 && nowMs - lastEnsureReconnectMs < WIFI_RECONNECT_BACKOFF_MS) {
+        wifiConnected = false;
+        Serial.printf("[WiFi] reconnect backoff %lu/%lu ms\n",
+                      nowMs - lastEnsureReconnectMs,
+                      (unsigned long)WIFI_RECONNECT_BACKOFF_MS);
+        return false;
     }
+    lastEnsureReconnectMs = nowMs;
+
+    Serial.println("[WiFi] nonblocking reconnect requested");
+    WiFi.reconnect();
     
     wifiConnected = (WiFi.status() == WL_CONNECTED);
     if (wifiConnected) {
@@ -605,10 +611,10 @@ void MyNetworkManager::update() {
         mqttConnected = false;
         
         // 每30秒尝试重连一次
-        if (now - lastReconnectAttempt > 30000) {
+        if (now - lastReconnectAttempt > WIFI_RECONNECT_BACKOFF_MS) {
             lastReconnectAttempt = now;
             Serial.println("尝试重连WiFi...");
-            connectWiFi();
+            ensureWiFiConnected();
         }
     } else {
         wifiConnected = true;

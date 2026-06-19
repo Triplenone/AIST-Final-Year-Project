@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-20 01:05-01:24 FlyCare offline router UI fast path implementation attempt
+
+- I.offline.fast_path=updated firmware-only performance path for local router demo: startup NTP sync is skipped under `FLYCARE_LOCAL_ROUTER_MODE`, SOS short-press/PWR actions mark a `UI_FAST_PATH_GUARD_MS` window, page switches force an immediate display update with `[UI_LATENCY]` serial evidence, BLE/network tasks defer one cycle during the guard, Wi-Fi reconnect is nonblocking, and local-LAN MQTT failures no longer trigger expensive Wi-Fi recovery while the watch already has a `192.168.1.x` address and broker `192.168.1.232:1883`.
+- I.mqtt.timeouts=shortened firmware MQTT/RF waits for offline router behavior: connect timeout `500ms`, socket timeout `1s`, MQTT/RF mutex waits `100ms`, BLE idle wait `120ms`, and reconnect backoff `3s -> 10s max`. MQTT topics, backend API, frontend, database, and BLE positioning strategy were not changed.
+- V.compile=pass ESP32-S3 compile succeeded with `1541027/3145728` bytes program storage and `55168/327680` bytes RAM.
+- B.upload=blocked: `[System.IO.Ports.SerialPort]::GetPortNames()` showed only `COM3` and `COM4`; PnP listed ESP32-S3 `VID_303A&PID_1001` ports including COM5-COM9 as `Unknown`, so no usable COM5 upload target was available. `pnputil /scan-devices` was blocked by Windows with `Access is denied`.
+- V.direct_mqtt=fail/current-state-only: with no serial bridge process running, `mosquitto_sub -h 192.168.1.232 -p 1883 -t "smartwatch/#" -v -R -C 6 -W 75` timed out with no fresh watch payload. This does not validate or invalidate the new firmware because upload was blocked.
+- V.audit=fail due to current watch freshness only: `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` reported `local_stack=pass`, backend `8001` healthy with MQTT connected to `192.168.1.232:1883`, but `watch_status_freshness=fail` because latest status was about 243 minutes old.
+- R.remaining=connect NG WAI LUN over a usable USB serial port, upload this firmware, then rerun offline page-switch serial `[UI_LATENCY]` capture, broker-side direct MQTT status/location proof, Gate/SOS/Fall downlink smoke, bounded serial stability, and final audit.
+
 ### 2026-06-19 18:45-19:10 FlyCare final demo registry + alert downlink implementation
 
 - I.demo.registry=added idempotent `database/mysql/migrations/20260619_flycare_demo_registry.sql` with six visible FlyCare bindings. It preserves existing MySQL users/devices/events and hides LAU SIU FONG / TANG WAI HAN from final demo UI by omission, not deletion.
