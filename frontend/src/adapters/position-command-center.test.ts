@@ -62,36 +62,30 @@ function makeResident(
 
 describe('position-command-center adapter', () => {
   it('tracks FlyCare demo registry entries with Hong Kong passenger names', () => {
-    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[2]).toBe('ESP32_0000C422A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[3]).toBe('ESP32_0000C8292A04A7AC');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[4]).toBe('ESP32_0000A022A443CA48');
-    expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[5]).toBe('ESP32_00009822A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[6]).toBe('ESP32_00008C292A04A7AC');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[7]).toBe('ESP32_00009022A443CA48');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[8]).toBe('ESP32_000048CA43A42298');
     expect(POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[9]).toBe('ESP32_0000E03948D4DB1C');
-    expect(POSITION_RESIDENT_REGISTRY.map((entry) => entry.displayName)).toEqual(
-      expect.arrayContaining([
-        'LAU SIU FONG',
-        'WONG KA MING',
-        'HO CHI WAI',
-        'TANG WAI HAN',
-        'MA KA WAI',
-        'YIP MAN LING',
-        'NG WAI LUN',
-        'LEE KA YAN'
-      ])
-    );
+    expect(POSITION_RESIDENT_REGISTRY.map((entry) => [entry.demoId, entry.displayName])).toEqual([
+      [1, 'NG WAI LUN'],
+      [2, 'WONG KA MING'],
+      [3, 'HO CHI WAI'],
+      [4, 'MA KA WAI'],
+      [5, 'YIP MAN LING'],
+      [6, 'LEE KA YAN']
+    ]);
   });
 
   it('keeps the FlyCare registry at the tracked demo size when a refresh is partial', () => {
     const partial = [
       {
-        ...POSITION_RESIDENT_REGISTRY[6],
+        ...POSITION_RESIDENT_REGISTRY[0],
         displayName: 'NG WAI LUN LIVE'
       },
       {
-        ...POSITION_RESIDENT_REGISTRY[7],
+        ...POSITION_RESIDENT_REGISTRY[5],
         displayName: 'LEE KA YAN LIVE'
       }
     ];
@@ -102,7 +96,7 @@ describe('position-command-center adapter', () => {
     expect(stabilized.map((entry) => entry.deviceId)).toEqual(
       POSITION_RESIDENT_REGISTRY.map((entry) => entry.deviceId)
     );
-    expect(stabilized.find((entry) => entry.deviceId === POSITION_RESIDENT_REGISTRY[6].deviceId)?.displayName).toBe(
+    expect(stabilized.find((entry) => entry.deviceId === POSITION_RESIDENT_REGISTRY[0].deviceId)?.displayName).toBe(
       'NG WAI LUN LIVE'
     );
   });
@@ -139,8 +133,8 @@ describe('position-command-center adapter', () => {
   });
 
   it('merges selected FlyCare location refresh without replacing other residents', () => {
-    const selected = POSITION_RESIDENT_REGISTRY[6];
-    const other = POSITION_RESIDENT_REGISTRY[7];
+    const selected = POSITION_RESIDENT_REGISTRY[0];
+    const other = POSITION_RESIDENT_REGISTRY[5];
     const snapshot = {
       fetchedAt: '2026-03-28T00:02:05.000Z',
       loadError: null,

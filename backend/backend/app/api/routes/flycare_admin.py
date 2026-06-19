@@ -2,19 +2,26 @@
 
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+import uuid
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app import crud
 from app.config import settings
 from app.database import SessionLocal
 from app.models.device import Device
+from app.models.event import EventStatus, EventType
+from app.models.flycare_demo_registry import FlyCareDemoRegistry
 from app.models.user import User
+from app.schemas.event import EventCreate
 from app.services.mongo_raw_upstream import save_raw_upstream
 from app.services.mqtt_publish import (
+    build_flycare_alert_topic,
     build_flight_mqtt_downlink,
     build_flycare_flight_topic,
+    publish_alert_downlink,
     publish_flight_downlink,
 )
 from app.services.mqtt_subscriber import FLIGHT_TOPIC, get_mqtt_status
@@ -49,6 +56,21 @@ class FlightPublishBody(BaseModel):
         False,
         description="Also write Mongo directly (use when MQTT loopback is unavailable)",
     )
+
+
+class AlertPublishBody(BaseModel):
+    device_id: str = Field(..., min_length=1, description="Mongo/MQTT device id, e.g. ESP32_...")
+    mysql_device_id: Optional[int] = Field(None, ge=1)
+    related_user_id: Optional[int] = Field(None, ge=1)
+    passengerName: Optional[str] = None
+    event_type: str = Field(..., description="sos or fall")
+    action: str = Field(..., description="activate or clear")
+    title: Optional[str] = None
+    message: Optional[str] = None
+    severity: Optional[str] = None
+    command_id: Optional[str] = None
+    publish_mqtt: bool = Field(True, description="Publish to smartwatch/{device_id}/alert")
+    create_event: bool = Field(False, description="Create a MySQL event for activate actions")
 
 
 def _normalize_hhmm(value: Optional[str]) -> Optional[str]:
@@ -136,6 +158,51 @@ def _device_aliases_for_payload(payload: Dict[str, Any]) -> List[str]:
     return deduped
 
 
+def _json_aliases(value: Any) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        raw = value
+    elif isinstance(value, str):
+        raw = [part.strip() for part in value.strip("[]").replace('"', "").split(",")]
+    else:
+        raw = []
+    aliases: List[str] = []
+    for alias in raw:
+        clean = str(alias or "").strip()
+        if clean:
+            aliases.append(clean)
+    return aliases
+
+
+def _registry_presets(db: Session) -> List[Dict[str, Any]]:
+    rows = (
+        db.query(FlyCareDemoRegistry)
+        .filter(FlyCareDemoRegistry.enabled == True)  # noqa: E712
+        .order_by(FlyCareDemoRegistry.sort_order.asc(), FlyCareDemoRegistry.demo_id.asc())
+        .all()
+    )
+    presets: List[Dict[str, Any]] = []
+    for row in rows:
+        device = db.query(Device).filter(Device.device_id == row.mysql_device_id).first()
+        user = db.query(User).filter(User.user_id == row.user_id).first()
+        aliases = _json_aliases(row.alias_device_ids)
+        presets.append(
+            {
+                "demo_id": int(row.demo_id),
+                "device_id": row.canonical_device_id,
+                "mysql_device_id": int(row.mysql_device_id),
+                "elderly_user_id": int(row.user_id),
+                "passengerName": (row.display_name or "").strip()
+                or (user.name.strip() if user and user.name else None),
+                "deploy_location": device.deploy_location if device else None,
+                "alias_device_ids": aliases,
+                "mqtt_topic": build_flycare_flight_topic(row.canonical_device_id),
+            }
+        )
+    return presets
+
+
 def _publish_flight_downlink_aliases(payload: Dict[str, Any], flight_info: Dict[str, Any]) -> Dict[str, Any]:
     aliases = _device_aliases_for_payload(payload)
     results: List[Dict[str, Any]] = []
@@ -174,6 +241,46 @@ def _publish_flight_downlink_aliases(payload: Dict[str, Any], flight_info: Dict[
     }
 
 
+def _publish_alert_downlink_aliases(payload: Dict[str, Any], alert_payload: Dict[str, Any]) -> Dict[str, Any]:
+    aliases = _device_aliases_for_payload(payload)
+    results: List[Dict[str, Any]] = []
+
+    for alias in aliases:
+        try:
+            results.append(
+                {
+                    "device_id": alias,
+                    **publish_alert_downlink(alias, alert_payload),
+                }
+            )
+        except Exception as exc:
+            results.append(
+                {
+                    "ok": False,
+                    "device_id": alias,
+                    "topic": build_flycare_alert_topic(alias),
+                    "qos": 1,
+                    "retain": False,
+                    "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+                    "error": str(exc),
+                }
+            )
+
+    ok_results = [result for result in results if result.get("ok")]
+    error_results = [result for result in results if not result.get("ok")]
+    return {
+        "ok": bool(ok_results),
+        "topic": build_flycare_alert_topic(payload["device_id"]),
+        "topics": [result.get("topic") for result in results],
+        "aliases": aliases,
+        "alias_results": results,
+        "qos": 1,
+        "retain": False,
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": "; ".join(str(result.get("error")) for result in error_results if result.get("error")) or None,
+    }
+
+
 @router.get("/mqtt/status")
 def flycare_mqtt_status():
     return get_mqtt_status()
@@ -181,10 +288,23 @@ def flycare_mqtt_status():
 
 @router.get("/presets")
 def list_flight_presets() -> Dict[str, Any]:
-    """Tracked devices from device_id_map with MySQL user names when available."""
+    """Visible FlyCare demo devices, falling back to device_id_map when registry is absent."""
     presets: List[Dict[str, Any]] = []
     db: Session = SessionLocal()
     try:
+        try:
+            presets = _registry_presets(db)
+        except Exception as exc:
+            db.rollback()
+            print(f"[FlyCareAdmin] demo registry unavailable, using device_id_map fallback: {exc}")
+
+        if presets:
+            return {
+                "items": presets,
+                "mqtt_topic": FLIGHT_TOPIC,
+                "downlink_topic_template": settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE,
+            }
+
         aliases_by_mysql_id: Dict[int, List[str]] = {}
         for mongo_id, mysql_id in settings.device_id_map.items():
             aliases_by_mysql_id.setdefault(mysql_id, []).append(mongo_id)
@@ -211,6 +331,7 @@ def list_flight_presets() -> Dict[str, Any]:
                     "elderly_user_id": elderly_user_id,
                     "passengerName": passenger_name,
                     "deploy_location": device.deploy_location if device else None,
+                    "alias_device_ids": [alias for alias in aliases if alias != mongo_id],
                     "mqtt_topic": build_flycare_flight_topic(mongo_id),
                 }
             )
@@ -289,4 +410,103 @@ async def publish_flight(body: FlightPublishBody):
         "mqtt_payload": mqtt_payload,
         "mqtt": mqtt_result,
         "mongo": mongo_result,
+    }
+
+
+@router.post("/alert/publish")
+def publish_alert(body: AlertPublishBody):
+    event_type = (body.event_type or "").strip().lower()
+    action = (body.action or "").strip().lower()
+    if event_type not in {"sos", "fall"}:
+        raise HTTPException(status_code=400, detail="event_type must be sos or fall")
+    if action not in {"activate", "clear"}:
+        raise HTTPException(status_code=400, detail="action must be activate or clear")
+
+    mapped_mysql = settings.device_id_map.get(body.device_id.strip())
+    mysql_device_id = body.mysql_device_id if body.mysql_device_id is not None else mapped_mysql
+    title = (body.title or event_type.upper()).strip()
+    message = (body.message or f"{event_type.upper()} alert").strip()
+    severity = (body.severity or ("critical" if action == "activate" else "info")).strip()
+    command_id = (body.command_id or f"{event_type}-{action}-{uuid.uuid4().hex[:12]}").strip()
+
+    payload: Dict[str, Any] = {
+        "device_id": body.device_id.strip(),
+        "mysql_device_id": mysql_device_id,
+        "related_user_id": body.related_user_id,
+    }
+    alert_payload: Dict[str, Any] = {
+        "command_type": "alert",
+        "command_id": command_id,
+        "event_type": event_type,
+        "action": action,
+        "title": title,
+        "message": message,
+        "severity": severity,
+        "mysql_device_id": mysql_device_id,
+        "related_user_id": body.related_user_id,
+        "passengerName": (body.passengerName or "").strip() or None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    mqtt_result: Dict[str, Any] = {
+        "ok": False,
+        "topic": build_flycare_alert_topic(payload["device_id"]),
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": None,
+        "skipped": not body.publish_mqtt,
+        "payload": alert_payload,
+    }
+    if body.publish_mqtt:
+        mqtt_result = {
+            **mqtt_result,
+            **_publish_alert_downlink_aliases(payload, alert_payload),
+            "skipped": False,
+            "payload": alert_payload,
+        }
+
+    event_result: Dict[str, Any] = {"ok": False, "skipped": True, "event_id": None, "error": None}
+    if body.create_event and action == "activate":
+        if mysql_device_id is None or body.related_user_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="mysql_device_id and related_user_id are required when create_event=true",
+            )
+        db: Session = SessionLocal()
+        try:
+            created = crud.event.create_event(
+                db,
+                EventCreate(
+                    event_type=EventType(event_type),
+                    related_user_id=int(body.related_user_id),
+                    trigger_device_id=int(mysql_device_id),
+                    event_params={
+                        "source": "flycare_admin_alert_downlink",
+                        "command_id": command_id,
+                        "action": action,
+                        "title": title,
+                        "message": message,
+                        "passengerName": body.passengerName,
+                    },
+                    event_status=EventStatus.UNHANDLED,
+                ),
+            )
+            event_result = {
+                "ok": True,
+                "skipped": False,
+                "event_id": int(created.event_id),
+                "event_status": str(created.event_status.value if hasattr(created.event_status, "value") else created.event_status),
+                "error": None,
+            }
+        except Exception as exc:
+            event_result = {"ok": False, "skipped": False, "event_id": None, "error": str(exc)}
+        finally:
+            db.close()
+    elif body.create_event and action == "clear":
+        event_result = {"ok": True, "skipped": True, "event_id": None, "reason": "clear action does not create events"}
+
+    return {
+        "status": "ok" if (mqtt_result.get("ok") or mqtt_result.get("skipped")) else "error",
+        "payload": payload,
+        "alert_payload": alert_payload,
+        "mqtt": mqtt_result,
+        "event": event_result,
     }

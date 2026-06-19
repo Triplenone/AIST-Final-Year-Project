@@ -94,6 +94,8 @@ smartwatch/ESP32_48CA43A42298/heartbeat
 smartwatch/ESP32_48CA43A42298/sos
 ```
 
+Flight updates remain on `smartwatch/<device_id>/flight`. Admin-triggered emergency controls use `smartwatch/<device_id>/alert` and are not retained. `/alert` accepts `event_type=sos|fall` plus `action=activate|clear`; `command_id` is used to ignore canonical/alias duplicates. The handler updates local SOS/Fall display state and vibration only, and it does not publish fake `/sos` or `/fall` uplinks. Watch-originated emergency telemetry still uses `/sos` and `/fall` as uplink topics.
+
 `DataTransmitter` is the only runtime owner of the FlyCare MQTT session. `MyNetworkManager` keeps Wi-Fi alive but does not auto-connect its own MQTT client, because two `PubSubClient` instances on the watch can race and leave publishes disconnected. Serial publish diagnostics use `[MQTT_PUB]` lines. Reconnect attempts use a short exponential backoff so a failed direct-Wi-Fi broker connect does not create overlapping half-open MQTT sockets while status telemetry keeps running. The MQTT client id is fixed to the watch `device_id` so Mosquitto closes any stale same-watch session before accepting the new one.
 
 During router migration, `DataTransmitter` also has a narrow one-shot MQTT uplink fallback. If the persistent `PubSubClient` session is disconnected, status/location publishes can open a short `WiFiClient`, send MQTT 3.1.1 CONNECT + QoS 0 PUBLISH to the same `smartwatch/<device_id>/...` topic, flush, then disconnect. This does not replace the persistent session used for retained flight downlinks, and `[MQTT_RAW] publish ok` is only firmware-side diagnostic evidence; direct proof still requires seeing the payload on the broker and Mongo latest refresh.

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { flycareAdminApi, type FlightPublishPayload, type FlyCareFlightPreset } from '../../services/api';
+import { eventApi, flycareAdminApi, type FlightPublishPayload, type FlyCareFlightPreset } from '../../services/api';
+import type { BackendEvent, EventStatus, EventType } from '../../types/backend';
 
 type FlightFormState = {
   device_id: string;
@@ -25,6 +26,17 @@ type FlightFormState = {
 };
 
 const FLIGHT_STATUS_OPTIONS = ['scheduled', 'boarding', 'delayed', 'cancelled'] as const;
+const FINAL_DEMO_DEVICE_IDS = new Set([
+  'ESP32_000048CA43A42298',
+  'ESP32_0000C8292A04A7AC',
+  'ESP32_0000A022A443CA48',
+  'ESP32_00008C292A04A7AC',
+  'ESP32_00009022A443CA48',
+  'ESP32_0000E03948D4DB1C'
+]);
+const FINAL_DEMO_DEVICE_ORDER = new Map(
+  Array.from(FINAL_DEMO_DEVICE_IDS).map((deviceId, index) => [deviceId, index])
+);
 
 function formatHhmm(date: Date): string {
   const hours = String(date.getHours()).padStart(2, '0');
@@ -125,6 +137,9 @@ export const FlyCareAdmin = () => {
   const [selectedPresetKey, setSelectedPresetKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [alertPublishing, setAlertPublishing] = useState(false);
+  const [eventHandling, setEventHandling] = useState<number | null>(null);
+  const [activeEvents, setActiveEvents] = useState<BackendEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -136,20 +151,38 @@ export const FlyCareAdmin = () => {
         flycareAdminApi.getPresets(),
         flycareAdminApi.getMqttStatus()
       ]);
-      setPresets(presetRes.items ?? []);
+      const items = (presetRes.items ?? [])
+        .filter((item) => FINAL_DEMO_DEVICE_IDS.has(item.device_id))
+        .sort(
+          (a, b) =>
+            (a.demo_id ?? FINAL_DEMO_DEVICE_ORDER.get(a.device_id) ?? 999) -
+            (b.demo_id ?? FINAL_DEMO_DEVICE_ORDER.get(b.device_id) ?? 999)
+        );
+      setPresets(items);
       setMqttTopic(presetRes.downlink_topic_template ?? 'smartwatch/{device_id}/flight');
       setMqttStatus({
         connected: mqttRes.connected,
         broker: mqttRes.broker,
         port: mqttRes.port
       });
+      if (!selectedPresetKey && items[0]) {
+        const first = items[0];
+        setSelectedPresetKey(first.device_id);
+        setMqttTopic(first.mqtt_topic ?? `smartwatch/${first.device_id}/flight`);
+        setForm((current) => ({
+          ...current,
+          device_id: first.device_id,
+          mysql_device_id: first.mysql_device_id != null ? String(first.mysql_device_id) : '',
+          passengerName: first.passengerName ?? current.passengerName
+        }));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : t('admin.flycare.errorLoad');
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [selectedPresetKey, t]);
 
   useEffect(() => {
     void load();
@@ -198,6 +231,36 @@ export const FlyCareAdmin = () => {
     ? `smartwatch/${form.device_id.trim()}/flight`
     : mqttTopic;
 
+  const selectedPreset = useMemo(
+    () => presets.find((item) => item.device_id === selectedPresetKey || item.device_id === form.device_id.trim()) ?? null,
+    [form.device_id, presets, selectedPresetKey]
+  );
+
+  const refreshActiveEvents = useCallback(async () => {
+    const mysqlId = Number(form.mysql_device_id.trim());
+    if (!mysqlId) {
+      setActiveEvents([]);
+      return;
+    }
+    try {
+      const [sosEvents, fallEvents] = await Promise.all([
+        eventApi.list({ event_type: 'sos', limit: 50 }),
+        eventApi.list({ event_type: 'fall', limit: 50 })
+      ]);
+      const rows = [...sosEvents, ...fallEvents]
+        .filter((event) => Number(event.trigger_device_id) === mysqlId)
+        .filter((event) => event.event_status === 'unhandled' || event.event_status === 'confirmed')
+        .sort((a, b) => Date.parse(b.event_timestamp) - Date.parse(a.event_timestamp));
+      setActiveEvents(rows);
+    } catch {
+      setActiveEvents([]);
+    }
+  }, [form.mysql_device_id]);
+
+  useEffect(() => {
+    void refreshActiveEvents();
+  }, [refreshActiveEvents]);
+
   const runPublish = async (options: { publish_mqtt: boolean; save_mongo: boolean }) => {
     const validationError = validateForm();
     if (validationError) {
@@ -226,6 +289,59 @@ export const FlyCareAdmin = () => {
       setError(msg);
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const runAlertPublish = async (eventType: Extract<EventType, 'sos' | 'fall'>, action: 'activate' | 'clear') => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    const mysqlId = form.mysql_device_id.trim() ? Number(form.mysql_device_id.trim()) : selectedPreset?.mysql_device_id;
+    const relatedUserId = selectedPreset?.elderly_user_id ?? undefined;
+    setAlertPublishing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await flycareAdminApi.publishAlert({
+        device_id: form.device_id.trim(),
+        mysql_device_id: mysqlId,
+        related_user_id: relatedUserId,
+        passengerName: form.passengerName.trim(),
+        event_type: eventType,
+        action,
+        title: eventType === 'sos' ? 'SOS' : 'Fall',
+        message: eventType === 'sos' ? 'SOS alert' : 'Fall alert',
+        severity: action === 'activate' ? 'critical' : 'info',
+        publish_mqtt: true,
+        create_event: action === 'activate'
+      });
+      const topicCount = result.mqtt?.alias_results?.length ?? 0;
+      const eventText = result.event?.event_id ? ` Event #${result.event.event_id}` : '';
+      setSuccess(`${eventType.toUpperCase()} ${action} sent to ${topicCount || 1} MQTT topic(s).${eventText}`);
+      await refreshActiveEvents();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Alert publish failed';
+      setError(msg);
+    } finally {
+      setAlertPublishing(false);
+    }
+  };
+
+  const handleEvent = async (event: BackendEvent, status: EventStatus) => {
+    setEventHandling(event.event_id);
+    setError(null);
+    setSuccess(null);
+    try {
+      await eventApi.handle(event.event_id, status, undefined, `FlyCare admin ${status}`);
+      setSuccess(`Event #${event.event_id} marked ${status}.`);
+      await refreshActiveEvents();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Event handle failed';
+      setError(msg);
+    } finally {
+      setEventHandling(null);
     }
   };
 
@@ -280,7 +396,9 @@ export const FlyCareAdmin = () => {
                 <option value="">{t('admin.flycare.presetPlaceholder')}</option>
                 {presetOptions.map((opt) => (
                   <option key={opt.key} value={opt.key}>
-                    {opt.label}
+                    {opt.item.passengerName
+                      ? `#${opt.item.demo_id ?? opt.item.mysql_device_id ?? '?'} ${opt.item.passengerName} - ${opt.item.device_id}`
+                      : opt.label}
                   </option>
                 ))}
               </select>
@@ -457,6 +575,89 @@ export const FlyCareAdmin = () => {
             </button>
           </div>
         </form>
+        <section className="flycare-admin-emergency" aria-label="FlyCare emergency MQTT controls">
+          <div className="flycare-admin-emergency__header">
+            <div>
+              <h4>Emergency MQTT</h4>
+              <p className="muted">Publish SOS/Fall control to smartwatch alert downlink.</p>
+            </div>
+            <button type="button" className="ghost" onClick={() => void refreshActiveEvents()}>
+              Refresh events
+            </button>
+          </div>
+          <div className="admin-form__actions flycare-admin-emergency__actions">
+            <button type="button" disabled={alertPublishing} onClick={() => void runAlertPublish('sos', 'activate')}>
+              Trigger SOS
+            </button>
+            <button type="button" className="ghost" disabled={alertPublishing} onClick={() => void runAlertPublish('sos', 'clear')}>
+              Clear SOS
+            </button>
+            <button type="button" disabled={alertPublishing} onClick={() => void runAlertPublish('fall', 'activate')}>
+              Trigger Fall
+            </button>
+            <button type="button" className="ghost" disabled={alertPublishing} onClick={() => void runAlertPublish('fall', 'clear')}>
+              Clear Fall
+            </button>
+          </div>
+          <div className="flycare-admin-events">
+            <h4>Active SOS/Fall events</h4>
+            {activeEvents.length === 0 ? (
+              <p className="muted">No active SOS/Fall events for the selected device.</p>
+            ) : (
+              <div className="admin-table-scroll">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Time</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeEvents.map((event) => (
+                      <tr key={event.event_id}>
+                        <td>#{event.event_id}</td>
+                        <td>{event.event_type}</td>
+                        <td>{event.event_status}</td>
+                        <td>{event.event_timestamp}</td>
+                        <td>
+                          <div className="admin-table__actions">
+                            <button
+                              type="button"
+                              className="ghost"
+                              disabled={eventHandling === event.event_id}
+                              onClick={() => void handleEvent(event, 'confirmed')}
+                            >
+                              Acknowledge
+                            </button>
+                            <button
+                              type="button"
+                              className="ghost"
+                              disabled={eventHandling === event.event_id}
+                              onClick={() => void handleEvent(event, 'resolved')}
+                            >
+                              Resolved
+                            </button>
+                            <button
+                              type="button"
+                              className="ghost"
+                              disabled={eventHandling === event.event_id}
+                              onClick={() => void handleEvent(event, 'false_alarm')}
+                            >
+                              False alarm
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
         <p className="muted flycare-admin-hint">{t('admin.flycare.hint', { topic: selectedDownlinkTopic })}</p>
       </div>
     </div>

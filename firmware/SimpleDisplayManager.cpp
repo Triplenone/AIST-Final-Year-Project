@@ -1607,7 +1607,10 @@ void SimpleDisplayManager::showSOS(bool active) {
         alarmTriggerTime = millis();
         alarmReportPending = true;
         needRedraw = true;
-        Serial.println("[SOS] display active; cue is owned by activateSOSAlert()");
+        if (vibration) {
+            vibration->pattern(10, 500);
+        }
+        Serial.println("[SOS] display active; vibration queued");
         return;
     }
 
@@ -1615,7 +1618,8 @@ void SimpleDisplayManager::showSOS(bool active) {
     alarmDisplayActive = false;
     alarmReportPending = false;
     needRedraw = true;
-    Serial.println("[SOS] display cleared; cue is owned by clearSOSAlert()");
+    vibrateShort();
+    Serial.println("[SOS] display cleared");
     return;
 
     if (active) {
@@ -1660,6 +1664,26 @@ void SimpleDisplayManager::showSOS(bool active) {
 }
 
 void SimpleDisplayManager::showFallAlert(bool active) {
+    if (active) {
+        fallAlertActive = true;
+        alarmDisplayActive = true;
+        alarmTriggerTime = millis();
+        alarmReportPending = true;
+        needRedraw = true;
+        if (vibration) {
+            vibration->pattern(15, 500);
+        }
+        Serial.println("[FALL] display active; vibration queued");
+        return;
+    }
+
+    fallAlertActive = false;
+    alarmDisplayActive = sos_emergency_mode;
+    alarmReportPending = false;
+    needRedraw = true;
+    vibrateShort();
+    Serial.println("[FALL] display cleared");
+    return;
 #if !ENABLE_FALL_DETECTION
     (void)active;
     fallAlertActive = false;

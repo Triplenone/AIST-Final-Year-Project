@@ -8,7 +8,7 @@ import { DeviceLogsAdmin } from './DeviceLogsAdmin';
 import { ResidentsAdmin } from './ResidentsAdmin';
 import { FlyCareAdmin } from './FlyCareAdmin';
 
-type AdminTab =
+export type AdminTab =
   | 'users'
   | 'devices'
   | 'locations'
@@ -17,9 +17,14 @@ type AdminTab =
   | 'residents'
   | 'flycare';
 
-export const AdminSection = () => {
+type AdminSectionProps = {
+  activeTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
+};
+
+export const AdminSection = ({ activeTab: controlledActiveTab, onTabChange }: AdminSectionProps = {}) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<AdminTab>('residents');
+  const [internalActiveTab, setInternalActiveTab] = useState<AdminTab>('flycare');
 
   const tabLabels: Record<AdminTab, string> = {
     residents: t('admin.tabs.residents'),
@@ -100,8 +105,17 @@ export const AdminSection = () => {
     }
   };
 
-  const orderedTabs: AdminTab[] = ['events', 'residents', 'users', 'devices', 'locations', 'logs', 'flycare'];
+  const orderedTabs: AdminTab[] = ['flycare', 'events'];
+  const requestedActiveTab = controlledActiveTab ?? internalActiveTab;
+  const activeTab = orderedTabs.includes(requestedActiveTab) ? requestedActiveTab : 'flycare';
   const activeMeta = tabMeta[activeTab];
+  const setActiveTab = (tab: AdminTab) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
+  };
 
   const renderActivePanel = () => {
     if (activeTab === 'users') return <UsersAdmin />;

@@ -304,11 +304,13 @@ export const mongoUpstreamApi = {
 };
 
 export type FlyCareFlightPreset = {
+  demo_id?: number;
   device_id: string;
   mysql_device_id?: number;
   elderly_user_id?: number | null;
   passengerName?: string | null;
   deploy_location?: string | null;
+  alias_device_ids?: string[];
   mqtt_topic?: string;
 };
 
@@ -367,11 +369,46 @@ export type FlyCarePublishResult = {
   mongo?: { ok: boolean; db_name?: string; collection?: string; error?: string | null; skipped?: boolean; inserted_id?: string };
 };
 
+export type FlyCareAlertPublishPayload = {
+  device_id: string;
+  mysql_device_id?: number;
+  related_user_id?: number | null;
+  passengerName?: string | null;
+  event_type: 'sos' | 'fall';
+  action: 'activate' | 'clear';
+  title?: string;
+  message?: string;
+  severity?: string;
+  command_id?: string;
+  publish_mqtt: boolean;
+  create_event: boolean;
+};
+
+export type FlyCareAlertPublishResult = {
+  status: string;
+  payload?: Record<string, unknown>;
+  alert_payload?: Record<string, unknown>;
+  mqtt?: FlyCarePublishResult['mqtt'] & {
+    aliases?: string[];
+    alias_results?: Array<Record<string, unknown>>;
+  };
+  event?: {
+    ok?: boolean;
+    skipped?: boolean;
+    event_id?: number | null;
+    event_status?: string;
+    reason?: string;
+    error?: string | null;
+  };
+};
+
 export const flycareAdminApi = {
   getPresets: () => api.get<FlyCarePresetsResponse>('/flycare-admin/presets'),
   getMqttStatus: () => api.get<FlyCareMqttStatus>('/flycare-admin/mqtt/status'),
   publishFlight: (data: FlightPublishPayload) =>
     api.post<FlyCarePublishResult>('/flycare-admin/flight/publish', data),
+  publishAlert: (data: FlyCareAlertPublishPayload) =>
+    api.post<FlyCareAlertPublishResult>('/flycare-admin/alert/publish', data),
 };
 
 export default api;

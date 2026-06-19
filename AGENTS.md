@@ -27,6 +27,16 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 18:45-19:10 FlyCare final demo registry + alert downlink implementation
+
+- I.demo.registry=added idempotent `database/mysql/migrations/20260619_flycare_demo_registry.sql` with six visible FlyCare bindings. It preserves existing MySQL users/devices/events and hides LAU SIU FONG / TANG WAI HAN from final demo UI by omission, not deletion.
+- I.api.presets=updated `POST /api/v1/flycare-admin/alert/publish` and registry-first `/api/v1/flycare-admin/presets`; flight downlink remains `/flight`, watch uplink remains `/status`, `/location`, `/sos`, `/fall`, and Admin SOS/Fall control uses non-retained `/alert`.
+- I.ui.clean=trimmed final demo nav to Overview/FlyCare/Admin, defaulted Admin to FlyCare, hid non-demo Admin tabs from the main tab strip, and restricted `/flycare` passenger rail to demo IDs 1-6 with NG WAI LUN as `#1`.
+- I.firmware.alert=added `/alert` downlink handling in `DataTransmitter` with command-id dedupe and popup/vibration state updates through `SimpleDisplayManager`, without enabling SD/TTS/I2S audio or changing direct status/location timing.
+- V.db.registry=pass local MySQL registry contains six rows: NG WAI LUN device 8 as demo 1, WONG device 3 as demo 2, HO device 4 as demo 3, MA device 6 as demo 4, YIP device 7 as demo 5, and LEE device 9 as demo 6.
+- V.frontend=pass `npm.cmd run lint`, `npm.cmd run test`, and `npm.cmd run build` after updating registry tests to the six-watch final demo roster.
+- R.remaining=live backend `8001` was owned by an elevated python process and could not be restarted from the non-admin shell (`Access is denied`), so the running `/presets` endpoint remains old until that process is restarted from Administrator PowerShell.
+
 ### 2026-06-19 16:50-17:15 FlyCare offline router performance firmware
 
 - I.offline.router=added `FLYCARE_LOCAL_ROUTER_MODE=1` in `firmware/Config.h`, disabled runtime NTP updates in `MyNetworkManager`, kept local MQTT broker use on `192.168.1.232:1883`, and shortened MQTT/raw-uplink connect and socket waits so a powered router with no WAN cable does not stall the watch UI.

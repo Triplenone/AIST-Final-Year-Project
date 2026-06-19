@@ -5,6 +5,7 @@ import {
 } from './flycare-map';
 import {
   deviceApi,
+  flycareAdminApi,
   locationApi,
   mongoUpstreamApi,
   residentApi,
@@ -66,6 +67,7 @@ export type PositionResidentRegistryEntry = {
   residentId: string;
   displayName: string;
   deviceId: string;
+  demoId?: number;
   lastKnownVitals?: {
     heartRate?: number | null;
     spo2?: number | null;
@@ -109,6 +111,7 @@ export type PositionResidentViewModel = {
   residentId: string;
   displayName: string;
   deviceId: string;
+  demoId?: number;
   recordError: string | null;
   isOnline: boolean;
   truthState: PositionTruthState;
@@ -206,7 +209,7 @@ export const POSITION_MAP_PIXEL_HEIGHT = 800;
 export const POSITION_ACTIVITY_PAGE_SIZE = 12;
 
 /** 定位页跟踪的 MySQL `device.device_id` 列表（与 Mongo 上行通过下方映射关联）。 */
-export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [2, 3, 4, 5, 6, 7, 8, 9];
+export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [8, 3, 4, 6, 7, 9];
 
 /**
  * MySQL 设备 id → Mongo `device_raw_upstream` 顶层 `device_id` 字符串。
@@ -225,46 +228,44 @@ export const POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID: Readonly<Record<number, strin
 
 export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[] = [
   {
-    residentId: 'TestUser02',
-    displayName: 'LAU SIU FONG',
-    deviceId: 'ESP32_0000C422A443CA48'
+    residentId: '15',
+    displayName: 'NG WAI LUN',
+    deviceId: 'ESP32_000048CA43A42298',
+    demoId: 1
   },
   {
-    residentId: 'TestUser03',
+    residentId: '4',
     displayName: 'WONG KA MING',
-    deviceId: 'ESP32_0000C8292A04A7AC'
+    deviceId: 'ESP32_0000C8292A04A7AC',
+    demoId: 2
   },
   {
-    residentId: 'TestUser04',
+    residentId: '8',
     displayName: 'HO CHI WAI',
-    deviceId: 'ESP32_0000A022A443CA48'
-  },
-  {
-    residentId: 'TestUser05',
-    displayName: 'TANG WAI HAN',
-    deviceId: 'ESP32_00009822A443CA48'
+    deviceId: 'ESP32_0000A022A443CA48',
+    demoId: 3
   },
   {
     residentId: '13',
     displayName: 'MA KA WAI',
-    deviceId: 'ESP32_00008C292A04A7AC'
+    deviceId: 'ESP32_00008C292A04A7AC',
+    demoId: 4
   },
   {
     residentId: '14',
     displayName: 'YIP MAN LING',
-    deviceId: 'ESP32_00009022A443CA48'
-  },
-  {
-    residentId: '15',
-    displayName: 'NG WAI LUN',
-    deviceId: 'ESP32_000048CA43A42298'
+    deviceId: 'ESP32_00009022A443CA48',
+    demoId: 5
   },
   {
     residentId: '16',
     displayName: 'LEE KA YAN',
-    deviceId: 'ESP32_0000E03948D4DB1C'
+    deviceId: 'ESP32_0000E03948D4DB1C',
+    demoId: 6
   }
 ];
+
+const POSITION_DEMO_DEVICE_IDS = new Set(POSITION_RESIDENT_REGISTRY.map((entry) => entry.deviceId));
 
 function clonePositionRegistryFallback(): PositionResidentRegistryEntry[] {
   return POSITION_RESIDENT_REGISTRY.map((entry) => ({ ...entry }));
@@ -275,31 +276,19 @@ export function stabilizePositionResidentRegistry(
   fallback: readonly PositionResidentRegistryEntry[] = POSITION_RESIDENT_REGISTRY
 ): PositionResidentRegistryEntry[] {
   const fallbackList = fallback.length > 0 ? fallback : POSITION_RESIDENT_REGISTRY;
-  const cloned = registry.map((entry) => ({ ...entry }));
-  if (cloned.length >= fallbackList.length) {
-    return cloned;
-  }
+  const fallbackDeviceIds = new Set(fallbackList.map((entry) => entry.deviceId));
+  const cloned = registry.filter((entry) => fallbackDeviceIds.has(entry.deviceId)).map((entry) => ({ ...entry }));
 
   const byDeviceId = new Map(cloned.map((entry) => [entry.deviceId, entry]));
   const byResidentId = new Map(cloned.map((entry) => [entry.residentId, entry]));
-  const used = new Set<PositionResidentRegistryEntry>();
 
-  const merged = fallbackList.map((entry) => {
+  return fallbackList.map((entry) => {
     const resolved = byDeviceId.get(entry.deviceId) ?? byResidentId.get(entry.residentId);
     if (resolved) {
-      used.add(resolved);
       return { ...resolved };
     }
     return { ...entry };
   });
-
-  for (const entry of cloned) {
-    if (!used.has(entry) && !merged.some((item) => item.deviceId === entry.deviceId)) {
-      merged.push({ ...entry });
-    }
-  }
-
-  return merged;
 }
 
 function readPositiveMetric(...candidates: unknown[]): number | null {
@@ -342,6 +331,33 @@ export async function resolvePositionResidentRegistry(): Promise<PositionResiden
   const residentVitalsByUserId = await loadResidentVitalsByUserId();
 
   try {
+    const presets = await flycareAdminApi.getPresets();
+    const items = presets.items ?? [];
+    if (items.length > 0) {
+      const registryItems = items
+        .filter((item) => item.device_id)
+        .map((item, index) => {
+          const residentId = item.elderly_user_id ?? item.mysql_device_id;
+          const lastKnownVitals =
+            item.elderly_user_id != null ? residentVitalsByUserId.get(String(item.elderly_user_id)) : undefined;
+          return {
+            residentId: residentId != null ? String(residentId) : `device-${item.mysql_device_id ?? index + 1}`,
+            displayName: (item.passengerName && item.passengerName.trim()) || `Passenger ${item.demo_id ?? index + 1}`,
+            deviceId: item.device_id,
+            demoId: item.demo_id,
+            ...(lastKnownVitals ? { lastKnownVitals } : {})
+          };
+        })
+        .filter((entry) => POSITION_DEMO_DEVICE_IDS.has(entry.deviceId));
+      if (registryItems.length > 0) {
+        return stabilizePositionResidentRegistry(registryItems);
+      }
+    }
+  } catch {
+    // Keep the existing MySQL device/user fallback available for local recovery.
+  }
+
+  try {
     for (let index = 0; index < POSITION_TRACKED_MYSQL_DEVICE_IDS.length; index += 1) {
       const mysqlDeviceId = POSITION_TRACKED_MYSQL_DEVICE_IDS[index];
       const deviceOrdinal = index + 1;
@@ -366,6 +382,7 @@ export async function resolvePositionResidentRegistry(): Promise<PositionResiden
             residentId: String(user.user_id),
             displayName,
             deviceId: mongoDeviceId,
+            demoId: deviceOrdinal,
             ...(lastKnownVitals ? { lastKnownVitals } : {})
           });
         } catch {
@@ -1705,6 +1722,7 @@ function buildResidentViewModel(
     residentId: record.resident.residentId,
     displayName: record.resident.displayName,
     deviceId: record.resident.deviceId,
+    demoId: record.resident.demoId,
     recordError: record.error,
     isOnline: truthState === 'online',
     truthState,

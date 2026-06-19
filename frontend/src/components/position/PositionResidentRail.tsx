@@ -213,6 +213,7 @@ export function PositionResidentRail({
                 mapProfile === 'flycare'
                   ? ` position-resident-rail__item--flycare-tone-${getFlyCareRailToneIndex(resident.deviceId || resident.residentId)}`
                   : '';
+              const displayId = resident.demoId ?? resident.residentId;
 
               return (
                 <li key={resident.residentId}>
@@ -223,7 +224,10 @@ export function PositionResidentRail({
                     onClick={() => onSelectResident(resident.residentId)}
                   >
                     <div className="position-resident-rail__item-top">
-                      <span className="position-resident-rail__name">{resident.displayName}</span>
+                      <span className="position-resident-rail__name">
+                        {mapProfile === 'flycare' ? <span className="position-resident-rail__id">#{displayId}</span> : null}
+                        {resident.displayName}
+                      </span>
                       <span className={`position-state-pill position-state-pill--${resident.truthState}`}>
                         {t(truthLabelKey[resident.truthState], {
                           defaultValue: truthDefaultLabel[resident.truthState]

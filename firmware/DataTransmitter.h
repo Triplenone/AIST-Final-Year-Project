@@ -47,6 +47,7 @@
 class NavigationManager;
 class FlightInfoManager;
 class VoiceMessageManager;
+class SimpleDisplayManager;
 
 // 门禁配置结构
 struct DoorConfig {
@@ -85,6 +86,7 @@ private:
     NavigationManager* nav_manager;
     FlightInfoManager* flight_manager;
     VoiceMessageManager* voice_manager;
+    SimpleDisplayManager* display_manager;
     
     unsigned long relative_time;
     unsigned long last_transmit;
@@ -113,6 +115,8 @@ private:
     unsigned long sos_trigger_time;
     int sos_trigger_count;
     String sos_trigger_method;
+    String last_alert_command_id;
+    unsigned long last_alert_command_ms;
     
     // 门禁配置
     DoorConfig doors[5];
@@ -199,6 +203,7 @@ public:
     void setNavigationManager(NavigationManager* mgr) { nav_manager = mgr; }
     void setFlightManager(FlightInfoManager* mgr) { flight_manager = mgr; }
     void setVoiceManager(VoiceMessageManager* mgr) { voice_manager = mgr; }
+    void setDisplayManager(SimpleDisplayManager* mgr) { display_manager = mgr; }
     
     // 设置导航目标
     void setTargetPosition(float x, float y, const String& name = "");

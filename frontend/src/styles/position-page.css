@@ -494,6 +494,20 @@
   color: var(--text-primary);
 }
 
+.position-resident-rail__id {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.8rem;
+  margin-right: 0.42rem;
+  padding: 0.1rem 0.38rem;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
 .position-resident-rail__zone {
   margin: 0.58rem 0 0.34rem;
   font-size: 0.95rem;

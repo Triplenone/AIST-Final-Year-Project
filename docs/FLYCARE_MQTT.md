@@ -38,11 +38,29 @@ cd E:\flycare
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260615_register_flycare_device4_canonical_id.sql"
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260615_mark_flycare_device8_ng_wai_lun_online.sql"
 & 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260615_register_flycare_device9_and_aliases.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260619_flycare_demo_registry.sql"
 ```
 
 Do not keep FlyCare user/device binding changes only in a local MySQL instance. If a binding affects the UI or demo data, add an idempotent migration under `database/mysql/migrations/` and update this mapping table.
 
 Device 3 accepts both `ESP32_0000C8292A04A7AC` and the older local alias `ESP32_00005CFA7AD4DB1C`; admin presets should show only the canonical `ESP32_0000C8292A04A7AC` row. Device 8 accepts both `ESP32_000048CA43A42298` and the older local alias `ESP32_48CA43A42298`; admin presets should show only the canonical `ESP32_000048CA43A42298` row. Flight commands published from Admin fan out to every mapped alias for the selected MySQL device. If the FlyCare dashboard shows a passenger as stale/offline while the device is powered, verify that the device is publishing fresh `smartwatch/<device_id>/status` or `heartbeat` payloads to the same MQTT broker that the backend reports from `/api/v1/data-reception/mqtt/status`.
+
+## Final Demo Registry
+
+`database/mysql/migrations/20260619_flycare_demo_registry.sql` adds `flycare_demo_registry` as the visible FlyCare demo binding layer. It does not delete historical users, devices, aliases, or events, and it does not renumber MySQL primary keys. `/api/v1/flycare-admin/presets` reads this registry first and falls back to `device_id_map.json` only when the registry table is absent or empty.
+
+Final visible FlyCare bindings:
+
+| Demo ID | Passenger | Canonical device_id | MySQL device_id | Notes |
+| ---: | --- | --- | ---: | --- |
+| 1 | NG WAI LUN | `ESP32_000048CA43A42298` | 8 | Alias `ESP32_48CA43A42298` remains valid |
+| 2 | WONG KA MING | `ESP32_0000C8292A04A7AC` | 3 | Alias `ESP32_00005CFA7AD4DB1C` remains valid |
+| 3 | HO CHI WAI | `ESP32_0000A022A443CA48` | 4 | Visible demo watch |
+| 4 | MA KA WAI | `ESP32_00008C292A04A7AC` | 6 | Visible demo watch |
+| 5 | YIP MAN LING | `ESP32_00009022A443CA48` | 7 | Visible demo watch |
+| 6 | LEE KA YAN | `ESP32_0000E03948D4DB1C` | 9 | Alias `ESP32_1CDBD44839E0` remains valid |
+
+`LAU SIU FONG / ESP32_0000C422A443CA48` and `TANG WAI HAN / ESP32_00009822A443CA48` remain in legacy MySQL/device mapping data but are hidden from final FlyCare presets and the FlyCare passenger rail.
 
 ## MQTT Topics
 
@@ -75,6 +93,32 @@ smartwatch/{device_id}/flight
 ```
 
 FlyCare flight downlinks are published with QoS 1 and the retained flag so a watch that briefly disconnects during Wi-Fi scanning or MQTT fallback receives the latest flight update after it re-subscribes to `smartwatch/<device_id>/#`. Firmware ignores identical retained flight payloads after the first successful parse, preventing MQTT reconnects from repeatedly reopening the same Gate Change popup.
+
+FlyCare emergency control downlink topic:
+
+```text
+smartwatch/{device_id}/alert
+```
+
+`/alert` is for Admin-to-watch SOS/Fall control only. It is published with QoS 1 and `retain=false` so a watch does not replay stale emergency commands after reconnecting. Watch-originated emergency telemetry remains uplink-only on `/sos` and `/fall`; do not use `/sos` or `/fall` as Admin downlink topics.
+
+Example alert downlink:
+
+```json
+{
+  "command_type": "alert",
+  "command_id": "sos-activate-20260619T110000Z",
+  "event_type": "sos",
+  "action": "activate",
+  "title": "SOS",
+  "message": "SOS alert",
+  "severity": "critical",
+  "mysql_device_id": 8,
+  "related_user_id": 15
+}
+```
+
+Allowed values are `event_type=sos|fall` and `action=activate|clear`. Firmware de-duplicates recent `command_id` values across canonical and alias topics, then shows the corresponding popup plus vibration without enabling SD/TTS/I2S audio.
 
 For local Windows demos with a real ESP32 on Wi-Fi, Mosquitto must listen on the PC LAN interface, not only `127.0.0.1`. Use `infra/mosquitto/local-windows.conf` when starting Mosquitto locally:
 

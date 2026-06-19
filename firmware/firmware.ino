@@ -2235,6 +2235,7 @@ void setup() {
     if (data_transmitter) {
         data_transmitter->setNavigationManager(navManager);
         data_transmitter->setFlightManager(flight_manager);
+        data_transmitter->setDisplayManager(display);
     }
     
     // 自动连接 WiFi

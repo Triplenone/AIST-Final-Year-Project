@@ -86,11 +86,7 @@ const NAV_ITEMS: ReadonlyArray<{
   labelKey: string;
 }> = [
   { key: 'overview', to: '/', labelKey: 'layout.nav.overview' },
-  { key: 'residents', to: '/residents', labelKey: 'layout.nav.residents' },
-  { key: 'position', to: '/position', labelKey: 'layout.nav.position' },
   { key: 'flycare', to: '/flycare', labelKey: 'layout.nav.flycare' },
-  { key: 'operations', to: '/operations', labelKey: 'layout.nav.operations' },
-  { key: 'family', to: '/family', labelKey: 'layout.nav.family' },
   { key: 'admin', to: '/admin', labelKey: 'layout.nav.admin' }
 ] as const;
 
@@ -355,7 +351,7 @@ export default function App() {
   const [showFallAlertModal, setShowFallAlertModal] = useState(false);
   const [fallAlertRows, setFallAlertRows] = useState<FallAlertDetailRow[]>([]);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [adminActiveTab, setAdminActiveTab] = useState<AdminTab>('users');
+  const [adminActiveTab, setAdminActiveTab] = useState<AdminTab>('flycare');
 
   const authFirstFieldRef = useRef<HTMLInputElement | null>(null);
   const previousRawMetricsRef = useRef<RawMetrics | null>(null);

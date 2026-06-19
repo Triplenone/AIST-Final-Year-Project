@@ -1,6 +1,7 @@
 #include "DataTransmitter.h"
 #include "NavigationManager.h"
 #include "FlightInfoManager.h"
+#include "SimpleDisplayManager.h"
 #include "VoiceMessageManager.h"
 #include <time.h>
 #include <esp_system.h>
@@ -328,13 +329,14 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
                                PowerManager* pwr)
     : network(net), imu(imu_mgr), fall_detector(fall_det),
       ble_location(ble_loc), power(pwr),
-      nav_manager(nullptr), flight_manager(nullptr), voice_manager(nullptr),
+      nav_manager(nullptr), flight_manager(nullptr), voice_manager(nullptr), display_manager(nullptr),
       relative_time(0), last_transmit(0), transmit_interval(5000),
       mqttClient(mqttWifiClient), mqttEnabled(false), mqttMutex(nullptr),
       mqttDownlinksSubscribed(false), mqtt_consecutive_transport_failures(0),
       last_mqtt_wifi_recovery_ms(0),
       target_x(4.4), target_y(1.8), target_name("Gate11"), navigation_active(false),
       sos_active(false), sos_trigger_time(0), sos_trigger_count(0), sos_trigger_method("none"),
+      last_alert_command_id(""), last_alert_command_ms(0),
       door_count(0), night_mode_active(false), light_triggered_tonight(false),
       movement_threshold(2.0), heartbeat_detected(false), heartbeat_interval(30000),
       current_x(0), current_y(0), reported_x(0), reported_y(0),
@@ -681,8 +683,29 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
     if (rfMutex) {
         if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(DATA_MQTT_RF_MUTEX_WAIT_MS)) != pdTRUE) {
             Serial.printf("[MQTT_PUB] skipped topic=%s rf=busy\n", topic.c_str());
+            bool rawStatusSuccess = false;
+            if (directStatusTopic && WiFi.status() == WL_CONNECTED) {
+                static unsigned long lastRfBusyRawStatusMs = 0;
+                unsigned long nowMs = millis();
+                if (lastRfBusyRawStatusMs == 0 || nowMs - lastRfBusyRawStatusMs >= 5000UL) {
+                    lastRfBusyRawStatusMs = nowMs;
+                    rawStatusSuccess = publishRawMqttUplink(mqttServer,
+                                                            mqttPort,
+                                                            device_id,
+                                                            topic,
+                                                            compactUplinkPayload,
+                                                            retained);
+                    Serial.printf("[MQTT_PUB] rf_busy_status_raw=%d topic=%s bytes=%u\n",
+                                  rawStatusSuccess ? 1 : 0,
+                                  topic.c_str(),
+                                  (unsigned)compactUplinkPayload.length());
+                    if (rawStatusSuccess) {
+                        noteMqttTransportSuccess();
+                    }
+                }
+            }
             if (locked) xSemaphoreGive(mqttMutex);
-            return false;
+            return rawStatusSuccess;
         }
         rfLocked = true;
         ble_scanning_active = false;
@@ -1008,6 +1031,83 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
         }
     }
     else if (topic.endsWith("/alert")) {
+        String commandId = doc["command_id"] | "";
+        String eventType = doc["event_type"] | "";
+        String action = doc["action"] | "";
+        String title = doc["title"] | "";
+        String message = doc["message"] | "";
+
+        if (eventType.length() == 0 && doc.containsKey("alerts") && doc["alerts"].size() > 0) {
+            JsonObject alert = doc["alerts"][0];
+            commandId = alert["command_id"] | commandId;
+            eventType = alert["event_type"] | alert["type"] | eventType;
+            action = alert["action"] | "activate";
+            title = alert["title"] | title;
+            message = alert["message"] | message;
+        }
+
+        eventType.trim();
+        eventType.toLowerCase();
+        action.trim();
+        action.toLowerCase();
+        if (title.length() == 0) title = eventType == "fall" ? "Fall" : "SOS";
+        if (message.length() == 0) message = eventType == "fall" ? "Fall alert" : "SOS alert";
+
+        unsigned long nowMs = millis();
+        bool duplicate = commandId.length() > 0 &&
+                         commandId == last_alert_command_id &&
+                         (nowMs - last_alert_command_ms) < 60000UL;
+        bool valid = (eventType == "sos" || eventType == "fall") &&
+                     (action == "activate" || action == "clear");
+        bool accepted = valid && !duplicate;
+
+        Serial.printf("[AlertDownlink] topic=%s command_id=%s type=%s action=%s accepted=%d duplicate=%d\n",
+                      topic.c_str(),
+                      commandId.c_str(),
+                      eventType.c_str(),
+                      action.c_str(),
+                      accepted ? 1 : 0,
+                      duplicate ? 1 : 0);
+
+        if (!valid) {
+            addLog("warning", "Invalid alert downlink");
+            return;
+        }
+        if (duplicate) {
+            return;
+        }
+        if (commandId.length() > 0) {
+            last_alert_command_id = commandId;
+            last_alert_command_ms = nowMs;
+        }
+
+        if (eventType == "sos") {
+            if (action == "activate") {
+                sos_active = true;
+                sos_trigger_time = getCurrentTimestamp();
+                sos_trigger_method = "admin_downlink";
+                if (display_manager) display_manager->showSOS(true);
+                addLog("warning", title + ": " + message);
+            } else {
+                sos_active = false;
+                sos_trigger_method = "admin_clear";
+                if (display_manager) display_manager->showSOS(false);
+                addLog("info", "SOS cleared by admin");
+            }
+            return;
+        }
+
+        if (eventType == "fall") {
+            if (action == "activate") {
+                if (display_manager) display_manager->showFallAlert(true);
+                addLog("warning", title + ": " + message);
+            } else {
+                if (display_manager) display_manager->showFallAlert(false);
+                addLog("info", "Fall cleared by admin");
+            }
+            return;
+        }
+
         if (doc.containsKey("alerts") && doc["alerts"].size() > 0) {
             JsonObject alert = doc["alerts"][0];
             String title = alert["title"] | "Alert";
