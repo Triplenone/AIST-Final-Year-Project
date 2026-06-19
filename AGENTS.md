@@ -37,6 +37,16 @@ You are a repo-first coding agent for this project.
 - V.audit=fail due to current watch freshness only: `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` reported `local_stack=pass`, backend `8001` healthy with MQTT connected to `192.168.1.232:1883`, but `watch_status_freshness=fail` because latest status was about 243 minutes old.
 - R.remaining=connect NG WAI LUN over a usable USB serial port, upload this firmware, then rerun offline page-switch serial `[UI_LATENCY]` capture, broker-side direct MQTT status/location proof, Gate/SOS/Fall downlink smoke, bounded serial stability, and final audit.
 
+### 2026-06-20 01:25-01:40 FlyCare offline router performance hardware completion
+
+- V.upload=pass after the watch was powered on: ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN MAC `48:ca:43:a4:22:98`; compile used `1541027/3145728` bytes and RAM `55168/327680`, upload wrote `1541168` bytes and reset on COM5.
+- V.direct_mqtt=pass with no COM5 serial bridge running: `logs/offline-router-direct-mqtt-20260620-013050.log` captured fresh broker-side direct Wi-Fi `smartwatch/ESP32_48CA43A42298/status` and `/location` payloads over `192.168.1.232:1883`; latest Mongo location refreshed to `_id=6a357cf6807b25709104283f`.
+- V.downlink=pass at broker/API layer: `logs/offline-router-downlink-api-20260620-013333.jsonl` and `logs/offline-router-downlink-api-rerun-20260620-013429.jsonl` showed Gate 10, Gate 11, SOS activate/clear, and Fall activate/clear with `mqtt.ok=true` and alias_count=2. Broker logs `logs/offline-router-downlink-broker-20260620-013333.log` and `logs/offline-router-downlink-broker-rerun-20260620-013429.log` showed canonical and alias `/flight` and `/alert` topics. Smoke events `344` and `345` were marked `false_alarm` through the normal Event API.
+- V.uplink_regression=pass after alert/downlink smoke: `logs/offline-router-direct-mqtt-post-downlink-20260620-013552.log` again captured fresh direct `/status` and `/location` with `sos.active=false` and `fall_detection.is_fall_confirmed=false`.
+- V.serial.fallback=pass bounded COM5 bridge `logs/flycare-serial-bridge-20260620-013822.log` ran 90s with parsed/sent `14/14`, downlinks=1, invalidUplinks=0, and crashes=0. This was a fallback stability check, not direct MQTT proof.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` reported overall `pass` after upload, direct MQTT, downlink smoke, cleanup, and bounded bridge validation.
+- V.ui_latency=not-captured: diagnostic-only COM5 read `logs/offline-router-ui-latency-20260620-013634.log` ran 75s with crash_count=0 but captured no `[UI_LATENCY]` lines, so the `<200ms` page-switch target still needs a live physical button capture or user visual confirmation with the WAN cable unplugged.
+
 ### 2026-06-19 18:45-19:10 FlyCare final demo registry + alert downlink implementation
 
 - I.demo.registry=added idempotent `database/mysql/migrations/20260619_flycare_demo_registry.sql` with six visible FlyCare bindings. It preserves existing MySQL users/devices/events and hides LAU SIU FONG / TANG WAI HAN from final demo UI by omission, not deletion.
