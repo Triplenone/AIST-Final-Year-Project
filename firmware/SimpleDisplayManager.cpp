@@ -809,7 +809,7 @@ void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
     const int cardY = SCREEN_HEIGHT - 146;
     const int cardW = 96;
     const int cardH = 116;
-    const uint16_t cardFill = 0xCF1B;  // #CBE3DB
+    const uint16_t cardFill = 0xFF18;  // #FFE0C0
     const uint16_t subtleGreen = 0x3C67;
     const uint16_t darkGray = 0x4208;
     const uint16_t gateNumberColor = 0xB420;
@@ -820,8 +820,7 @@ void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
     gfx->fillRoundRect(cardX, cardY, cardW, cardH, 10, cardFill);
     gfx->drawRoundRect(cardX, cardY, cardW, cardH, 10, lightBorder);
 
-    drawCenteredFittedText(gfx, cardX + 8, cardY + 8, cardW - 16, "DEST", subtleGreen, 3, 2);
-    drawCenteredFittedText(gfx, cardX + 9, cardY + 8, cardW - 16, "DEST", subtleGreen, 3, 2);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 13, cardW - 16, "DEST", subtleGreen, 2, 1);
     drawCenteredFittedText(gfx, cardX + 8, cardY + 40, cardW - 16, "Gate", darkGray, 1, 1);
     drawCenteredFittedText(gfx, cardX + 8, cardY + 59, cardW - 16, gateNo, gateNumberColor, 3, 2);
     drawCenteredFittedText(gfx, cardX + 6, cardY + 99, cardW - 12, "1 min walk", softGray, 1, 1);
