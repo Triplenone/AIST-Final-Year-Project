@@ -337,8 +337,12 @@ bool MyNetworkManager::connectWiFi() {
     for (int i = 0; i < candidateCount; i++) {
         if (connectCandidate(candidates[i], wifiCandidateMaxAttempts)) {
             wifiConnected = true;
+#if FLYCARE_ENABLE_NTP_UPDATES
             timeClient.begin();
             timeClient.update();
+#else
+            Serial.println("[NTP] skipped in local router mode");
+#endif
             wifiConnectInProgress = false;
             return true;
         }
@@ -394,8 +398,12 @@ bool MyNetworkManager::connectWiFi() {
         Serial.printf("IP地址: %s\n", WiFi.localIP().toString().c_str());
         Serial.printf("信号强度: %d dBm\n", WiFi.RSSI());
         
+#if FLYCARE_ENABLE_NTP_UPDATES
         timeClient.begin();
         timeClient.update();
+#else
+        Serial.println("[NTP] skipped in local router mode");
+#endif
         wifiConnectInProgress = false;
         return true;
     } else {
@@ -431,8 +439,12 @@ bool MyNetworkManager::connectWiFi() {
                 Serial.printf("[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
                 Serial.printf("[WiFi] RSSI: %d dBm\n", WiFi.RSSI());
 
+#if FLYCARE_ENABLE_NTP_UPDATES
                 timeClient.begin();
                 timeClient.update();
+#else
+                Serial.println("[NTP] skipped in local router mode");
+#endif
                 wifiConnectInProgress = false;
                 return true;
             }
@@ -484,7 +496,7 @@ bool MyNetworkManager::connectMQTT() {
     }
     
     mqttClient.setKeepAlive(30);
-    mqttClient.setSocketTimeout(4);
+    mqttClient.setSocketTimeout(DATA_MQTT_SOCKET_TIMEOUT_SECONDS);
 
     String brokerCandidates[6];
     int brokerCount = 0;
@@ -573,8 +585,12 @@ bool MyNetworkManager::sendMQTTData(const String& topic, const String& data) {
 
 // ================ getTimestamp函数 ================
 unsigned long MyNetworkManager::getTimestamp() {
+#if FLYCARE_ENABLE_NTP_UPDATES
     timeClient.update();
     return timeClient.getEpochTime();
+#else
+    return millis() / 1000UL;
+#endif
 }
 
 // ================ update函数（自动重连） ================
@@ -603,10 +619,12 @@ void MyNetworkManager::update() {
     mqttConnected = false;
     
     // 更新时间
+#if FLYCARE_ENABLE_NTP_UPDATES
     if (now - last_update > 60000) {
         timeClient.update();
         last_update = now;
     }
+#endif
     
     // 每30秒打印状态
     if (now - lastStatusPrint > 30000) {

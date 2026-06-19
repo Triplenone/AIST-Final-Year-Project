@@ -27,6 +27,18 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-19 16:50-17:15 FlyCare offline router performance firmware
+
+- I.offline.router=added `FLYCARE_LOCAL_ROUTER_MODE=1` in `firmware/Config.h`, disabled runtime NTP updates in `MyNetworkManager`, kept local MQTT broker use on `192.168.1.232:1883`, and shortened MQTT/raw-uplink connect and socket waits so a powered router with no WAN cable does not stall the watch UI.
+- I.ui.priority=centralized firmware task priorities in `Config.h`: Button stays highest, Display now outranks Network, and network publish/reconnect mutex waits are bounded to keep page switching responsive.
+- I.serial.compact=kept direct `/status` and `/location` cadence unchanged but shortened compact status JSON and flushed serial uplinks to avoid invalid serial fallback frames.
+- V.compile_upload=pass ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN MAC `48:ca:43:a4:22:98`; final compile after serial compact fix used `1537211/3145728` bytes and RAM `55200/327680`, upload wrote `1537360` bytes.
+- V.direct_mqtt=pass with COM5 bridge stopped: `logs/offline-router-direct-mqtt-after-serialfix-20260619-170815.log` captured broker-side direct `smartwatch/ESP32_48CA43A42298` payloads over `192.168.1.232:1883` with status=6 and location=3.
+- V.serial.fallback=pass bounded fallback `logs/flycare-serial-bridge-20260619-171358.log` ran 90s with parsed/sent `15/15`, downlinks=1, invalidUplinks=0, and crashes=0.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` reported overall `pass`; stale SOS events `338` and `340` were marked `false_alarm` through the normal Event API, not raw DB delete.
+- D.docs=updated `firmware/README.md` and `docs/FLYCARE_MQTT.md` for router-only demo mode, disabled runtime NTP, short MQTT timeouts, and the display-over-network priority intent.
+- R.remaining=the firmware is tuned for the 100-200 ms page-switching target, but actual visible latency still needs user stopwatch/visual confirmation with the WAN cable unplugged; terminal logs can prove compile, direct MQTT, serial stability, and audit, not physical button latency.
+
 ### 2026-06-19 04:11-04:15 FlyCare direct walk verifier
 
 - I.walk.verifier=added `scripts/verify_flycare_direct_walk.ps1`, a broker-side direct Wi-Fi MQTT verifier for NG WAI LUN that captures or analyzes `smartwatch/#`, rejects a running COM5 serial bridge by default, maps `/location` points to FlyCare zones, and fails on excessive Customer Services dwell, insufficient movement, missing direct payloads, or missing Gate evidence when `-RequireGate` is used.

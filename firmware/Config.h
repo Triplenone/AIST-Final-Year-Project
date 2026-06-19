@@ -22,6 +22,15 @@
 #define ENABLE_AUDIO_ALERTS 0
 #define ENABLE_TONE_ALERTS 0
 
+// Router-only demo mode keeps the watch responsive when the router has no WAN.
+// It avoids internet-dependent NTP/DNS work and keeps local MQTT failures short.
+#define FLYCARE_LOCAL_ROUTER_MODE 1
+#if FLYCARE_LOCAL_ROUTER_MODE
+#define FLYCARE_ENABLE_NTP_UPDATES 0
+#else
+#define FLYCARE_ENABLE_NTP_UPDATES 1
+#endif
+
 // MAX30102 heart-rate contact/sampling settings.
 // Keep HR validity gated by contact; do not lower this to fake a BPM reading.
 #define HR_CONTACT_THRESHOLD 30000L
@@ -108,8 +117,23 @@
 #define MQTT_DIRECT_POST_PUBLISH_LOOP_COUNT 12
 #define MQTT_DIRECT_POST_PUBLISH_LOOP_DELAY_MS 10
 #define DATA_MQTT_FAILURE_BACKOFF_MS 30000UL
-#define DATA_MQTT_CONNECT_TIMEOUT_MS 2500UL
+#define DATA_MQTT_CONNECT_TIMEOUT_MS 1200UL
+#define DATA_MQTT_SOCKET_TIMEOUT_SECONDS 2
+#define DATA_MQTT_MUTEX_WAIT_MS 250UL
+#define DATA_MQTT_RF_MUTEX_WAIT_MS 250UL
+#define DATA_MQTT_RECONNECT_RF_WAIT_MS 250UL
 #define BLE_POSITION_VERBOSE_LOGS 0
+
+// Page switching target is <100-200 ms visible latency, so display must outrank
+// network retry work on the same core.
+#define TASK_PRIORITY_BUTTON 6
+#define TASK_PRIORITY_BLE 5
+#define TASK_PRIORITY_DISPLAY 5
+#define TASK_PRIORITY_NETWORK 2
+#define TASK_PRIORITY_AUDIO 4
+#define TASK_PRIORITY_HEART_RATE 2
+#define TASK_PRIORITY_FALL 2
+#define TASK_PRIORITY_IMU 2
 
 // ??賃????謕?
 #define SCREEN_WIDTH 240

@@ -201,7 +201,7 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     WiFiClient rawClient;
-    rawClient.setTimeout(15000);
+    rawClient.setTimeout(DATA_MQTT_CONNECT_TIMEOUT_MS);
     rawClient.setNoDelay(true);
 
     String rawClientId = deviceId + "_uplink_" + String((uint32_t)millis(), HEX);
@@ -212,8 +212,8 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     IPAddress brokerIp;
     bool brokerIsIp = brokerIp.fromString(broker);
     bool tcpConnected = brokerIsIp
-        ? rawClient.connect(brokerIp, port, 15000)
-        : rawClient.connect(broker.c_str(), port, 15000);
+        ? rawClient.connect(brokerIp, port, DATA_MQTT_CONNECT_TIMEOUT_MS)
+        : rawClient.connect(broker.c_str(), port, DATA_MQTT_CONNECT_TIMEOUT_MS);
     if (!tcpConnected) {
         Serial.printf("[MQTT_RAW] tcp connect failed broker=%s:%d connected=%d\n",
                       broker.c_str(),
@@ -251,10 +251,10 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     rawClient.flush();
-    delay(300);
+    delay(50);
 
     uint8_t connack[4] = {0};
-    bool connackSeen = readMqttConnack(rawClient, 750, connack);
+    bool connackSeen = readMqttConnack(rawClient, 150, connack);
     if (connackSeen) {
         Serial.printf("[MQTT_RAW] CONNACK bytes=%02x %02x %02x %02x\n",
                       connack[0], connack[1], connack[2], connack[3]);
@@ -287,11 +287,11 @@ static bool publishRawMqttUplink(const String& broker, int port, const String& d
     }
 
     rawClient.flush();
-    delay(800);
+    delay(60);
     const uint8_t disconnectPacket[] = {0xe0, 0x00};
     writeMqttBytes(rawClient, disconnectPacket, sizeof(disconnectPacket));
     rawClient.flush();
-    delay(100);
+    delay(10);
     rawClient.stop();
     Serial.printf("[MQTT_RAW] publish ok topic=%s bytes=%u\n",
                   topic.c_str(), (unsigned)payload.length());
@@ -316,6 +316,7 @@ static void emitSerialUplink(const String& topic, const String& payload) {
     line += payload;
     line += "\n";
     Serial.write(reinterpret_cast<const uint8_t*>(line.c_str()), line.length());
+    Serial.flush();
 
     if (locked) {
         xSemaphoreGive(serialUplinkMutex);
@@ -440,7 +441,7 @@ bool DataTransmitter::ensureMQTTConnected() {
     if (!mqttMutex) {
         return ensureMQTTConnectedUnlocked();
     }
-    if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(8000)) != pdTRUE) {
+    if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(DATA_MQTT_MUTEX_WAIT_MS)) != pdTRUE) {
         Serial.println("[MQTT] connect skipped: mutex busy");
         return false;
     }
@@ -539,12 +540,12 @@ bool DataTransmitter::ensureMQTTConnectedUnlocked() {
     Serial.printf("连接 MQTT 服务器 %s:%d...\n", mqttServer.c_str(), mqttPort);
     
     // ===== 关键：设置超大缓冲区（10KB）=====
-    mqttWifiClient.setTimeout(25000);
+    mqttWifiClient.setTimeout(DATA_MQTT_CONNECT_TIMEOUT_MS);
     mqttWifiClient.setNoDelay(true);
     mqttClient.setBufferSize(1024);
     
     mqttClient.setKeepAlive(30);       // 30秒保活
-    mqttClient.setSocketTimeout(25);
+    mqttClient.setSocketTimeout(DATA_MQTT_SOCKET_TIMEOUT_SECONDS);
     
     bool connected = mqttUser.length() > 0
         ? mqttClient.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())
@@ -669,7 +670,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
 
     bool locked = false;
     if (mqttMutex) {
-        if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(8000)) != pdTRUE) {
+        if (xSemaphoreTake(mqttMutex, pdMS_TO_TICKS(DATA_MQTT_MUTEX_WAIT_MS)) != pdTRUE) {
             Serial.printf("[MQTT_PUB] skipped topic=%s mutex=busy\n", topic.c_str());
             return false;
         }
@@ -678,7 +679,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
 
     bool rfLocked = false;
     if (rfMutex) {
-        if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) != pdTRUE) {
+        if (xSemaphoreTake(rfMutex, pdMS_TO_TICKS(DATA_MQTT_RF_MUTEX_WAIT_MS)) != pdTRUE) {
             Serial.printf("[MQTT_PUB] skipped topic=%s rf=busy\n", topic.c_str());
             if (locked) xSemaphoreGive(mqttMutex);
             return false;
@@ -1447,15 +1448,10 @@ String DataTransmitter::getDirectStatusJSON() {
     json += "}";
     json += "},";
     json += "\"fall_detection\":{";
-    json += "\"state\":0,\"is_fall_confirmed\":false";
+    json += "\"is_fall_confirmed\":false";
     json += "},";
     json += "\"sos\":{";
     json += "\"active\":" + String(sos_active ? "true" : "false");
-    json += "},";
-    json += "\"system\":{";
-    json += "\"battery\":{";
-    json += "\"level\":" + (power ? String(power->getBatteryPercent()) : "0");
-    json += "}";
     json += "}";
     json += "}";
     return json;
@@ -1617,7 +1613,7 @@ void DataTransmitter::update() {
             lastMqttReconnect = current_time;
             Serial.println("尝试重连MQTT...");
             bool reconnectRfLocked = false;
-            if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(12000)) == pdTRUE) {
+            if (rfMutex && xSemaphoreTake(rfMutex, pdMS_TO_TICKS(DATA_MQTT_RECONNECT_RF_WAIT_MS)) == pdTRUE) {
                 reconnectRfLocked = true;
                 ble_scanning_active = false;
                 ble_scan_started_at_ms = 0;

@@ -94,13 +94,15 @@ smartwatch/ESP32_48CA43A42298/heartbeat
 smartwatch/ESP32_48CA43A42298/sos
 ```
 
-`DataTransmitter` is the only runtime owner of the FlyCare MQTT session. `MyNetworkManager` keeps Wi-Fi/NTP alive but does not auto-connect its own MQTT client, because two `PubSubClient` instances on the watch can race and leave publishes disconnected. Serial publish diagnostics use `[MQTT_PUB]` lines. Reconnect attempts use a short exponential backoff so a failed direct-Wi-Fi broker connect does not create overlapping half-open MQTT sockets while status telemetry keeps running. The MQTT client id is fixed to the watch `device_id` so Mosquitto closes any stale same-watch session before accepting the new one.
+`DataTransmitter` is the only runtime owner of the FlyCare MQTT session. `MyNetworkManager` keeps Wi-Fi alive but does not auto-connect its own MQTT client, because two `PubSubClient` instances on the watch can race and leave publishes disconnected. Serial publish diagnostics use `[MQTT_PUB]` lines. Reconnect attempts use a short exponential backoff so a failed direct-Wi-Fi broker connect does not create overlapping half-open MQTT sockets while status telemetry keeps running. The MQTT client id is fixed to the watch `device_id` so Mosquitto closes any stale same-watch session before accepting the new one.
 
 During router migration, `DataTransmitter` also has a narrow one-shot MQTT uplink fallback. If the persistent `PubSubClient` session is disconnected, status/location publishes can open a short `WiFiClient`, send MQTT 3.1.1 CONNECT + QoS 0 PUBLISH to the same `smartwatch/<device_id>/...` topic, flush, then disconnect. This does not replace the persistent session used for retained flight downlinks, and `[MQTT_RAW] publish ok` is only firmware-side diagnostic evidence; direct proof still requires seeing the payload on the broker and Mongo latest refresh.
 
 Status and location direct Wi-Fi uplinks use compact JSON for the router demo path. COM5 serial fallback keeps status as the single periodic telemetry carrier, with the current location embedded in that status payload; direct MQTT still publishes both `/status` and `/location`. MQTT publish pumps the client loop only briefly after each direct publish and the BLE task waits on the shared RF mutex before scanning, so direct telemetry does not starve fresh BLE scans.
 
 The committed local demo config leaves `MQTT_BROKER_FALLBACK_1` empty so an offline `Triple-None` run does not block on the public broker. Use `scripts/set_flycare_mqtt_endpoint.ps1 -Mode Cloud` before uploading when a public broker is intentionally required.
+
+For the router-only demo, `FLYCARE_LOCAL_ROUTER_MODE 1` disables runtime NTP access to `pool.ntp.org` and keeps MQTT connect/raw-uplink timeouts short. This prevents a powered router with no WAN cable from stalling page changes. Button handling remains the highest priority task, and the display task outranks network retry work so visible page switching should remain under the 100-200 ms demo target while direct MQTT status/location and flight downlinks continue on the local broker.
 
 Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:
 

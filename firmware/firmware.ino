@@ -2263,24 +2263,24 @@ void setup() {
     syncTime();
     
     // // 创建任务
-    xTaskCreatePinnedToCore(buttonTask, "Button", 4096, nullptr, 6, &buttonTaskHandle, 0);
+    xTaskCreatePinnedToCore(buttonTask, "Button", 4096, nullptr, TASK_PRIORITY_BUTTON, &buttonTaskHandle, 0);
 #if ENABLE_BLE_LOCATION
     if (ble_location && pBLEScan) {
-        xTaskCreatePinnedToCore(bleLocationTask, "BLE", 12288, nullptr, 5, &bleLocationTaskHandle, 0);
+        xTaskCreatePinnedToCore(bleLocationTask, "BLE", 12288, nullptr, TASK_PRIORITY_BLE, &bleLocationTaskHandle, 0);
     } else {
         Serial.println("[BLE] location task skipped because BLE init failed");
     }
 #endif
-    xTaskCreatePinnedToCore(networkTask, "Network", 6144, nullptr, 4, &networkTaskHandle, 1);
-    xTaskCreatePinnedToCore(audioTask, "Audio", AUDIO_TASK_STACK_SIZE, nullptr, 4, &audioTaskHandle, 0);
+    xTaskCreatePinnedToCore(networkTask, "Network", 6144, nullptr, TASK_PRIORITY_NETWORK, &networkTaskHandle, 1);
+    xTaskCreatePinnedToCore(audioTask, "Audio", AUDIO_TASK_STACK_SIZE, nullptr, TASK_PRIORITY_AUDIO, &audioTaskHandle, 0);
     // xTaskCreatePinnedToCore(mainCoordinatorTask, "Main", 6144, nullptr, 3, &mainCoordinatorTaskHandle, 0);
-    xTaskCreatePinnedToCore(heartRateTask, "HeartRate", 4096, nullptr, 2, nullptr, 1);
-    xTaskCreatePinnedToCore(mapDisplayTask, "Display", 16384, nullptr, 3, &mapDisplayTaskHandle, 1);
+    xTaskCreatePinnedToCore(heartRateTask, "HeartRate", 4096, nullptr, TASK_PRIORITY_HEART_RATE, nullptr, 1);
+    xTaskCreatePinnedToCore(mapDisplayTask, "Display", 16384, nullptr, TASK_PRIORITY_DISPLAY, &mapDisplayTaskHandle, 1);
 #if ENABLE_FALL_DETECTION && ENABLE_AUTO_FALL_DETECTION
-    xTaskCreatePinnedToCore(fallDetectionTask, "Fall", 4096, nullptr, 2, &fallDetectionTaskHandle, 1);
+    xTaskCreatePinnedToCore(fallDetectionTask, "Fall", 4096, nullptr, TASK_PRIORITY_FALL, &fallDetectionTaskHandle, 1);
 #endif
 #if ENABLE_IMU_SENSOR || ENABLE_FALL_DETECTION
-    xTaskCreatePinnedToCore(imuSamplingTask, "IMU", 4096, nullptr, 2, &imuSamplingTaskHandle, 1);
+    xTaskCreatePinnedToCore(imuSamplingTask, "IMU", 4096, nullptr, TASK_PRIORITY_IMU, &imuSamplingTaskHandle, 1);
 #endif
     // xTaskCreatePinnedToCore(powerTask, "Power", 6144, nullptr, 1, &powerTaskHandle, 0);
 
