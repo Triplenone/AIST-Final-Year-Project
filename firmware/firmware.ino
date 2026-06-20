@@ -227,14 +227,16 @@ void activateSOSAlert(const String& method) {
         xQueueSend(audioCommandQueue, &audio_cmd, 0);
     }
 
-    if (vibration) {
-        vibration->pattern(3, 200);
-    }
+    // SOS display owns the vibration cue so activation only queues one pattern.
 }
 
 void clearSOSAlert(const String& method) {
     Serial.printf("[SOS] Clear via %s\n", method.c_str());
     sos_active = false;
+
+    if (vibration) {
+        vibration->stop();
+    }
 
     if (data_transmitter) {
         data_transmitter->setSOSActive(false, method);
@@ -245,6 +247,8 @@ void clearSOSAlert(const String& method) {
 #if ENABLE_FALL_DETECTION
         display->showFallAlert(false);
 #endif
+        display->forceRedraw();
+        display->update();
     }
 
 #if ENABLE_FALL_DETECTION
@@ -258,10 +262,6 @@ void clearSOSAlert(const String& method) {
         memset(&audio_cmd, 0, sizeof(audio_cmd));
         audio_cmd.command = AudioCommand::AUDIO_STOP;
         xQueueSend(audioCommandQueue, &audio_cmd, 0);
-    }
-
-    if (vibration) {
-        vibration->shortVib();
     }
 }
 
@@ -621,6 +621,10 @@ void buttonTask(void* param) {
     Serial.println("[Button] task started");
 
     while (systemRunning) {
+        if (vibration) {
+            vibration->update();
+        }
+
         int bootState = digitalRead(BOOT_BUTTON_PIN);
         int pwrState = digitalRead(PWR_BUTTON_PIN);
 

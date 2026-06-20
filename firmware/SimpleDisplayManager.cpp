@@ -450,15 +450,9 @@ void SimpleDisplayManager::update() {
     }
     
     // 3. BLE 扫描
-    if (now - lastBLEScan >= BLE_SCAN_INTERVAL || bleScanNeeded) {
-        if (ble_location) {
-            Location loc = ble_location->getLocation();
-            if (loc.beacon_count > 0) {
-                current_x = loc.x;
-                current_y = loc.y;
-            }
-        }
-        lastBLEScan = now;
+    if (bleScanNeeded) {
+        // BLE scans are owned by bleLocationTask(); display renders the
+        // last position pushed through setCurrentPosition().
         bleScanNeeded = false;
     }
     
@@ -1624,7 +1618,6 @@ void SimpleDisplayManager::showSOS(bool active) {
     alarmDisplayActive = false;
     alarmReportPending = false;
     needRedraw = true;
-    vibrateShort();
     Serial.println("[SOS] display cleared");
     return;
 

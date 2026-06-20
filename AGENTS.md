@@ -27,6 +27,17 @@ You are a repo-first coding agent for this project.
 
 ## Progress Log
 
+### 2026-06-20 08:20-08:48 FlyCare SOS long-press clear sync + BLE display ownership guard
+
+- B.sos.clear_split=SOS activation queued a blocking vibration pattern in `SimpleDisplayManager::showSOS(true)` and a second vibration pattern in `activateSOSAlert()`, while `showSOS(false)` queued a fresh short vibration during clear. This could make the first 3-second clear press appear to stop vibration while the SOS alarm page stayed visible.
+- I.sos.vibration=updated `firmware/VibrationManager.h` to run vibration patterns nonblocking via `update()`, drove that update from the high-priority Button task, removed the duplicate SOS activate vibration, and made `clearSOSAlert()` stop the motor before clearing display/SOS state.
+- I.ble.display_owner=updated `firmware/SimpleDisplayManager.cpp` so the display task no longer calls `BLELocation::getLocation()` directly. `bleLocationTask()` remains the only BLE scan owner and pushes display coordinates through `setCurrentPosition()`, preventing the `BLEScan::clearResults()` LoadProhibited crash seen during bounded bridge validation.
+- V.compile_upload=pass ESP32-S3 compile/upload to COM5 succeeded for NG WAI LUN MAC `48:ca:43:a4:22:98`; final compile used `1541147/3145728` bytes and RAM `55168/327680`, upload wrote `1541296` bytes.
+- V.sos.serial=pass `logs/sos-clear-serial-20260620-084357.log` showed `SOSON`, then `SOSOFF` produced `[SOS] display cleared`, latest status `sos.active=false`, and the next `SOSSTATUS` reported both global SOS and display SOS inactive.
+- V.serial.fallback=pass bounded COM5 bridge `logs/flycare-serial-bridge-20260620-084411.log` ran 90s with parsed/sent `15/15`, downlinks=1, invalidUplinks=0, and no crash/reboot markers.
+- V.audit=pass `scripts/audit_flycare_goal.ps1 -BaseUrl http://127.0.0.1:8001` reported overall `pass` after stale SOS event `346` was marked `false_alarm` through the normal Event API, not raw DB delete.
+- R.remaining=physical long-press observation should still confirm that one 3-second press clears the visible SOS page on the actual watch, but serial and runtime evidence now show the local state and display clear in a single path.
+
 ### 2026-06-20 01:05-01:24 FlyCare offline router UI fast path implementation attempt
 
 - I.offline.fast_path=updated firmware-only performance path for local router demo: startup NTP sync is skipped under `FLYCARE_LOCAL_ROUTER_MODE`, SOS short-press/PWR actions mark a `UI_FAST_PATH_GUARD_MS` window, page switches force an immediate display update with `[UI_LATENCY]` serial evidence, BLE/network tasks defer one cycle during the guard, Wi-Fi reconnect is nonblocking, and local-LAN MQTT failures no longer trigger expensive Wi-Fi recovery while the watch already has a `192.168.1.x` address and broker `192.168.1.232:1883`.
