@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     MQTT_PASSWORD: str = ""
     MQTT_TOPIC_ROOT: str = "smartwatch"
     FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE: str = "smartwatch/{device_id}/flight"
+    FLYCARE_REMINDER_DOWNLINK_TOPIC_TEMPLATE: str = "smartwatch/{device_id}/reminder"
     FLYCARE_LEGACY_FLIGHT_TOPIC: str = "flycare/flight"
 
     # MQTT / MongoDB string device_id -> MySQL device.device_id (optional override, merged after file)

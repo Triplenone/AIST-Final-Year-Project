@@ -5,7 +5,8 @@ import {
   eventApi,
   flycareAdminApi,
   type FlyCareFlightPreset,
-  type FlyCareHealthPublishPayload
+  type FlyCareHealthPublishPayload,
+  type FlyCareReminderPublishPayload
 } from '../../services/api';
 import type { BackendEvent, EventStatus, EventType } from '../../types/backend';
 
@@ -23,6 +24,14 @@ type HealthFormState = {
   sos_active: boolean;
 };
 
+type ReminderFormState = {
+  medicine_name: string;
+  dosage: string;
+  scheduled_time: string;
+  priority: string;
+  message: string;
+};
+
 const FINAL_DEMO_DEVICE_IDS = new Set([
   'ESP32_000048CA43A42298',
   'ESP32_0000C8292A04A7AC',
@@ -34,6 +43,7 @@ const FINAL_DEMO_DEVICE_IDS = new Set([
 const FINAL_DEMO_DEVICE_ORDER = new Map(
   Array.from(FINAL_DEMO_DEVICE_IDS).map((deviceId, index) => [deviceId, index])
 );
+const ELDERLY_PRIMARY_DEVICE_IDS = new Set(['ESP32_0000E03948D4DB1C', 'ESP32_1CDBD44839E0']);
 
 const ELDERLY_LOCATION_PRESETS = [
   { label: 'Nurse Station', x: '1', y: '1' },
@@ -58,6 +68,14 @@ const emptyForm = (): HealthFormState => ({
   y: '7',
   fall_confirmed: false,
   sos_active: false
+});
+
+const emptyReminderForm = (): ReminderFormState => ({
+  medicine_name: 'Metformin',
+  dosage: '500 mg',
+  scheduled_time: '08:00',
+  priority: 'normal',
+  message: 'Please take Metformin 500 mg at 08:00.'
 });
 
 function parseOptionalNumber(value: string): number | undefined {
@@ -92,6 +110,29 @@ function toPayload(
     y: parseOptionalNumber(form.y),
     fall_confirmed: form.fall_confirmed,
     sos_active: form.sos_active,
+    source: 'admin_simulated',
+    publish_mqtt: options.publish_mqtt,
+    save_mongo: options.save_mongo
+  };
+}
+
+function toReminderPayload(
+  form: HealthFormState,
+  reminder: ReminderFormState,
+  relatedUserId: number | null | undefined,
+  options: { publish_mqtt: boolean; save_mongo: boolean }
+): FlyCareReminderPublishPayload {
+  const mysqlId = form.mysql_device_id.trim();
+  return {
+    device_id: form.device_id.trim(),
+    mysql_device_id: mysqlId ? Number(mysqlId) : undefined,
+    related_user_id: relatedUserId ?? undefined,
+    passengerName: form.passengerName.trim() || undefined,
+    medicine_name: reminder.medicine_name.trim(),
+    dosage: reminder.dosage.trim(),
+    scheduled_time: reminder.scheduled_time.trim(),
+    priority: reminder.priority.trim() || 'normal',
+    message: reminder.message.trim() || undefined,
     publish_mqtt: options.publish_mqtt,
     save_mongo: options.save_mongo
   };
@@ -107,9 +148,11 @@ export const FlyCareAdmin = () => {
     port?: number;
   } | null>(null);
   const [form, setForm] = useState<HealthFormState>(emptyForm);
+  const [reminderForm, setReminderForm] = useState<ReminderFormState>(emptyReminderForm);
   const [selectedPresetKey, setSelectedPresetKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [reminderPublishing, setReminderPublishing] = useState(false);
   const [alertPublishing, setAlertPublishing] = useState(false);
   const [eventHandling, setEventHandling] = useState<number | null>(null);
   const [activeEvents, setActiveEvents] = useState<BackendEvent[]>([]);
@@ -139,7 +182,7 @@ export const FlyCareAdmin = () => {
         port: mqttRes.port
       });
       if (!selectedPresetKey && items[0]) {
-        const first = items[0];
+        const first = items.find((item) => ELDERLY_PRIMARY_DEVICE_IDS.has(item.device_id)) ?? items[0];
         setSelectedPresetKey(first.device_id);
         setMqttTopic(first.mqtt_topic ?? `smartwatch/${first.device_id}/vitals`);
         setForm((current) => ({
@@ -181,6 +224,12 @@ export const FlyCareAdmin = () => {
   const selectedMqttTopic = form.device_id.trim()
     ? `smartwatch/${form.device_id.trim()}/vitals`
     : mqttTopic;
+  const selectedReminderTopic = form.device_id.trim()
+    ? `smartwatch/${form.device_id.trim()}/reminder`
+    : 'smartwatch/{device_id}/reminder';
+  const selectedAlertTopic = form.device_id.trim()
+    ? `smartwatch/${form.device_id.trim()}/alert`
+    : 'smartwatch/{device_id}/alert';
 
   const applyPreset = (deviceId: string) => {
     const preset = presets.find((item) => item.device_id === deviceId);
@@ -197,6 +246,10 @@ export const FlyCareAdmin = () => {
 
   const updateField = <K extends keyof HealthFormState>(key: K, value: HealthFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateReminderField = <K extends keyof ReminderFormState>(key: K, value: ReminderFormState[K]) => {
+    setReminderForm((current) => ({ ...current, [key]: value }));
   };
 
   const applyLocationPreset = (label: string) => {
@@ -228,6 +281,15 @@ export const FlyCareAdmin = () => {
     if (spo2 == null || spo2 < 0 || spo2 > 100) return 'SpO2 must be 0-100.';
     if (battery != null && (battery < 0 || battery > 100)) return 'Battery must be 0-100.';
     if ((form.x.trim() && x == null) || (form.y.trim() && y == null)) return 'Coordinates must be numeric.';
+    return null;
+  };
+
+  const validateReminderForm = (): string | null => {
+    const deviceError = validateDeviceFields();
+    if (deviceError) return deviceError;
+    if (!reminderForm.medicine_name.trim()) return 'Medicine name is required.';
+    if (!reminderForm.dosage.trim()) return 'Dosage is required.';
+    if (!reminderForm.scheduled_time.trim()) return 'Scheduled time is required.';
     return null;
   };
 
@@ -284,6 +346,40 @@ export const FlyCareAdmin = () => {
       setError(msg);
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const runReminderPublish = async (options: { publish_mqtt: boolean; save_mongo: boolean }) => {
+    const validationError = validateReminderForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setReminderPublishing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await flycareAdminApi.publishReminder(
+        toReminderPayload(form, reminderForm, selectedPreset?.elderly_user_id, options)
+      );
+      const topicCount = result.mqtt?.alias_results?.length ?? result.mqtt?.topics?.length ?? 0;
+      const parts: string[] = [];
+      if (result.mqtt?.ok) {
+        parts.push(`Reminder published to ${topicCount || 1} MQTT topic(s)`);
+      } else if (result.mqtt && !result.mqtt.skipped && result.mqtt.error) {
+        parts.push(`MQTT failed: ${result.mqtt.error}`);
+      }
+      if (result.mongo?.ok) {
+        parts.push('Saved to Mongo');
+      } else if (result.mongo && !result.mongo.skipped && result.mongo.error) {
+        parts.push(`Mongo failed: ${result.mongo.error}`);
+      }
+      setSuccess(parts.join(' / ') || 'Reminder sent');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Reminder publish failed';
+      setError(msg);
+    } finally {
+      setReminderPublishing(false);
     }
   };
 
@@ -423,6 +519,16 @@ export const FlyCareAdmin = () => {
                 required
               />
             </label>
+            {selectedPreset ? (
+              <div className="flycare-admin-form__device-meta">
+                <span>Canonical: {selectedPreset.device_id}</span>
+                <span>
+                  Aliases:{' '}
+                  {selectedPreset.alias_device_ids?.length ? selectedPreset.alias_device_ids.join(', ') : 'None'}
+                </span>
+                <span>Alert topic: {selectedAlertTopic}</span>
+              </div>
+            ) : null}
           </fieldset>
 
           <fieldset className="flycare-admin-form__section">
@@ -536,6 +642,74 @@ export const FlyCareAdmin = () => {
             </button>
           </div>
         </form>
+
+        <section className="flycare-admin-reminder" aria-label="Medication reminder controls">
+          <div className="flycare-admin-emergency__header">
+            <div>
+              <h4>Medication reminder</h4>
+              <p className="muted">Publish an ElderlyCare reminder downlink to canonical and alias topics.</p>
+            </div>
+            <span className="muted">{selectedReminderTopic}</span>
+          </div>
+          <div className="flycare-admin-form__section flycare-admin-form__section--inline">
+            <label>
+              Medicine
+              <input
+                value={reminderForm.medicine_name}
+                onChange={(e) => updateReminderField('medicine_name', e.target.value)}
+              />
+            </label>
+            <label>
+              Dosage
+              <input value={reminderForm.dosage} onChange={(e) => updateReminderField('dosage', e.target.value)} />
+            </label>
+            <label>
+              Time
+              <input
+                value={reminderForm.scheduled_time}
+                onChange={(e) => updateReminderField('scheduled_time', e.target.value)}
+              />
+            </label>
+            <label>
+              Priority
+              <select value={reminderForm.priority} onChange={(e) => updateReminderField('priority', e.target.value)}>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
+            <label className="flycare-admin-form__wide">
+              Message
+              <input value={reminderForm.message} onChange={(e) => updateReminderField('message', e.target.value)} />
+            </label>
+          </div>
+          <div className="admin-form__actions">
+            <button
+              type="button"
+              disabled={reminderPublishing}
+              onClick={() => void runReminderPublish({ publish_mqtt: true, save_mongo: true })}
+            >
+              {reminderPublishing ? 'Publishing...' : 'Publish reminder'}
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              disabled={reminderPublishing}
+              onClick={() => void runReminderPublish({ publish_mqtt: true, save_mongo: false })}
+            >
+              MQTT only
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              disabled={reminderPublishing}
+              onClick={() => void runReminderPublish({ publish_mqtt: false, save_mongo: true })}
+            >
+              Save Mongo only
+            </button>
+          </div>
+        </section>
 
         <section className="flycare-admin-emergency" aria-label="Emergency MQTT controls">
           <div className="flycare-admin-emergency__header">

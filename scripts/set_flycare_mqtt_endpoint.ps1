@@ -5,6 +5,7 @@ param(
     [string]$BrokerHost,
     [int]$MqttPort = 1883,
     [string]$ServerHost,
+    [int]$ServerPort = 8001,
     [string]$TopicRoot,
     [string]$Million1BrokerHost,
     [string]$TripleNoneBrokerHost,
@@ -19,6 +20,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $backendEnvPath = Join-Path $repoRoot "backend\backend\.env"
+$backendEnvExamplePath = Join-Path $repoRoot "backend\backend\.env.example"
 $firmwareConfigPath = Join-Path $repoRoot "firmware\Config.h"
 $logRoot = Join-Path $repoRoot "logs"
 $statusPath = Join-Path $logRoot "flycare-mqtt-endpoint.json"
@@ -140,7 +142,11 @@ function Write-Utf8NoBom {
 }
 
 if (-not (Test-Path $backendEnvPath)) {
-    throw "Missing backend env file: $backendEnvPath"
+    if (Test-Path $backendEnvExamplePath) {
+        Copy-Item -LiteralPath $backendEnvExamplePath -Destination $backendEnvPath -Force
+    } else {
+        New-Item -ItemType File -Path $backendEnvPath -Force | Out-Null
+    }
 }
 if (-not (Test-Path $firmwareConfigPath)) {
     throw "Missing firmware config file: $firmwareConfigPath"
@@ -207,20 +213,22 @@ $effectiveTripleNoneBroker = if ($TripleNoneBrokerHost) {
     $effectiveBrokerHost
 }
 
-$serverUrl = "http://$effectiveServerHost`:8000/api/v1/data-reception/receive"
+$effectiveFallback1Broker = if ($Mode -eq "Cloud") { $CloudBrokerHost } else { "" }
+$serverUrl = "http://$effectiveServerHost`:$ServerPort/api/v1/data-reception/receive"
 
 $envLines = Get-Content -Path $backendEnvPath
 $envLines = Set-EnvValue -Lines $envLines -Name "MQTT_BROKER" -Value $effectiveBrokerHost
 $envLines = Set-EnvValue -Lines $envLines -Name "MQTT_PORT" -Value ([string]$MqttPort)
 $envLines = Set-EnvValue -Lines $envLines -Name "MQTT_TOPIC_ROOT" -Value $effectiveTopicRoot
 $envLines = Set-EnvValue -Lines $envLines -Name "FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE" -Value "$effectiveTopicRoot/{device_id}/flight"
+$envLines = Set-EnvValue -Lines $envLines -Name "FLYCARE_REMINDER_DOWNLINK_TOPIC_TEMPLATE" -Value "$effectiveTopicRoot/{device_id}/reminder"
 $envLines = Set-EnvValue -Lines $envLines -Name "FLYCARE_LEGACY_FLIGHT_TOPIC" -Value "$effectiveTopicRoot/flight"
 
 $configText = Set-ConfigDefine -Text $configText -Name "SERVER_URL" -Value $serverUrl -IsString
 $configText = Set-ConfigDefine -Text $configText -Name "MQTT_BROKER" -Value $effectiveBrokerHost -IsString
 $configText = Set-ConfigDefine -Text $configText -Name "MQTT_BROKER_MILLION1" -Value $effectiveMillion1Broker -IsString
 $configText = Set-ConfigDefine -Text $configText -Name "MQTT_BROKER_TRIPLE_NONE" -Value $effectiveTripleNoneBroker -IsString
-$configText = Set-ConfigDefine -Text $configText -Name "MQTT_BROKER_FALLBACK_1" -Value $CloudBrokerHost -IsString
+$configText = Set-ConfigDefine -Text $configText -Name "MQTT_BROKER_FALLBACK_1" -Value $effectiveFallback1Broker -IsString
 $configText = Set-ConfigDefine -Text $configText -Name "MQTT_BROKER_FALLBACK_2" -Value "" -IsString
 $configText = Set-ConfigDefine -Text $configText -Name "MQTT_PORT" -Value ([string]$MqttPort)
 $configText = Set-ConfigDefine -Text $configText -Name "MQTT_TOPIC_ROOT" -Value $effectiveTopicRoot -IsString
@@ -235,10 +243,12 @@ $status = [pscustomobject]@{
     mqttBroker = $effectiveBrokerHost
     mqttBrokerMillion1 = $effectiveMillion1Broker
     mqttBrokerTripleNone = $effectiveTripleNoneBroker
-    mqttBrokerFallback1 = $CloudBrokerHost
+    mqttBrokerFallback1 = $effectiveFallback1Broker
     mqttPort = $MqttPort
     mqttTopicRoot = $effectiveTopicRoot
+    serverPort = $ServerPort
     flightDownlinkTopicTemplate = "$effectiveTopicRoot/{device_id}/flight"
+    reminderDownlinkTopicTemplate = "$effectiveTopicRoot/{device_id}/reminder"
     serverUrl = $serverUrl
     backendEnvPath = $backendEnvPath
     firmwareConfigPath = $firmwareConfigPath

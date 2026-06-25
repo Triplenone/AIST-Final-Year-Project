@@ -1,4 +1,4 @@
-"""Publish test payloads to MQTT (e.g. FlyCare flight updates)."""
+"""Publish demo payloads to MQTT."""
 
 import json
 import uuid
@@ -79,12 +79,30 @@ def build_flycare_alert_topic(device_id: str) -> str:
     return f"{root}/{str(device_id).strip()}/alert"
 
 
+def build_flycare_reminder_topic(device_id: str) -> str:
+    return settings.FLYCARE_REMINDER_DOWNLINK_TOPIC_TEMPLATE.format(device_id=str(device_id).strip())
+
+
 def build_flight_mqtt_downlink(flight_info: Dict[str, Any]) -> Dict[str, Any]:
     """Build smartwatch flight downlink body for topic smartwatch/{device_id}/flight."""
     return {
         "command_type": "flight_info",
         "flight_info": dict(flight_info),
     }
+
+
+def build_reminder_mqtt_downlink(reminder_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Build smartwatch medication reminder downlink body for topic smartwatch/{device_id}/reminder."""
+    payload = dict(reminder_payload)
+    payload["command_type"] = "reminder"
+    payload["data_type"] = "reminder"
+    reminder = payload.get("reminder")
+    if not isinstance(reminder, dict):
+        reminder = {}
+    reminder = dict(reminder)
+    reminder["type"] = reminder.get("type") or "medication"
+    payload["reminder"] = reminder
+    return payload
 
 
 def publish_flight_downlink(
@@ -100,6 +118,25 @@ def publish_flight_downlink(
     mqtt_payload = build_flight_mqtt_downlink(flight_info)
     return publish_json(
         build_flycare_flight_topic(device_id),
+        mqtt_payload,
+        qos=qos,
+        retain=retain,
+    )
+
+
+def publish_reminder_downlink(
+    device_id: str,
+    reminder_payload: Dict[str, Any],
+    *,
+    qos: int = 1,
+    retain: bool = False,
+) -> Dict[str, Any]:
+    device_id = str(device_id or "").strip()
+    if not device_id:
+        raise ValueError("device_id is required for ElderlyCare reminder downlink")
+    mqtt_payload = build_reminder_mqtt_downlink(reminder_payload)
+    return publish_json(
+        build_flycare_reminder_topic(device_id),
         mqtt_payload,
         qos=qos,
         retain=retain,

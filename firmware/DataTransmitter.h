@@ -24,6 +24,7 @@
 #define MQTT_TOPIC_LOCATION MQTT_TOPIC_PREFIX "/%s/location"    // 上行 - 位置更新
 #define MQTT_TOPIC_SOS MQTT_TOPIC_PREFIX "/%s/sos"              // 上行 - SOS
 #define MQTT_TOPIC_FALL MQTT_TOPIC_PREFIX "/%s/fall"            // 上行 - 跌倒
+#define MQTT_TOPIC_VITALS MQTT_TOPIC_PREFIX "/%s/vitals"        // 上行 - HR / SpO2
 #define MQTT_TOPIC_DOOR MQTT_TOPIC_PREFIX "/%s/door"            // 上行 - 门禁
 #define MQTT_TOPIC_LIGHT MQTT_TOPIC_PREFIX "/%s/light"          // 上行 - 灯光
 #define MQTT_TOPIC_LOG MQTT_TOPIC_PREFIX "/%s/log"              // 上行 - 日志
@@ -31,6 +32,7 @@
 
 #define MQTT_TOPIC_NAVIGATION MQTT_TOPIC_PREFIX "/%s/navigation"    // 下行 - 导航
 #define MQTT_TOPIC_FLIGHT MQTT_TOPIC_PREFIX "/%s/flight"            // 下行 - 航班
+#define MQTT_TOPIC_REMINDER MQTT_TOPIC_PREFIX "/%s/reminder"        // 下行 - medication reminder
 #define MQTT_TOPIC_ALERT MQTT_TOPIC_PREFIX "/%s/alert"              // 下行 - 警报
 #define MQTT_TOPIC_TIME MQTT_TOPIC_PREFIX "/%s/time"                // 下行 - 服务器时间同步
 // #define MQTT_TOPIC_VOICE "smartwatch/%s/voice"              // 下行 - 语音
@@ -118,6 +120,8 @@ private:
     String sos_trigger_method;
     String last_alert_command_id;
     unsigned long last_alert_command_ms;
+    String last_reminder_command_id;
+    unsigned long last_reminder_command_ms;
     
     // 门禁配置
     DoorConfig doors[5];
@@ -190,7 +194,9 @@ public:
     
     void update();
     void transmitFallAlert(const FallEvent& fall_event);
+    void transmitFallClear();
     void transmitSOSAlert();
+    void transmitVitals();
     void transmitLocation();
     void transmitStatusSummary();
     void transmitAllData();
@@ -317,6 +323,7 @@ public:
     String getDirectLocationJSON();
     String getFallJSON(const FallEvent& fall_event);
     String getSOSJSON();
+    String getVitalsJSON();
     String getLocationJSON();
     String getHeartbeatJSON();
     

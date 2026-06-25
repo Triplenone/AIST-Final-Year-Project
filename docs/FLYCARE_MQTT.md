@@ -1,3 +1,104 @@
+# ElderlyCare MQTT And Device Mapping
+
+This document now records the ElderlyCare final demo contract for branch `2-flycare-elderly`. Older FlyCare flight sections remain below for compatibility/history only and must not be used as final demo acceptance criteria.
+
+## Final Demo Entrypoint
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_elderly_offline_demo.ps1 -OpenBrowser
+```
+
+Final topology:
+
+| Item | Value |
+| --- | --- |
+| MQTT broker | `192.168.1.232:1883` |
+| Backend hardware API | `http://127.0.0.1:8001` |
+| Frontend | `http://192.168.1.232:5173/flycare` |
+| Admin | `http://192.168.1.232:5173/admin` |
+| COM target | `COM5`, LEE KA YAN, `ESP32_0000E03948D4DB1C`, alias `ESP32_1CDBD44839E0` |
+
+## ElderlyCare Device Mapping
+
+Keep `backend/backend/config/device_id_map.json` backward compatible with the loader shape:
+
+```json
+{ "version": 1, "mongo_to_mysql": [{ "mongodb_device_id": "ESP32_...", "mysql_device_id": 1 }] }
+```
+
+Visible final demo bindings:
+
+| Demo ID | Resident | Canonical device_id | MySQL device_id | Alias |
+| ---: | --- | --- | ---: | --- |
+| 1 | NG WAI LUN | `ESP32_000048CA43A42298` | 8 | `ESP32_48CA43A42298` |
+| 2 | WONG KA MING | `ESP32_0000C8292A04A7AC` | 3 | `ESP32_00005CFA7AD4DB1C` |
+| 3 | HO CHI WAI | `ESP32_0000A022A443CA48` | 4 | - |
+| 4 | MA KA WAI | `ESP32_00008C292A04A7AC` | 6 | - |
+| 5 | YIP MAN LING | `ESP32_00009022A443CA48` | 7 | - |
+| 6 | LEE KA YAN | `ESP32_0000E03948D4DB1C` | 9 | `ESP32_1CDBD44839E0` |
+
+Run the registry/profile migrations after the base dump and earlier device migrations:
+
+```powershell
+cd E:\flycare
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260619_flycare_demo_registry.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260625_flycare_elderly_demo_profile.sql"
+```
+
+## Beacon Migration
+
+| FlyCare area | ElderlyCare area | Current demo use |
+| --- | --- | --- |
+| Check-in | Front Desk / Nurse Station | Staff entry and nurse station area |
+| Security Check | Activity Room | Activity room positioning |
+| Customer Services | Central Common Area | Common area positioning |
+| Gate 11 | Rehabilitation Room | Rehab room positioning |
+| Gate 10 | Bedroom | Bedroom positioning |
+| Toilet | Toilet / Hygiene Zone | Toilet and hygiene area |
+
+## ElderlyCare MQTT Topics
+
+Watch uplink topics:
+
+```text
+smartwatch/{device_id}/status
+smartwatch/{device_id}/location
+smartwatch/{device_id}/vitals
+smartwatch/{device_id}/sos
+smartwatch/{device_id}/fall
+```
+
+Admin/watch downlink topics:
+
+```text
+smartwatch/{device_id}/reminder
+smartwatch/{device_id}/alert
+smartwatch/{device_id}/time
+```
+
+`/reminder` is the final medication reminder downlink. Backend fan-out publishes to canonical plus aliases with QoS 1 and `retain=false`. Payload must include `command_type="reminder"`, `data_type="reminder"`, `reminder.type="medication"`, `medicine_name`, `dosage`, `scheduled_time`, `priority`, `message`, `command_id`, and `issued_at`.
+
+`/alert` remains the Admin emergency control downlink. Allowed values are `event_type=sos|fall` and `action=activate|clear`; payloads are QoS 1 and `retain=false`. Watch-originated emergency telemetry remains `/sos` and `/fall`.
+
+`/vitals` supports both firmware sensor payloads and admin simulated payloads. Admin simulated payloads must include `source="admin_simulated"`; firmware sensor payloads use `source="real_sensor"`.
+
+Legacy `/flight` may remain implemented as hidden compatibility, but final UI, docs, scripts, audit, and firmware subscription success criteria do not depend on it.
+
+## ElderlyCare Verification Scripts
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\record_elderly_offline_demo.ps1 -Minutes 20 -BrokerHost 192.168.1.232 -BaseUrl http://127.0.0.1:8001
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\audit_elderly_goal.ps1 -BaseUrl http://127.0.0.1:8001
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_elderly_direct_walk.ps1 -Seconds 120
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_elderly_watch.ps1 -SerialPort COM5 -SendReminderDownlink -SendFallDownlink -SendFallClearDownlink
+```
+
+Direct Wi-Fi MQTT proof requires the COM bridge to be stopped. `bridge_flycare_serial.ps1` is fallback only; its default downlink filters are now `/reminder` and `/alert`.
+
+Firmware SD map note: copy `firmware/ElderlyCare.bmp` to the SD card root as `/ElderlyCare.bmp`. The frontend PNG remains `frontend/src/img/ElderlyCare.png`; the watch loader does not decode PNG at runtime.
+
 # FlyCare MQTT And Device Mapping
 
 ## Device Mapping

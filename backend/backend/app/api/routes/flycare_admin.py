@@ -19,16 +19,42 @@ from app.schemas.event import EventCreate
 from app.services.mongo_raw_upstream import save_raw_upstream
 from app.services.mqtt_publish import (
     build_flycare_alert_topic,
+    build_flycare_reminder_topic,
     build_flycare_vitals_topic,
     build_flight_mqtt_downlink,
+    build_reminder_mqtt_downlink,
     build_flycare_flight_topic,
     publish_alert_downlink,
     publish_flight_downlink,
+    publish_reminder_downlink,
     publish_vitals_upstream,
 )
 from app.services.mqtt_subscriber import get_mqtt_status
 
 router = APIRouter()
+
+ELDERLY_AREA_LABEL_BY_FLYCARE_LOCATION = {
+    "check-in": "Front Desk / Nurse Station",
+    "check in": "Front Desk / Nurse Station",
+    "security": "Activity Room",
+    "customer services": "Central Common Area",
+    "customer service": "Central Common Area",
+    "immigration": "Central Common Area",
+    "gate 11": "Rehabilitation Room",
+    "gate 10": "Bedroom",
+    "toilet": "Toilet / Hygiene Zone",
+}
+
+
+def _elderly_area_label(value: Optional[str]) -> Optional[str]:
+    text = (value or "").strip()
+    if not text:
+        return None
+    lowered = text.lower()
+    for flycare_label, elderly_label in ELDERLY_AREA_LABEL_BY_FLYCARE_LOCATION.items():
+        if flycare_label in lowered:
+            return elderly_label
+    return text
 
 
 class FlightPublishBody(BaseModel):
@@ -72,7 +98,26 @@ class HealthPublishBody(BaseModel):
     y: Optional[float] = None
     fall_confirmed: bool = False
     sos_active: bool = False
+    source: str = Field("admin_simulated", description="admin_simulated or real_sensor")
     publish_mqtt: bool = Field(True, description="Publish to MQTT topic smartwatch/{device_id}/vitals")
+    save_mongo: bool = Field(
+        False,
+        description="Also write Mongo directly (use when MQTT loopback is unavailable)",
+    )
+
+
+class ReminderPublishBody(BaseModel):
+    device_id: str = Field(..., min_length=1, description="Mongo/MQTT device id, e.g. ESP32_...")
+    mysql_device_id: Optional[int] = Field(None, ge=1)
+    related_user_id: Optional[int] = Field(None, ge=1)
+    passengerName: Optional[str] = None
+    medicine_name: str = Field(..., min_length=1)
+    dosage: str = Field(..., min_length=1)
+    scheduled_time: str = Field(..., min_length=1)
+    priority: str = Field("normal", description="low, normal, high, urgent")
+    message: Optional[str] = None
+    command_id: Optional[str] = None
+    publish_mqtt: bool = Field(True, description="Publish to smartwatch/{device_id}/reminder")
     save_mongo: bool = Field(
         False,
         description="Also write Mongo directly (use when MQTT loopback is unavailable)",
@@ -163,6 +208,7 @@ def _build_health_payload(body: HealthPublishBody) -> Dict[str, Any]:
         "device_id": body.device_id.strip(),
         "mysql_device_id": mysql_device_id,
         "data_type": "vitals",
+        "source": (body.source or "admin_simulated").strip() or "admin_simulated",
         "timestamp": datetime.now(timezone.utc).timestamp(),
         "passengerName": (body.passengerName or "").strip() or None,
         "sensors": sensors,
@@ -190,6 +236,42 @@ def _build_health_payload(body: HealthPublishBody) -> Dict[str, Any]:
     elif body.location_name:
         payload["location"] = {"current": {"name": body.location_name.strip()}}
     return payload
+
+
+def _build_reminder_payload(body: ReminderPublishBody) -> Dict[str, Any]:
+    mapped_mysql = settings.device_id_map.get(body.device_id.strip())
+    mysql_device_id = body.mysql_device_id if body.mysql_device_id is not None else mapped_mysql
+    issued_at = datetime.now(timezone.utc).isoformat()
+    command_id = (body.command_id or f"reminder-{uuid.uuid4().hex[:12]}").strip()
+    medicine_name = body.medicine_name.strip()
+    dosage = body.dosage.strip()
+    scheduled_time = body.scheduled_time.strip()
+    message = (body.message or f"Medication reminder: {medicine_name} {dosage} at {scheduled_time}").strip()
+    priority = (body.priority or "normal").strip().lower() or "normal"
+    return {
+        "device_id": body.device_id.strip(),
+        "mysql_device_id": mysql_device_id,
+        "related_user_id": body.related_user_id,
+        "passengerName": (body.passengerName or "").strip() or None,
+        "command_type": "reminder",
+        "data_type": "reminder",
+        "command_id": command_id,
+        "issued_at": issued_at,
+        "timestamp": datetime.now(timezone.utc).timestamp(),
+        "reminder": {
+            "type": "medication",
+            "medicine_name": medicine_name,
+            "dosage": dosage,
+            "scheduled_time": scheduled_time,
+            "priority": priority,
+            "message": message,
+        },
+        "medicine_name": medicine_name,
+        "dosage": dosage,
+        "scheduled_time": scheduled_time,
+        "priority": priority,
+        "message": message,
+    }
 
 
 def _device_aliases_for_payload(payload: Dict[str, Any]) -> List[str]:
@@ -256,7 +338,7 @@ def _registry_presets(db: Session) -> List[Dict[str, Any]]:
                 "elderly_user_id": int(row.user_id),
                 "passengerName": (row.display_name or "").strip()
                 or (user.name.strip() if user and user.name else None),
-                "deploy_location": device.deploy_location if device else None,
+                "deploy_location": _elderly_area_label(device.deploy_location if device else None),
                 "alias_device_ids": aliases,
                 "mqtt_topic": build_flycare_vitals_topic(row.canonical_device_id),
             }
@@ -344,6 +426,48 @@ def _publish_health_aliases(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _publish_reminder_downlink_aliases(payload: Dict[str, Any]) -> Dict[str, Any]:
+    aliases = _device_aliases_for_payload(payload)
+    results: List[Dict[str, Any]] = []
+
+    for alias in aliases:
+        try:
+            alias_payload = dict(payload)
+            alias_payload["device_id"] = alias
+            results.append(
+                {
+                    "device_id": alias,
+                    **publish_reminder_downlink(alias, alias_payload),
+                }
+            )
+        except Exception as exc:
+            results.append(
+                {
+                    "ok": False,
+                    "device_id": alias,
+                    "topic": build_flycare_reminder_topic(alias),
+                    "qos": 1,
+                    "retain": False,
+                    "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+                    "error": str(exc),
+                }
+            )
+
+    ok_results = [result for result in results if result.get("ok")]
+    error_results = [result for result in results if not result.get("ok")]
+    return {
+        "ok": bool(ok_results),
+        "topic": build_flycare_reminder_topic(payload["device_id"]),
+        "topics": [result.get("topic") for result in results],
+        "aliases": aliases,
+        "alias_results": results,
+        "qos": 1,
+        "retain": False,
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": "; ".join(str(result.get("error")) for result in error_results if result.get("error")) or None,
+    }
+
+
 def _publish_alert_downlink_aliases(payload: Dict[str, Any], alert_payload: Dict[str, Any]) -> Dict[str, Any]:
     aliases = _device_aliases_for_payload(payload)
     results: List[Dict[str, Any]] = []
@@ -406,7 +530,8 @@ def list_flight_presets() -> Dict[str, Any]:
                 "items": presets,
                 "mqtt_topic": build_flycare_vitals_topic("+"),
                 "health_topic_template": build_flycare_vitals_topic("{device_id}"),
-                "downlink_topic_template": settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE,
+                "reminder_topic_template": build_flycare_reminder_topic("{device_id}"),
+                "alert_topic_template": build_flycare_alert_topic("{device_id}"),
             }
 
         aliases_by_mysql_id: Dict[int, List[str]] = {}
@@ -434,7 +559,7 @@ def list_flight_presets() -> Dict[str, Any]:
                     "mysql_device_id": mysql_id,
                     "elderly_user_id": elderly_user_id,
                     "passengerName": passenger_name,
-                    "deploy_location": device.deploy_location if device else None,
+                    "deploy_location": _elderly_area_label(device.deploy_location if device else None),
                     "alias_device_ids": [alias for alias in aliases if alias != mongo_id],
                     "mqtt_topic": build_flycare_vitals_topic(mongo_id),
                 }
@@ -446,7 +571,8 @@ def list_flight_presets() -> Dict[str, Any]:
         "items": presets,
         "mqtt_topic": build_flycare_vitals_topic("+"),
         "health_topic_template": build_flycare_vitals_topic("{device_id}"),
-        "downlink_topic_template": settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE,
+        "reminder_topic_template": build_flycare_reminder_topic("{device_id}"),
+        "alert_topic_template": build_flycare_alert_topic("{device_id}"),
     }
 
 
@@ -511,6 +637,73 @@ async def publish_health(body: HealthPublishBody):
         "status": "ok",
         "payload": payload,
         "mqtt_payload": payload,
+        "mqtt": mqtt_result,
+        "mongo": mongo_result,
+    }
+
+
+@router.post("/reminder/publish")
+async def publish_reminder(body: ReminderPublishBody):
+    payload = _build_reminder_payload(body)
+    mqtt_payload = build_reminder_mqtt_downlink(payload)
+    mqtt_result: Dict[str, Any] = {
+        "ok": False,
+        "topic": build_flycare_reminder_topic(payload["device_id"]),
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": None,
+        "skipped": not body.publish_mqtt,
+        "payload": mqtt_payload,
+    }
+    mongo_result: Dict[str, Any] = {
+        "ok": False,
+        "error": None,
+        "skipped": not body.save_mongo,
+        "db_name": settings.MONGO_DB_NAME,
+        "collection": "device_raw_upstream",
+    }
+
+    if body.publish_mqtt:
+        mqtt_result = {
+            **mqtt_result,
+            **_publish_reminder_downlink_aliases(payload),
+            "skipped": False,
+            "payload": mqtt_payload,
+        }
+
+    if body.save_mongo:
+        try:
+            saved = await save_raw_upstream(payload)
+            mongo_result = {
+                "ok": True,
+                "error": None,
+                "skipped": False,
+                "db_name": settings.MONGO_DB_NAME,
+                "collection": "device_raw_upstream",
+                "inserted_id": saved.get("inserted_id"),
+            }
+        except Exception as exc:
+            mongo_result.update({"ok": False, "error": str(exc), "skipped": False})
+
+    if not body.publish_mqtt and not body.save_mongo:
+        raise HTTPException(
+            status_code=400,
+            detail="Enable publish_mqtt and/or save_mongo.",
+        )
+    if not mqtt_result["ok"] and not mongo_result["ok"]:
+        raise HTTPException(
+            status_code=502 if body.publish_mqtt else 503,
+            detail={
+                "message": "Reminder publish failed",
+                "payload": payload,
+                "mqtt": mqtt_result,
+                "mongo": mongo_result,
+            },
+        )
+
+    return {
+        "status": "ok",
+        "payload": payload,
+        "mqtt_payload": mqtt_payload,
         "mqtt": mqtt_result,
         "mongo": mongo_result,
     }

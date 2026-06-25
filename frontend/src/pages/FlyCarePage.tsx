@@ -20,13 +20,14 @@ import { PositionMapStage } from '../components/position/PositionMapStage';
 import { PositionResidentRail } from '../components/position/PositionResidentRail';
 import { PositionSummaryBar } from '../components/position/PositionSummaryBar';
 import { mongoUpstreamApi } from '../services/api';
+import type { ReminderLatestItem } from '../services/api';
 import type { FallAlertDetailRow } from '../types/fall-alert';
 import { buildFallAlertRowsFromPositionResidents } from '../utils/fall-alert-rows';
 
 const ELDERLY_MAP_PROFILE: PositionMapProfile = 'indoor';
 const ELDERLY_SNAPSHOT_REFRESH_MS = 2_000;
 const ELDERLY_SELECTED_LOCATION_REFRESH_MS = 1_000;
-const FLYCARE_PREFERRED_DEVICE_IDS = new Set(['ESP32_000048CA43A42298', 'ESP32_48CA43A42298']);
+const ELDERLY_PREFERRED_DEVICE_IDS = new Set(['ESP32_0000E03948D4DB1C', 'ESP32_1CDBD44839E0']);
 
 type FlyCarePageProps = {
   onSosOrFallDetected?: (items: FallAlertDetailRow[]) => void;
@@ -37,7 +38,7 @@ function initialRegistry(): PositionResidentRegistryEntry[] {
 }
 
 function getPreferredResidentId(registry: readonly PositionResidentRegistryEntry[]): string | null {
-  return registry.find((resident) => FLYCARE_PREFERRED_DEVICE_IDS.has(resident.deviceId))?.residentId ?? null;
+  return registry.find((resident) => ELDERLY_PREFERRED_DEVICE_IDS.has(resident.deviceId))?.residentId ?? null;
 }
 
 export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
@@ -49,6 +50,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
     () => getPreferredResidentId(POSITION_RESIDENT_REGISTRY) ?? POSITION_RESIDENT_REGISTRY[0]?.residentId ?? null
   );
   const [residentActivity, setResidentActivity] = useState<PositionResidentActivitySnapshot | null>(null);
+  const [latestReminder, setLatestReminder] = useState<ReminderLatestItem | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllOnMap, setShowAllOnMap] = useState(false);
   const previousAlertRef = useRef(false);
@@ -171,6 +173,38 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
   }, [selectedDeviceId, selectedResidentId]);
 
   useEffect(() => {
+    if (!selectedDeviceId) {
+      setLatestReminder(null);
+      return;
+    }
+    let cancelled = false;
+    let inFlight = false;
+
+    const refreshReminder = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const response = await mongoUpstreamApi.getLatestReminder(selectedDeviceId);
+        if (cancelled) return;
+        setLatestReminder(response.found ? response.item ?? null : null);
+      } catch {
+        if (!cancelled) setLatestReminder(null);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void refreshReminder();
+    const intervalId = window.setInterval(() => {
+      void refreshReminder();
+    }, ELDERLY_SNAPSHOT_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [selectedDeviceId]);
+
+  useEffect(() => {
     const deviceId = viewModel.selectedResident?.deviceId ?? null;
     if (!deviceId) {
       setResidentActivity(null);
@@ -265,6 +299,7 @@ export function FlyCarePage({ onSosOrFallDetected }: FlyCarePageProps) {
           resident={viewModel.selectedResident}
           fetchedAt={viewModel.fetchedAt}
           mapProfile={ELDERLY_MAP_PROFILE}
+          latestReminder={latestReminder}
         />
         <PositionDecisionPanel
           resident={viewModel.selectedResident}

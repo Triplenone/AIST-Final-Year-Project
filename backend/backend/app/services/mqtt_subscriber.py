@@ -21,13 +21,16 @@ from app.services.mongo_raw_upstream import enrich_flight_downlink_payload, run_
 UPLINK_SUFFIXES = [
     "status",
     "location",
+    "vitals",
+    "reminder",
+    "alert",
+    "time",
     "sos",
     "fall",
     "door",
     "light",
     "log",
     "heartbeat",
-    "vitals",
 ]
 
 # Legacy 航班 loopback 主题；primary per-device 下行由 mqtt_publish.py 发布。
@@ -67,6 +70,9 @@ SUFFIX_TO_DATA_TYPE = {
     "log": "log",
     "heartbeat": "heartbeat",
     "vitals": "vitals",
+    "reminder": "reminder",
+    "alert": "alert",
+    "time": "time",
 }
 
 _client = None
@@ -184,11 +190,9 @@ def _on_connect(client, userdata, flags, rc):
     print("[mqtt] connected")
     for topic in _uplink_topics():
         client.subscribe(topic)
-    client.subscribe(FLIGHT_TOPIC)
-    client.subscribe(FLIGHT_DOWNLINK_TOPIC)
     print(
-        f"[mqtt] subscribed topics={len(UPLINK_SUFFIXES)}+2 "
-        f"flight={FLIGHT_TOPIC} downlink={FLIGHT_DOWNLINK_TOPIC}"
+        f"[mqtt] subscribed topics={len(UPLINK_SUFFIXES)} "
+        f"root={_topic_root()}"
     )
 
 
@@ -401,7 +405,7 @@ def start_mqtt():
             _last_error = str(e)
             print(
                 f"[mqtt] broker connect failed: {settings.MQTT_BROKER}:{settings.MQTT_PORT} - {e}. "
-                "Flight MQTT will retry in the background."
+                "ElderlyCare MQTT will retry in the background."
             )
             _schedule_retry()
             return
@@ -412,7 +416,7 @@ def start_mqtt():
         _retry_timer = None
         print(
             f"[mqtt] started -> {settings.MQTT_BROKER}:{settings.MQTT_PORT} "
-            f"(flight topic: {FLIGHT_TOPIC})"
+            f"(root: {_topic_root()})"
         )
 
 
@@ -447,5 +451,5 @@ def get_mqtt_status():
         "port": settings.MQTT_PORT,
         "retry_pending": retry_pending,
         "last_error": _last_error,
-        "subscribed_topics": _uplink_topics() + [FLIGHT_TOPIC, FLIGHT_DOWNLINK_TOPIC],
+        "subscribed_topics": _uplink_topics(),
     }

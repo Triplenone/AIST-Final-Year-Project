@@ -8,7 +8,7 @@ param(
     [int]$MqttPort = 0,
     [string]$MosquittoPub = "",
     [string]$MosquittoSub = "",
-    [string]$DownlinkTopic = "smartwatch/+/flight",
+    [string[]]$DownlinkTopic = @("smartwatch/+/reminder", "smartwatch/+/alert"),
     [int]$DownlinkPollSeconds = 2,
     [switch]$DisableDownlink,
     [string[]]$SerialCommand = @(),
@@ -398,7 +398,7 @@ $startedAt = Get-Date
 if ($DownlinkPollSeconds -lt 1) { $DownlinkPollSeconds = 1 }
 
 try {
-    "[$($startedAt.ToString("s"))] bridge start port=$SerialPort baud=$BaudRate transport=$Transport base=$base mqtt=$($mqtt.host):$($mqtt.port) downlink=$(-not $DisableDownlink) topic=$DownlinkTopic serialCommands=$($SerialCommand.Count)" |
+    "[$($startedAt.ToString("s"))] bridge start port=$SerialPort baud=$BaudRate transport=$Transport base=$base mqtt=$($mqtt.host):$($mqtt.port) downlink=$(-not $DisableDownlink) topics=$($DownlinkTopic -join ',') serialCommands=$($SerialCommand.Count)" |
         Tee-Object -FilePath $LogPath -Append | Out-Host
     $serial = Open-WatchSerial -Name $SerialPort -Baud $BaudRate
     Start-Sleep -Milliseconds 1000
@@ -419,7 +419,9 @@ try {
         }
 
         if (-not $DisableDownlink -and (Get-Date) -ge $nextDownlinkPoll) {
-            $downlinks += Poll-MqttDownlink -Port $serial -Mqtt $mqtt -TopicFilter $DownlinkTopic -LastPayloadByTopic $downlinkPayloadByTopic
+            foreach ($topicFilter in $DownlinkTopic) {
+                $downlinks += Poll-MqttDownlink -Port $serial -Mqtt $mqtt -TopicFilter $topicFilter -LastPayloadByTopic $downlinkPayloadByTopic
+            }
             $nextDownlinkPoll = (Get-Date).AddSeconds($DownlinkPollSeconds)
         }
 
@@ -443,7 +445,7 @@ try {
                     Tee-Object -FilePath $LogPath -Append | Out-Host
                 $line | Add-Content -Path "$LogPath.invalid" -Encoding UTF8
             }
-            if ($line -match '^\[SERIAL_DOWNLINK\]|\[Flight\]|Flight info updated|Gate Change|\[FallDetection\]|\[FALL\]|\[SOS\]|rst:|boot:|ESP-ROM|Guru|panic|stack|overflow|abort|Backtrace') {
+            if ($line -match '^\[SERIAL_DOWNLINK\]|\[Reminder\]|\[AlertDownlink\]|\[FallDetection\]|\[FALL\]|\[SOS\]|rst:|boot:|ESP-ROM|Guru|panic|stack|overflow|abort|Backtrace') {
                 "[watch] $line" |
                     Tee-Object -FilePath $LogPath -Append | Out-Host
             }

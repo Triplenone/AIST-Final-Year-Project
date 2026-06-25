@@ -789,21 +789,8 @@ void SimpleDisplayManager::drawDestinationPicker() {
 }
 
 void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
+    (void)gate;
     (void)distance;
-
-    String gateNo = gateNumberForDisplay(gate);
-    if (gateNo.length() == 0 && flightInfo.valid) {
-        gateNo = gateNumberForDisplay(flightInfo.boarding_gate);
-    }
-    if (gateNo.length() == 0 && activeArrivalLabel.length() > 0) {
-        gateNo = gateNumberForDisplay(activeArrivalLabel);
-    }
-    if (gateNo.length() == 0) {
-        gateNo = gateNumberForDisplay(String(target_name));
-    }
-    if (gateNo.length() == 0) {
-        gateNo = "11";
-    }
 
     const int cardX = 14;
     const int cardY = SCREEN_HEIGHT - 146;
@@ -820,10 +807,10 @@ void SimpleDisplayManager::drawGateDisplay(const String& gate, float distance) {
     gfx->fillRoundRect(cardX, cardY, cardW, cardH, 10, cardFill);
     gfx->drawRoundRect(cardX, cardY, cardW, cardH, 10, lightBorder);
 
-    drawCenteredFittedText(gfx, cardX + 8, cardY + 13, cardW - 16, "DEST", subtleGreen, 2, 1);
-    drawCenteredFittedText(gfx, cardX + 8, cardY + 40, cardW - 16, "Gate", darkGray, 1, 1);
-    drawCenteredFittedText(gfx, cardX + 8, cardY + 59, cardW - 16, gateNo, gateNumberColor, 3, 2);
-    drawCenteredFittedText(gfx, cardX + 6, cardY + 99, cardW - 12, "1 min walk", softGray, 1, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 13, cardW - 16, "AREA", subtleGreen, 2, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 42, cardW - 16, "Care", darkGray, 2, 1);
+    drawCenteredFittedText(gfx, cardX + 8, cardY + 69, cardW - 16, "Map", gateNumberColor, 2, 1);
+    drawCenteredFittedText(gfx, cardX + 6, cardY + 99, cardW - 12, "Live location", softGray, 1, 1);
 }
 
 void SimpleDisplayManager::drawProgressBar(int y, float progress) {
@@ -972,65 +959,39 @@ void SimpleDisplayManager::drawHomePage() {
 
 void SimpleDisplayManager::drawFlightPage() {
     gfx->fillScreen(RGB565_BLACK);
-    
-    int centerX = SCREEN_WIDTH / 2;
-    int yOffset = 60;
-    
-    if (!flightInfo.valid) {
-        gfx->setCursor(centerX - 80, SCREEN_HEIGHT / 2 - 20);
-        gfx->setTextSize(2);
-        gfx->setTextColor(RGB565_WHITE);
-        gfx->print("No Flight Info");
-        
-        gfx->setCursor(centerX - 75, SCREEN_HEIGHT / 2 + 10);
-        gfx->setTextSize(1);
-        gfx->setTextColor(0x528A);
-        gfx->print("Waiting for server data...");
-        
-        drawStatusBar();
-        return;
-    }
-    
-    {
-        String flightNumber = flightInfo.flight_number.length() > 0
-            ? flightInfo.flight_number
-            : "--";
-        drawCenteredFittedText(gfx, 12, 52, SCREEN_WIDTH - 24,
-                               flightNumber, 0xEFFF, 4, 2);
 
-        String airline = flightInfo.airline.length() > 0
-            ? flightInfo.airline
-            : "Airline pending";
-        drawCenteredFittedText(gfx, 18, 88, SCREEN_WIDTH - 36,
-                               airline, 0x07FF, 2, 1);
+    drawCenteredFittedText(gfx, 14, 38, SCREEN_WIDTH - 28, "HEALTH", 0x07FF, 3, 2);
+    drawCenteredFittedText(gfx, 14, 70, SCREEN_WIDTH - 28, "Reminder ready", 0xBDF7, 1, 1);
 
-        const int leftX = 16;
-        const int rightX = 142;
-        const int leftW = 108;
-        const int rightW = 82;
+    const int cardX = 14;
+    const int cardW = SCREEN_WIDTH - 28;
+    const int rowH = 50;
+    const int labelColor = 0x8E7D;
+    const int valueColor = RGB565_WHITE;
 
-        drawFittedText(gfx, leftX, 124, "GATE", leftW, 0x5D4B, 1, 1);
-        drawFittedText(gfx, leftX, 142, formatGateLabel(flightInfo.boarding_gate), leftW, 0xFEA0, 3, 2);
+    auto drawMetricCard = [&](int y, const String& label, const String& value, uint16_t accent) {
+        gfx->fillRoundRect(cardX, y, cardW, rowH, 8, 0x0841);
+        gfx->drawRoundRect(cardX, y, cardW, rowH, 8, 0x2945);
+        gfx->fillRoundRect(cardX, y, 5, rowH, 3, accent);
+        drawFittedText(gfx, cardX + 16, y + 8, label, cardW - 32, labelColor, 1, 1);
+        drawFittedText(gfx, cardX + 16, y + 24, value, cardW - 32, valueColor, 2, 1);
+    };
 
-        drawFittedText(gfx, rightX, 124, "BOARDING", rightW, 0x8E7D, 1, 1);
-        drawFittedText(gfx, rightX, 146, flightInfo.boarding_time, rightW, 0x5D4B, 2, 1);
+    String hrText = heartRate > 0 ? String(heartRate) + " bpm" : "Waiting";
+    String spo2Text = spo2 > 0 ? String(spo2) + "%" : "Waiting";
+    String batteryText = String(battery_level) + "%";
 
-        gfx->drawLine(16, 178, SCREEN_WIDTH - 16, 178, 0x2945);
+    drawMetricCard(104, "Heart rate", hrText, 0xF9E7);
+    drawMetricCard(160, "SpO2", spo2Text, 0x07FF);
+    drawMetricCard(216, "Battery", batteryText, 0x5D4B);
 
-        drawFittedText(gfx, leftX, 190, "SCHEDULED", leftW, 0x8410, 1, 1);
-        drawFittedText(gfx, leftX, 206, flightInfo.scheduled_departure, leftW, 0xC618, 2, 1);
+    gfx->setCursor(18, SCREEN_HEIGHT - 24);
+    gfx->setTextSize(1);
+    gfx->setTextColor(0x528A);
+    gfx->print("Medication alerts show as popup");
 
-        String estimated = flightInfo.estimated_departure.length() > 0
-            ? flightInfo.estimated_departure
-            : "--:--";
-        drawFittedText(gfx, rightX, 190, "ESTIMATED", rightW, 0x8410, 1, 1);
-        drawFittedText(gfx, rightX, 206, estimated, rightW, 0xFEA0, 2, 1);
-
-        drawFlightStatusBadge();
-
-        drawStatusBar();
-        return;
-    }
+    drawStatusBar();
+    return;
 }
 
 void SimpleDisplayManager::drawFlightStatusBadge() {
@@ -2302,6 +2263,11 @@ void SimpleDisplayManager::showPopup(PopupType type, const String& title, const 
             color = 0x07E0;
             Serial.printf("[Popup] arrival: %s\n", message.c_str());
             break;
+        case POPUP_REMINDER:
+            cueName = "reminder";
+            color = 0x07FF;
+            Serial.printf("[ReminderPopup] %s\n", message.c_str());
+            break;
         default:
             color = 0x001F;
             break;
@@ -2347,7 +2313,8 @@ void SimpleDisplayManager::drawPopup() {
                            currentPopupType == POPUP_ARRIVAL ||
                            currentPopupType == POPUP_BOARDING ||
                            currentPopupType == POPUP_FLIGHT_DELAY ||
-                           currentPopupType == POPUP_FLIGHT_CANCELLED);
+                           currentPopupType == POPUP_FLIGHT_CANCELLED ||
+                           currentPopupType == POPUP_REMINDER);
     bool arrivalPopup = (currentPopupType == POPUP_ARRIVAL);
     bool gateChangePopup = (currentPopupType == POPUP_GATE_CHANGE);
     int popupWidth = SCREEN_WIDTH - (arrivalPopup ? 16 : 20);
@@ -2373,6 +2340,9 @@ void SimpleDisplayManager::drawPopup() {
             break;
         case POPUP_ARRIVAL:
             borderColor = 0x07E0;
+            break;
+        case POPUP_REMINDER:
+            borderColor = 0x07FF;
             break;
         default:
             borderColor = 0x001F;

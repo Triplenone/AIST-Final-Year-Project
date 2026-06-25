@@ -5,9 +5,9 @@
 #include <Arduino.h>
 
 enum ScreenPage {
-    PAGE_HOME = 0,      // 首页：时间日期
-    PAGE_NAV = 1,       // 第二页：导航画面
-    PAGE_FLIGHT = 2     // 第三页：航班信息
+    PAGE_HOME = 0,      // Home: time/date/status
+    PAGE_NAV = 1,       // Map: ElderlyCare indoor location
+    PAGE_FLIGHT = 2     // Health/Reminder: reused enum name for compatibility
 };
 
 class PageManager {

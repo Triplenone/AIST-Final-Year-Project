@@ -168,6 +168,31 @@ def _to_vitals_item(doc: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _to_reminder_item(doc: Dict[str, Any]) -> Dict[str, Any]:
+    payload = doc.get("payload") or doc
+    reminder = payload.get("reminder") if isinstance(payload.get("reminder"), dict) else {}
+    return {
+        "_id": str(doc.get("_id")) if doc.get("_id") else None,
+        "device_id": doc.get("device_id") or payload.get("device_id"),
+        "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
+        "related_user_id": doc.get("related_user_id") or payload.get("related_user_id"),
+        "timestamp": doc.get("timestamp") or payload.get("timestamp"),
+        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
+        "data_type": doc.get("data_type") or payload.get("data_type"),
+        "command_type": payload.get("command_type"),
+        "command_id": payload.get("command_id"),
+        "issued_at": payload.get("issued_at"),
+        "passengerName": payload.get("passengerName"),
+        "reminder": reminder,
+        "medicine_name": payload.get("medicine_name") or reminder.get("medicine_name"),
+        "dosage": payload.get("dosage") or reminder.get("dosage"),
+        "scheduled_time": payload.get("scheduled_time") or reminder.get("scheduled_time"),
+        "priority": payload.get("priority") or reminder.get("priority"),
+        "message": payload.get("message") or reminder.get("message"),
+        "raw_payload": payload,
+    }
+
+
 def _to_finite_float(value: Any) -> Optional[float]:
     if isinstance(value, (int, float)):
         if value != value:  # NaN
@@ -391,6 +416,27 @@ async def get_latest_vitals(
         }
 
     return {"found": True, "item": _to_vitals_item(doc)}
+
+
+@router.get("/reminder/latest", response_model=Dict[str, Any])
+async def get_latest_reminder(
+    device_id: str = Query(..., description="External device ID"),
+):
+    query: Dict[str, Any] = {"data_type": "reminder"}
+    _apply_device_id_filter(query, device_id)
+    try:
+        doc = await _get_collection().find_one(query, sort=[("server_received_at", -1)])
+    except Exception as exc:
+        raise _mongo_unavailable(exc) from exc
+
+    if doc is None:
+        return {
+            "found": False,
+            "device_id": device_id,
+            "message": "No medication reminder data found for this device",
+        }
+
+    return {"found": True, "item": _to_reminder_item(doc)}
 
 
 @router.get("/location/latest", response_model=Dict[str, Any])

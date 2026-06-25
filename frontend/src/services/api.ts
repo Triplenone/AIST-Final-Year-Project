@@ -236,6 +236,39 @@ export type MongoVitalsHistoryResponse = {
   items: MongoVitalsHistoryItem[];
 };
 
+export type ReminderLatestItem = {
+  _id?: string;
+  device_id?: string | number;
+  mysql_device_id?: number;
+  related_user_id?: number;
+  timestamp?: number;
+  server_received_at?: string;
+  command_type?: string;
+  command_id?: string;
+  issued_at?: string;
+  passengerName?: string | null;
+  reminder?: {
+    type?: string;
+    medicine_name?: string;
+    dosage?: string;
+    scheduled_time?: string;
+    priority?: string;
+    message?: string;
+  };
+  medicine_name?: string;
+  dosage?: string;
+  scheduled_time?: string;
+  priority?: string;
+  message?: string;
+};
+
+export type ReminderLatestResponse = {
+  found: boolean;
+  item?: ReminderLatestItem;
+  device_id?: string;
+  message?: string;
+};
+
 export type FlightLatestResponse = {
   found: boolean;
   _id?: string;
@@ -296,6 +329,13 @@ export const mongoUpstreamApi = {
     api.get<MongoLatestValidLocationResponse>('/mongo-upstream/location/latest', {
       params: { device_id: deviceId, ...params },
     }),
+  getLatestReminder: (deviceId: string) =>
+    api.get<ReminderLatestResponse>('/mongo-upstream/reminder/latest', {
+      params: {
+        device_id: deviceId,
+        _ts: Date.now(),
+      },
+    }),
   list: (params?: Record<string, unknown>) =>
     api.get<{ page: number; page_size: number; total: number; items: unknown[] }>('/mongo-upstream/', { params }),
   get: (docId: string) => api.get<unknown>(`/mongo-upstream/${docId}`),
@@ -344,6 +384,8 @@ export type FlyCarePresetsResponse = {
   items: FlyCareFlightPreset[];
   mqtt_topic: string;
   health_topic_template?: string;
+  reminder_topic_template?: string;
+  alert_topic_template?: string;
   downlink_topic_template?: string;
 };
 
@@ -362,6 +404,9 @@ export type FlyCarePublishResult = {
   mqtt?: {
     ok: boolean;
     topic?: string;
+    topics?: string[];
+    aliases?: string[];
+    alias_results?: Array<Record<string, unknown>>;
     broker?: string;
     error?: string | null;
     skipped?: boolean;
@@ -382,6 +427,22 @@ export type FlyCareHealthPublishPayload = {
   y?: number;
   fall_confirmed: boolean;
   sos_active: boolean;
+  source?: string;
+  publish_mqtt: boolean;
+  save_mongo: boolean;
+};
+
+export type FlyCareReminderPublishPayload = {
+  device_id: string;
+  mysql_device_id?: number;
+  related_user_id?: number | null;
+  passengerName?: string | null;
+  medicine_name: string;
+  dosage: string;
+  scheduled_time: string;
+  priority: string;
+  message?: string;
+  command_id?: string;
   publish_mqtt: boolean;
   save_mongo: boolean;
 };
@@ -424,6 +485,8 @@ export const flycareAdminApi = {
   getMqttStatus: () => api.get<FlyCareMqttStatus>('/flycare-admin/mqtt/status'),
   publishHealth: (data: FlyCareHealthPublishPayload) =>
     api.post<FlyCarePublishResult>('/flycare-admin/health/publish', data),
+  publishReminder: (data: FlyCareReminderPublishPayload) =>
+    api.post<FlyCarePublishResult>('/flycare-admin/reminder/publish', data),
   publishFlight: (data: FlightPublishPayload) =>
     api.post<FlyCarePublishResult>('/flycare-admin/flight/publish', data),
   publishAlert: (data: FlyCareAlertPublishPayload) =>

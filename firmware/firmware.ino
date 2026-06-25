@@ -243,6 +243,7 @@ void clearSOSAlert(const String& method) {
 
     if (data_transmitter) {
         data_transmitter->setSOSActive(false, method);
+        data_transmitter->transmitFallClear();
     }
 
     if (display) {
@@ -269,7 +270,7 @@ void clearSOSAlert(const String& method) {
 }
 
 void toggleSOSAlert(const String& method) {
-    if (sos_active || (display && display->isAlarmDisplayActive())) {
+    if (sos_active || (display && (display->isAlarmDisplayActive() || display->isFallActive()))) {
         clearSOSAlert(method);
     } else {
         activateSOSAlert(method);
@@ -333,7 +334,7 @@ void initDisplay() {
     Serial.println("[Touch] disabled: side-button navigation only");
     display->setTime(12, 0, 0);
     display->setDate(2026, 4, 16);
-    display->setStatus("FlyCare Airport");
+    display->setStatus("ElderlyCare");
     
     // ========== 初始化 SD 卡并加载地图 ==========
     pinMode(43, OUTPUT);      // 设置 GPIO43 为输出模式
@@ -347,12 +348,16 @@ void initDisplay() {
         Serial.println("✅ SD 卡初始化成功");
         
         // 加载地图（使用 BMP 格式）
-        if (!SD_MMC.exists("/Boarding_Hall.bmp")) {
-            Serial.println("[SD] Missing /Boarding_Hall.bmp on SD card root");
+        const char* elderlyMapPath = "/ElderlyCare.bmp";
+        if (!SD_MMC.exists(elderlyMapPath)) {
+            if (SD_MMC.exists("/ElderlyCare.png")) {
+                Serial.println("[SD] /ElderlyCare.png found, but firmware map loader requires /ElderlyCare.bmp");
+            }
+            Serial.println("[SD] Missing /ElderlyCare.bmp on SD card root");
             printSDRootFiles();
         }
 
-        bool mapLoaded = display->initMap("/Boarding_Hall.bmp");
+        bool mapLoaded = display->initMap(elderlyMapPath);
         if (mapLoaded) {
             Serial.println("✅ 地图加载到 PSRAM 成功");
         } else {
@@ -2463,7 +2468,8 @@ void setup() {
     Serial.println("\n✅ 系统初始化完成！");
     Serial.println("================================\n");
 
-    // 1. 设置默认航班信息
+    // Legacy FlyCare default flight/nav bootstrap is disabled for ElderlyCare.
+#if 0
     String defaultFlightJson = "{"
         "\"command_type\":\"flight_info\","
         "\"flight_info\":{"
@@ -2482,7 +2488,7 @@ void setup() {
         "\"checkin_counter\":\"C12-C18\""
         "}}";
     
-    if (flight_manager) {
+    if (false && flight_manager) {
         flight_manager->parseFlightInfo(defaultFlightJson);
         Serial.println("✅ 默认航班信息已设置");
     } else {
@@ -2490,7 +2496,7 @@ void setup() {
     }
     
     // 2. 设置默认智能导航路径
-    if (display && display->setSmartNavigationDestination("GATE10", true)) {
+    if (false && display && display->setSmartNavigationDestination("GATE10", true)) {
         Serial.println("✅ 默认 smart navigation 路径已设置");
     } else {
         Serial.println("❌ 默认 smart navigation 路径设置失败");
@@ -2498,19 +2504,22 @@ void setup() {
     
     // 3. 可选：设置当前位置（模拟）
     // 如果有 BLE 定位，这里可以不设置，等待 BLE 更新
+#endif
+    Serial.println("[ElderlyCare] default flight and gate navigation disabled");
+
     // current_x = 7.0;
     // current_y = 8.0;
     // if (display) {
     //     display->setCurrentPosition(current_x, current_y);
     // }
     
-    // 4. 可选：默认显示导航页
+    // ElderlyCare starts on Home; short press cycles Home -> Map -> Health/Reminder.
     if (display) {
-        display->switchToNavPage();  // 取消注释则开机显示导航页
+        display->switchToHomePage();
         Serial.println("当前页面: " + String(display->getCurrentPage()));
     }
     
-    Serial.println(">>> 默认信息设置完成 <<<\n");
+    Serial.println(">>> ElderlyCare boot display ready <<<\n");
 }
 
 void loop() {

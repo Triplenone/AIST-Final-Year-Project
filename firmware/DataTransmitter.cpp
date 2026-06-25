@@ -352,6 +352,7 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
       target_x(4.4), target_y(1.8), target_name("Gate11"), navigation_active(false),
       sos_active(false), sos_trigger_time(0), sos_trigger_count(0), sos_trigger_method("none"),
       last_alert_command_id(""), last_alert_command_ms(0),
+      last_reminder_command_id(""), last_reminder_command_ms(0),
       door_count(0), night_mode_active(false), light_triggered_tonight(false),
       movement_threshold(2.0), heartbeat_detected(false), heartbeat_interval(30000),
       current_x(0), current_y(0), reported_x(0), reported_y(0),
@@ -652,16 +653,16 @@ void DataTransmitter::subscribeMqttDownlinksUnlocked() {
     if (!mqttEnabled || !mqttClient.connected() || mqttDownlinksSubscribed) return;
 
     String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
-    bool flightOk = mqttClient.subscribe((topicBase + "/flight").c_str());
+    bool reminderOk = mqttClient.subscribe((topicBase + "/reminder").c_str());
     bool alertOk = mqttClient.subscribe((topicBase + "/alert").c_str());
     bool timeOk = mqttClient.subscribe((topicBase + "/time").c_str());
     bool navOk = true;
 #if ENABLE_NAVIGATION_DOWNLINK
     navOk = mqttClient.subscribe((topicBase + "/navigation").c_str());
 #endif
-    mqttDownlinksSubscribed = flightOk && alertOk && timeOk && navOk;
-    Serial.printf("[MQTT_DIAG] downlinks subscribed flight=%d alert=%d time=%d nav=%d active=%d\n",
-                  flightOk ? 1 : 0,
+    mqttDownlinksSubscribed = reminderOk && alertOk && timeOk && navOk;
+    Serial.printf("[MQTT_DIAG] downlinks subscribed reminder=%d alert=%d time=%d nav=%d active=%d\n",
+                  reminderOk ? 1 : 0,
                   alertOk ? 1 : 0,
                   timeOk ? 1 : 0,
                   navOk ? 1 : 0,
@@ -686,10 +687,12 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
                                                      bool retained, const String& serialPayload) {
     bool directUplinkTopic = topic.endsWith("/status") ||
                              topic.endsWith("/location") ||
+                             topic.endsWith("/vitals") ||
                              topic.endsWith("/sos") ||
                              topic.endsWith("/fall");
     bool directStatusTopic = topic.endsWith("/status");
     bool directLocationTopic = topic.endsWith("/location");
+    bool directVitalsTopic = topic.endsWith("/vitals");
     bool directAlertTopic = topic.endsWith("/sos") || topic.endsWith("/fall");
 
     String compactUplinkPayload = serialPayload.length() > 0 ? serialPayload : payload;
@@ -697,6 +700,8 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         compactUplinkPayload = getDirectStatusJSON();
     } else if (directLocationTopic) {
         compactUplinkPayload = getDirectLocationJSON();
+    } else if (directVitalsTopic) {
+        compactUplinkPayload = getVitalsJSON();
     }
 
     if (!directLocationTopic) {
@@ -797,7 +802,7 @@ bool DataTransmitter::publishToMQTTWithSerialPayload(const String& topic, const 
         auto tryRawUplink = [&]() -> bool {
             unsigned long nowMs = millis();
             unsigned long* lastRawMs = directStatusTopic ? &lastRawStatusMs :
-                                      (directLocationTopic ? &lastRawLocationMs : &lastRawAlertMs);
+                                      ((directLocationTopic || directVitalsTopic) ? &lastRawLocationMs : &lastRawAlertMs);
             const unsigned long rawMinGapMs = directAlertTopic ? 3000UL : 15000UL;
             if (*lastRawMs != 0 && nowMs - *lastRawMs < rawMinGapMs) {
                 Serial.printf("[MQTT_RAW] throttled topic=%s age=%lu min=%lu\n",
@@ -1043,7 +1048,46 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
         }
 #endif
     }
+    else if (topic.endsWith("/reminder")) {
+        JsonObject reminder = doc.containsKey("reminder") ? doc["reminder"].as<JsonObject>() : doc.as<JsonObject>();
+        String commandId = doc["command_id"] | reminder["command_id"] | "";
+        String medicine = reminder["medicine_name"] | doc["medicine_name"] | "Medication";
+        String dosage = reminder["dosage"] | doc["dosage"] | "";
+        String scheduledTime = reminder["scheduled_time"] | doc["scheduled_time"] | "";
+        String message = reminder["message"] | doc["message"] | "";
+        String priority = reminder["priority"] | doc["priority"] | "normal";
+        if (message.length() == 0) {
+            message = medicine;
+            if (dosage.length() > 0) message += " " + dosage;
+            if (scheduledTime.length() > 0) message += " at " + scheduledTime;
+        }
+
+        unsigned long nowMs = millis();
+        bool duplicate = commandId.length() > 0 &&
+                         commandId == last_reminder_command_id &&
+                         (nowMs - last_reminder_command_ms) < 60000UL;
+        Serial.printf("[Reminder] topic=%s command_id=%s medicine=%s time=%s priority=%s duplicate=%d\n",
+                      topic.c_str(),
+                      commandId.c_str(),
+                      medicine.c_str(),
+                      scheduledTime.c_str(),
+                      priority.c_str(),
+                      duplicate ? 1 : 0);
+        if (duplicate) return;
+        if (commandId.length() > 0) {
+            last_reminder_command_id = commandId;
+            last_reminder_command_ms = nowMs;
+        }
+        if (display_manager) {
+            display_manager->showPopup(SimpleDisplayManager::POPUP_REMINDER, "Medication", message);
+            display_manager->switchToFlightPage();
+        }
+        addLog("info", "Reminder: " + message);
+    }
     else if (topic.endsWith("/flight")) {
+        Serial.println("[Flight] downlink ignored in ElderlyCare final demo");
+        return;
+#if 0
         JsonObject flight = doc.containsKey("flight_info") ? doc["flight_info"].as<JsonObject>() : doc.as<JsonObject>();
         uint32_t flightHash = hashDownlinkPayload(buildFlightDownlinkSignature(flight));
         if (hasLastFlightDownlinkHash && flightHash == lastFlightDownlinkHash) {
@@ -1058,6 +1102,7 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
                 addLog("info", "Flight info updated");
             }
         }
+#endif
     }
     else if (topic.endsWith("/voice")) {
         if (voice_manager) {
@@ -1135,14 +1180,11 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
 
         if (eventType == "sos") {
             if (action == "activate") {
-                sos_active = true;
-                sos_trigger_time = getCurrentTimestamp();
-                sos_trigger_method = "admin_downlink";
+                setSOSActive(true, "admin_downlink");
                 if (display_manager) display_manager->showSOS(true);
                 addLog("warning", title + ": " + message);
             } else {
-                sos_active = false;
-                sos_trigger_method = "admin_clear";
+                setSOSActive(false, "admin_clear");
                 if (display_manager) display_manager->showSOS(false);
                 addLog("info", "SOS cleared by admin");
             }
@@ -1151,9 +1193,19 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
 
         if (eventType == "fall") {
             if (action == "activate") {
+                FallEvent event;
+                event.state = STATE_FALL_CONFIRMED;
+                event.description = "admin_simulated";
+                event.confidence = 1.0f;
+                event.is_fall_confirmed = true;
+                event.impact_force = 0.0f;
+                event.direction = "admin";
+                event.fall_time = getCurrentTimestamp();
+                transmitFallAlert(event);
                 if (display_manager) display_manager->showFallAlert(true);
                 addLog("warning", title + ": " + message);
             } else {
+                transmitFallClear();
                 if (display_manager) display_manager->showFallAlert(false);
                 addLog("info", "Fall cleared by admin");
             }
@@ -1628,6 +1680,58 @@ String DataTransmitter::getDirectLocationJSON() {
     return json;
 }
 
+String DataTransmitter::getVitalsJSON() {
+    String json = "{";
+    json += "\"device_id\":\"" + device_id + "\",";
+    json += "\"timestamp\":" + String(getCurrentTimestamp()) + ",";
+    json += "\"data_type\":\"vitals\",";
+    json += "\"source\":\"real_sensor\",";
+    json += "\"sensors\":{";
+    json += "\"heart_rate\":{";
+    json += "\"bpm\":" + String(heart_rate.bpm) + ",";
+    json += "\"confidence\":" + String(heart_rate.confidence, 2) + ",";
+    json += "\"timestamp\":" + String(heart_rate.timestamp) + ",";
+    json += "\"valid\":" + String(heart_rate.valid ? "true" : "false");
+    json += "},";
+    json += "\"spo2\":{";
+    json += "\"percentage\":" + String(spo2.percentage) + ",";
+    json += "\"confidence\":" + String(spo2.confidence, 2) + ",";
+    json += "\"timestamp\":" + String(spo2.timestamp) + ",";
+    json += "\"valid\":" + String(spo2.valid ? "true" : "false");
+    json += "}";
+    json += "},";
+    json += "\"vitals\":{";
+    json += "\"heart_rate\":{\"bpm\":";
+    json += String(heart_rate.bpm);
+    json += ",\"valid\":";
+    json += heart_rate.valid ? "true" : "false";
+    json += "},";
+    json += "\"spo2\":{\"percentage\":";
+    json += String(spo2.percentage);
+    json += ",\"valid\":";
+    json += spo2.valid ? "true" : "false";
+    json += "},";
+    json += "\"hr\":" + String(heart_rate.bpm);
+    json += "},";
+    json += "\"system\":{";
+    json += "\"battery\":{\"level\":";
+    json += power ? String(power->getBatteryPercent()) : "0";
+    json += "}";
+    json += "}";
+    json += "}";
+    return json;
+}
+
+void DataTransmitter::transmitVitals() {
+    String jsonData = getVitalsJSON();
+    String topic = getDeviceTopic(MQTT_TOPIC_VITALS);
+    publishToMQTT(topic, jsonData);
+    if (ENABLE_HTTP_UPLOAD && network && network->isConnected()) {
+        network->sendHTTPData(jsonData);
+    }
+    addLog("info", "Vitals published");
+}
+
 void DataTransmitter::transmitStatusSummary() {
     stabilizeReportPosition();
     String jsonData = getStatusSummaryJSON();
@@ -1638,6 +1742,7 @@ void DataTransmitter::transmitStatusSummary() {
     Serial.println(topic);
     Serial.printf("status bytes: %d\n", jsonData.length());
     publishToMQTTWithSerialPayload(topic, jsonData, false, serialJsonData);
+    transmitVitals();
 
     if (ENABLE_HTTP_UPLOAD && network && network->isConnected()) {
         network->sendHTTPData(jsonData);
@@ -1676,6 +1781,27 @@ void DataTransmitter::transmitFallAlert(const FallEvent& fall_event) {
     
     addLog("warning", "Fall detected: " + fall_event.description);
     transmit_interval = 1000;
+}
+
+void DataTransmitter::transmitFallClear() {
+    FallEvent event;
+    event.state = STATE_NORMAL;
+    event.description = "normal";
+    event.confidence = 0.0f;
+    event.is_fall_confirmed = false;
+    event.impact_force = 0.0f;
+    event.direction = "unknown";
+    event.fall_time = 0;
+
+    String jsonData = getFallJSON(event);
+    String topic = getDeviceTopic(MQTT_TOPIC_FALL);
+    publishToMQTT(topic, jsonData, true);
+
+    if (ENABLE_HTTP_UPLOAD && network && network->isConnected()) {
+        network->sendHTTPData(jsonData);
+    }
+
+    addLog("info", "Fall cleared");
 }
 
 // ================ 上传SOS警报 ================
@@ -1992,11 +2118,16 @@ void DataTransmitter::setSOSActive(bool active, const String& method) {
         sos_trigger_method = method;
         Serial.printf("🚨 SOS触发! 方式: %s, 次数: %d\n", method.c_str(), sos_trigger_count);
         transmitSOSAlert();
-    } else if (!active && sos_active) {
+    } else if (!active) {
+        bool wasActive = sos_active;
         sos_active = false;
         sos_trigger_method = "cleared";
         transmitSOSAlert();
-        Serial.println("SOS已解除");
+        if (wasActive) {
+            Serial.println("SOS已解除");
+        } else {
+            Serial.println("[SOS] clear state published while already inactive");
+        }
     }
 }
 

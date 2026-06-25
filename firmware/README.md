@@ -1,3 +1,71 @@
+# ElderlyCare SmartWatch Runtime Notes
+
+This firmware build targets the ElderlyCare final demo on the `2-flycare-elderly` branch.
+
+Current hardware target:
+
+```cpp
+#define DEVICE_ID "ESP32_0000E03948D4DB1C"
+#define CLOCK_DEVICE_LABEL "LEE KA YAN"
+```
+
+Network/demo assumptions:
+
+```text
+Router / MQTT broker: 192.168.1.232:1883
+Backend hardware API: http://192.168.1.232:8001
+USB serial: COM5
+Audio path: disabled; popup + vibration only
+```
+
+Final ElderlyCare MQTT topics:
+
+```text
+Uplink:
+smartwatch/{device_id}/status
+smartwatch/{device_id}/location
+smartwatch/{device_id}/vitals
+smartwatch/{device_id}/sos
+smartwatch/{device_id}/fall
+
+Downlink:
+smartwatch/{device_id}/reminder
+smartwatch/{device_id}/alert
+smartwatch/{device_id}/time
+```
+
+`/reminder` replaces the final demo `/flight` path. The handler de-duplicates `command_id`, shows a medication reminder popup, vibrates, and opens the Health/Reminder page. Final firmware does not subscribe to `smartwatch/{device_id}/flight`.
+
+`/alert` remains the Admin SOS/FALL control topic. It accepts `event_type=sos|fall` and `action=activate|clear`. Admin-triggered SOS publishes the watch `/sos` uplink state. Admin-triggered FALL publishes the watch `/fall` uplink state without requiring IMU fall detection.
+
+Button behavior:
+
+```text
+BOOT/SOS short press      Home -> Map -> Health-Reminder -> Home
+BOOT/SOS long press 3s   If no SOS/FALL is active, trigger physical SOS
+BOOT/SOS long press 3s   If SOS or FALL is active, clear all active emergency state and publish /sos + /fall inactive payloads
+PWR short/long press      Display off/on
+```
+
+Map and SD card:
+
+- Frontend canonical map asset is `frontend/src/img/ElderlyCare.png`.
+- Watch `initMap()` supports BMP at runtime. Copy `firmware/ElderlyCare.bmp` to the SD card root as `/ElderlyCare.bmp`. `/ElderlyCare.png` may remain on SD as the source asset, but `/ElderlyCare.bmp` is the reliable runtime file.
+- The watch map page no longer renders `DEST`, Gate, flight route, arrival target, or boarding text in the final demo path.
+
+Useful validation commands:
+
+```powershell
+cd E:\flycare
+$cli='C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe'
+$fqbn='esp32:esp32:esp32s3:FlashSize=8M,PartitionScheme=huge_app,PSRAM=opi,CDCOnBoot=cdc'
+& $cli --config-file .arduino-cli\arduino-cli.yaml compile --fqbn $fqbn firmware --build-path .arduino-cli\tmp\elderly-watch-build
+& $cli --config-file .arduino-cli\arduino-cli.yaml upload -p COM5 --fqbn $fqbn firmware --input-dir .arduino-cli\tmp\elderly-watch-build --upload-property upload.speed=115200
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_elderly_watch.ps1 -SerialPort COM5 -SendReminderDownlink -SendFallDownlink -SendFallClearDownlink
+```
+
+Legacy FlyCare notes below are kept for compatibility and history; they are not the ElderlyCare final firmware contract.
+
 # SmartWatch Project S3R8 Runtime Notes
 
 ## Arduino build target
@@ -131,7 +199,7 @@ The UI fast path records `[UI_LATENCY] event=... handled_ms=... redraw_ms=...` a
 Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:
 
 ```text
-http://<pc-lan-ip>:8000/api/v1/data-reception/receive
+http://<pc-lan-ip>:8001/api/v1/data-reception/receive
 ```
 
 ## BLE positioning

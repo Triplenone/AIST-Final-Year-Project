@@ -5,11 +5,13 @@ import {
   type PositionMapProfile,
   type PositionResidentViewModel
 } from '../../adapters/position-command-center';
+import type { ReminderLatestItem } from '../../services/api';
 
 type FlyCareHealthPanelProps = {
   resident: PositionResidentViewModel | null;
   fetchedAt: string | null;
   mapProfile?: PositionMapProfile;
+  latestReminder?: ReminderLatestItem | null;
 };
 
 function formatValue(value: unknown): string {
@@ -40,11 +42,17 @@ function formatCoords(resident: PositionResidentViewModel | null): string {
 export function FlyCareHealthPanel({
   resident,
   fetchedAt,
-  mapProfile = 'indoor'
+  mapProfile = 'indoor',
+  latestReminder = null
 }: FlyCareHealthPanelProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
   const location = resident ? getPositionZoneDisplayForResident(resident, t, mapProfile) : 'No data';
+  const reminder = latestReminder?.reminder;
+  const medicine = latestReminder?.medicine_name ?? reminder?.medicine_name;
+  const dosage = latestReminder?.dosage ?? reminder?.dosage;
+  const scheduledTime = latestReminder?.scheduled_time ?? reminder?.scheduled_time;
+  const reminderMessage = latestReminder?.message ?? reminder?.message;
 
   return (
     <section className="position-command-center__surface flycare-health-panel" aria-live="polite">
@@ -101,6 +109,22 @@ export function FlyCareHealthPanel({
         <div>
           <dt>{t('position.lastUpdate', { defaultValue: 'Last update' })}</dt>
           <dd>{formatTime(resident?.lastSeenAt ?? fetchedAt, locale)}</dd>
+        </div>
+        <div>
+          <dt>{t('flyCare.latestReminder', { defaultValue: 'Latest reminder' })}</dt>
+          <dd>{formatValue(medicine)}</dd>
+        </div>
+        <div>
+          <dt>{t('flyCare.reminderDosage', { defaultValue: 'Dosage' })}</dt>
+          <dd>{formatValue(dosage)}</dd>
+        </div>
+        <div>
+          <dt>{t('flyCare.reminderTime', { defaultValue: 'Reminder time' })}</dt>
+          <dd>{formatValue(scheduledTime)}</dd>
+        </div>
+        <div>
+          <dt>{t('flyCare.reminderMessage', { defaultValue: 'Reminder note' })}</dt>
+          <dd>{formatValue(reminderMessage)}</dd>
         </div>
       </dl>
     </section>

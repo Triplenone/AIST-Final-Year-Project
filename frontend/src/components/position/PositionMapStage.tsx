@@ -36,7 +36,7 @@ function getOperatorError(
 ): string {
   if (!error || error.toLowerCase().includes('not found')) {
     return t('position.selectedResidentUnavailable', {
-      defaultValue: 'Selected passenger snapshot unavailable.'
+      defaultValue: 'Selected resident snapshot unavailable.'
     });
   }
   return error;
@@ -87,11 +87,11 @@ export function PositionMapStage({
   const mapEmptyCopy =
     showAllOnMap
       ? t('position.noOnlineResidentsOnMap', {
-          defaultValue: 'No online passengers with location data right now.'
+          defaultValue: 'No online residents with location data right now.'
         })
       : resident == null
       ? t('position.noSelectionHint', {
-          defaultValue: 'Choose a passenger from the rail to inspect Position context.'
+          defaultValue: 'Choose a resident from the rail to inspect care context.'
         })
       : resident.hasData
         ? t('position.zoneResolutionUnavailable', {
@@ -104,9 +104,9 @@ export function PositionMapStage({
       <header className="position-map-stage__header">
         <div>
           <p className="position-command-center__eyebrow">
-            {t('position.mapStageEyebrow', { defaultValue: 'Map Stage' })}
+            {t('elderlyCare.mapStageEyebrow', { defaultValue: 'Care-home map' })}
           </p>
-          <h2>{t('layout.nav.position', { defaultValue: 'Position' })}</h2>
+          <h2>{t('elderlyCare.mapTitle', { defaultValue: 'ElderlyCare Map' })}</h2>
         </div>
         <p className="position-command-center__muted">
           {effectiveSurfaceState === 'loading'
@@ -125,7 +125,7 @@ export function PositionMapStage({
         <div className="position-map-stage__canvas">
           <img
             src={mapImage}
-            alt={t('layout.nav.position', { defaultValue: 'Position map' })}
+            alt={t('elderlyCare.mapAlt', { defaultValue: 'ElderlyCare care-home map' })}
             className="position-map-stage__image"
           />
 
@@ -183,7 +183,7 @@ export function PositionMapStage({
 
         {effectiveSurfaceState === 'empty' ? (
           <div className="position-command-center__state-card">
-            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No passenger selected' })}</strong>
+            <strong>{resident ? t('position.zoneResolutionUnavailable', { defaultValue: 'Zone resolution unavailable.' }) : t('position.noSelection', { defaultValue: 'No resident selected' })}</strong>
             <p>{mapEmptyCopy}</p>
           </div>
         ) : null}

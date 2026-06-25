@@ -65,7 +65,8 @@ public:
         POPUP_GATE_CHANGE,
         POPUP_BOARDING,
         POPUP_FLIGHT_CANCELLED,
-        POPUP_ARRIVAL
+        POPUP_ARRIVAL,
+        POPUP_REMINDER
     };
     
     static SimpleDisplayManager* instance;

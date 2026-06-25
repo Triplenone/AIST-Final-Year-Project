@@ -1,3 +1,132 @@
+# ElderlyCare Final Demo
+
+This branch is the ElderlyCare migration of the FlyCare final demo. The final demo entrypoint is:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_elderly_offline_demo.ps1 -OpenBrowser
+```
+
+Final hardware assumptions:
+
+| Item | Value |
+| --- | --- |
+| Router / MQTT host | `192.168.1.232` |
+| MQTT broker | `192.168.1.232:1883` |
+| Backend API | `http://127.0.0.1:8001` and `http://192.168.1.232:8001` |
+| Frontend | `http://192.168.1.232:5173/flycare` |
+| Admin | `http://192.168.1.232:5173/admin` |
+| Physical watch port | `COM5` |
+| Primary watch for upload/test | LEE KA YAN, `ESP32_0000E03948D4DB1C`, MySQL device `9`, alias `ESP32_1CDBD44839E0` |
+
+## ElderlyCare Demo Scope
+
+- `/flycare` renders the ElderlyCare map, six demo users, live area, battery, HR, SpO2, SOS/FALL state, and latest medication reminder.
+- `/admin` is the ElderlyCare control center: device preset, canonical/alias display, admin simulated health data, medication reminder publish, Trigger/Clear SOS, Trigger/Clear FALL, active event handling.
+- Direct Wi-Fi MQTT is the primary hardware path. COM5 serial bridge is only fallback evidence and must be stopped before claiming direct MQTT success.
+- Flight/Gate/DEST/boarding/delay are no longer part of the final demo path. Legacy flight routes may remain hidden for compatibility only.
+
+## MQTT Contract
+
+Watch uplink topics:
+
+```text
+smartwatch/{device_id}/status
+smartwatch/{device_id}/location
+smartwatch/{device_id}/vitals
+smartwatch/{device_id}/sos
+smartwatch/{device_id}/fall
+```
+
+Admin/watch downlink topics:
+
+```text
+smartwatch/{device_id}/reminder
+smartwatch/{device_id}/alert
+smartwatch/{device_id}/time
+```
+
+Medication reminder downlink shape:
+
+```json
+{
+  "command_type": "reminder",
+  "data_type": "reminder",
+  "command_id": "reminder-...",
+  "issued_at": "2026-06-26T00:00:00Z",
+  "device_id": "ESP32_0000E03948D4DB1C",
+  "reminder": {
+    "type": "medication",
+    "medicine_name": "Metformin",
+    "dosage": "500 mg",
+    "scheduled_time": "08:00",
+    "priority": "normal",
+    "message": "Please take Metformin 500 mg at 08:00."
+  }
+}
+```
+
+Admin alert downlink remains non-retained QoS 1 on `/alert`. Allowed values are `event_type=sos|fall` and `action=activate|clear`.
+
+## Demo Users
+
+| Demo ID | Resident | Canonical device_id | MySQL device_id | Alias |
+| ---: | --- | --- | ---: | --- |
+| 1 | NG WAI LUN | `ESP32_000048CA43A42298` | 8 | `ESP32_48CA43A42298` |
+| 2 | WONG KA MING | `ESP32_0000C8292A04A7AC` | 3 | `ESP32_00005CFA7AD4DB1C` |
+| 3 | HO CHI WAI | `ESP32_0000A022A443CA48` | 4 | - |
+| 4 | MA KA WAI | `ESP32_00008C292A04A7AC` | 6 | - |
+| 5 | YIP MAN LING | `ESP32_00009022A443CA48` | 7 | - |
+| 6 | LEE KA YAN | `ESP32_0000E03948D4DB1C` | 9 | `ESP32_1CDBD44839E0` |
+
+## Beacon Migration
+
+| FlyCare area | ElderlyCare area |
+| --- | --- |
+| Check-in | Front Desk / Nurse Station |
+| Security Check | Activity Room |
+| Customer Services | Central Common Area |
+| Gate 11 | Rehabilitation Room |
+| Gate 10 | Bedroom |
+| Toilet | Toilet / Hygiene Zone |
+
+Run these migrations after the base dump and earlier device migrations:
+
+```powershell
+cd E:\flycare
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260619_flycare_demo_registry.sql"
+& 'C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe' -uroot -proot smart_elderly_care_system -e "source E:/flycare/database/mysql/migrations/20260625_flycare_elderly_demo_profile.sql"
+```
+
+## Verification Commands
+
+```powershell
+cd E:\flycare
+npm.cmd --prefix frontend run lint
+npm.cmd --prefix frontend run test
+npm.cmd --prefix frontend run build
+python -m compileall backend\backend\app
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\audit_elderly_goal.ps1 -BaseUrl http://127.0.0.1:8001
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_elderly_direct_walk.ps1 -Seconds 120
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_elderly_watch.ps1 -SerialPort COM5 -SendReminderDownlink -SendFallDownlink -SendFallClearDownlink
+```
+
+Firmware compile/upload target:
+
+```powershell
+cd E:\flycare
+$cli='C:\Program Files\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe'
+$fqbn='esp32:esp32:esp32s3:FlashSize=8M,PartitionScheme=huge_app,PSRAM=opi,CDCOnBoot=cdc'
+& $cli --config-file .arduino-cli\arduino-cli.yaml compile --fqbn $fqbn firmware --build-path .arduino-cli\tmp\elderly-watch-build
+& $cli --config-file .arduino-cli\arduino-cli.yaml upload -p COM5 --fqbn $fqbn firmware --input-dir .arduino-cli\tmp\elderly-watch-build --upload-property upload.speed=115200
+```
+
+Firmware SD map note: the frontend uses `frontend/src/img/ElderlyCare.png`. The watch map loader supports BMP, so copy `firmware/ElderlyCare.bmp` to the SD card root as `/ElderlyCare.bmp`; `/ElderlyCare.png` can remain on the SD card as the source asset, but `/ElderlyCare.bmp` is the reliable firmware runtime file.
+
+## Legacy Notes
+
+The older FlyCare notes below are retained for compatibility and historical evidence. They are not the ElderlyCare final demo contract.
+
 # FlyCare Final Demo 部署与演示指南
 
 本仓库是 FlyCare final demo 版本。目标是在没有互联网的情况下，只要本地 router 有电，Server PC 和 6 只手表连接到同一个本地 Wi-Fi，就可以完整演示：
@@ -145,6 +274,7 @@ MQTT_USER=
 MQTT_PASSWORD=
 MQTT_TOPIC_ROOT=smartwatch
 FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE=smartwatch/{device_id}/flight
+FLYCARE_REMINDER_DOWNLINK_TOPIC_TEMPLATE=smartwatch/{device_id}/reminder
 FLYCARE_LEGACY_FLIGHT_TOPIC=smartwatch/flight
 ```
 
