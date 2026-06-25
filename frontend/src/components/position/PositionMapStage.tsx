@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import mapImage from '../../img/FlyCare.png';
+import mapImage from '../../img/ElderlyCare.png';
 import {
   gridIndicesToPixelPercent,
   type PositionSurfaceState,

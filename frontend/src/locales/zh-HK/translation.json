@@ -14,13 +14,13 @@
       "residents": "乘客",
       "location": "位置",
       "position": "室內定位",
-      "flycare": "機場關懷",
+      "flycare": "長者護理",
       "operations": "營運",
       "family": "協助更新",
       "admin": "系統管理"
     },
     "footer": "© 2024 FlyCare Collaborative - 與機場協助團隊一起打造",
-    "flycareBrand": "Smart FlyCare System"
+    "flycareBrand": "Smart ElderlyCare System"
   },
   "position": {
     "userList": "用戶列表",
@@ -178,7 +178,7 @@
       "status": "用戶狀態",
       "residents": "乘客",
       "kpi": "KPI",
-      "flycare": "FlyCare"
+      "flycare": "長者護理"
     },
     "flycare": {
       "title": "FlyCare 航班測試",

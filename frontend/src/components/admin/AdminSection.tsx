@@ -96,12 +96,12 @@ export const AdminSection = ({ activeTab: controlledActiveTab, onTabChange }: Ad
       checklist: ['Check ingest totals', 'Validate fall-confirm fields', 'Watch auto-refresh before edit']
     },
     flycare: {
-      eyebrow: 'Airport simulation',
-      title: 'FlyCare flight publish',
-      note: 'Configure flight fields per tracked device and publish to MQTT for downstream ingest and FlyCare UI.',
+      eyebrow: 'Elderly telemetry',
+      title: 'Health data publish',
+      note: 'Configure health and indoor location fields per tracked device, then publish to MQTT or Mongo for dashboard ingest.',
       surface: 'MQTT test harness',
       endpoint: '/api/v1/flycare-admin',
-      checklist: ['Pick a preset device first', 'Confirm MQTT broker is connected', 'Publish then verify FlyCare panel']
+      checklist: ['Pick a preset device first', 'Confirm MQTT broker is connected', 'Publish then verify the health panel']
     }
   };
 

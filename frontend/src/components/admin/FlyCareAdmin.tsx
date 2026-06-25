@@ -1,31 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { eventApi, flycareAdminApi, type FlightPublishPayload, type FlyCareFlightPreset } from '../../services/api';
+import {
+  eventApi,
+  flycareAdminApi,
+  type FlyCareFlightPreset,
+  type FlyCareHealthPublishPayload
+} from '../../services/api';
 import type { BackendEvent, EventStatus, EventType } from '../../types/backend';
 
-type FlightFormState = {
+type HealthFormState = {
   device_id: string;
   mysql_device_id: string;
   passengerName: string;
-  flightNumber: string;
-  airline: string;
-  departureAirport: string;
-  destination: string;
-  seatNumber: string;
-  scheduled_departure: string;
-  estimated_departure: string;
-  boarding_time: string;
-  boarding_gate: string;
-  status: string;
-  delay_minutes: string;
-  delay_reason: string;
-  gate_changed: boolean;
-  terminal: string;
-  checkin_counter: string;
+  heart_rate: string;
+  spo2: string;
+  battery: string;
+  location_name: string;
+  x: string;
+  y: string;
+  fall_confirmed: boolean;
+  sos_active: boolean;
 };
 
-const FLIGHT_STATUS_OPTIONS = ['scheduled', 'boarding', 'delayed', 'cancelled'] as const;
 const FINAL_DEMO_DEVICE_IDS = new Set([
   'ESP32_000048CA43A42298',
   'ESP32_0000C8292A04A7AC',
@@ -38,87 +35,63 @@ const FINAL_DEMO_DEVICE_ORDER = new Map(
   Array.from(FINAL_DEMO_DEVICE_IDS).map((deviceId, index) => [deviceId, index])
 );
 
-function formatHhmm(date: Date): string {
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
-}
+const ELDERLY_LOCATION_PRESETS = [
+  { label: 'Nurse Station', x: '1', y: '1' },
+  { label: 'Activity Room', x: '5', y: '2' },
+  { label: 'Rehabilitation Room', x: '9', y: '2' },
+  { label: 'Central Common Area', x: '5', y: '7' },
+  { label: 'Toilet', x: '10', y: '9' },
+  { label: 'Bedroom', x: '8', y: '13' },
+  { label: 'Door1', x: '0', y: '1' },
+  { label: 'Door2', x: '0', y: '11' }
+];
 
-function addMinutes(date: Date, minutes: number): Date {
-  return new Date(date.getTime() + minutes * 60_000);
-}
-
-function defaultScheduleTimes(): Pick<FlightFormState, 'scheduled_departure' | 'estimated_departure' | 'boarding_time'> {
-  const scheduledDate = addMinutes(new Date(), 60);
-  const scheduled = formatHhmm(scheduledDate);
-  return {
-    scheduled_departure: scheduled,
-    estimated_departure: scheduled,
-    boarding_time: formatHhmm(addMinutes(scheduledDate, -50))
-  };
-}
-
-const defaultFlightFields = (): Omit<
-  FlightFormState,
-  'device_id' | 'mysql_device_id' | 'passengerName'
-> => ({
-  flightNumber: 'CX910',
-  airline: 'Cathay Pacific',
-  departureAirport: 'HKG',
-  destination: 'Singapore',
-  seatNumber: '21C',
-  ...defaultScheduleTimes(),
-  boarding_gate: '11',
-  status: 'scheduled',
-  delay_minutes: '0',
-  delay_reason: '',
-  gate_changed: false,
-  terminal: 'T3',
-  checkin_counter: 'C12-C18'
-});
-
-const emptyForm = (): FlightFormState => ({
+const emptyForm = (): HealthFormState => ({
   device_id: '',
   mysql_device_id: '',
   passengerName: '',
-  ...defaultFlightFields(),
-  delay_minutes: '0',
-  delay_reason: '',
-  gate_changed: false
+  heart_rate: '82',
+  spo2: '98',
+  battery: '92',
+  location_name: 'Central Common Area',
+  x: '5',
+  y: '7',
+  fall_confirmed: false,
+  sos_active: false
 });
 
-function toPayload(
-  form: FlightFormState,
-  options: { publish_mqtt: boolean; save_mongo: boolean }
-): FlightPublishPayload {
-  const mysqlId = form.mysql_device_id.trim();
-  const delayRaw = form.delay_minutes.trim();
-  const scheduled = form.scheduled_departure.trim();
-  const destination = form.destination.trim();
-  const boardingGate = form.boarding_gate.trim();
+function parseOptionalNumber(value: string): number | undefined {
+  const text = value.trim();
+  if (!text) return undefined;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
 
+function parseRequiredNumber(value: string): number | null {
+  const text = value.trim();
+  if (!text) return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toPayload(
+  form: HealthFormState,
+  options: { publish_mqtt: boolean; save_mongo: boolean }
+): FlyCareHealthPublishPayload {
+  const mysqlId = form.mysql_device_id.trim();
+  const locationName = form.location_name.trim();
   return {
     device_id: form.device_id.trim(),
     mysql_device_id: mysqlId ? Number(mysqlId) : undefined,
-    passengerName: form.passengerName.trim(),
-    flightNumber: form.flightNumber.trim(),
-    airline: form.airline.trim() || undefined,
-    departureAirport: form.departureAirport.trim() || undefined,
-    arrivalAirport: destination || undefined,
-    destination: destination || undefined,
-    seatNumber: form.seatNumber.trim() || undefined,
-    flightTime: scheduled || undefined,
-    scheduled_departure: scheduled || undefined,
-    estimated_departure: form.estimated_departure.trim() || undefined,
-    boarding_time: form.boarding_time.trim() || undefined,
-    gate: boardingGate || undefined,
-    boarding_gate: boardingGate || undefined,
-    status: form.status.trim() || undefined,
-    delay_minutes: delayRaw ? Number(delayRaw) : undefined,
-    delay_reason: form.delay_reason.trim() || undefined,
-    gate_changed: form.gate_changed,
-    terminal: form.terminal.trim() || undefined,
-    checkin_counter: form.checkin_counter.trim() || undefined,
+    passengerName: form.passengerName.trim() || undefined,
+    heart_rate: Number(form.heart_rate.trim()),
+    spo2: Number(form.spo2.trim()),
+    battery: parseOptionalNumber(form.battery),
+    location_name: locationName || undefined,
+    x: parseOptionalNumber(form.x),
+    y: parseOptionalNumber(form.y),
+    fall_confirmed: form.fall_confirmed,
+    sos_active: form.sos_active,
     publish_mqtt: options.publish_mqtt,
     save_mongo: options.save_mongo
   };
@@ -127,13 +100,13 @@ function toPayload(
 export const FlyCareAdmin = () => {
   const { t } = useTranslation();
   const [presets, setPresets] = useState<FlyCareFlightPreset[]>([]);
-  const [mqttTopic, setMqttTopic] = useState('smartwatch/{device_id}/flight');
+  const [mqttTopic, setMqttTopic] = useState('smartwatch/{device_id}/vitals');
   const [mqttStatus, setMqttStatus] = useState<{
     connected?: boolean;
     broker?: string;
     port?: number;
   } | null>(null);
-  const [form, setForm] = useState<FlightFormState>(emptyForm);
+  const [form, setForm] = useState<HealthFormState>(emptyForm);
   const [selectedPresetKey, setSelectedPresetKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -159,7 +132,7 @@ export const FlyCareAdmin = () => {
             (b.demo_id ?? FINAL_DEMO_DEVICE_ORDER.get(b.device_id) ?? 999)
         );
       setPresets(items);
-      setMqttTopic(presetRes.downlink_topic_template ?? 'smartwatch/{device_id}/flight');
+      setMqttTopic(presetRes.health_topic_template ?? 'smartwatch/{device_id}/vitals');
       setMqttStatus({
         connected: mqttRes.connected,
         broker: mqttRes.broker,
@@ -168,7 +141,7 @@ export const FlyCareAdmin = () => {
       if (!selectedPresetKey && items[0]) {
         const first = items[0];
         setSelectedPresetKey(first.device_id);
-        setMqttTopic(first.mqtt_topic ?? `smartwatch/${first.device_id}/flight`);
+        setMqttTopic(first.mqtt_topic ?? `smartwatch/${first.device_id}/vitals`);
         setForm((current) => ({
           ...current,
           device_id: first.device_id,
@@ -177,12 +150,12 @@ export const FlyCareAdmin = () => {
         }));
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('admin.flycare.errorLoad');
+      const msg = err instanceof Error ? err.message : 'Failed to load presets or MQTT status';
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [selectedPresetKey, t]);
+  }, [selectedPresetKey]);
 
   useEffect(() => {
     void load();
@@ -193,18 +166,27 @@ export const FlyCareAdmin = () => {
       presets.map((item) => ({
         key: item.device_id,
         label: item.passengerName
-          ? `${item.passengerName} · ${item.device_id}`
+          ? `${item.passengerName} - ${item.device_id}`
           : item.device_id,
         item
       })),
     [presets]
   );
 
+  const selectedPreset = useMemo(
+    () => presets.find((item) => item.device_id === selectedPresetKey || item.device_id === form.device_id.trim()) ?? null,
+    [form.device_id, presets, selectedPresetKey]
+  );
+
+  const selectedMqttTopic = form.device_id.trim()
+    ? `smartwatch/${form.device_id.trim()}/vitals`
+    : mqttTopic;
+
   const applyPreset = (deviceId: string) => {
     const preset = presets.find((item) => item.device_id === deviceId);
     if (!preset) return;
     setSelectedPresetKey(deviceId);
-    setMqttTopic(preset.mqtt_topic ?? `smartwatch/${preset.device_id}/flight`);
+    setMqttTopic(preset.mqtt_topic ?? `smartwatch/${preset.device_id}/vitals`);
     setForm((current) => ({
       ...current,
       device_id: preset.device_id,
@@ -213,28 +195,41 @@ export const FlyCareAdmin = () => {
     }));
   };
 
-  const updateField = <K extends keyof FlightFormState>(key: K, value: FlightFormState[K]) => {
+  const updateField = <K extends keyof HealthFormState>(key: K, value: HealthFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const validateForm = (): string | null => {
-    if (!form.device_id.trim()) return t('admin.flycare.validationDeviceId');
-    if (!form.passengerName.trim()) return t('admin.flycare.validationPassenger');
-    if (!form.flightNumber.trim()) return t('admin.flycare.validationFlightNumber');
-    if (form.delay_minutes.trim() && Number.isNaN(Number(form.delay_minutes.trim()))) {
-      return t('admin.flycare.validationDelayMinutes');
-    }
+  const applyLocationPreset = (label: string) => {
+    const preset = ELDERLY_LOCATION_PRESETS.find((item) => item.label === label);
+    if (!preset) return updateField('location_name', label);
+    setForm((current) => ({
+      ...current,
+      location_name: preset.label,
+      x: preset.x,
+      y: preset.y
+    }));
+  };
+
+  const validateDeviceFields = (): string | null => {
+    if (!form.device_id.trim()) return 'Device ID is required.';
+    if (!form.passengerName.trim()) return 'Resident name is required.';
     return null;
   };
 
-  const selectedDownlinkTopic = form.device_id.trim()
-    ? `smartwatch/${form.device_id.trim()}/flight`
-    : mqttTopic;
-
-  const selectedPreset = useMemo(
-    () => presets.find((item) => item.device_id === selectedPresetKey || item.device_id === form.device_id.trim()) ?? null,
-    [form.device_id, presets, selectedPresetKey]
-  );
+  const validateHealthForm = (): string | null => {
+    const deviceError = validateDeviceFields();
+    if (deviceError) return deviceError;
+    const heartRate = parseRequiredNumber(form.heart_rate);
+    const spo2 = parseRequiredNumber(form.spo2);
+    const battery = parseOptionalNumber(form.battery);
+    const x = parseOptionalNumber(form.x);
+    const y = parseOptionalNumber(form.y);
+    if (heartRate == null || heartRate < 0 || heartRate > 240) return 'Heart rate must be 0-240.';
+    if (spo2 == null || spo2 < 0 || spo2 > 100) return 'SpO2 must be 0-100.';
+    if (battery != null && (battery < 0 || battery > 100)) return 'Battery must be 0-100.';
+    if ((form.x.trim() && x == null) || (form.y.trim() && y == null)) return 'Coordinates must be numeric.';
+    return null;
+  };
 
   const refreshActiveEvents = useCallback(async () => {
     const mysqlId = Number(form.mysql_device_id.trim());
@@ -262,7 +257,7 @@ export const FlyCareAdmin = () => {
   }, [refreshActiveEvents]);
 
   const runPublish = async (options: { publish_mqtt: boolean; save_mongo: boolean }) => {
-    const validationError = validateForm();
+    const validationError = validateHealthForm();
     if (validationError) {
       setError(validationError);
       return;
@@ -271,21 +266,21 @@ export const FlyCareAdmin = () => {
     setError(null);
     setSuccess(null);
     try {
-      const result = await flycareAdminApi.publishFlight(toPayload(form, options));
+      const result = await flycareAdminApi.publishHealth(toPayload(form, options));
       const parts: string[] = [];
       if (result.mqtt?.ok) {
-        parts.push(t('admin.flycare.successMqtt', { topic: result.mqtt.topic ?? selectedDownlinkTopic }));
+        parts.push(`Published to MQTT (${result.mqtt.topic ?? selectedMqttTopic})`);
       } else if (result.mqtt && !result.mqtt.skipped && result.mqtt.error) {
-        parts.push(t('admin.flycare.mqttFailed', { error: result.mqtt.error }));
+        parts.push(`MQTT failed: ${result.mqtt.error}`);
       }
       if (result.mongo?.ok) {
-        parts.push(t('admin.flycare.successMongo'));
+        parts.push('Saved to Mongo');
       } else if (result.mongo && !result.mongo.skipped && result.mongo.error) {
-        parts.push(t('admin.flycare.mongoFailed', { error: result.mongo.error }));
+        parts.push(`Mongo failed: ${result.mongo.error}`);
       }
-      setSuccess(parts.join(' · ') || t('admin.flycare.successGeneric'));
+      setSuccess(parts.join(' / ') || 'Done');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('admin.flycare.errorPublish');
+      const msg = err instanceof Error ? err.message : 'Health publish failed';
       setError(msg);
     } finally {
       setPublishing(false);
@@ -293,7 +288,7 @@ export const FlyCareAdmin = () => {
   };
 
   const runAlertPublish = async (eventType: Extract<EventType, 'sos' | 'fall'>, action: 'activate' | 'clear') => {
-    const validationError = validateForm();
+    const validationError = validateDeviceFields();
     if (validationError) {
       setError(validationError);
       return;
@@ -334,7 +329,7 @@ export const FlyCareAdmin = () => {
     setError(null);
     setSuccess(null);
     try {
-      await eventApi.handle(event.event_id, status, undefined, `FlyCare admin ${status}`);
+      await eventApi.handle(event.event_id, status, undefined, `Elderly demo admin ${status}`);
       setSuccess(`Event #${event.event_id} marked ${status}.`);
       await refreshActiveEvents();
     } catch (err) {
@@ -351,31 +346,31 @@ export const FlyCareAdmin = () => {
     <div className="admin-card admin-card--flycare">
       <header className="admin-card__header">
         <div>
-          <h3>{t('admin.flycare.title')}</h3>
-          <p className="muted">{t('admin.flycare.subtitle')}</p>
+          <h3>{t('admin.flycare.healthTitle', { defaultValue: 'Elderly health telemetry' })}</h3>
+          <p className="muted">
+            {t('admin.flycare.healthSubtitle', {
+              defaultValue: 'Publish simulated health and location data through MQTT or Mongo.'
+            })}
+          </p>
         </div>
         <div className="flycare-admin-status">
           <span className={`flycare-admin-status__dot ${mqttConnected ? 'is-on' : 'is-off'}`} />
           <span>
-            {t('admin.flycare.mqttStatus', {
-              state: mqttConnected ? t('admin.flycare.mqttConnected') : t('admin.flycare.mqttDisconnected'),
-              broker: mqttStatus?.broker ?? '—',
-              port: mqttStatus?.port ?? '—',
-              topic: selectedDownlinkTopic
-            })}
+            {mqttConnected ? 'MQTT connected' : 'MQTT disconnected'} - {mqttStatus?.broker ?? '?'}:
+            {mqttStatus?.port ?? '?'} - {selectedMqttTopic}
           </span>
           <button type="button" className="ghost" onClick={() => void load()} disabled={loading}>
-            {t('admin.flycare.refresh')}
+            Refresh
           </button>
         </div>
       </header>
 
       {error ? <div className="admin-error">{error}</div> : null}
       {success ? <div className="admin-success">{success}</div> : null}
-      {loading ? <div className="admin-loading">{t('admin.flycare.loading')}</div> : null}
+      {loading ? <div className="admin-loading">Loading...</div> : null}
 
       <div className="admin-form flycare-admin-form">
-        <h4>{t('admin.flycare.formTitle')}</h4>
+        <h4>Health data</h4>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -383,9 +378,9 @@ export const FlyCareAdmin = () => {
           }}
         >
           <fieldset className="flycare-admin-form__section">
-            <legend>{t('admin.flycare.sectionDevice')}</legend>
+            <legend>Device</legend>
             <label>
-              {t('admin.flycare.presetLabel')}
+              Device preset
               <select
                 value={selectedPresetKey}
                 onChange={(e) => {
@@ -393,7 +388,7 @@ export const FlyCareAdmin = () => {
                   if (value) applyPreset(value);
                 }}
               >
-                <option value="">{t('admin.flycare.presetPlaceholder')}</option>
+                <option value="">Select mapped device</option>
                 {presetOptions.map((opt) => (
                   <option key={opt.key} value={opt.key}>
                     {opt.item.passengerName
@@ -404,7 +399,7 @@ export const FlyCareAdmin = () => {
               </select>
             </label>
             <label>
-              {t('admin.flycare.deviceId')}
+              Device ID (Mongo/MQTT)
               <input
                 value={form.device_id}
                 onChange={(e) => updateField('device_id', e.target.value)}
@@ -413,15 +408,15 @@ export const FlyCareAdmin = () => {
               />
             </label>
             <label>
-              {t('admin.flycare.mysqlDeviceId')}
+              MySQL device ID
               <input
                 value={form.mysql_device_id}
                 onChange={(e) => updateField('mysql_device_id', e.target.value)}
-                placeholder="1"
+                placeholder="8"
               />
             </label>
             <label>
-              {t('admin.flycare.passengerName')}
+              Resident name
               <input
                 value={form.passengerName}
                 onChange={(e) => updateField('passengerName', e.target.value)}
@@ -431,127 +426,93 @@ export const FlyCareAdmin = () => {
           </fieldset>
 
           <fieldset className="flycare-admin-form__section">
-            <legend>{t('admin.flycare.sectionFlight')}</legend>
+            <legend>Vitals</legend>
             <label>
-              {t('admin.flycare.flightNumber')}
+              Heart rate
               <input
-                value={form.flightNumber}
-                onChange={(e) => updateField('flightNumber', e.target.value)}
+                type="number"
+                min={0}
+                max={240}
+                value={form.heart_rate}
+                onChange={(e) => updateField('heart_rate', e.target.value)}
                 required
               />
             </label>
             <label>
-              {t('admin.flycare.airline')}
-              <input value={form.airline} onChange={(e) => updateField('airline', e.target.value)} />
-            </label>
-            <label>
-              {t('admin.flycare.departureAirport')}
+              SpO2
               <input
-                value={form.departureAirport}
-                onChange={(e) => updateField('departureAirport', e.target.value)}
+                type="number"
+                min={0}
+                max={100}
+                value={form.spo2}
+                onChange={(e) => updateField('spo2', e.target.value)}
+                required
               />
             </label>
             <label>
-              {t('admin.flycare.destination')}
-              <input value={form.destination} onChange={(e) => updateField('destination', e.target.value)} />
+              Battery
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={form.battery}
+                onChange={(e) => updateField('battery', e.target.value)}
+              />
             </label>
-            <label>
-              {t('admin.flycare.seatNumber')}
-              <input value={form.seatNumber} onChange={(e) => updateField('seatNumber', e.target.value)} />
+            <label className="flycare-admin-form__checkbox">
+              <input
+                type="checkbox"
+                checked={form.sos_active}
+                onChange={(e) => updateField('sos_active', e.target.checked)}
+              />
+              <span>SOS active</span>
+            </label>
+            <label className="flycare-admin-form__checkbox">
+              <input
+                type="checkbox"
+                checked={form.fall_confirmed}
+                onChange={(e) => updateField('fall_confirmed', e.target.checked)}
+              />
+              <span>Fall confirmed</span>
             </label>
           </fieldset>
 
           <fieldset className="flycare-admin-form__section">
-            <legend>{t('admin.flycare.sectionSchedule')}</legend>
+            <legend>Indoor location</legend>
             <label>
-              {t('admin.flycare.scheduledDeparture')}
-              <input
-                value={form.scheduled_departure}
-                onChange={(e) => updateField('scheduled_departure', e.target.value)}
-                placeholder="14:30"
-              />
-            </label>
-            <label>
-              {t('admin.flycare.estimatedDeparture')}
-              <input
-                value={form.estimated_departure}
-                onChange={(e) => updateField('estimated_departure', e.target.value)}
-                placeholder="14:45"
-              />
-            </label>
-            <label>
-              {t('admin.flycare.boardingTime')}
-              <input
-                value={form.boarding_time}
-                onChange={(e) => updateField('boarding_time', e.target.value)}
-                placeholder="14:00"
-              />
-            </label>
-          </fieldset>
-
-          <fieldset className="flycare-admin-form__section">
-            <legend>{t('admin.flycare.sectionGateStatus')}</legend>
-            <label>
-              {t('admin.flycare.boardingGate')}
-              <input
-                value={form.boarding_gate}
-                onChange={(e) => updateField('boarding_gate', e.target.value)}
-              />
-            </label>
-            <label>
-              {t('admin.flycare.terminal')}
-              <input value={form.terminal} onChange={(e) => updateField('terminal', e.target.value)} />
-            </label>
-            <label>
-              {t('admin.flycare.checkinCounter')}
-              <input
-                value={form.checkin_counter}
-                onChange={(e) => updateField('checkin_counter', e.target.value)}
-              />
-            </label>
-            <label>
-              {t('admin.flycare.status')}
-              <select value={form.status} onChange={(e) => updateField('status', e.target.value)}>
-                {FLIGHT_STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {t(`admin.flycare.statusOptions.${option}`)}
+              Location preset
+              <select value={form.location_name} onChange={(e) => applyLocationPreset(e.target.value)}>
+                {ELDERLY_LOCATION_PRESETS.map((item) => (
+                  <option key={item.label} value={item.label}>
+                    {item.label}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              {t('admin.flycare.delayMinutes')}
-              <input
-                type="number"
-                min={0}
-                value={form.delay_minutes}
-                onChange={(e) => updateField('delay_minutes', e.target.value)}
-              />
+              Location name
+              <input value={form.location_name} onChange={(e) => updateField('location_name', e.target.value)} />
             </label>
             <label>
-              {t('admin.flycare.delayReason')}
-              <input value={form.delay_reason} onChange={(e) => updateField('delay_reason', e.target.value)} />
+              Grid X
+              <input value={form.x} onChange={(e) => updateField('x', e.target.value)} />
             </label>
-            <label className="flycare-admin-form__checkbox">
-              <input
-                type="checkbox"
-                checked={form.gate_changed}
-                onChange={(e) => updateField('gate_changed', e.target.checked)}
-              />
-              <span>{t('admin.flycare.gateChanged')}</span>
+            <label>
+              Grid Y
+              <input value={form.y} onChange={(e) => updateField('y', e.target.value)} />
             </label>
           </fieldset>
 
           <div className="admin-form__actions">
             <button type="submit" disabled={publishing}>
-              {publishing ? t('admin.flycare.publishing') : t('admin.flycare.publishMqtt')}
+              {publishing ? 'Publishing...' : 'Publish MQTT + Mongo'}
             </button>
             <button
               type="button"
               disabled={publishing}
-              onClick={() => void runPublish({ publish_mqtt: true, save_mongo: true })}
+              onClick={() => void runPublish({ publish_mqtt: true, save_mongo: false })}
             >
-              {t('admin.flycare.publishBoth')}
+              Publish MQTT
             </button>
             <button
               type="button"
@@ -559,7 +520,7 @@ export const FlyCareAdmin = () => {
               disabled={publishing}
               onClick={() => void runPublish({ publish_mqtt: false, save_mongo: true })}
             >
-              {t('admin.flycare.saveMongoOnly')}
+              Save Mongo only
             </button>
             <button
               type="button"
@@ -571,15 +532,16 @@ export const FlyCareAdmin = () => {
                 setError(null);
               }}
             >
-              {t('admin.flycare.reset')}
+              Reset
             </button>
           </div>
         </form>
-        <section className="flycare-admin-emergency" aria-label="FlyCare emergency MQTT controls">
+
+        <section className="flycare-admin-emergency" aria-label="Emergency MQTT controls">
           <div className="flycare-admin-emergency__header">
             <div>
               <h4>Emergency MQTT</h4>
-              <p className="muted">Publish SOS/Fall control to smartwatch alert downlink.</p>
+              <p className="muted">Publish SOS/Fall control to the selected device alert topic.</p>
             </div>
             <button type="button" className="ghost" onClick={() => void refreshActiveEvents()}>
               Refresh events
@@ -658,7 +620,7 @@ export const FlyCareAdmin = () => {
             )}
           </div>
         </section>
-        <p className="muted flycare-admin-hint">{t('admin.flycare.hint', { topic: selectedDownlinkTopic })}</p>
+        <p className="muted flycare-admin-hint">Selected telemetry topic: {selectedMqttTopic}</p>
       </div>
     </div>
   );

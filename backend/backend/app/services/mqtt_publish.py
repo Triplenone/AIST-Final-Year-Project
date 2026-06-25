@@ -69,6 +69,11 @@ def build_flycare_flight_topic(device_id: str) -> str:
     return settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE.format(device_id=str(device_id).strip())
 
 
+def build_flycare_vitals_topic(device_id: str) -> str:
+    root = (settings.MQTT_TOPIC_ROOT or "smartwatch").strip("/")
+    return f"{root}/{str(device_id).strip()}/vitals"
+
+
 def build_flycare_alert_topic(device_id: str) -> str:
     root = (settings.MQTT_TOPIC_ROOT or "smartwatch").strip("/")
     return f"{root}/{str(device_id).strip()}/alert"
@@ -110,6 +115,25 @@ def publish_flight_payload(payload: Dict[str, Any], *, qos: int = 1) -> Dict[str
     if isinstance(flight_info, dict):
         return publish_flight_downlink(device_id, flight_info, qos=qos)
     raise ValueError("payload.flight_info is required for FlyCare flight downlink")
+
+
+def publish_vitals_upstream(
+    device_id: str,
+    payload: Dict[str, Any],
+    *,
+    qos: int = 1,
+    retain: bool = False,
+) -> Dict[str, Any]:
+    """Publish simulated health telemetry to smartwatch/{device_id}/vitals."""
+    device_id = str(device_id or "").strip()
+    if not device_id:
+        raise ValueError("device_id is required for FlyCare vitals publish")
+    return publish_json(
+        build_flycare_vitals_topic(device_id),
+        dict(payload),
+        qos=qos,
+        retain=retain,
+    )
 
 
 def publish_alert_downlink(

@@ -1,4 +1,4 @@
-"""Admin APIs for FlyCare flight simulation (MQTT publish + Mongo ingest)."""
+"""Admin APIs for FlyCare/Elderly demo telemetry simulation (MQTT publish + Mongo ingest)."""
 
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -19,12 +19,14 @@ from app.schemas.event import EventCreate
 from app.services.mongo_raw_upstream import save_raw_upstream
 from app.services.mqtt_publish import (
     build_flycare_alert_topic,
+    build_flycare_vitals_topic,
     build_flight_mqtt_downlink,
     build_flycare_flight_topic,
     publish_alert_downlink,
     publish_flight_downlink,
+    publish_vitals_upstream,
 )
-from app.services.mqtt_subscriber import FLIGHT_TOPIC, get_mqtt_status
+from app.services.mqtt_subscriber import get_mqtt_status
 
 router = APIRouter()
 
@@ -52,6 +54,25 @@ class FlightPublishBody(BaseModel):
     terminal: Optional[str] = None
     checkin_counter: Optional[str] = None
     publish_mqtt: bool = Field(True, description="Publish to MQTT topic smartwatch/{device_id}/flight")
+    save_mongo: bool = Field(
+        False,
+        description="Also write Mongo directly (use when MQTT loopback is unavailable)",
+    )
+
+
+class HealthPublishBody(BaseModel):
+    device_id: str = Field(..., min_length=1, description="Mongo/MQTT device id, e.g. ESP32_...")
+    mysql_device_id: Optional[int] = Field(None, ge=1)
+    passengerName: Optional[str] = None
+    heart_rate: int = Field(..., ge=0, le=240)
+    spo2: int = Field(..., ge=0, le=100)
+    battery: Optional[int] = Field(None, ge=0, le=100)
+    location_name: Optional[str] = None
+    x: Optional[float] = None
+    y: Optional[float] = None
+    fall_confirmed: bool = False
+    sos_active: bool = False
+    publish_mqtt: bool = Field(True, description="Publish to MQTT topic smartwatch/{device_id}/vitals")
     save_mongo: bool = Field(
         False,
         description="Also write Mongo directly (use when MQTT loopback is unavailable)",
@@ -131,6 +152,46 @@ def _build_flight_payload(body: FlightPublishBody) -> Dict[str, Any]:
     }
 
 
+def _build_health_payload(body: HealthPublishBody) -> Dict[str, Any]:
+    mapped_mysql = settings.device_id_map.get(body.device_id.strip())
+    mysql_device_id = body.mysql_device_id if body.mysql_device_id is not None else mapped_mysql
+    sensors = {
+        "heart_rate": {"bpm": int(body.heart_rate), "valid": True},
+        "spo2": {"percentage": int(body.spo2), "valid": True},
+    }
+    payload: Dict[str, Any] = {
+        "device_id": body.device_id.strip(),
+        "mysql_device_id": mysql_device_id,
+        "data_type": "vitals",
+        "timestamp": datetime.now(timezone.utc).timestamp(),
+        "passengerName": (body.passengerName or "").strip() or None,
+        "sensors": sensors,
+        "vitals": {
+            "heart_rate": sensors["heart_rate"],
+            "spo2": sensors["spo2"],
+            "hr": int(body.heart_rate),
+        },
+        "fall_detection": {
+            "is_fall_confirmed": bool(body.fall_confirmed),
+            "state_description": "Confirmed fall" if body.fall_confirmed else "Normal",
+        },
+        "sos": {"active": bool(body.sos_active)},
+    }
+    if body.battery is not None:
+        payload["system"] = {"battery": {"level": int(body.battery)}}
+    if body.x is not None and body.y is not None:
+        payload["location"] = {
+            "current": {
+                "x": float(body.x),
+                "y": float(body.y),
+                "name": (body.location_name or "").strip() or None,
+            }
+        }
+    elif body.location_name:
+        payload["location"] = {"current": {"name": body.location_name.strip()}}
+    return payload
+
+
 def _device_aliases_for_payload(payload: Dict[str, Any]) -> List[str]:
     selected_device_id = str(payload["device_id"]).strip()
     aliases: List[str] = [selected_device_id]
@@ -197,7 +258,7 @@ def _registry_presets(db: Session) -> List[Dict[str, Any]]:
                 or (user.name.strip() if user and user.name else None),
                 "deploy_location": device.deploy_location if device else None,
                 "alias_device_ids": aliases,
-                "mqtt_topic": build_flycare_flight_topic(row.canonical_device_id),
+                "mqtt_topic": build_flycare_vitals_topic(row.canonical_device_id),
             }
         )
     return presets
@@ -236,6 +297,48 @@ def _publish_flight_downlink_aliases(payload: Dict[str, Any], flight_info: Dict[
         "aliases": aliases,
         "alias_results": results,
         "qos": 1,
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": "; ".join(str(result.get("error")) for result in error_results if result.get("error")) or None,
+    }
+
+
+def _publish_health_aliases(payload: Dict[str, Any]) -> Dict[str, Any]:
+    aliases = _device_aliases_for_payload(payload)
+    results: List[Dict[str, Any]] = []
+
+    for alias in aliases:
+        try:
+            alias_payload = dict(payload)
+            alias_payload["device_id"] = alias
+            results.append(
+                {
+                    "device_id": alias,
+                    **publish_vitals_upstream(alias, alias_payload),
+                }
+            )
+        except Exception as exc:
+            results.append(
+                {
+                    "ok": False,
+                    "device_id": alias,
+                    "topic": build_flycare_vitals_topic(alias),
+                    "qos": 1,
+                    "retain": False,
+                    "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+                    "error": str(exc),
+                }
+            )
+
+    ok_results = [result for result in results if result.get("ok")]
+    error_results = [result for result in results if not result.get("ok")]
+    return {
+        "ok": bool(ok_results),
+        "topic": build_flycare_vitals_topic(payload["device_id"]),
+        "topics": [result.get("topic") for result in results],
+        "aliases": aliases,
+        "alias_results": results,
+        "qos": 1,
+        "retain": False,
         "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
         "error": "; ".join(str(result.get("error")) for result in error_results if result.get("error")) or None,
     }
@@ -301,7 +404,8 @@ def list_flight_presets() -> Dict[str, Any]:
         if presets:
             return {
                 "items": presets,
-                "mqtt_topic": FLIGHT_TOPIC,
+                "mqtt_topic": build_flycare_vitals_topic("+"),
+                "health_topic_template": build_flycare_vitals_topic("{device_id}"),
                 "downlink_topic_template": settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE,
             }
 
@@ -332,7 +436,7 @@ def list_flight_presets() -> Dict[str, Any]:
                     "passengerName": passenger_name,
                     "deploy_location": device.deploy_location if device else None,
                     "alias_device_ids": [alias for alias in aliases if alias != mongo_id],
-                    "mqtt_topic": build_flycare_flight_topic(mongo_id),
+                    "mqtt_topic": build_flycare_vitals_topic(mongo_id),
                 }
             )
     finally:
@@ -340,8 +444,75 @@ def list_flight_presets() -> Dict[str, Any]:
 
     return {
         "items": presets,
-        "mqtt_topic": FLIGHT_TOPIC,
+        "mqtt_topic": build_flycare_vitals_topic("+"),
+        "health_topic_template": build_flycare_vitals_topic("{device_id}"),
         "downlink_topic_template": settings.FLYCARE_FLIGHT_DOWNLINK_TOPIC_TEMPLATE,
+    }
+
+
+@router.post("/health/publish")
+async def publish_health(body: HealthPublishBody):
+    payload = _build_health_payload(body)
+    mqtt_result: Dict[str, Any] = {
+        "ok": False,
+        "topic": build_flycare_vitals_topic(payload["device_id"]),
+        "broker": f"{settings.MQTT_BROKER}:{settings.MQTT_PORT}",
+        "error": None,
+        "skipped": not body.publish_mqtt,
+        "payload": payload,
+    }
+    mongo_result: Dict[str, Any] = {
+        "ok": False,
+        "error": None,
+        "skipped": not body.save_mongo,
+        "db_name": settings.MONGO_DB_NAME,
+        "collection": "device_raw_upstream",
+    }
+
+    if body.publish_mqtt:
+        mqtt_result = {
+            **mqtt_result,
+            **_publish_health_aliases(payload),
+            "skipped": False,
+            "payload": payload,
+        }
+
+    if body.save_mongo:
+        try:
+            saved = await save_raw_upstream(payload)
+            mongo_result = {
+                "ok": True,
+                "error": None,
+                "skipped": False,
+                "db_name": settings.MONGO_DB_NAME,
+                "collection": "device_raw_upstream",
+                "inserted_id": saved.get("inserted_id"),
+            }
+        except Exception as exc:
+            mongo_result.update({"ok": False, "error": str(exc), "skipped": False})
+
+    if not body.publish_mqtt and not body.save_mongo:
+        raise HTTPException(
+            status_code=400,
+            detail="Enable publish_mqtt and/or save_mongo.",
+        )
+    if not mqtt_result["ok"] and not mongo_result["ok"]:
+        raise HTTPException(
+            status_code=502 if body.publish_mqtt else 503,
+            detail={
+                "message": "Health publish failed",
+                "payload": payload,
+                "mqtt": mqtt_result,
+                "mongo": mongo_result,
+            },
+        )
+
+    return {
+        "status": "ok",
+        "payload": payload,
+        "mqtt_payload": payload,
+        "mqtt": mqtt_result,
+        "mongo": mongo_result,
     }
 
 

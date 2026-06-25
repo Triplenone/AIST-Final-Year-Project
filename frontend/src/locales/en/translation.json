@@ -6,21 +6,21 @@
     "loading": "Loading..."
   },
   "layout": {
-    "title": "FlyCare Command Dashboard",
-    "subtitle": "Smart Wearable Safety System for Airport Assistance",
+    "title": "ElderlyCare Command Dashboard",
+    "subtitle": "Indoor Health and Safety Monitoring for Elderly Care",
     "nav": {
       "aria": "Primary navigation",
       "overview": "Overview",
       "residents": "Passengers",
       "location": "Location",
       "position": "Indoor positioning",
-      "flycare": "FlyCare",
+      "flycare": "Elderly Care",
       "operations": "Operations",
       "family": "Assistance updates",
       "admin": "Admin"
     },
-    "footer": "© 2024 FlyCare Collaborative - Built for airport assistance teams",
-    "flycareBrand": "Smart FlyCare System"
+    "footer": "© 2024 ElderlyCare Collaborative - Built for care teams",
+    "flycareBrand": "Smart ElderlyCare System"
   },
   "position": {
     "userList": "User List",
@@ -50,16 +50,16 @@
     "sensors": "Sensors",
     "system": "System",
     "refresh": "Refresh",
-    "viewAllOnMap": "View all passengers",
+    "viewAllOnMap": "View all residents",
     "zone": {
-      "door1": "Check-in entry",
-      "door2": "Gate exit",
-      "nurse_station": "Security checkpoint",
-      "activity_room": "Customer services",
-      "rehabilitation_room": "Immigration",
-      "central_common_area": "Main concourse",
+      "door1": "Door 1",
+      "door2": "Door 2",
+      "nurse_station": "Nurse Station",
+      "activity_room": "Activity Room",
+      "rehabilitation_room": "Rehabilitation Room",
+      "central_common_area": "Central Common Area",
       "toilet": "Toilet",
-      "bedroom": "Gate area"
+      "bedroom": "Bedroom"
     }
   },
   "flyCare": {
@@ -90,9 +90,14 @@
     "spo2Percentage": "SpO₂ (%)",
     "batteryLevel": "Battery level",
     "refresh": "Refresh",
-    "mapAlt": "Airport map",
-    "flightTitle": "Flight information",
-    "flightPassengerName": "Passenger name",
+    "mapAlt": "Elderly care map",
+    "healthEyebrow": "Health",
+    "healthTitle": "Health information",
+    "healthResident": "Resident",
+    "healthSosActive": "Active",
+    "healthSosNormal": "Normal",
+    "flightTitle": "Health information",
+    "flightPassengerName": "Resident name",
     "flightNumber": "Flight number",
     "flightGate": "Gate",
     "flightTime": "Flight time",
@@ -176,17 +181,17 @@
       "events": "Events",
     "logs": "Device logs",
       "residents": "Passengers",
-      "flycare": "FlyCare"
+      "flycare": "Elderly Care"
     },
     "flycare": {
-      "title": "FlyCare flight simulator",
-      "subtitle": "Configure flight fields and publish to per-device MQTT downlink",
-      "formTitle": "Flight details",
+      "title": "Elderly health telemetry",
+      "subtitle": "Configure health fields and publish to per-device MQTT or Mongo",
+      "formTitle": "Health data",
       "presetLabel": "Device preset",
       "presetPlaceholder": "Select mapped device…",
       "deviceId": "Device ID (Mongo/MQTT)",
       "mysqlDeviceId": "MySQL device ID (optional)",
-      "passengerName": "Passenger name",
+      "passengerName": "Resident name",
       "flightNumber": "Flight number",
       "airline": "Airline",
       "departureAirport": "Departure airport",

@@ -109,7 +109,7 @@ const FlyCarePage = lazy(() =>
   import('./pages/FlyCarePage').then((module) => ({ default: module.FlyCarePage }))
 );
 
-const INDOOR_ZONES = ['Gate 10', 'Gate 11', 'Toilet', 'Customer Services'];
+const INDOOR_ZONES = ['Nurse Station', 'Activity Room', 'Rehabilitation Room', 'Central Common Area', 'Bedroom'];
 const SIM_STATUSES: Resident['status'][] = ['high', 'followUp', 'stable'];
 
 const hasWindow = () => typeof window !== 'undefined';
@@ -1215,7 +1215,7 @@ export default function App() {
           isFlyCarePage={isFlyCarePage}
           activeKey={activePage}
           brandTitle={isFlyCarePage ? t('layout.flycareBrand') : t('layout.title')}
-          brandSubtitle={isFlyCarePage ? 'Smart Wearable Safety System for International Airport' : t('layout.subtitle')}
+          brandSubtitle={isFlyCarePage ? 'Indoor health and safety monitoring for elderly care' : t('layout.subtitle')}
           navItems={navItems}
         />
 

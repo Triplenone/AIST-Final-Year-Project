@@ -343,6 +343,7 @@ export type FlightPublishPayload = {
 export type FlyCarePresetsResponse = {
   items: FlyCareFlightPreset[];
   mqtt_topic: string;
+  health_topic_template?: string;
   downlink_topic_template?: string;
 };
 
@@ -367,6 +368,22 @@ export type FlyCarePublishResult = {
     payload?: Record<string, unknown>;
   };
   mongo?: { ok: boolean; db_name?: string; collection?: string; error?: string | null; skipped?: boolean; inserted_id?: string };
+};
+
+export type FlyCareHealthPublishPayload = {
+  device_id: string;
+  mysql_device_id?: number;
+  passengerName?: string;
+  heart_rate: number;
+  spo2: number;
+  battery?: number;
+  location_name?: string;
+  x?: number;
+  y?: number;
+  fall_confirmed: boolean;
+  sos_active: boolean;
+  publish_mqtt: boolean;
+  save_mongo: boolean;
 };
 
 export type FlyCareAlertPublishPayload = {
@@ -405,6 +422,8 @@ export type FlyCareAlertPublishResult = {
 export const flycareAdminApi = {
   getPresets: () => api.get<FlyCarePresetsResponse>('/flycare-admin/presets'),
   getMqttStatus: () => api.get<FlyCareMqttStatus>('/flycare-admin/mqtt/status'),
+  publishHealth: (data: FlyCareHealthPublishPayload) =>
+    api.post<FlyCarePublishResult>('/flycare-admin/health/publish', data),
   publishFlight: (data: FlightPublishPayload) =>
     api.post<FlyCarePublishResult>('/flycare-admin/flight/publish', data),
   publishAlert: (data: FlyCareAlertPublishPayload) =>
