@@ -7,7 +7,7 @@ import { EventsAdmin } from './EventsAdmin';
 import { DeviceLogsAdmin } from './DeviceLogsAdmin';
 import { ResidentsAdmin } from './ResidentsAdmin';
 
-type AdminTab =
+export type AdminTab =
   | 'users'
   | 'devices'
   | 'locations'
@@ -15,9 +15,16 @@ type AdminTab =
   | 'logs'
   | 'residents';
 
-export const AdminSection = () => {
+type AdminSectionProps = {
+  activeTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
+};
+
+export const AdminSection = ({ activeTab: controlledActiveTab, onTabChange }: AdminSectionProps = {}) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<AdminTab>('residents');
+  const [uncontrolledActiveTab, setUncontrolledActiveTab] = useState<AdminTab>('residents');
+  const activeTab = controlledActiveTab ?? uncontrolledActiveTab;
+  const setActiveTab = onTabChange ?? setUncontrolledActiveTab;
 
   const tabLabels: Record<AdminTab, string> = {
     residents: t('admin.tabs.residents'),

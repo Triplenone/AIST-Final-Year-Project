@@ -1,0 +1,14 @@
+V.mem.ts=2026-06-25T11:33:09+08:00
+R.scope=elderly-care-demo-ready-rebase
+R.phase=demo-surface-recovery
+V.branch.current=elderly-care-demo-ready
+V.branch.base=main/origin-main
+V.demo.primary=elderly-care
+V.demo.routes=[/,/residents,/position,/operations,/family,/admin]
+V.demo.flycare_route=redirects-to-position
+I.frontend.flycare_surface_removed=App-route-lazy-import-page-assets-i18n-css-overview-entry
+I.frontend.position_capabilities_preserved=[selected-latest-location-refresh,sos-fall-marker-alert,event-tooltip,event-handle]
+I.backend.flight_surface_removed=[mqtt_subscriber_flycare_flight,mongo_upstream_flight_latest,mongo_raw_flight_alias,MQTT_TOPIC_FLIGHT]
+I.backend.watch_commands_added=/api/v1/watch-commands/alert/publish
+I.docs.demo_ready=docs/ELDERLY_CARE_DEMO_READY.md
+R.firmware.scope=staged-after-web-backend-demo

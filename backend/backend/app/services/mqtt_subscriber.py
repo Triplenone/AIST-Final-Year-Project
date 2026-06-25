@@ -1,11 +1,7 @@
-"""
-MQTT 订阅服务：订阅 ESP32 上行主题（与 MQTT-topic.txt 一致），将 JSON 写入 MongoDB。
-同时订阅航班信息主题 flycare/flight，用于模拟机场航班信息更新。
-"""
+"""MQTT subscriber for elderly smartwatch upstream telemetry."""
 import json
 import re
 import threading
-import time
 import uuid
 from datetime import datetime, timedelta
 
@@ -30,8 +26,6 @@ UPLINK_TOPICS = [
 ]
 
 # 航班信息主题：Postman 等客户端向此 topic 发布 JSON 即可模拟航班信息更新
-FLIGHT_TOPIC = "flycare/flight"
-
 # topic 第三段后缀 -> 写入 Mongo 的 data_type
 SUFFIX_TO_DATA_TYPE = {
     "status": "status_update",
@@ -153,8 +147,7 @@ def _on_connect(client, userdata, flags, rc):
     print("[mqtt] connected")
     for topic in UPLINK_TOPICS:
         client.subscribe(topic)
-    client.subscribe(FLIGHT_TOPIC)
-    print(f"[mqtt] subscribed topics={len(UPLINK_TOPICS)}+1 flight={FLIGHT_TOPIC}")
+    print(f"[mqtt] subscribed topics={len(UPLINK_TOPICS)}")
 
 
 def _on_message(client, userdata, msg):
@@ -183,17 +176,6 @@ def _on_message(client, userdata, msg):
         return
     if not isinstance(data, dict):
         data = {"payload": data}
-
-    # 航班信息主题：直接写入 Mongo，带 data_type=flight 与 timestamp
-    if msg.topic == FLIGHT_TOPIC:
-        data["data_type"] = "flight"
-        data.setdefault("timestamp", time.time())
-        try:
-            run_sync_save_raw_upstream(data)
-            print(f"[mqtt] flycare flight saved: {data.get('flightNumber', 'N/A')}")
-        except Exception as e:
-            print(f"[mqtt] flycare mongo write failed: {e}")
-        return
 
     # 设备上行主题：smartwatch/<device_id>/<suffix>
     parts = msg.topic.split("/")
@@ -291,5 +273,5 @@ def get_mqtt_status():
         "connected": connected,
         "broker": settings.MQTT_BROKER,
         "port": settings.MQTT_PORT,
-        "subscribed_topics": UPLINK_TOPICS.copy() + [FLIGHT_TOPIC],
+        "subscribed_topics": UPLINK_TOPICS.copy(),
     }

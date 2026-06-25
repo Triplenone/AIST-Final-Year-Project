@@ -10,7 +10,6 @@
 #define MQTT_TOPIC_HEARTBEAT "smartwatch/%s/heartbeat"  // 上行 - 心跳
 
 #define MQTT_TOPIC_NAVIGATION "smartwatch/%s/navigation"    // 下行 - 导航
-#define MQTT_TOPIC_FLIGHT "smartwatch/%s/flight"            // 下行 - 航班
 #define MQTT_TOPIC_ALERT "smartwatch/%s/alert"              // 下行 - 警报
 #define MQTT_TOPIC_VOICE "smartwatch/%s/voice"              // 下行 - 语音
 #define MQTT_TOPIC_DOOR_CTRL "smartwatch/%s/door_control"   // 下行 - 门禁控制

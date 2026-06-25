@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     MONGO_DB_NAME: str = "smart_elderly_care_system"
 
     # MQTT subscriber
-    MQTT_BROKER: str = "broker.emqx.io"
+    MQTT_BROKER: str = "192.168.1.232"
     MQTT_PORT: int = 1883
     MQTT_USER: str = ""
     MQTT_PASSWORD: str = ""

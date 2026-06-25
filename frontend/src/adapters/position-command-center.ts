@@ -1,5 +1,11 @@
-import { deviceApi, locationApi, mongoUpstreamApi, userApi, type MongoUpstreamLatest } from '../services/api';
-import type { BackendDevice, BackendLocation, BackendUser } from '../types/backend';
+import {
+  deviceApi,
+  locationApi,
+  mongoUpstreamApi,
+  type MongoLatestValidLocationResponse,
+  type MongoUpstreamLatest
+} from '../services/api';
+import type { BackendDevice, BackendLocation } from '../types/backend';
 
 export type PositionTruthState = 'online' | 'stale' | 'offline';
 export type PositionFreshnessLevel = 'live' | 'delayed' | 'stale';
@@ -51,6 +57,10 @@ export type PositionResidentRegistryEntry = {
   residentId: string;
   displayName: string;
   deviceId: string;
+  mysqlDeviceId?: number;
+  deviceAliases?: readonly string[];
+  deviceLabel?: string;
+  roomLabel?: string;
 };
 
 export type PositionZoneDefinition = {
@@ -81,6 +91,7 @@ export type PositionActivityItem = {
 
 export type PositionResidentActivitySnapshot = {
   deviceId: string;
+  deviceIds?: readonly string[];
   fetchedAt: string | null;
   recentActivity: PositionActivityItem[];
   loadError: string | null;
@@ -90,6 +101,9 @@ export type PositionResidentViewModel = {
   residentId: string;
   displayName: string;
   deviceId: string;
+  deviceAliases?: readonly string[];
+  deviceLabel?: string;
+  roomLabel?: string;
   recordError: string | null;
   isOnline: boolean;
   truthState: PositionTruthState;
@@ -172,106 +186,110 @@ type MongoUpstreamHistoryDocument = Partial<MongoUpstreamLatest> & {
   server_received_at?: unknown;
 };
 
-/** 距 `server_received_at` 小于等于该值视为在线 / live。 */
-export const POSITION_ONLINE_TTL_MS = 300_000; // 5 minutes
-/** 超过在线窗口且小于等于该值为 delayed；再大则为 stale 新鲜度。 */
-export const POSITION_DELAYED_TTL_MS = 600_000; // 10 minutes
+export const POSITION_ONLINE_TTL_MS = 300_000;
+export const POSITION_DELAYED_TTL_MS = 600_000;
 export const POSITION_GRID_COLUMNS = 12;
 export const POSITION_GRID_ROWS = 16;
-export const POSITION_MAP_PIXEL_WIDTH = 600;
-export const POSITION_MAP_PIXEL_HEIGHT = 800;
+export const POSITION_MAP_REAL_WIDTH_M = 12;
+export const POSITION_MAP_REAL_HEIGHT_M = 16;
+export const POSITION_MAP_PIXEL_WIDTH = 1755;
+export const POSITION_MAP_PIXEL_HEIGHT = 2309;
 export const POSITION_ACTIVITY_PAGE_SIZE = 12;
 
-/** 定位页跟踪的 MySQL `device.device_id` 列表（与 Mongo 上行通过下方映射关联）。 */
-export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [1, 2, 3];
+export const POSITION_TRACKED_MYSQL_DEVICE_IDS: readonly number[] = [8, 3, 4, 6, 7, 9];
 
-/**
- * MySQL 设备 id → Mongo `device_raw_upstream` 顶层 `device_id` 字符串。
- * 请与 `backend/backend/config/device_id_map.json` 中 `mysql_device_id` / `mongodb_device_id` 保持一致。
- */
 export const POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID: Readonly<Record<number, string>> = {
-  1: 'ESP32_0000E03948D4DB1C',
-  2: 'ESP32_0000C422A443CA48',
-  3: 'ESP32_00005CFA7AD4DB1C'
+  3: 'ESP32_0000C8292A04A7AC',
+  4: 'ESP32_0000A022A443CA48',
+  6: 'ESP32_00008C292A04A7AC',
+  7: 'ESP32_00009022A443CA48',
+  8: 'ESP32_000048CA43A42298',
+  9: 'ESP32_0000E03948D4DB1C'
 };
 
 export const POSITION_RESIDENT_REGISTRY: readonly PositionResidentRegistryEntry[] = [
   {
-    residentId: 'TestUser01',
-    displayName: 'test-user01',
-    deviceId: 'ESP32_0000E03948D4DB1C'
+    residentId: 'elderly-demo-01',
+    displayName: 'Resident 01',
+    deviceId: 'ESP32_000048CA43A42298',
+    mysqlDeviceId: 8,
+    deviceAliases: ['ESP32_48CA43A42298'],
+    deviceLabel: 'Wearable 01',
+    roomLabel: 'Activity Room'
   },
   {
-    residentId: 'TestUser02',
-    displayName: 'test-user02',
-    deviceId: 'ESP32_0000C422A443CA48'
+    residentId: 'elderly-demo-02',
+    displayName: 'Resident 02',
+    deviceId: 'ESP32_0000C8292A04A7AC',
+    mysqlDeviceId: 3,
+    deviceAliases: ['ESP32_00005CFA7AD4DB1C'],
+    deviceLabel: 'Wearable 02',
+    roomLabel: 'Nurse Station'
   },
   {
-    residentId: 'TestUser03',
-    displayName: 'test-user03',
-    deviceId: 'ESP32_00005CFA7AD4DB1C'
+    residentId: 'elderly-demo-03',
+    displayName: 'Resident 03',
+    deviceId: 'ESP32_0000A022A443CA48',
+    mysqlDeviceId: 4,
+    deviceLabel: 'Wearable 03',
+    roomLabel: 'Rehabilitation Room'
+  },
+  {
+    residentId: 'elderly-demo-04',
+    displayName: 'Resident 04',
+    deviceId: 'ESP32_00008C292A04A7AC',
+    mysqlDeviceId: 6,
+    deviceLabel: 'Wearable 04',
+    roomLabel: 'Bedroom'
+  },
+  {
+    residentId: 'elderly-demo-05',
+    displayName: 'Resident 05',
+    deviceId: 'ESP32_00009022A443CA48',
+    mysqlDeviceId: 7,
+    deviceLabel: 'Wearable 05',
+    roomLabel: 'Toilet'
+  },
+  {
+    residentId: 'elderly-demo-06',
+    displayName: 'Resident 06',
+    deviceId: 'ESP32_0000E03948D4DB1C',
+    mysqlDeviceId: 9,
+    deviceAliases: ['ESP32_1CDBD44839E0'],
+    deviceLabel: 'Wearable 06',
+    roomLabel: 'Bedroom'
   }
 ];
 
 function clonePositionRegistryFallback(): PositionResidentRegistryEntry[] {
-  return POSITION_RESIDENT_REGISTRY.map((entry) => ({ ...entry }));
+  return POSITION_RESIDENT_REGISTRY.map((entry) => ({
+    ...entry,
+    deviceAliases: entry.deviceAliases ? [...entry.deviceAliases] : undefined
+  }));
 }
 
-/**
- * 从后端加载「设备 → 绑定老人」：展示名与 MySQL `user.name` 一致（如 test-user04）；`residentId` 为 `user_id` 字符串。
- * 失败或未绑定时回退到 {@link POSITION_RESIDENT_REGISTRY}。
- */
 export async function resolvePositionResidentRegistry(): Promise<PositionResidentRegistryEntry[]> {
-  const out: PositionResidentRegistryEntry[] = [];
+  const resolved = await Promise.all(
+    POSITION_RESIDENT_REGISTRY.map(async (entry) => {
+      if (entry.mysqlDeviceId == null) {
+        return { ...entry, deviceAliases: entry.deviceAliases ? [...entry.deviceAliases] : undefined };
+      }
 
-  try {
-    for (let index = 0; index < POSITION_TRACKED_MYSQL_DEVICE_IDS.length; index += 1) {
-      const mysqlDeviceId = POSITION_TRACKED_MYSQL_DEVICE_IDS[index];
-      const deviceOrdinal = index + 1;
-      const mongoDeviceId = POSITION_MONGO_DEVICE_ID_BY_MYSQL_ID[mysqlDeviceId];
-      if (!mongoDeviceId) continue;
-
-      let device: BackendDevice | null = null;
       try {
-        device = (await deviceApi.get(mysqlDeviceId)) as unknown as BackendDevice;
+        const device = (await deviceApi.get(entry.mysqlDeviceId)) as unknown as BackendDevice;
+        const boundUserId = device?.elderly_user_id;
+        return {
+          ...entry,
+          residentId: boundUserId != null && boundUserId > 0 ? String(boundUserId) : entry.residentId,
+          deviceAliases: entry.deviceAliases ? [...entry.deviceAliases] : undefined
+        };
       } catch {
-        device = null;
+        return { ...entry, deviceAliases: entry.deviceAliases ? [...entry.deviceAliases] : undefined };
       }
-      if (!device) continue;
+    })
+  );
 
-      const uid = device.elderly_user_id;
-      if (uid != null && uid > 0) {
-        try {
-          const user = (await userApi.get(uid)) as unknown as BackendUser;
-          const displayName = (user.name && user.name.trim()) || `User ${uid}`;
-          out.push({
-            residentId: String(user.user_id),
-            displayName,
-            deviceId: mongoDeviceId
-          });
-        } catch {
-          out.push({
-            residentId: `device-${mysqlDeviceId}`,
-            displayName: `设备 #${mysqlDeviceId}（设备${deviceOrdinal} · 用户不可读）`,
-            deviceId: mongoDeviceId
-          });
-        }
-      } else {
-        out.push({
-          residentId: `device-${mysqlDeviceId}`,
-          displayName: `未绑定（设备${deviceOrdinal}）`,
-          deviceId: mongoDeviceId
-        });
-      }
-    }
-  } catch {
-    return clonePositionRegistryFallback();
-  }
-
-  if (out.length === 0) {
-    return clonePositionRegistryFallback();
-  }
-  return out;
+  return resolved.length > 0 ? resolved : clonePositionRegistryFallback();
 }
 
 export const POSITION_ZONES: readonly PositionZoneDefinition[] = [
@@ -285,29 +303,12 @@ export const POSITION_ZONES: readonly PositionZoneDefinition[] = [
   { id: 'bedroom', labelKey: 'position.zone.bedroom' }
 ];
 
-export const POSITION_GRID_TO_ZONE: readonly (readonly string[])[] = [
-  ['nurse_station', 'nurse_station', 'nurse_station', 'nurse_station', 'activity_room', 'activity_room', 'activity_room', 'activity_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room'],
-  ['door1', 'nurse_station', 'nurse_station', 'nurse_station', 'activity_room', 'activity_room', 'activity_room', 'activity_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room'],
-  ['nurse_station', 'nurse_station', 'nurse_station', 'nurse_station', 'activity_room', 'activity_room', 'activity_room', 'activity_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room'],
-  ['nurse_station', 'nurse_station', 'nurse_station', 'nurse_station', 'activity_room', 'activity_room', 'activity_room', 'activity_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room', 'rehabilitation_room'],
-  ['central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area'],
-  ['central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area'],
-  ['central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area'],
-  ['central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area'],
-  ['central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'toilet', 'toilet', 'toilet', 'toilet'],
-  ['central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'toilet', 'toilet', 'toilet', 'toilet'],
-  ['central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'toilet', 'toilet', 'toilet', 'toilet'],
-  ['door2', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'central_common_area', 'toilet', 'toilet', 'toilet', 'toilet'],
-  [' ', ' ', ' ', ' ', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom'],
-  [' ', ' ', ' ', ' ', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom'],
-  [' ', ' ', ' ', ' ', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom'],
-  [' ', ' ', ' ', ' ', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom', 'bedroom']
-];
+export const POSITION_GRID_TO_ZONE: readonly (readonly string[])[] = Array.from({ length: POSITION_GRID_ROWS }, (_, row) =>
+  Array.from({ length: POSITION_GRID_COLUMNS }, (_, col) =>
+    resolveZoneFromMeters(col + 0.5, row + 0.5) ?? ''
+  )
+);
 
-/**
- * 网格 zone id → MySQL `location_zone.location_zone_id`（与后台位置管理默认数据一致）。
- * 未在网格中的区域（如 corridor / 测试房间）可由上游 `location.current.location_zone_id` 命中名称。
- */
 export const POSITION_ZONE_TO_MYSQL_LOCATION_ZONE_ID: Readonly<Partial<Record<PositionZoneId, number>>> = {
   door1: 1,
   door2: 2,
@@ -319,10 +320,61 @@ export const POSITION_ZONE_TO_MYSQL_LOCATION_ZONE_ID: Readonly<Partial<Record<Po
   bedroom: 8
 };
 
+const MYSQL_LOCATION_ZONE_ID_TO_ZONE = new Map<number, PositionZoneId>(
+  Object.entries(POSITION_ZONE_TO_MYSQL_LOCATION_ZONE_ID).map(([zone, id]) => [Number(id), zone as PositionZoneId])
+);
+
+const ZONE_NAME_ALIASES: Readonly<Record<string, PositionZoneId>> = {
+  'door 1': 'door1',
+  door1: 'door1',
+  entrance: 'door1',
+  'main entrance': 'door1',
+  'door 2': 'door2',
+  door2: 'door2',
+  exit: 'door2',
+  'nurse station': 'nurse_station',
+  'customer services': 'nurse_station',
+  'customer service': 'nurse_station',
+  'activity room': 'activity_room',
+  activity: 'activity_room',
+  'check-in': 'activity_room',
+  'check in': 'activity_room',
+  checkin: 'activity_room',
+  'rehabilitation room': 'rehabilitation_room',
+  'rehabilitaion room': 'rehabilitation_room',
+  rehabilitation: 'rehabilitation_room',
+  'security check': 'rehabilitation_room',
+  security: 'rehabilitation_room',
+  'central common area': 'central_common_area',
+  'common area': 'central_common_area',
+  'public concourse': 'central_common_area',
+  'immigration & customs': 'central_common_area',
+  'immigration and customs': 'central_common_area',
+  baggage: 'central_common_area',
+  toilet: 'toilet',
+  restroom: 'toilet',
+  washroom: 'toilet',
+  bedroom: 'bedroom',
+  gate: 'bedroom',
+  'gate 10': 'bedroom',
+  'gate 11': 'bedroom',
+  'boarding gate': 'bedroom'
+};
+
+const ZONE_DISPLAY_NAMES: Readonly<Record<PositionZoneId, string>> = {
+  door1: 'Door 1',
+  door2: 'Door 2',
+  nurse_station: 'Nurse Station',
+  activity_room: 'Activity Room',
+  rehabilitation_room: 'Rehabilitation Room',
+  central_common_area: 'Central Common Area',
+  toilet: 'Toilet',
+  bedroom: 'Bedroom'
+};
+
 let mysqlLocationZoneNamesById: ReadonlyMap<number, string> | null = null;
 let mysqlLocationNamesLoadPromise: Promise<void> | null = null;
 
-/** 加载 `/locations` 名称表，供定位页与 MySQL 位置管理对齐；失败时视为空表。 */
 export async function ensurePositionMysqlLocationZoneNames(): Promise<void> {
   if (mysqlLocationZoneNamesById) return;
   if (mysqlLocationNamesLoadPromise) {
@@ -333,13 +385,13 @@ export async function ensurePositionMysqlLocationZoneNames(): Promise<void> {
     try {
       const raw = await locationApi.list({ limit: 1000 });
       const rows = Array.isArray(raw) ? (raw as BackendLocation[]) : [];
-      const m = new Map<number, string>();
+      const names = new Map<number, string>();
       for (const row of rows) {
         const id = row.location_zone_id;
-        const nm = row.name?.trim();
-        if (id != null && nm) m.set(id, nm);
+        const name = row.name?.trim();
+        if (id != null && name) names.set(id, normalizeElderlyZoneName(name) ?? name);
       }
-      mysqlLocationZoneNamesById = m;
+      mysqlLocationZoneNamesById = names;
     } catch {
       mysqlLocationZoneNamesById = new Map();
     }
@@ -358,19 +410,14 @@ function asObjectRecord(value: unknown): Record<string, unknown> | null {
   return null;
 }
 
-/**
- * 读取顶层或 payload 下的同名块并浅合并（payload 先、顶层后覆盖）。
- * 避免顶层 `sensors: {}` 占位时挡住 `payload.sensors` 中的心率/血氧。
- */
 function getSectionData(
   data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null,
-  key: 'location' | 'fall_detection' | 'sos' | 'sensors' | 'system'
+  key: 'location' | 'position' | 'fall_detection' | 'sos' | 'sensors' | 'system'
 ): Record<string, unknown> | null {
   if (!data) return null;
-  const topObj = asObjectRecord(data[key]);
+  const topObj = asObjectRecord(data[key as keyof typeof data]);
   const payloadObj = asObjectRecord(data.payload);
   const nestedObj = payloadObj ? asObjectRecord(payloadObj[key]) : null;
-
   if (!topObj && !nestedObj) return null;
   if (!nestedObj) return topObj;
   if (!topObj) return nestedObj;
@@ -381,13 +428,13 @@ function getPayloadVitals(
   data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null
 ): Record<string, unknown> | null {
   if (!data) return null;
-  const topV = asObjectRecord((data as Record<string, unknown>).vitals);
+  const topVitals = asObjectRecord((data as Record<string, unknown>).vitals);
   const payloadObj = asObjectRecord(data.payload);
-  const nestedV = payloadObj ? asObjectRecord(payloadObj.vitals) : null;
-  if (!topV && !nestedV) return null;
-  if (!nestedV) return topV;
-  if (!topV) return nestedV;
-  return { ...nestedV, ...topV };
+  const nestedVitals = payloadObj ? asObjectRecord(payloadObj.vitals) : null;
+  if (!topVitals && !nestedVitals) return null;
+  if (!nestedVitals) return topVitals;
+  if (!topVitals) return nestedVitals;
+  return { ...nestedVitals, ...topVitals };
 }
 
 function getNestedValue(obj: Record<string, unknown> | null, path: string): unknown {
@@ -427,7 +474,6 @@ function normalizeDateValue(value: unknown): string | number | null {
   return null;
 }
 
-// 兼容 ISO string 和 Mongo $date object。
 export function parsePositionTimestamp(value: unknown): number | null {
   const normalized = normalizeDateValue(value);
   if (normalized == null) return null;
@@ -439,7 +485,6 @@ export function parsePositionTimestamp(value: unknown): number | null {
   if (!text) return null;
   const isoText = text.includes('T') ? text : text.replace(' ', 'T');
   const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(isoText);
-  // Mongo 里常见 UTC naive 字符串（无时区后缀）；按 UTC 解读，避免浏览器按本地时区误差 8 小时。
   const candidate = hasTimezone ? isoText : `${isoText}Z`;
   const parsed = new Date(candidate).getTime();
   return Number.isFinite(parsed) ? parsed : null;
@@ -450,83 +495,94 @@ function toIsoTimestamp(value: unknown): string | null {
   return parsed == null ? null : new Date(parsed).toISOString();
 }
 
-function getCoords(
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function readPointAxis(
+  point: Record<string, unknown>,
+  axis: 'x' | 'y',
+  realSize: number,
+  pixelSize: number
+): number | null {
+  const meters = toFiniteNumber(point[`${axis}_m`]);
+  if (meters != null) return clamp(meters, 0, realSize);
+
+  const ratio = toFiniteNumber(point[`${axis}_ratio`]);
+  if (ratio != null) return clamp(ratio, 0, 1) * realSize;
+
+  const pixels = toFiniteNumber(point[`${axis}_px`]);
+  if (pixels != null) return (clamp(pixels, 0, pixelSize) / pixelSize) * realSize;
+
+  const legacy = toFiniteNumber(point[axis]);
+  if (legacy != null) return clamp(legacy, 0, realSize);
+
+  return null;
+}
+
+function getPositionPoint(data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null, key: 'current' | 'target'): PositionPoint | null {
+  const position = getSectionData(data, 'position');
+  const point = asObjectRecord(getNestedValue(position, key));
+  if (!point) return null;
+
+  const x = readPointAxis(point, 'x', POSITION_MAP_REAL_WIDTH_M, POSITION_MAP_PIXEL_WIDTH);
+  const y = readPointAxis(point, 'y', POSITION_MAP_REAL_HEIGHT_M, POSITION_MAP_PIXEL_HEIGHT);
+  if (x == null || y == null) return null;
+  return { x, y };
+}
+
+function getLegacyLocationPoint(
   data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null,
   key: 'current' | 'target'
 ): PositionPoint | null {
   const location = getSectionData(data, 'location');
-  let x = toFiniteNumber(getNestedValue(location, `${key}.x`));
-  let y = toFiniteNumber(getNestedValue(location, `${key}.y`));
+  const point = asObjectRecord(getNestedValue(location, key));
+  let x = point ? toFiniteNumber(point.x) ?? toFiniteNumber(point.x_m) : null;
+  let y = point ? toFiniteNumber(point.y) ?? toFiniteNumber(point.y_m) : null;
 
-  // 兼容部分上行的扁平结构：location: { x, y, ... }（常见于 SOS / 简化状态包）。
   if (key === 'current' && (x == null || y == null)) {
     x = toFiniteNumber(getNestedValue(location, 'x'));
     y = toFiniteNumber(getNestedValue(location, 'y'));
   }
 
   if (x == null || y == null) return null;
-  return { x, y };
+  return {
+    x: clamp(x, 0, POSITION_MAP_REAL_WIDTH_M),
+    y: clamp(y, 0, POSITION_MAP_REAL_HEIGHT_M)
+  };
+}
+
+function getCoords(
+  data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null,
+  key: 'current' | 'target'
+): PositionPoint | null {
+  return getPositionPoint(data, key) ?? getLegacyLocationPoint(data, key);
+}
+
+function resolveZoneFromMeters(x: number, y: number): PositionZoneId | null {
+  if (y < 3.2 && x >= 4) return 'bedroom';
+  if (y < 3.6 && x < 4) return 'toilet';
+  if (y >= 12 && x < 4) return 'nurse_station';
+  if (y >= 12 && x < 8) return 'activity_room';
+  if (y >= 12) return 'rehabilitation_room';
+  if (y >= 8 && x >= 8) return 'rehabilitation_room';
+  if (y >= 3.2 && y < 8 && x >= 4 && x < 8) return 'nurse_station';
+  if (x < 1.2 && y < 1.2) return 'door1';
+  if (x < 1.2 && y > POSITION_MAP_REAL_HEIGHT_M - 1.2) return 'door2';
+  return 'central_common_area';
 }
 
 export function getPositionZoneFromCoords(coords: PositionPoint | null): PositionZoneId | null {
   if (!coords) return null;
-  const col = Math.min(POSITION_GRID_COLUMNS - 1, Math.max(0, Math.round(coords.x)));
-  const row = Math.min(POSITION_GRID_ROWS - 1, Math.max(0, Math.round(coords.y)));
-  const zoneId = POSITION_GRID_TO_ZONE[row]?.[col] ?? '';
-  if (!zoneId || zoneId.trim() === '') return null;
-  return zoneId as PositionZoneId;
+  return resolveZoneFromMeters(
+    clamp(coords.x, 0, POSITION_MAP_REAL_WIDTH_M),
+    clamp(coords.y, 0, POSITION_MAP_REAL_HEIGHT_M)
+  );
 }
 
 export function getPositionZoneLabelKey(zoneId: PositionZoneId | null): string | null {
   if (!zoneId) return null;
   return POSITION_ZONES.find((zone) => zone.id === zoneId)?.labelKey ?? null;
-}
-
-/**
- * 与定位页信息面板「当前位置」及地图区名规则对齐：MySQL/上游区名优先，其次 labelKey → i18n，再按 zoneId 查表翻译。
- */
-export function getPositionZoneDisplayForResident(
-  resident: Pick<PositionResidentViewModel, 'currentZoneId' | 'currentZoneLabelKey' | 'currentZoneName'>,
-  t: (key: string, options?: Record<string, unknown>) => string
-): string {
-  const name = resident.currentZoneName?.trim();
-  if (name) return name;
-  if (resident.currentZoneLabelKey) {
-    return t(resident.currentZoneLabelKey, {
-      defaultValue: resident.currentZoneName ?? 'Unknown zone'
-    });
-  }
-  if (resident.currentZoneId) {
-    const zone = POSITION_ZONES.find((item) => item.id === resident.currentZoneId);
-    if (zone) {
-      return t(zone.labelKey, { defaultValue: resident.currentZoneName ?? zone.id });
-    }
-    return resident.currentZoneId;
-  }
-  return t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
-}
-
-function humanizeZoneId(zoneId: PositionZoneId | null): string | null {
-  if (!zoneId) return null;
-  return zoneId
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function getZoneDisplayName(zoneId: PositionZoneId | null, zoneName: string | null): string | null {
-  return zoneName ?? humanizeZoneId(zoneId);
-}
-
-export function gridIndicesToPixelPercent(coords: PositionPoint): { leftPercent: number; topPercent: number } {
-  const col = Math.min(POSITION_GRID_COLUMNS - 1, Math.max(0, Math.round(coords.x)));
-  const row = Math.min(POSITION_GRID_ROWS - 1, Math.max(0, Math.round(coords.y)));
-  const pixelX = ((col + 0.5) / POSITION_GRID_COLUMNS) * POSITION_MAP_PIXEL_WIDTH;
-  const pixelY = ((row + 0.5) / POSITION_GRID_ROWS) * POSITION_MAP_PIXEL_HEIGHT;
-  return {
-    leftPercent: (pixelX / POSITION_MAP_PIXEL_WIDTH) * 100,
-    topPercent: (pixelY / POSITION_MAP_PIXEL_HEIGHT) * 100
-  };
 }
 
 function normalizeText(value: unknown): string | null {
@@ -535,25 +591,56 @@ function normalizeText(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
-function isConfirmedFallDescription(description: string | null): boolean {
-  if (!description) return false;
+function zoneIdFromName(value: unknown): PositionZoneId | null {
+  const text = normalizeText(value);
+  if (!text) return null;
+  const normalized = text.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  if (normalized in ZONE_NAME_ALIASES) return ZONE_NAME_ALIASES[normalized];
+  for (const [token, zoneId] of Object.entries(ZONE_NAME_ALIASES)) {
+    if (normalized.includes(token)) return zoneId;
+  }
+  return null;
+}
 
-  const normalized = description.toLowerCase();
-  return (
-    normalized.includes('confirmed') ||
-    description.includes('确认跌倒') ||
-    description.includes('確認跌倒')
-  );
+function normalizeElderlyZoneName(value: unknown): string | null {
+  const direct = normalizeText(value);
+  const zoneId = zoneIdFromName(direct);
+  if (zoneId) return ZONE_DISPLAY_NAMES[zoneId];
+  return direct;
+}
+
+function getPositionPointRecord(
+  data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null,
+  key: 'current' | 'target'
+): Record<string, unknown> | null {
+  const position = getSectionData(data, 'position');
+  return asObjectRecord(getNestedValue(position, key));
+}
+
+function getLocationPointRecord(
+  data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null,
+  key: 'current' | 'target'
+): Record<string, unknown> | null {
+  const location = getSectionData(data, 'location');
+  return asObjectRecord(getNestedValue(location, key));
+}
+
+function getZoneNameFromPoint(point: Record<string, unknown> | null): string | null {
+  return normalizeElderlyZoneName(point?.name ?? point?.zone_name ?? point?.zone_key);
 }
 
 function getCurrentZoneName(data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null): string | null {
-  const location = getSectionData(data, 'location');
-  return normalizeText(getNestedValue(location, 'current.name'));
+  return (
+    getZoneNameFromPoint(getPositionPointRecord(data, 'current')) ??
+    getZoneNameFromPoint(getLocationPointRecord(data, 'current'))
+  );
 }
 
 function getTargetZoneName(data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null): string | null {
-  const location = getSectionData(data, 'location');
-  return normalizeText(getNestedValue(location, 'target.name'));
+  return (
+    getZoneNameFromPoint(getPositionPointRecord(data, 'target')) ??
+    getZoneNameFromPoint(getLocationPointRecord(data, 'target'))
+  );
 }
 
 function parsePositiveIntLocation(value: unknown): number | null {
@@ -569,20 +656,23 @@ function parsePositiveIntLocation(value: unknown): number | null {
   return null;
 }
 
+function getMysqlLocationZoneIdFromPoint(point: Record<string, unknown> | null): number | null {
+  if (!point) return null;
+  return (
+    parsePositiveIntLocation(point.location_zone_id) ??
+    parsePositiveIntLocation(point.zone_id) ??
+    parsePositiveIntLocation(point.locationZoneId)
+  );
+}
+
 function getMysqlLocationZoneIdFromUpstream(
   latestStatus: MongoUpstreamLatest | null,
   positionZoneId: PositionZoneId | null
 ): number | null {
-  const loc = getSectionData(latestStatus, 'location');
-  const currentRaw = loc ? getNestedValue(loc, 'current') : undefined;
-  const current = asObjectRecord(currentRaw);
-  if (current) {
-    const id =
-      parsePositiveIntLocation(current.location_zone_id) ??
-      parsePositiveIntLocation(current.zone_id) ??
-      parsePositiveIntLocation(current.locationZoneId);
-    if (id != null) return id;
-  }
+  const fromPosition = getMysqlLocationZoneIdFromPoint(getPositionPointRecord(latestStatus, 'current'));
+  if (fromPosition != null) return fromPosition;
+  const fromLegacy = getMysqlLocationZoneIdFromPoint(getLocationPointRecord(latestStatus, 'current'));
+  if (fromLegacy != null) return fromLegacy;
   if (positionZoneId) {
     const mapped = POSITION_ZONE_TO_MYSQL_LOCATION_ZONE_ID[positionZoneId];
     if (mapped != null) return mapped;
@@ -598,15 +688,62 @@ function applyMysqlNameToCurrentZoneName(
   const map = getMysqlLocationZoneNamesMap();
   const mysqlId = getMysqlLocationZoneIdFromUpstream(latestStatus, positionZoneId);
   if (mysqlId != null && map && map.has(mysqlId)) {
-    return map.get(mysqlId) ?? null;
+    return normalizeElderlyZoneName(map.get(mysqlId)) ?? null;
   }
-  return upstreamName;
+  return upstreamName ?? (positionZoneId ? ZONE_DISPLAY_NAMES[positionZoneId] : null);
+}
+
+export function getPositionZoneDisplayForResident(
+  resident: Pick<PositionResidentViewModel, 'currentZoneId' | 'currentZoneLabelKey' | 'currentZoneName'>,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  const name = resident.currentZoneName?.trim();
+  if (name) return name;
+  if (resident.currentZoneLabelKey) {
+    return t(resident.currentZoneLabelKey, {
+      defaultValue: resident.currentZoneName ?? 'Unknown zone'
+    });
+  }
+  if (resident.currentZoneId) {
+    return t(getPositionZoneLabelKey(resident.currentZoneId) ?? '', {
+      defaultValue: ZONE_DISPLAY_NAMES[resident.currentZoneId]
+    });
+  }
+  return t('position.zoneUnknown', { defaultValue: 'Unknown zone' });
+}
+
+function humanizeZoneId(zoneId: PositionZoneId | null): string | null {
+  if (!zoneId) return null;
+  return ZONE_DISPLAY_NAMES[zoneId];
+}
+
+function getZoneDisplayName(zoneId: PositionZoneId | null, zoneName: string | null): string | null {
+  return zoneName ?? humanizeZoneId(zoneId);
+}
+
+export function gridIndicesToPixelPercent(coords: PositionPoint): { leftPercent: number; topPercent: number } {
+  return {
+    leftPercent: (clamp(coords.x, 0, POSITION_MAP_REAL_WIDTH_M) / POSITION_MAP_REAL_WIDTH_M) * 100,
+    topPercent: (clamp(coords.y, 0, POSITION_MAP_REAL_HEIGHT_M) / POSITION_MAP_REAL_HEIGHT_M) * 100
+  };
+}
+
+function isConfirmedFallDescription(description: string | null): boolean {
+  if (!description) return false;
+  const normalized = description.toLowerCase();
+  return (
+    normalized.includes('confirmed') ||
+    normalized.includes('fall') ||
+    description.includes('跌倒') ||
+    description.includes('確認') ||
+    description.includes('确认')
+  );
 }
 
 function firstNonNegativeNumber(...candidates: unknown[]): number | null {
-  for (const c of candidates) {
-    const n = toFiniteNumber(c);
-    if (n != null && Number.isFinite(n) && n >= 0) return n;
+  for (const candidate of candidates) {
+    const n = toFiniteNumber(candidate);
+    if (n != null && n >= 0) return n;
   }
   return null;
 }
@@ -629,7 +766,6 @@ function readSpo2LikeBlock(block: unknown): number | null {
   return firstNonNegativeNumber(o.percentage, o.percent, o.value, o.reading, o.spo2);
 }
 
-/** 与 Mongo `sensors` / `payload.sensors` / `vitals` 常见形态对齐；含 0 也返回（不再因 valid:false 整段丢弃）。 */
 function getSensorMetric(
   data: MongoUpstreamLatest | MongoUpstreamHistoryDocument | null,
   sensorKey: 'heart_rate' | 'spo2',
@@ -640,8 +776,7 @@ function getSensorMetric(
 
   if (sensorKey === 'heart_rate') {
     if (sensors) {
-      const fromBlock =
-        readHeartRateLikeBlock(sensors.heart_rate) ?? readHeartRateLikeBlock(sensors.heartRate);
+      const fromBlock = readHeartRateLikeBlock(sensors.heart_rate) ?? readHeartRateLikeBlock(sensors.heartRate);
       if (fromBlock != null) return Math.round(fromBlock);
       const legacy = toFiniteNumber(getNestedValue(sensors, `${sensorKey}.${valueKey}`));
       if (legacy != null && legacy >= 0) return Math.round(legacy);
@@ -676,7 +811,7 @@ function getBatteryLevel(data: MongoUpstreamLatest | MongoUpstreamHistoryDocumen
   const system = getSectionData(data, 'system');
   const value = toFiniteNumber(getNestedValue(system, 'battery.level'));
   if (value == null) return null;
-  return Math.max(0, Math.min(100, value));
+  return clamp(value, 0, 100);
 }
 
 function normalizeFallState(
@@ -688,20 +823,12 @@ function normalizeFallState(
     toBoolean(getNestedValue(fall, 'is_fall_confirmed')) ||
     toBoolean(getNestedValue(fall, 'confirmed')) ||
     isConfirmedFallDescription(description);
-  if (confirmed) {
-    return { label: 'Confirmed fall', confirmed: true };
-  }
+  if (confirmed) return { label: 'Confirmed fall', confirmed: true };
 
   const state = toFiniteNumber(getNestedValue(fall, 'state'));
-  if (state === 0) {
-    return { label: 'Normal', confirmed: false };
-  }
-  if (description) {
-    return { label: description, confirmed: false };
-  }
-  if (state != null) {
-    return { label: `State ${state}`, confirmed: false };
-  }
+  if (state === 0) return { label: 'Normal', confirmed: false };
+  if (description) return { label: description, confirmed: false };
+  if (state != null) return { label: `State ${state}`, confirmed: false };
   return { label: null, confirmed: false };
 }
 
@@ -722,6 +849,10 @@ export function getFreshnessLevel(lastSeenAgeMs: number | null): PositionFreshne
   return 'stale';
 }
 
+function hasAbnormalVitals(heartRate: number | null, spo2: number | null): boolean {
+  return (heartRate != null && heartRate >= 110) || (spo2 != null && spo2 <= 92);
+}
+
 export function getRiskLevel(input: {
   truthState: PositionTruthState;
   heartRate: number | null;
@@ -731,13 +862,8 @@ export function getRiskLevel(input: {
 }): PositionRiskLevel {
   if (input.sosState || input.fallConfirmed) return 'critical';
   if (input.truthState !== 'online') return 'warning';
-  if (input.heartRate != null && input.heartRate >= 110) return 'warning';
-  if (input.spo2 != null && input.spo2 <= 92) return 'warning';
+  if (hasAbnormalVitals(input.heartRate, input.spo2)) return 'warning';
   return 'stable';
-}
-
-function hasAbnormalVitals(heartRate: number | null, spo2: number | null): boolean {
-  return (heartRate != null && heartRate >= 110) || (spo2 != null && spo2 <= 92);
 }
 
 export function getPriorityBand(input: {
@@ -771,7 +897,7 @@ export function getPriorityReasonCode(input: {
 function areCoordsEqual(a: PositionPoint | null, b: PositionPoint | null): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
-  return Math.round(a.x) === Math.round(b.x) && Math.round(a.y) === Math.round(b.y);
+  return Math.abs(a.x - b.x) < 0.35 && Math.abs(a.y - b.y) < 0.35;
 }
 
 export function getZoneCommandState(input: {
@@ -784,7 +910,6 @@ export function getZoneCommandState(input: {
 }): PositionZoneCommandState {
   const hasCurrent = Boolean(input.currentZoneId || input.currentZoneName);
   const hasTarget = Boolean(input.targetZoneId || input.targetZoneName || input.targetCoords);
-
   if (!hasCurrent && !hasTarget) return 'zone-unknown';
   if (!hasTarget) return 'holding';
 
@@ -796,10 +921,7 @@ export function getZoneCommandState(input: {
         input.currentZoneName.trim().toLowerCase() === input.targetZoneName.trim().toLowerCase()
     );
 
-  if (sameZone || areCoordsEqual(input.currentCoords, input.targetCoords)) {
-    return 'target-reached';
-  }
-
+  if (sameZone || areCoordsEqual(input.currentCoords, input.targetCoords)) return 'target-reached';
   return 'target-pending';
 }
 
@@ -845,9 +967,18 @@ function cloneUpstreamDoc(doc: MongoUpstreamLatest): MongoUpstreamLatest {
   return JSON.parse(JSON.stringify(doc)) as MongoUpstreamLatest;
 }
 
-/** 合并多条上行中的 sensors（时间新的覆盖同名键），用于定位页同时展示位置与心率/血氧。 */
+function firstSectionFromDocs(
+  docs: MongoUpstreamLatest[],
+  key: 'position' | 'location' | 'sos' | 'fall_detection' | 'system'
+): Record<string, unknown> | null {
+  for (const doc of docs) {
+    const section = getSectionData(doc, key);
+    if (section && Object.keys(section).length > 0) return section;
+  }
+  return null;
+}
+
 function mergeSensorSectionsFromDocs(docs: MongoUpstreamLatest[]): Record<string, unknown> | null {
-  if (docs.length === 0) return null;
   const sortedAsc = [...docs].sort(
     (a, b) =>
       (parsePositionTimestamp(a.server_received_at) ?? 0) -
@@ -855,15 +986,12 @@ function mergeSensorSectionsFromDocs(docs: MongoUpstreamLatest[]): Record<string
   );
   let merged: Record<string, unknown> = {};
   for (const doc of sortedAsc) {
-    const s = getSectionData(doc, 'sensors');
-    if (s && typeof s === 'object') {
-      merged = { ...merged, ...s };
-    }
+    const sensors = getSectionData(doc, 'sensors');
+    if (sensors) merged = { ...merged, ...sensors };
   }
   return Object.keys(merged).length > 0 ? merged : null;
 }
 
-/** 用最新一条为骨架，合并其它文档中的 sensors，避免只查 status_update 时漏掉 heartbeat 上的体征。 */
 function mergeUpstreamDocsForPosition(docs: MongoUpstreamLatest[]): MongoUpstreamLatest | null {
   const valid = docs.filter(isLatestDocument);
   if (valid.length === 0) return null;
@@ -873,10 +1001,25 @@ function mergeUpstreamDocsForPosition(docs: MongoUpstreamLatest[]): MongoUpstrea
       (parsePositionTimestamp(a.server_received_at) ?? 0)
   );
   const primary = cloneUpstreamDoc(sortedDesc[0]);
+
   const mergedSensors = mergeSensorSectionsFromDocs(sortedDesc);
-  if (mergedSensors) {
-    primary.sensors = mergedSensors as MongoUpstreamLatest['sensors'];
-  }
+  if (mergedSensors) primary.sensors = mergedSensors as MongoUpstreamLatest['sensors'];
+
+  const position = firstSectionFromDocs(sortedDesc, 'position');
+  if (position) primary.position = position;
+
+  const location = firstSectionFromDocs(sortedDesc, 'location');
+  if (location) primary.location = location;
+
+  const sos = firstSectionFromDocs(sortedDesc, 'sos');
+  if (sos) primary.sos = sos;
+
+  const fall = firstSectionFromDocs(sortedDesc, 'fall_detection');
+  if (fall) primary.fall_detection = fall;
+
+  const system = firstSectionFromDocs(sortedDesc, 'system');
+  if (system) primary.system = system;
+
   return primary;
 }
 
@@ -924,9 +1067,7 @@ export function comparePositionResidents(a: PositionResidentViewModel, b: Positi
   return a.displayName.localeCompare(b.displayName);
 }
 
-export function sortPositionResidents(
-  residents: PositionResidentViewModel[]
-): PositionResidentViewModel[] {
+export function sortPositionResidents(residents: PositionResidentViewModel[]): PositionResidentViewModel[] {
   return [...residents].sort(comparePositionResidents);
 }
 
@@ -948,7 +1089,6 @@ export function resolvePositionSelection(
 ): PositionResolvedSelection {
   const selectedResident =
     residents.find((resident) => resident.residentId === selectedResidentId) ?? residents[0] ?? null;
-
   return {
     selectedResidentId: selectedResident?.residentId ?? null,
     selectedResident
@@ -1010,25 +1150,55 @@ function getDecisionSurfaceState(input: {
   return 'ready';
 }
 
+function getResidentDeviceIds(resident: Pick<PositionResidentRegistryEntry, 'deviceId' | 'deviceAliases'>): string[] {
+  return Array.from(new Set([resident.deviceId, ...(resident.deviceAliases ?? [])].filter(Boolean)));
+}
+
+function activityMatchesResident(
+  resident: PositionResidentViewModel | null,
+  activity?: PositionResidentActivitySnapshot | null
+): boolean {
+  if (!resident || !activity) return false;
+  const residentIds = new Set(getResidentDeviceIds(resident));
+  const activityIds = activity.deviceIds?.length ? activity.deviceIds : [activity.deviceId];
+  return activityIds.some((id) => residentIds.has(id));
+}
+
 function getActivityState(input: {
   selectedResident: PositionResidentViewModel | null;
   activityLoading: boolean;
   selectedResidentActivity?: PositionResidentActivitySnapshot | null;
 }): PositionActivityState {
   if (!input.selectedResident) return 'empty';
-  const activityMatchesSelectedResident =
-    input.selectedResidentActivity?.deviceId === input.selectedResident.deviceId;
-
-  if (activityMatchesSelectedResident && input.selectedResidentActivity?.loadError) return 'blocked';
-  if (
-    activityMatchesSelectedResident &&
-    (input.selectedResidentActivity?.recentActivity?.length ?? 0) > 0
-  ) {
-    return 'ready';
-  }
-  if (input.activityLoading && !activityMatchesSelectedResident) return 'loading';
+  const matches = activityMatchesResident(input.selectedResident, input.selectedResidentActivity);
+  if (matches && input.selectedResidentActivity?.loadError) return 'blocked';
+  if (matches && (input.selectedResidentActivity?.recentActivity?.length ?? 0) > 0) return 'ready';
+  if (input.activityLoading && !matches) return 'loading';
   if (!input.selectedResident.hasData || input.selectedResident.recordError) return 'blocked';
   return 'empty';
+}
+
+function isLocationLatestResponse(data: unknown): data is MongoLatestValidLocationResponse {
+  return Boolean(data && typeof data === 'object' && (data as MongoLatestValidLocationResponse).found);
+}
+
+function latestLocationToMongoDoc(data: MongoLatestValidLocationResponse): MongoUpstreamLatest {
+  const position = asObjectRecord(data.position) ?? null;
+  return {
+    _id: data._id,
+    device_id: data.device_id,
+    mysql_device_id: data.mysql_device_id,
+    server_received_at: data.server_received_at,
+    location: {
+      current: {
+        x: data.x,
+        y: data.y,
+        name: data.location_name,
+        location_zone_id: data.location_zone_id
+      }
+    },
+    position: position ?? undefined
+  } as MongoUpstreamLatest;
 }
 
 export async function loadPositionCommandCenterSnapshot(
@@ -1039,40 +1209,33 @@ export async function loadPositionCommandCenterSnapshot(
   const records = await Promise.all(
     list.map(async (resident): Promise<PositionSnapshotRecord> => {
       try {
-        const deviceId = resident.deviceId;
-        const settled = await Promise.allSettled([
-          mongoUpstreamApi.getLatest({ device_id: deviceId, exclude_data_type: 'flight' }),
-          mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'status_update' }),
-          mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'heartbeat' }),
-          mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'vitals' })
-        ]);
+        const deviceIds = getResidentDeviceIds(resident);
+        const settled = await Promise.allSettled(
+          deviceIds.flatMap((deviceId) => [
+            mongoUpstreamApi.getLatest({ device_id: deviceId }),
+            mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'status_update' }),
+            mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'heartbeat' }),
+            mongoUpstreamApi.getLatest({ device_id: deviceId, data_type: 'vitals' }),
+            mongoUpstreamApi.getLatestValidLocation(deviceId, { scan_limit: 200 })
+          ])
+        );
         const docs: MongoUpstreamLatest[] = [];
         for (const r of settled) {
           if (r.status !== 'fulfilled') continue;
           const value = r.value as unknown;
-          if (isLatestDocument(value)) {
-            docs.push(value);
-          }
+          if (isLatestDocument(value)) docs.push(value);
+          if (isLocationLatestResponse(value) && value.found) docs.push(latestLocationToMongoDoc(value));
         }
         const merged = mergeUpstreamDocsForPosition(docs);
-        return {
-          resident,
-          latestStatus: merged,
-          error: null
-        };
+        return { resident, latestStatus: merged, error: null };
       } catch (error) {
-        return {
-          resident,
-          latestStatus: null,
-          error: normalizeError(error)
-        };
+        return { resident, latestStatus: null, error: normalizeError(error) };
       }
     })
   );
 
   const failed = records.filter((record) => record.error);
   const loadError = failed.length === records.length ? failed[0]?.error ?? 'Request failed' : null;
-
   return {
     fetchedAt: new Date().toISOString(),
     records,
@@ -1081,20 +1244,23 @@ export async function loadPositionCommandCenterSnapshot(
 }
 
 function normalizeHistoryDocuments(historyDocs: unknown[]): MongoUpstreamHistoryDocument[] {
-  return historyDocs.filter((doc): doc is MongoUpstreamHistoryDocument => {
-    if (!doc || typeof doc !== 'object') return false;
-    const dt = (doc as MongoUpstreamHistoryDocument).data_type;
-    if (dt === 'flight') return false;
-    return true;
-  });
+  return historyDocs.filter((doc): doc is MongoUpstreamHistoryDocument => Boolean(doc && typeof doc === 'object'));
 }
 
 function buildHistoryRecord(doc: MongoUpstreamHistoryDocument): PositionHistoryRecord {
   const timestamp = toIsoTimestamp(doc.server_received_at ?? doc.timestamp ?? null);
   const currentCoords = getCoords(doc, 'current');
   const targetCoords = getCoords(doc, 'target');
-  const currentZoneId = getPositionZoneFromCoords(currentCoords);
-  const targetZoneId = getPositionZoneFromCoords(targetCoords);
+  const positionCurrent = getPositionPointRecord(doc, 'current');
+  const positionTarget = getPositionPointRecord(doc, 'target');
+  const currentZoneId =
+    MYSQL_LOCATION_ZONE_ID_TO_ZONE.get(getMysqlLocationZoneIdFromPoint(positionCurrent) ?? 0) ??
+    zoneIdFromName(positionCurrent?.zone_key ?? positionCurrent?.name) ??
+    getPositionZoneFromCoords(currentCoords);
+  const targetZoneId =
+    MYSQL_LOCATION_ZONE_ID_TO_ZONE.get(getMysqlLocationZoneIdFromPoint(positionTarget) ?? 0) ??
+    zoneIdFromName(positionTarget?.zone_key ?? positionTarget?.name) ??
+    getPositionZoneFromCoords(targetCoords);
   const currentZoneName = getCurrentZoneName(doc);
   const targetZoneName = getTargetZoneName(doc);
   const heartRate = getSensorMetric(doc, 'heart_rate', 'bpm');
@@ -1117,35 +1283,21 @@ function buildHistoryRecord(doc: MongoUpstreamHistoryDocument): PositionHistoryR
 }
 
 function buildZoneChangeDetail(olderZone: string | null, newerZone: string | null): string {
-  if (olderZone && newerZone) {
-    return `Moved from ${olderZone} to ${newerZone}.`;
-  }
-  if (newerZone) {
-    return `Current zone is now ${newerZone}.`;
-  }
+  if (olderZone && newerZone) return `Moved from ${olderZone} to ${newerZone}.`;
+  if (newerZone) return `Current zone is now ${newerZone}.`;
   return 'Current zone changed in upstream data.';
 }
 
 function buildTargetZoneDetail(olderZone: string | null, newerZone: string | null): string {
-  if (olderZone && newerZone) {
-    return `Target changed from ${olderZone} to ${newerZone}.`;
-  }
-  if (newerZone) {
-    return `Target zone set to ${newerZone}.`;
-  }
+  if (olderZone && newerZone) return `Target changed from ${olderZone} to ${newerZone}.`;
+  if (newerZone) return `Target zone set to ${newerZone}.`;
   return 'Target zone changed in upstream data.';
 }
 
 function buildVitalsWarningDetail(heartRate: number | null, spo2: number | null): string {
-  if (heartRate != null && spo2 != null) {
-    return `Heart rate ${heartRate} bpm and SpO2 ${spo2}%.`;
-  }
-  if (heartRate != null) {
-    return `Heart rate ${heartRate} bpm entered warning range.`;
-  }
-  if (spo2 != null) {
-    return `SpO2 ${spo2}% entered warning range.`;
-  }
+  if (heartRate != null && spo2 != null) return `Heart rate ${heartRate} bpm and SpO2 ${spo2}%.`;
+  if (heartRate != null) return `Heart rate ${heartRate} bpm entered warning range.`;
+  if (spo2 != null) return `SpO2 ${spo2}% entered warning range.`;
   return 'Vitals entered warning range.';
 }
 
@@ -1156,14 +1308,7 @@ function createActivityItem(
   title: string,
   detail: string
 ): PositionActivityItem {
-  return {
-    id,
-    timestamp,
-    tone,
-    title,
-    detail,
-    source: 'mongo-upstream'
-  };
+  return { id, timestamp, tone, title, detail, source: 'mongo-upstream' };
 }
 
 export function buildPositionResidentActivity(historyDocs: unknown[]): PositionActivityItem[] {
@@ -1175,12 +1320,9 @@ export function buildPositionResidentActivity(historyDocs: unknown[]): PositionA
       return timeB - timeA;
     });
 
-  if (records.length === 0) {
-    return [];
-  }
+  if (records.length === 0) return [];
 
   const items: PositionActivityItem[] = [];
-
   for (let index = 0; index < records.length && items.length < 5; index += 1) {
     const newer = records[index];
     const older = records[index + 1] ?? null;
@@ -1192,100 +1334,66 @@ export function buildPositionResidentActivity(historyDocs: unknown[]): PositionA
     const olderVitalsAbnormal = older ? hasAbnormalVitals(older.heartRate, older.spo2) : false;
 
     if (newer.sosState && !older?.sosState) {
-      items.push(
-        createActivityItem(
-          `${newer.id}-sos`,
-          newer.timestamp,
-          'critical',
-          'SOS active',
-          'Latest upstream state reports an active SOS signal.'
-        )
-      );
+      items.push(createActivityItem(`${newer.id}-sos`, newer.timestamp, 'critical', 'SOS active', 'Latest upstream state reports an active SOS signal.'));
     }
 
     if (newer.fallConfirmed && !older?.fallConfirmed) {
-      items.push(
-        createActivityItem(
-          `${newer.id}-fall`,
-          newer.timestamp,
-          'critical',
-          'Confirmed fall',
-          'Latest upstream state reports a confirmed fall.'
-        )
-      );
+      items.push(createActivityItem(`${newer.id}-fall`, newer.timestamp, 'critical', 'Confirmed fall', 'Latest upstream state reports a confirmed fall.'));
     }
 
     if (older && newerCurrentZone !== olderCurrentZone) {
-      items.push(
-        createActivityItem(
-          `${newer.id}-zone`,
-          newer.timestamp,
-          'info',
-          'Zone changed',
-          buildZoneChangeDetail(olderCurrentZone, newerCurrentZone)
-        )
-      );
+      items.push(createActivityItem(`${newer.id}-zone`, newer.timestamp, 'info', 'Zone changed', buildZoneChangeDetail(olderCurrentZone, newerCurrentZone)));
     }
 
     if (newerTargetZone && newerTargetZone !== olderTargetZone) {
-      items.push(
-        createActivityItem(
-          `${newer.id}-target`,
-          newer.timestamp,
-          'info',
-          'Target updated',
-          buildTargetZoneDetail(olderTargetZone, newerTargetZone)
-        )
-      );
+      items.push(createActivityItem(`${newer.id}-target`, newer.timestamp, 'info', 'Target updated', buildTargetZoneDetail(olderTargetZone, newerTargetZone)));
     }
 
     if (currentVitalsAbnormal && !olderVitalsAbnormal) {
-      items.push(
-        createActivityItem(
-          `${newer.id}-vitals`,
-          newer.timestamp,
-          'warning',
-          'Vitals warning',
-          buildVitalsWarningDetail(newer.heartRate, newer.spo2)
-        )
-      );
+      items.push(createActivityItem(`${newer.id}-vitals`, newer.timestamp, 'warning', 'Vitals warning', buildVitalsWarningDetail(newer.heartRate, newer.spo2)));
     }
   }
 
   if (items.length === 0) {
-    items.push(
-      createActivityItem(
-        `${records[0].id}-sync`,
-        records[0].timestamp,
-        'info',
-        'Latest sync',
-        'Status update received from device.'
-      )
-    );
+    items.push(createActivityItem(`${records[0].id}-sync`, records[0].timestamp, 'info', 'Latest sync', 'Status update received from device.'));
   }
 
   return items.slice(0, 5);
 }
 
 export async function loadPositionResidentActivity(
-  deviceId: string
+  deviceIdOrIds: string | readonly string[]
 ): Promise<PositionResidentActivitySnapshot> {
+  const deviceIds = Array.isArray(deviceIdOrIds) ? [...deviceIdOrIds] : [deviceIdOrIds];
+  const uniqueDeviceIds = Array.from(new Set(deviceIds.filter(Boolean)));
+  const primaryDeviceId = uniqueDeviceIds[0] ?? '';
+
   try {
-    const response = (await mongoUpstreamApi.list({
-      device_id: deviceId,
-      page: 1,
-      page_size: POSITION_ACTIVITY_PAGE_SIZE
-    })) as { items?: unknown[] } | null;
+    const responses = await Promise.allSettled(
+      uniqueDeviceIds.map((deviceId) =>
+        mongoUpstreamApi.list({
+          device_id: deviceId,
+          page: 1,
+          page_size: POSITION_ACTIVITY_PAGE_SIZE
+        }) as Promise<{ items?: unknown[] } | null>
+      )
+    );
+    const items = responses.flatMap((response) =>
+      response.status === 'fulfilled' ? response.value?.items ?? [] : []
+    );
+    const firstError = responses.find((response) => response.status === 'rejected') as PromiseRejectedResult | undefined;
 
     return {
-      deviceId,
+      deviceId: primaryDeviceId,
+      deviceIds: uniqueDeviceIds,
       fetchedAt: new Date().toISOString(),
-      recentActivity: buildPositionResidentActivity(response?.items ?? []),
-      loadError: null
+      recentActivity: buildPositionResidentActivity(items),
+      loadError: items.length === 0 && firstError ? normalizeError(firstError.reason) : null
     };
   } catch (error) {
     return {
-      deviceId,
+      deviceId: primaryDeviceId,
+      deviceIds: uniqueDeviceIds,
       fetchedAt: new Date().toISOString(),
       recentActivity: [],
       loadError: normalizeError(error)
@@ -1297,8 +1405,16 @@ function buildResidentViewModel(record: PositionSnapshotRecord, now: number): Po
   const latestStatus = record.latestStatus;
   const currentCoords = getCoords(latestStatus, 'current');
   const targetCoords = getCoords(latestStatus, 'target');
-  const currentZoneId = getPositionZoneFromCoords(currentCoords);
-  const targetZoneId = getPositionZoneFromCoords(targetCoords);
+  const positionCurrent = getPositionPointRecord(latestStatus, 'current');
+  const positionTarget = getPositionPointRecord(latestStatus, 'target');
+  const currentZoneId =
+    MYSQL_LOCATION_ZONE_ID_TO_ZONE.get(getMysqlLocationZoneIdFromPoint(positionCurrent) ?? 0) ??
+    zoneIdFromName(positionCurrent?.zone_key ?? positionCurrent?.name) ??
+    getPositionZoneFromCoords(currentCoords);
+  const targetZoneId =
+    MYSQL_LOCATION_ZONE_ID_TO_ZONE.get(getMysqlLocationZoneIdFromPoint(positionTarget) ?? 0) ??
+    zoneIdFromName(positionTarget?.zone_key ?? positionTarget?.name) ??
+    getPositionZoneFromCoords(targetCoords);
   const currentZoneLabelKey = getPositionZoneLabelKey(currentZoneId);
   const targetZoneLabelKey = getPositionZoneLabelKey(targetZoneId);
   const upstreamCurrentZoneName = getCurrentZoneName(latestStatus);
@@ -1314,27 +1430,9 @@ function buildResidentViewModel(record: PositionSnapshotRecord, now: number): Po
   const fall = normalizeFallState(latestStatus);
   const truthState = getTruthState(Boolean(latestStatus), lastSeenAgeMs, record.error);
   const freshnessLevel = getFreshnessLevel(lastSeenAgeMs);
-  const riskLevel = getRiskLevel({
-    truthState,
-    heartRate,
-    spo2,
-    sosState,
-    fallConfirmed: fall.confirmed
-  });
-  const priorityBand = getPriorityBand({
-    truthState,
-    heartRate,
-    spo2,
-    sosState,
-    fallConfirmed: fall.confirmed
-  });
-  const priorityReasonCode = getPriorityReasonCode({
-    truthState,
-    heartRate,
-    spo2,
-    sosState,
-    fallConfirmed: fall.confirmed
-  });
+  const riskLevel = getRiskLevel({ truthState, heartRate, spo2, sosState, fallConfirmed: fall.confirmed });
+  const priorityBand = getPriorityBand({ truthState, heartRate, spo2, sosState, fallConfirmed: fall.confirmed });
+  const priorityReasonCode = getPriorityReasonCode({ truthState, heartRate, spo2, sosState, fallConfirmed: fall.confirmed });
   const zoneCommandState = getZoneCommandState({
     currentZoneId,
     currentZoneName,
@@ -1354,6 +1452,9 @@ function buildResidentViewModel(record: PositionSnapshotRecord, now: number): Po
     residentId: record.resident.residentId,
     displayName: record.resident.displayName,
     deviceId: record.resident.deviceId,
+    deviceAliases: record.resident.deviceAliases,
+    deviceLabel: record.resident.deviceLabel,
+    roomLabel: record.resident.roomLabel,
     recordError: record.error,
     isOnline: truthState === 'online',
     truthState,
@@ -1391,15 +1492,10 @@ function applySelectedResidentActivity(
   residents: PositionResidentViewModel[],
   selectedResidentActivity: PositionResidentActivitySnapshot | null | undefined
 ): PositionResidentViewModel[] {
-  if (!selectedResidentActivity) {
-    return residents;
-  }
+  if (!selectedResidentActivity) return residents;
 
   return residents.map((resident) => {
-    if (resident.deviceId !== selectedResidentActivity.deviceId) {
-      return resident;
-    }
-
+    if (!activityMatchesResident(resident, selectedResidentActivity)) return resident;
     const recentActivity = selectedResidentActivity.recentActivity;
     return {
       ...resident,
@@ -1418,7 +1514,6 @@ export function buildPositionCommandCenterViewModel(
     selectedResidentActivity?: PositionResidentActivitySnapshot | null;
     snapshotLoading?: boolean;
     activityLoading?: boolean;
-    /** snapshot 为空时用于占位行（须与 load 快照时使用的登记册一致）。 */
     emptyRegistry?: readonly PositionResidentRegistryEntry[];
   } = {}
 ): PositionCommandCenterViewModel {
@@ -1429,16 +1524,11 @@ export function buildPositionCommandCenterViewModel(
     emptyFallback.map((resident) => ({
       resident,
       latestStatus: null,
-        error: null
-      }));
+      error: null
+    }));
   const baseResidents = records.map((record) => buildResidentViewModel(record, now));
-  const residents = sortPositionResidents(
-    applySelectedResidentActivity(baseResidents, options.selectedResidentActivity)
-  );
-  const { selectedResidentId, selectedResident } = resolvePositionSelection(
-    residents,
-    options.selectedResidentId
-  );
+  const residents = sortPositionResidents(applySelectedResidentActivity(baseResidents, options.selectedResidentActivity));
+  const { selectedResidentId, selectedResident } = resolvePositionSelection(residents, options.selectedResidentId);
   const partialFailureCount = records.filter((record) => Boolean(record.error)).length;
   const hasPartialFailures = partialFailureCount > 0;
   const isInitialLoading = Boolean(options.snapshotLoading && snapshot == null);

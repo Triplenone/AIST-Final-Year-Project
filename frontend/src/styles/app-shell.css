@@ -3,28 +3,7 @@
   --ambient-header-offset: clamp(5.25rem, 5.6vw, 6rem);
   --ambient-header-width: min(1640px, calc(100% - 2rem));
   --ambient-stage-width: min(1240px, 100%);
-  --ambient-flycare-header-offset: clamp(5rem, 5.35vw, 5.7rem);
   padding-top: var(--ambient-shell-frame-top);
-}
-
-.app-background--flycare {
-  position: relative;
-  isolation: isolate;
-  --ambient-header-offset: var(--ambient-flycare-header-offset);
-}
-
-.app-background--flycare::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.14;
-  background:
-    radial-gradient(circle at 50% 14%, rgba(42, 84, 138, 0.16), transparent 52%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.08) 42%, transparent 72%),
-    url('../assets/brand/texture-airport-exact-full.svg') center top / cover no-repeat;
-  filter: saturate(0.9) contrast(0.96);
 }
 
 .app-shell--ambient {
@@ -41,14 +20,6 @@
   gap: 0.8rem;
 }
 
-.app-shell--ambient.app-shell--flycare {
-  position: relative;
-  isolation: isolate;
-  background: transparent;
-  gap: 0.75rem;
-  padding-top: var(--ambient-header-offset);
-}
-
 .ambient-header {
   position: fixed;
   top: 0;
@@ -63,20 +34,6 @@
   box-shadow: 0 14px 40px rgba(16, 23, 34, 0.08);
   backdrop-filter: blur(22px);
   isolation: isolate;
-}
-
-.ambient-header--flycare {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  margin-bottom: 0;
-  padding: 0.68rem 0 0.58rem;
-  z-index: 55;
-  background: linear-gradient(180deg, rgba(9, 16, 25, 0.94), rgba(9, 17, 24, 0.84));
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
 }
 
 .ambient-header::after {
@@ -111,51 +68,10 @@
   align-items: center;
 }
 
-.ambient-header--flycare .ambient-header__inner {
-  grid-template-columns: 1fr;
-  justify-items: center;
-  width: min(1440px, calc(100% - 1.25rem));
-  padding: 0;
-}
-
-.ambient-header--flycare .ambient-header__brand {
-  justify-content: center;
-  width: 100%;
-}
-
-.ambient-header--flycare .ambient-header__brand-lockup {
-  justify-content: center;
-  gap: clamp(0.9rem, 1.1vw, 1.18rem);
-  align-items: center;
-}
-
 .ambient-header--dense-nav .ambient-header__inner {
   width: min(1660px, calc(100% - 1rem));
   grid-template-columns: minmax(17rem, clamp(24rem, 30vw, 29rem)) minmax(0, 1fr);
   gap: 0.72rem clamp(0.72rem, 1.15vw, 1.1rem);
-}
-
-.ambient-header--flycare .ambient-header__mark {
-  color: rgba(248, 241, 229, 0.98);
-  font-size: clamp(1.28rem, 0.65vw + 1.05rem, 2rem);
-  line-height: 1.03;
-  font-weight: 600;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.16);
-}
-
-.ambient-header--flycare .ambient-header__tagline {
-  color: rgba(240, 232, 221, 0.88);
-  font-size: clamp(0.86rem, 0.12vw + 0.8rem, 1rem);
-  line-height: 1.28;
-  max-width: 32ch;
-}
-
-.ambient-header--flycare .ambient-header__copy {
-  gap: 0.25rem;
-}
-
-.ambient-header--flycare .ambient-header__brand-copy {
-  max-width: min(26rem, calc(100vw - 8.5rem));
 }
 
 .ambient-header__brand {
@@ -190,14 +106,6 @@
   flex: 0 0 auto;
 }
 
-.ambient-header__brand-mark-wrap--flycare {
-  padding: 0.15rem 0.38rem;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 243, 236, 0.34));
-  border: 1px solid rgba(16, 23, 34, 0.08);
-  box-shadow: 0 12px 24px rgba(16, 23, 34, 0.08);
-}
-
 .ambient-header__brand-mark {
   display: block;
   width: auto;
@@ -209,17 +117,6 @@
 .ambient-header--dense-nav .ambient-header__brand-mark {
   height: clamp(1.36rem, 1.42vw, 1.58rem);
   max-width: min(2.85rem, 12vw);
-}
-
-.ambient-header__brand-mark--flycare {
-  height: clamp(2rem, 2.15vw, 2.3rem);
-  max-width: min(6.2rem, 18vw);
-}
-
-:root[data-theme='dark'] .ambient-header__brand-mark-wrap--flycare {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 155, 106, 0.08));
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
 }
 
 .ambient-header__copy {
@@ -893,6 +790,25 @@
   border: 1px solid rgba(16, 23, 34, 0.08);
   color: var(--text-secondary);
   font-size: 0.8rem;
+}
+
+.route-surface__button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(29, 95, 116, 0.18);
+}
+
+.route-surface__button:hover,
+.route-surface__button:focus-visible {
+  background: var(--accent-strong);
 }
 
 .route-surface--brief {
@@ -1591,16 +1507,6 @@
   background: linear-gradient(160deg, rgba(255, 249, 244, 0.98), rgba(255, 241, 235, 0.95));
 }
 
-:root[data-theme='dark'] .app-background--flycare::before {
-  opacity: 0.11;
-  background:
-    radial-gradient(circle at 50% 18%, rgba(118, 176, 255, 0.18), transparent 56%),
-    linear-gradient(180deg, rgba(5, 12, 22, 0.2), rgba(5, 12, 22, 0.04) 46%, transparent 74%),
-    url('../assets/brand/texture-airport-exact-full.svg') center top / cover no-repeat;
-  mix-blend-mode: screen;
-  filter: saturate(0.85) contrast(0.92);
-}
-
 @media (max-width: 1100px) {
   .ambient-header__inner {
     grid-template-columns: 1fr;
@@ -1621,7 +1527,6 @@
   .app-background {
     --ambient-shell-frame-top: 0.5rem;
     --ambient-header-offset: 7.55rem;
-    --ambient-flycare-header-offset: 5.2rem;
   }
 
   .app-shell--ambient {
@@ -1672,43 +1577,6 @@
 
   .ambient-header__brand-mark {
     height: 1.55rem;
-  }
-
-  .ambient-header__brand-mark--flycare {
-    height: 1.78rem;
-    max-width: min(5rem, 38vw);
-  }
-
-  .ambient-header--flycare {
-    padding: 0.54rem 0 0.46rem;
-  }
-
-  .ambient-header--flycare .ambient-header__inner {
-    width: min(100%, calc(100% - 0.9rem));
-  }
-
-  .ambient-header--flycare .ambient-header__brand-lockup {
-    width: min(100%, 28rem);
-    gap: 0.72rem;
-  }
-
-  .ambient-header--flycare .ambient-header__brand-mark--flycare {
-    height: 1.96rem;
-    max-width: min(5.15rem, 30vw);
-  }
-
-  .ambient-header--flycare .ambient-header__brand-copy {
-    max-width: min(18.75rem, calc(100vw - 5.9rem));
-  }
-
-  .ambient-header--flycare .ambient-header__mark {
-    font-size: clamp(1.08rem, 0.7rem + 1.35vw, 1.34rem);
-    line-height: 1.05;
-  }
-
-  .ambient-header--flycare .ambient-header__tagline {
-    font-size: 0.84rem;
-    line-height: 1.22;
   }
 
   .ambient-header--route-position {

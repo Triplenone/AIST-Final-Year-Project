@@ -191,12 +191,17 @@ export const kpiApi = {
   delete: (id: number) => api.delete(`/kpi/${id}`),
 };
 
-// MongoDB 上行数据 API，供 Position / FlyCare 右侧信息面板读取最新设备状态。
+// MongoDB upstream API used by elderly-care position and vitals surfaces.
 export type MongoUpstreamLatest = {
   _id?: string;
+  schema_version?: number;
+  scenario?: string;
   device_id?: string | number;
+  mysql_device_id?: number;
+  data_type?: string;
   timestamp?: number;
   server_received_at?: string;
+  position?: Record<string, unknown>;
   location?: Record<string, unknown>;
   fall_detection?: Record<string, unknown>;
   sos?: Record<string, unknown>;
@@ -234,40 +239,32 @@ export type MongoVitalsHistoryResponse = {
   items: MongoVitalsHistoryItem[];
 };
 
-export type FlightLatestResponse = {
-  found: boolean;
-  _id?: string;
-  device_id?: string;
-  passengerName?: string;
-  flightNumber?: string;
-  gate?: string;
-  flightTime?: string;
-  departureAirport?: string;
-  arrivalAirport?: string;
-  seatNumber?: string;
-  message?: string;
-};
-
 export type MongoLatestValidLocationResponse = {
   found: boolean;
   _id?: string;
+  schema_version?: number;
+  scenario?: string;
   device_id?: string | number;
   mysql_device_id?: number;
   server_received_at?: string;
+  position?: Record<string, unknown>;
   x?: number;
   y?: number;
+  x_m?: number;
+  y_m?: number;
+  x_ratio?: number;
+  y_ratio?: number;
+  x_px?: number;
+  y_px?: number;
   location_name?: string | null;
   location_zone_id?: number | string | null;
+  zone_key?: string | null;
   message?: string;
 };
 
 export const mongoUpstreamApi = {
   getLatest: (params?: { device_id?: string; data_type?: string; exclude_data_type?: string }) =>
     api.get<MongoUpstreamLatest>('/mongo-upstream/latest', { params }),
-  getLatestFlight: (deviceId?: string) =>
-    api.get<FlightLatestResponse>('/mongo-upstream/flight/latest', {
-      params: deviceId ? { device_id: deviceId } : undefined,
-    }),
   getLatestValidLocation: (deviceId: string, params?: { scan_limit?: number }) =>
     api.get<MongoLatestValidLocationResponse>('/mongo-upstream/location/latest', {
       params: { device_id: deviceId, ...params },
@@ -277,6 +274,35 @@ export const mongoUpstreamApi = {
   get: (docId: string) => api.get<unknown>(`/mongo-upstream/${docId}`),
   getVitalsHistoryByUser: (userId: number, params?: MongoVitalsHistoryQuery) =>
     api.get<MongoVitalsHistoryResponse>(`/mongo-upstream/vitals/user/${userId}/history`, { params }),
+};
+
+export type WatchAlertCommandRequest = {
+  device_id: string;
+  event_type: 'sos' | 'fall';
+  action: 'activate' | 'clear';
+  command_id?: string;
+  mysql_device_id?: number;
+  related_user_id?: number;
+  title?: string;
+  message?: string;
+  severity?: 'info' | 'warning' | 'critical';
+};
+
+export type WatchAlertCommandResponse = {
+  status: 'ok' | 'error';
+  topic: string;
+  payload: Record<string, unknown>;
+  mqtt: {
+    ok: boolean;
+    error?: string;
+    broker: string;
+    port: number;
+  };
+};
+
+export const watchCommandApi = {
+  publishAlert: (data: WatchAlertCommandRequest) =>
+    api.post<WatchAlertCommandResponse>('/watch-commands/alert/publish', data),
 };
 
 export default api;

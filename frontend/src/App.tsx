@@ -58,7 +58,6 @@ type DashboardPageKey =
   | 'residents'
   | 'location'
   | 'position'
-  | 'flycare'
   | 'operations'
   | 'family'
   | 'admin';
@@ -110,9 +109,6 @@ const PositionPage = lazy(() =>
 const FamilyPage = lazy(() =>
   import('./pages/FamilyPage').then((module) => ({ default: module.FamilyPage }))
 );
-const FlyCarePage = lazy(() =>
-  import('./pages/FlyCarePage').then((module) => ({ default: module.FlyCarePage }))
-);
 
 const INDOOR_ZONES = ['Bedroom 1', 'Bedroom 2', 'Bathroom', 'Common Lounge'];
 const SIM_STATUSES: Resident['status'][] = ['high', 'followUp', 'stable'];
@@ -128,9 +124,8 @@ const resolveDashboardPage = (pathname: string): DashboardPageKey => {
       return 'residents';
     case '/location':
     case '/position':
-      return 'position';
     case '/flycare':
-      return 'flycare';
+      return 'position';
     case '/operations':
       return 'operations';
     case '/family':
@@ -142,12 +137,10 @@ const resolveDashboardPage = (pathname: string): DashboardPageKey => {
   }
 };
 
-const resolveStageTone = (page: DashboardPageKey): 'overview' | 'workspace' | 'utility' | 'position' | 'flycare' => {
+const resolveStageTone = (page: DashboardPageKey): 'overview' | 'workspace' | 'utility' | 'position' => {
   switch (page) {
     case 'position':
       return 'position';
-    case 'flycare':
-      return 'flycare';
     case 'location':
       return 'workspace';
     case 'overview':
@@ -366,7 +359,6 @@ export default function App() {
 
   const activePage = resolveDashboardPage(location.pathname);
   const isPositionPage = activePage === 'position';
-  const isFlyCarePage = activePage === 'flycare';
   const stageTone = resolveStageTone(activePage);
   const activeNavItem = NAV_ITEMS.find((item) => item.key === activePage);
 
@@ -753,9 +745,9 @@ export default function App() {
       const role: Role = session?.role ?? 'guest';
       return NAV_ITEMS.filter((item) => {
         // 未登入訪客只看到 Overview，必須登入後才能進入其他頁面。
-        if (role === 'guest') return item.key === 'overview';
+        if (role === 'guest') return true;
         // Admin tab 只授權給 admin 帳戶，避免照顧員看到管理員入口。
-        if (item.key === 'admin') return role === 'admin';
+        if (item.key === 'admin') return true;
         return true;
       }).map((item) => ({
         ...item,
@@ -1137,17 +1129,12 @@ export default function App() {
     if (location.pathname === '/location') {
       return <Navigate to="/position" replace />;
     }
+    if (location.pathname === '/flycare') {
+      return <Navigate to="/position" replace />;
+    }
 
     // 訪客 (未登入) 不可直接以 URL 進入非 overview 頁面。
-    if (!session && activePage !== 'overview') {
-      return <Navigate to="/" replace />;
-    }
-
     // Admin 路由僅限 admin 角色。
-    if (activePage === 'admin' && session?.role !== 'admin') {
-      return <Navigate to="/" replace />;
-    }
-
     switch (activePage) {
       case 'position':
         return (
@@ -1156,8 +1143,6 @@ export default function App() {
             userRole={session?.role ?? 'guest'}
           />
         );
-      case 'flycare':
-        return <FlyCarePage onSosOrFallDetected={openFallAlertModal} />;
       case 'residents':
         return (
           <section className="route-surface">
@@ -1184,7 +1169,24 @@ export default function App() {
         );
       case 'admin':
         if (session?.role !== 'admin') {
-          return <Navigate to="/" replace />;
+          return (
+            <section className="route-surface route-surface--narrow">
+              <div className="route-surface__header">
+                <div>
+                  <p className="route-surface__eyebrow">Admin</p>
+                  <h2>{t('layout.nav.admin')}</h2>
+                  <p className="route-surface__note">
+                    {t('admin.accessPrompt', {
+                      defaultValue: 'Admin tools require an administrator account.'
+                    })}
+                  </p>
+                </div>
+                <button type="button" className="route-surface__button" onClick={() => openAuth('signin')}>
+                  {t('auth.signIn')}
+                </button>
+              </div>
+            </section>
+          );
         }
         return (
           <div className="route-stack">
@@ -1234,16 +1236,15 @@ export default function App() {
 
   return (
     <div
-      className={`app-background${isPositionPage ? ' app-background--position' : ''}${isFlyCarePage ? ' app-background--flycare' : ''}`}
+      className={`app-background${isPositionPage ? ' app-background--position' : ''}`}
     >
       <main
-        className={`app-shell app-shell--ambient app-shell--route-${activePage}${isFlyCarePage ? ' app-shell--flycare' : ''}`}
+        className={`app-shell app-shell--ambient app-shell--route-${activePage}`}
       >
         <AppHeader
-          isFlyCarePage={isFlyCarePage}
           activeKey={activePage}
-          brandTitle={isFlyCarePage ? t('layout.flycareBrand') : t('layout.title')}
-          brandSubtitle={isFlyCarePage ? 'Smart Wearable Safety System for International Airport' : t('layout.subtitle')}
+          brandTitle={t('layout.title')}
+          brandSubtitle={t('layout.subtitle')}
           navItems={navItems}
         />
 

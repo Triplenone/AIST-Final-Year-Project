@@ -136,9 +136,9 @@ export function PositionMapStage({
       <header className="position-map-stage__header">
         <div>
           <p className="position-command-center__eyebrow">
-            {t('position.mapStageEyebrow', { defaultValue: 'Map Stage' })}
+            {t('position.mapStageEyebrow', { defaultValue: 'Indoor positioning' })}
           </p>
-          <h2>{t('layout.nav.position', { defaultValue: 'Position' })}</h2>
+          <h2>{t('layout.nav.position', { defaultValue: 'Indoor positioning' })}</h2>
         </div>
         <p className="position-command-center__muted">
           {effectiveSurfaceState === 'loading'
@@ -157,7 +157,7 @@ export function PositionMapStage({
         <div className="position-map-stage__canvas">
           <img
             src={mapImage}
-            alt={t('layout.nav.position', { defaultValue: 'Position map' })}
+            alt={t('layout.nav.position', { defaultValue: 'Indoor positioning map' })}
             className="position-map-stage__image"
           />
 
@@ -166,7 +166,7 @@ export function PositionMapStage({
               const pin = cluster.members[0];
               const pendingCount = pendingEventCountByResidentId?.[pin.residentId] ?? 0;
               const isHovered = hoveredResidentId === pin.residentId;
-              const ariaSummary = `${pin.displayName}${pin.currentZoneName ? ` · ${pin.currentZoneName}` : ''}`;
+              const ariaSummary = `${pin.displayName}${pin.currentZoneName ? ` at ${pin.currentZoneName}` : ''}`;
               return (
                 <div
                   key={pin.residentId}

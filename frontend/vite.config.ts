@@ -12,27 +12,7 @@ export default defineConfig({
             return undefined;
           }
 
-          if (id.includes('react-leaflet') || id.includes('leaflet')) {
-            return 'vendor-maps';
-          }
-
-          if (id.includes('recharts')) {
-            return 'vendor-charts';
-          }
-
-          if (id.includes('framer-motion')) {
-            return 'vendor-motion';
-          }
-
-          if (id.includes('i18next') || id.includes('react-i18next')) {
-            return 'vendor-i18n';
-          }
-
-          if (id.includes('react-router-dom') || id.includes('react-dom') || id.includes('\\react\\') || id.includes('/react/')) {
-            return 'vendor-react';
-          }
-
-          return 'vendor-misc';
+          return 'vendor';
         }
       }
     }

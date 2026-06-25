@@ -8,6 +8,7 @@
 - Tech stack: **Vite 5 + React 18 + TypeScript 5**, with ESLint configured (see `package.json`, `vite.config.ts`, `tsconfig.json`).
 - Domain focus: “**Proactive Guardian Care – Smart Wearable Safety System for Elderly Homes**” with a residents overview, alerts/insights, and an Admin area mapped to your MySQL schema.
 - Data source: real data comes from the **FastAPI backend** (`backend/backend/app`), exposed under `/api/v1/*` (e.g. `/api/v1/residents`, `/api/v1/users`).
+- Primary indoor positioning route: `/position`. It uses `src/img/ElderlyCare.png` (`1755x2309`) and consumes normalized backend `position.current` coordinates before falling back to legacy `location.current.x/y`.
 - i18n: three languages (**English / 繁體中文 / 简体中文**) powered by `i18next` + `react-i18next` (`src/i18n.ts`, `src/locales/**/translation.json`).
 - Residents & KPIs: the main residents section shows live status/vitals and is backed by the backend `/api/v1/residents` aggregation.
 
@@ -31,6 +32,7 @@
    ```
 4. Open `http://localhost:5173`:
    - The Residents section should load residents from `/api/v1/residents`.
+   - The Indoor positioning route is `http://localhost:5173/position`; `/location` and `/flycare` redirect there.
    - The Admin section should show Users/Devices/Locations/Events/User Status/Device Logs/Residents/KPI backed by `/api/v1/*`.
 
 ### Main frontend modules
@@ -76,6 +78,7 @@
   npm run preview
   ```
 - Output is in `dist/`. Serve it behind any static server that can talk to your backend (`BACKEND_BASE_URL`).
+- `vite.config.ts` keeps third-party dependencies in a single `vendor` chunk so React, React Router, and shared helpers initialize without circular vendor imports in preview builds.
 
 ### Relationship with `frontend/web-dashboard`
 - `frontend/web-dashboard/` remains the **legacy static dashboard** using a frontend‑only SSE simulator (no real backend).

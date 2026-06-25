@@ -148,17 +148,17 @@ export function PositionResidentRail({
       {
         key: 'online',
         label: t('position.summary.online', { defaultValue: 'Online' }),
-        value: surfaceState === 'loading' ? '—' : counts.online
+        value: surfaceState === 'loading' ? '--' : counts.online
       },
       {
         key: 'stale',
         label: t('position.summary.stale', { defaultValue: 'Stale' }),
-        value: surfaceState === 'loading' ? '—' : counts.stale
+        value: surfaceState === 'loading' ? '--' : counts.stale
       },
       {
         key: 'offline',
         label: t('position.summary.offline', { defaultValue: 'Offline' }),
-        value: surfaceState === 'loading' ? '—' : counts.offline
+        value: surfaceState === 'loading' ? '--' : counts.offline
       }
     ],
     [counts.offline, counts.online, counts.stale, counts.total, surfaceState, t]

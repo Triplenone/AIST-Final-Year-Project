@@ -14,13 +14,11 @@
       "residents": "住民",
       "location": "位置",
       "position": "室內定位",
-      "flycare": "機場關懷",
       "operations": "營運",
       "family": "家屬互動",
       "admin": "系統管理"
     },
-    "footer": "© 2024 SmartCare Collaborative — 與照護團隊一起打造",
-    "flycareBrand": "Smart FlyCare System"
+    "footer": "© 2024 SmartCare Collaborative — 與照護團隊一起打造"
   },
   "position": {
     "userList": "用戶列表",
@@ -34,6 +32,9 @@
     "apiUnavailable": "上行數據接口不可用（請確認後端已啟用 MongoDB 並重啟服務）",
     "userName": "用戶名稱",
     "deviceId": "設備 ID",
+    "assignedRoom": "指定房間",
+    "deviceAliases": "設備別名",
+    "rawDeviceId": "原始設備 ID",
     "currentX": "位置 X",
     "currentY": "位置 Y",
     "targetX": "目標 X",
@@ -77,58 +78,9 @@
       "bedroom": "寢室"
     }
   },
-  "flyCare": {
-    "userList": "用戶列表",
-    "usersOnline": "{{count}} 人在線",
-    "noUsersOnline": "暫無用戶在線",
-    "currentLocation": "當前位置",
-    "rightPanelTitle": "資訊",
-    "noDeviceData": "暫無設備上行數據",
-    "apiUnavailable": "上行接口不可用",
-    "userName": "用戶名稱",
-    "deviceId": "設備 ID",
-    "currentX": "位置 X",
-    "currentY": "位置 Y",
-    "targetX": "目標 X",
-    "targetY": "目標 Y",
-    "navigationTitle": "導航",
-    "navigationPlaceholder": "前方10米後，右轉20米",
-    "navigationStepForward": "前方{{meters}}米",
-    "navigationStepBackward": "後方{{meters}}米",
-    "navigationStepLeft": "左轉{{meters}}米",
-    "navigationStepRight": "右轉{{meters}}米",
-    "navigationTwoSteps": "{{first}}後，{{second}}",
-    "navigationArrived": "您已到達目標位置",
-    "fallStateDescription": "跌倒狀態",
-    "sosStatus": "SOS 狀態",
-    "heartRateBpm": "心率 (bpm)",
-    "spo2Percentage": "血氧 (%)",
-    "batteryLevel": "電量",
-    "refresh": "刷新",
-    "mapAlt": "機場平面圖",
-    "flightTitle": "航班資訊",
-    "flightPassengerName": "乘客姓名",
-    "flightNumber": "航班號",
-    "flightGate": "登機口",
-    "flightTime": "航班時間",
-    "flightDeparture": "起飛機場",
-    "flightArrival": "目的機場",
-    "flightSeat": "座位號",
-    "flightUpdateTitle": "航班資訊變動",
-    "flightUpdateConfirm": "確認",
-    "simulateFlightUpdate": "模擬航班變動",
-    "zone": {
-      "boarding_gate_1": "Boarding Gate 1",
-      "boarding_gate_2": "Boarding Gate 2",
-      "restricted_area": "禁區",
-      "toilet": "洗手間",
-      "security_check": "安檢",
-      "non_restricted_area": "非禁區",
-      "check_in_counter": "值機櫃檯"
-    }
-  },
   "admin": {
     "title": "系統管理",
+    "accessPrompt": "管理工具需要管理員帳戶。",
     "subtitle": "直接連接 TestStage-FYP 後端資源",
     "detailsTitle": "Proactive Guardian Care 詳細資料",
     "detailsSubtitle": "System Admin 儀表板：長者院舍智慧穿戴安全系統",
@@ -374,13 +326,12 @@
       "stopped": "已暫停",
       "lastEvent": "上次事件 {{time}} 前",
       "waiting": "等待串流"
-    }
-  ,
+    },
     "vitalsModal": {
-      "view": "\u67e5\u770b\u751f\u547d\u5fb5\u8c61",
-      "title": "\u751f\u547d\u5fb5\u8c61\u6b77\u53f2",
-      "subtitle": "{{name}} \u7684\u6700\u65b0\u6b77\u53f2",
-      "close": "\u95dc\u9589\u8996\u7a97"
+      "view": "查看生命徵象",
+      "title": "生命徵象歷史",
+      "subtitle": "{{name}} 的最新歷史",
+      "close": "關閉視窗"
     }
   },
   "location": {
@@ -554,71 +505,70 @@
     "emptyTitle": "目前沒有可顯示的住民",
     "emptyBody": "當後端提供住民資料後，家屬頁會在這裡顯示卡片。",
     "errorTitle": "家屬頁暫時無法使用",
-    "errorFallback": "目前無法取得住民名單。"
-  ,
+    "errorFallback": "目前無法取得住民名單。",
     "summary": {
-      "title": "\u4eca\u65e5\u6458\u8981",
-      "residentLabel": "\u5df2\u9078\u4f4f\u5ba2",
-      "promptTitle": "\u8acb\u5148\u9078\u64c7\u4f4f\u5ba2",
-      "promptBody": "\u8acb\u5148\u9078\u64c7\u4e00\u5f35\u4f4f\u5ba2\u5361\u7247\uff0c\u4ee5\u8f09\u5165\u4eca\u65e5\u5bb6\u5c6c\u6458\u8981\u3002",
-      "loadingTitle": "\u6b63\u5728\u8f09\u5165\u4eca\u65e5\u6458\u8981",
-      "loadingBody": "\u6b63\u5728\u5f9e\u5f8c\u7aef\u53d6\u5f97\u6700\u65b0\u7684 placeholder \u6458\u8981\u3002",
-      "emptyTitle": "\u4eca\u65e5\u5c1a\u7121\u6458\u8981",
-      "emptyBody": "\u5f8c\u7aef\u4eca\u65e5\u672a\u70ba\u6b64\u4f4f\u5ba2\u63d0\u4f9b\u6458\u8981\u3002",
-      "unavailableTitle": "\u6458\u8981\u670d\u52d9\u66ab\u6642\u7121\u6cd5\u4f7f\u7528",
-      "unavailableBody": "\u4eca\u65e5\u6458\u8981\u66ab\u6642\u7121\u6cd5\u53d6\u5f97\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66\u3002",
-      "errorTitle": "\u7121\u6cd5\u8f09\u5165\u6458\u8981",
-      "generatedAt": "\u65bc {{time}} \u7522\u751f",
-      "source": "\u4f86\u6e90\uff1a{{source}}",
+      "title": "今日摘要",
+      "residentLabel": "已選住客",
+      "promptTitle": "請先選擇住客",
+      "promptBody": "請先選擇一張住客卡片，以載入今日家屬摘要。",
+      "loadingTitle": "正在載入今日摘要",
+      "loadingBody": "正在從後端取得最新的 placeholder 摘要。",
+      "emptyTitle": "今日尚無摘要",
+      "emptyBody": "後端今日未為此住客提供摘要。",
+      "unavailableTitle": "摘要服務暫時無法使用",
+      "unavailableBody": "今日摘要暫時無法取得，請稍後再試。",
+      "errorTitle": "無法載入摘要",
+      "generatedAt": "於 {{time}} 產生",
+      "source": "來源：{{source}}",
       "stats": {
-        "total": "\u5df2\u8ffd\u8e64\u4e8b\u4ef6",
-        "critical": "\u9ad8\u98a8\u96aa\u4e8b\u4ef6",
-        "unhandled": "\u672a\u8655\u7406\u63d0\u9192"
+        "total": "已追蹤事件",
+        "critical": "高風險事件",
+        "unhandled": "未處理提醒"
       }
     },
     "briefing": {
-      "heroEyebrow": "\u4eca\u65e5\u7c21\u5831",
-      "roleFallback": "\u4f4f\u6c11",
+      "heroEyebrow": "今日簡報",
+      "roleFallback": "住民",
       "vitals": {
-        "title": "\u751f\u547d\u5fb5\u8c61\u5feb\u7167",
-        "heartRate": "\u5fc3\u7387",
-        "bloodPressure": "\u8840\u58d3",
-        "respiration": "\u547c\u5438"
+        "title": "生命徵象快照",
+        "heartRate": "心率",
+        "bloodPressure": "血壓",
+        "respiration": "呼吸"
       },
       "activities": {
-        "title": "\u65e5\u5e38\u6d3b\u52d5",
-        "breakfastCompleted": "\u65e9\u9910\u5df2\u5b8c\u6210",
-        "middayWalk": "\u5348\u9593\u6563\u6b65 15 \u5206\u9418"
+        "title": "日常活動",
+        "breakfastCompleted": "早餐已完成",
+        "middayWalk": "午間散步 15 分鐘"
       },
       "mood": {
-        "title": "\u60c5\u7dd2\u6aa2\u67e5",
-        "stable": "\u7a69\u5b9a",
-        "attention": "\u9700\u8981\u95dc\u6ce8"
+        "title": "情緒檢查",
+        "stable": "穩定",
+        "attention": "需要關注"
       },
       "notes": {
-        "title": "\u7167\u8b77\u5099\u8a3b",
-        "placeholder": "\u8a18\u9304\u4e0b\u4e00\u6b21\u8207\u5bb6\u5c6c\u6e9d\u901a\u524d\u8981\u88dc\u5145\u7684\u7167\u8b77\u5099\u8a3b..."
+        "title": "照護備註",
+        "placeholder": "記錄下一次與家屬溝通前要補充的照護備註..."
       }
     },
     "vitalsHistory": {
-      "title": "\u751f\u547d\u5fb5\u8c61\u6b77\u53f2",
-      "residentLabel": "\u5df2\u9078\u4f4f\u5ba2",
-      "rangeTitle": "\u6642\u9593\u7bc4\u570d",
-      "loadingTitle": "\u6b63\u5728\u8f09\u5165\u751f\u547d\u5fb5\u8c61\u6b77\u53f2",
-      "loadingBody": "\u6b63\u5728\u6aa2\u67e5\u5f8c\u7aef\u751f\u547d\u5fb5\u8c61\u6b77\u53f2\u63a5\u53e3\u662f\u5426\u5c31\u7dd2\u3002",
-      "emptyTitle": "\u66ab\u7121\u751f\u547d\u5fb5\u8c61\u6b77\u53f2",
-      "emptyBody": "\u76ee\u524d\u9078\u5b9a\u7684\u6642\u9593\u7bc4\u570d\u5167\u6c92\u6709\u53ef\u986f\u793a\u7684\u751f\u547d\u5fb5\u8c61\u8b80\u6578\u3002",
-      "unavailableTitle": "\u751f\u547d\u5fb5\u8c61\u6b77\u53f2\u66ab\u6642\u7121\u6cd5\u4f7f\u7528",
-      "unavailableBody": "\u751f\u547d\u5fb5\u8c61\u6b77\u53f2\u63a5\u53e3\u5c1a\u672a\u5c31\u7dd2\uff0c\u8acb\u7b49\u5f85\u5f8c\u7aef\u66f4\u65b0\u3002",
-      "errorTitle": "\u7121\u6cd5\u8f09\u5165\u751f\u547d\u5fb5\u8c61\u6b77\u53f2",
-      "invalidResidentIdTitle": "\u7121\u6cd5\u8f09\u5165\u751f\u547d\u5fb5\u8c61\u6b77\u53f2",
-      "invalidResidentIdBody": "\u4f4f\u5ba2\u8b58\u5225\u9808\u70ba\u6578\u5b57\u7528\u6236 ID\uff08\u8207\u5f8c\u7aef user.user_id \u4e00\u81f4\uff09\u3002\u76ee\u524d\u503c\u7121\u6cd5\u8acb\u6c42\u6b77\u53f2\u63a5\u53e3\uff0c\u8acb\u6aa2\u67e5\u4f4f\u5ba2\u8cc7\u6599\u6216\u806f\u7e6b\u7ba1\u7406\u54e1\u3002",
+      "title": "生命徵象歷史",
+      "residentLabel": "已選住客",
+      "rangeTitle": "時間範圍",
+      "loadingTitle": "正在載入生命徵象歷史",
+      "loadingBody": "正在檢查後端生命徵象歷史接口是否就緒。",
+      "emptyTitle": "暫無生命徵象歷史",
+      "emptyBody": "目前選定的時間範圍內沒有可顯示的生命徵象讀數。",
+      "unavailableTitle": "生命徵象歷史暫時無法使用",
+      "unavailableBody": "生命徵象歷史接口尚未就緒，請等待後端更新。",
+      "errorTitle": "無法載入生命徵象歷史",
+      "invalidResidentIdTitle": "無法載入生命徵象歷史",
+      "invalidResidentIdBody": "住客識別須為數字用戶 ID（與後端 user.user_id 一致）。目前值無法請求歷史接口，請檢查住客資料或聯繫管理員。",
       "noReading": "--",
       "columns": {
-        "recordedAt": "\u8a18\u9304\u6642\u9593",
-        "heartRate": "\u5fc3\u7387",
+        "recordedAt": "記錄時間",
+        "heartRate": "心率",
         "spo2": "SpO2",
-        "temperature": "\u9ad4\u6eab"
+        "temperature": "體溫"
       }
     }
   }

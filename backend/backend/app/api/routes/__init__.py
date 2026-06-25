@@ -14,6 +14,7 @@ from app.api.routes import (
     residents,
     user_status,
     users,
+    watch_commands,
 )
 
 api_router = APIRouter()
@@ -44,4 +45,9 @@ api_router.include_router(
     family_summary.router,
     prefix="/family-summary",
     tags=["family-summary"],
+)
+api_router.include_router(
+    watch_commands.router,
+    prefix="/watch-commands",
+    tags=["watch-commands"],
 )

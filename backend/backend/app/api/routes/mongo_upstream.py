@@ -11,6 +11,7 @@ from app.config import settings
 from app.database import get_db
 from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
 from app.services.elderly_device_queries import VITALS_UPSTREAM_DATA_TYPES, devices_by_elderly_user_ids
+from app.services.position_normalizer import SCENARIO, SCHEMA_VERSION, normalize_position_payload
 from app.services.sensor_vitals_extract import extract_hr_spo2_from_sensors
 
 router = APIRouter()
@@ -154,13 +155,17 @@ def _extract_vitals_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 def _to_vitals_item(doc: Dict[str, Any]) -> Dict[str, Any]:
     payload = doc.get("payload") or {}
+    position = _get_position_from_doc(doc)
     return {
         "_id": str(doc.get("_id")) if doc.get("_id") else None,
+        "schema_version": doc.get("schema_version") or payload.get("schema_version") or SCHEMA_VERSION,
+        "scenario": doc.get("scenario") or payload.get("scenario") or SCENARIO,
         "device_id": doc.get("device_id") or payload.get("device_id"),
         "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
         "server_received_at": _to_iso_utc(doc.get("server_received_at")),
         "data_type": doc.get("data_type"),
+        "position": position,
         "sensors": payload.get("sensors") or doc.get("sensors"),
         "vitals": _extract_vitals_from_payload(payload),
         "raw_payload": payload,
@@ -186,8 +191,39 @@ def _to_finite_float(value: Any) -> Optional[float]:
     return None
 
 
+def _get_position_from_doc(doc: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    payload = doc.get("payload") or {}
+    position = doc.get("position") or payload.get("position")
+    if isinstance(position, dict):
+        return position
+    if isinstance(payload, dict):
+        return normalize_position_payload(payload)
+    return None
+
+
 def _extract_current_location_from_doc(doc: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     payload = doc.get("payload") or {}
+    position = _get_position_from_doc(doc) or {}
+    position_current = position.get("current") if isinstance(position, dict) else None
+    if isinstance(position_current, dict):
+        x_m = _to_finite_float(position_current.get("x_m"))
+        y_m = _to_finite_float(position_current.get("y_m"))
+        if x_m is not None and y_m is not None:
+            return {
+                "x": x_m,
+                "y": y_m,
+                "x_m": x_m,
+                "y_m": y_m,
+                "x_ratio": _to_finite_float(position_current.get("x_ratio")),
+                "y_ratio": _to_finite_float(position_current.get("y_ratio")),
+                "x_px": position_current.get("x_px"),
+                "y_px": position_current.get("y_px"),
+                "location_name": position_current.get("name"),
+                "location_zone_id": position_current.get("location_zone_id"),
+                "zone_key": position_current.get("zone_key"),
+                "position": position,
+            }
+
     location = payload.get("location") or doc.get("location") or {}
     if not isinstance(location, dict):
         return None
@@ -216,8 +252,16 @@ def _extract_current_location_from_doc(doc: Dict[str, Any]) -> Optional[Dict[str
     return {
         "x": x,
         "y": y,
+        "x_m": x,
+        "y_m": y,
+        "x_ratio": None,
+        "y_ratio": None,
+        "x_px": None,
+        "y_px": None,
         "location_name": name,
         "location_zone_id": zone_id,
+        "zone_key": None,
+        "position": position or None,
     }
 
 
@@ -299,7 +343,7 @@ async def get_latest_for_position_panel(
     ),
     exclude_data_type: Optional[str] = Query(
         None,
-        description="Exclude one data_type, for example flight",
+        description="Exclude one data_type, for example log",
     ),
 ):
     query: Dict[str, Any] = {}
@@ -318,12 +362,17 @@ async def get_latest_for_position_panel(
         return {}
 
     payload = doc.get("payload") or {}
+    position = _get_position_from_doc(doc)
     return {
         "_id": str(doc["_id"]) if doc.get("_id") else None,
+        "schema_version": doc.get("schema_version") or payload.get("schema_version") or SCHEMA_VERSION,
+        "scenario": doc.get("scenario") or payload.get("scenario") or SCENARIO,
         "device_id": doc.get("device_id") or payload.get("device_id"),
         "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
         "timestamp": doc.get("timestamp") or payload.get("timestamp"),
         "server_received_at": _to_iso_utc(doc.get("server_received_at")),
+        "data_type": doc.get("data_type") or payload.get("data_type"),
+        "position": position,
         "location": payload.get("location") or doc.get("location"),
         "fall_detection": payload.get("fall_detection") or doc.get("fall_detection"),
         "sos": payload.get("sos") or doc.get("sos"),
@@ -374,13 +423,23 @@ async def get_latest_valid_location(
             return {
                 "found": True,
                 "_id": str(doc.get("_id")) if doc.get("_id") else None,
+                "schema_version": doc.get("schema_version") or payload.get("schema_version") or SCHEMA_VERSION,
+                "scenario": doc.get("scenario") or payload.get("scenario") or SCENARIO,
                 "device_id": doc.get("device_id") or payload.get("device_id"),
                 "mysql_device_id": doc.get("mysql_device_id") or payload.get("mysql_device_id"),
                 "server_received_at": _to_iso_utc(doc.get("server_received_at")),
+                "position": location.get("position"),
                 "x": location["x"],
                 "y": location["y"],
+                "x_m": location.get("x_m"),
+                "y_m": location.get("y_m"),
+                "x_ratio": location.get("x_ratio"),
+                "y_ratio": location.get("y_ratio"),
+                "x_px": location.get("x_px"),
+                "y_px": location.get("y_px"),
                 "location_name": location["location_name"],
                 "location_zone_id": location["location_zone_id"],
+                "zone_key": location.get("zone_key"),
             }
     except Exception as exc:
         raise _mongo_unavailable(exc) from exc
@@ -483,44 +542,6 @@ async def get_vitals_history_for_user(
         raise _mongo_unavailable(exc) from exc
 
     return {"page": page, "page_size": page_size, "total": total, "items": items}
-
-
-@router.get("/flight/latest", response_model=Dict[str, Any])
-async def get_latest_flight(
-    device_id: Optional[str] = Query(None, description="Filter flight data by external device ID"),
-):
-    query: Dict[str, Any] = {"data_type": "flight"}
-    _apply_device_id_filter(query, device_id)
-
-    try:
-        doc = await _get_collection().find_one(query, sort=[("server_received_at", -1)])
-    except Exception as exc:
-        raise _mongo_unavailable(exc) from exc
-
-    if doc is None:
-        return {
-            "found": False,
-            "message": (
-                "No flight upstream data found. Publish to MQTT or POST /data-reception/flight "
-                "with an optional device_id."
-            ),
-        }
-
-    payload = doc.get("payload") or doc
-    return {
-        "found": True,
-        "device_id": doc.get("device_id"),
-        "mysql_device_id": doc.get("mysql_device_id"),
-        "_id": str(doc["_id"]) if doc.get("_id") else None,
-        "server_received_at": _to_iso_utc(doc.get("server_received_at")),
-        "passengerName": payload.get("passengerName"),
-        "flightNumber": payload.get("flightNumber"),
-        "gate": payload.get("gate"),
-        "flightTime": payload.get("flightTime"),
-        "departureAirport": payload.get("departureAirport"),
-        "arrivalAirport": payload.get("arrivalAirport"),
-        "seatNumber": payload.get("seatNumber"),
-    }
 
 
 @router.get("/{doc_id}", response_model=Dict[str, Any])

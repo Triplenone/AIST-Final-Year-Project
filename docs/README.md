@@ -6,6 +6,7 @@ This folder contains runbooks + reference docs for the **Proactive Guardian Care
 
 - [`SETUP.md`](SETUP.md) — install + configuration + optional DB import notes
 - [`DEMO.md`](DEMO.md) — demo script + expected outputs
+- [`ELDERLY_CARE_DEMO_READY.md`](ELDERLY_CARE_DEMO_READY.md) - current elderly-care demo checklist
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — implemented vs planned (PDF-cited), with Mermaid diagrams
 - [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
 - [`MEETINGS.md`](MEETINGS.md) — suggested place for weekly notes / log sheets
@@ -30,3 +31,10 @@ Position rebuild 的 repo source of truth 在 `docs/frontend-position/`.
 - [`frontend-position/10-maintainer-notes.md`](frontend-position/10-maintainer-notes.md)
 - [`frontend-position/11-backend-facing-boundary.md`](frontend-position/11-backend-facing-boundary.md)
 - [`frontend-position/99-handoff.md`](frontend-position/99-handoff.md)
+
+
+## Historical Reference
+
+Older FlyCare redesign docs remain as historical/reference material only. They are not the current public demo route, nav story, API surface, or presentation source of truth.
+
+The historical `scripts/start_flycare_offline_demo.ps1` filename is retained only as an offline launcher compatibility shim; the target route is elderly-care `/position`.

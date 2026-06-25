@@ -5,6 +5,10 @@ Smart wearable + dashboard prototype for elderly-care homes.
 - **Primary demo UI**: [`frontend/`](frontend/) (React + Vite + TypeScript, port 5173)
 - **Backend API**: [`backend/backend/`](backend/backend/) (FastAPI, port 8000)
 - **Database**: MySQL schema + seed data in [`database/mysql/Dump20260426.sql`](database/mysql/Dump20260426.sql) (`smart_elderly_care_system`)
+- **Current demo surface**: `/`, `/residents`, `/position`, `/operations`, `/family`, `/admin`
+- **Legacy route behavior**: `/flycare` redirects to `/position` and is not a public demo surface
+- **Demo router / MQTT broker**: `192.168.1.232:1883`
+- **Offline launch URL**: `http://192.168.1.232:5173/position`
 - **Legacy/optional UIs**:
   - [`backend/forntend/`](backend/forntend/) — optional admin CRUD UI (Vite/React, port 3000)
   - [`frontend/web-dashboard/`](frontend/web-dashboard/) — legacy static dashboard (no `package.json` scripts)
@@ -13,6 +17,7 @@ Smart wearable + dashboard prototype for elderly-care homes.
 
 - [`docs/SETUP.md`](docs/SETUP.md) — setup (incl. DB import)
 - [`docs/DEMO.md`](docs/DEMO.md) — demo script + expected results
+- [`docs/ELDERLY_CARE_DEMO_READY.md`](docs/ELDERLY_CARE_DEMO_READY.md) - current demo checklist
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — implemented vs planned (PDF-cited)
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 - [`docs/README.md`](docs/README.md) — docs index
@@ -53,22 +58,19 @@ npm run dev
 - Open: `http://localhost:5173`
 - Backend base URL is hard-coded in [`frontend/src/constants/backend.ts`](frontend/src/constants/backend.ts) (no `import.meta.env` support).
 
-## Demo in 90 seconds
+## Elderly Care Demo
 
-1. Open the dashboard at `http://localhost:5173`.
-2. Click **Location** in the top nav to show the indoor floorplan map.
-   - Code: [`frontend/src/components/LocationDashboard.tsx`](frontend/src/components/LocationDashboard.tsx)
-3. Trigger a fall payload (backend):
+1. Open the dashboard at `http://localhost:5173` for local development, or run the offline compatibility launcher:
+   ```powershell
+   .\scripts\start_flycare_offline_demo.ps1 -OpenBrowser
+   ```
+   The script name is historical compatibility; it opens the elderly-care Indoor positioning route.
+2. Use **Residents** to show the elderly-care roster.
+3. Use **Indoor positioning** (`/position`) to show resident markers, selected resident latest-location refresh, SOS/Fall marker state, and event handling.
+4. Use **Operations** for the alert queue and **Family engagement** for the family-facing resident summary.
+5. Use **Admin** only for controlled backend evidence: Residents, Events, Devices, Locations, Logs.
 
-```bash
-cd backend/backend
-python test_data_reception.py
-```
-
-4. In the UI, open **Admin → Device Logs** and **Admin → Events** to see new rows.
-   - Routes: `GET /api/v1/device-data-log/`, `GET /api/v1/events/`
-5. Optional: click **Simulate new data**, then **Exit demo mode** (frontend-only demo overlay).
-   - Code: [`frontend/src/App.tsx`](frontend/src/App.tsx), [`frontend/src/shared/resident-live-store.tsx`](frontend/src/shared/resident-live-store.tsx)
+Current runbook: [`docs/DEMO.md`](docs/DEMO.md).
 
 ## Features (implemented — linked to code)
 
@@ -76,6 +78,9 @@ python test_data_reception.py
 - **DB schema + seed**: [`database/mysql/Dump20260426.sql`](database/mysql/Dump20260426.sql)
 - **Residents aggregation**: `GET /api/v1/residents/` in [`backend/backend/app/api/routes/residents.py`](backend/backend/app/api/routes/residents.py)
 - **Data reception**: `POST /api/v1/data-reception/receive` in [`backend/backend/app/api/routes/data_reception.py`](backend/backend/app/api/routes/data_reception.py)
+- **Raw watch telemetry**: `GET /api/v1/mongo-upstream/*` in [`backend/backend/app/api/routes/mongo_upstream.py`](backend/backend/app/api/routes/mongo_upstream.py)
+  - Mongo upstream responses include additive normalized elderly-care `position` payloads (`schema_version=2`, `scenario=elderly_care`) while preserving legacy `location` and raw `payload`.
+- **Neutral watch commands**: `POST /api/v1/watch-commands/alert/publish` in [`backend/backend/app/api/routes/watch_commands.py`](backend/backend/app/api/routes/watch_commands.py)
 - **Auto-create fall events** when `is_fall_confirmed=true`:
   - Logic: [`backend/backend/app/crud/device_data_log.py`](backend/backend/app/crud/device_data_log.py)
   - Output: inserts into `event` table (`event_type='fall'`, `event_status='unhandled'`)
@@ -83,7 +88,7 @@ python test_data_reception.py
   - App shell: [`frontend/src/App.tsx`](frontend/src/App.tsx)
   - Backend API client: [`frontend/src/services/api.ts`](frontend/src/services/api.ts)
   - Admin tabs: [`frontend/src/components/admin/AdminSection.tsx`](frontend/src/components/admin/AdminSection.tsx)
-  - Indoor map: [`frontend/src/components/LocationDashboard.tsx`](frontend/src/components/LocationDashboard.tsx)
+  - Position command center: [`frontend/src/pages/PositionPage.tsx`](frontend/src/pages/PositionPage.tsx)
 
 ## Architecture
 

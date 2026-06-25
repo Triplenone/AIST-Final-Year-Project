@@ -1,0 +1,10 @@
+V.mem.ts=2026-06-25T11:44:22+08:00
+R.scope=elderly-care-demo-ready-router-ip
+R.phase=demo-config-alignment
+V.branch.current=elderly-care-demo-ready
+V.demo.router_ip=192.168.1.232
+V.demo.mqtt_broker=192.168.1.232:1883
+I.backend.default_mqtt_broker=backend/backend/app/config.py
+I.backend.env_example_mqtt_broker=backend/backend/.env.example
+I.docs.router_ip=[README.md,backend/README.md,docs/DEMO.md,docs/ELDERLY_CARE_DEMO_READY.md]
+R.intent=keep elderly-care demo on local router broker instead of localhost or public broker

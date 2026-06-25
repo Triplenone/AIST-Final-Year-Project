@@ -29,7 +29,10 @@ type PositionPageProps = {
 };
 
 function initialRegistry(): PositionResidentRegistryEntry[] {
-  return POSITION_RESIDENT_REGISTRY.map((entry) => ({ ...entry }));
+  return POSITION_RESIDENT_REGISTRY.map((entry) => ({
+    ...entry,
+    deviceAliases: entry.deviceAliases ? [...entry.deviceAliases] : undefined
+  }));
 }
 
 export function PositionPage({ onSosOrFallDetected, userRole = 'guest' }: PositionPageProps) {
@@ -168,8 +171,16 @@ export function PositionPage({ onSosOrFallDetected, userRole = 'guest' }: Positi
     }
   }, [selectedResidentId, viewModel.selectedResidentId]);
 
+  const selectedActivityDeviceIds = useMemo(() => {
+    const selectedResident = viewModel.selectedResident;
+    return selectedResident
+      ? Array.from(new Set([selectedResident.deviceId, ...(selectedResident.deviceAliases ?? [])]))
+      : [];
+  }, [viewModel.selectedResident]);
+
   useEffect(() => {
-    const deviceId = viewModel.selectedResident?.deviceId ?? null;
+    const deviceIds = selectedActivityDeviceIds;
+    const deviceId = deviceIds[0] ?? null;
 
     if (!deviceId) {
       setResidentActivity(null);
@@ -180,9 +191,13 @@ export function PositionPage({ onSosOrFallDetected, userRole = 'guest' }: Positi
     const requestId = activityRequestSequenceRef.current + 1;
     activityRequestSequenceRef.current = requestId;
     setActivityLoading(true);
-    setResidentActivity((current) => (current?.deviceId === deviceId ? current : null));
+    setResidentActivity((current) => {
+      const currentIds = current?.deviceIds?.length ? current.deviceIds : current?.deviceId ? [current.deviceId] : [];
+      const matches = currentIds.some((id) => deviceIds.includes(id));
+      return matches ? current : null;
+    });
 
-    void loadPositionResidentActivity(deviceId)
+    void loadPositionResidentActivity(deviceIds)
       .then((nextActivity) => {
         if (activityRequestSequenceRef.current !== requestId) return;
         setResidentActivity(nextActivity);
@@ -191,7 +206,7 @@ export function PositionPage({ onSosOrFallDetected, userRole = 'guest' }: Positi
         if (activityRequestSequenceRef.current !== requestId) return;
         setActivityLoading(false);
       });
-  }, [snapshot?.fetchedAt, viewModel.selectedResident?.deviceId]);
+  }, [selectedActivityDeviceIds, snapshot?.fetchedAt]);
 
   useEffect(() => {
     if (!onSosOrFallDetected) return;

@@ -14,6 +14,7 @@ flowchart LR
   FastAPI --> MySQL[(MySQL_smart_elderly_care_system)]
   FastAPI --> MongoDB[(MongoDB_smart_elderly_mongo)]
   MQTT[MQTT_Broker] -->|"device payloads"| FastAPI
+  FastAPI -->|"SOS/Fall alert commands"| MQTT
 
   AdminUI[OptionalAdminUI_backend_forntend] -.->|"GET /api/v1/* (via proxy)"| FastAPI
   LegacyUI[LegacyStaticUI_frontend_web_dashboard] -.->|"Frontend_only_mock"| Browser
@@ -63,8 +64,17 @@ Evidence pointers:
 - Mongo foundation and status routes: `backend/backend/app/api/routes/mongo_upstream.py`
 - MQTT raw ingest and device mapping: `backend/backend/app/services/mqtt_subscriber.py`, `backend/backend/config/device_id_map.json`
 - Mongo raw upstream writes: `backend/backend/app/services/mongo_raw_upstream.py`
+- Elderly-care indoor positioning normalization: `backend/backend/app/services/position_normalizer.py` adds `schema_version=2`, `scenario=elderly_care`, and `position.current` meter/ratio/pixel coordinates while preserving raw `payload` and legacy `location`.
 - Vitals history bridge: `GET /api/v1/mongo-upstream/vitals/user/{user_id}/history`
+- Neutral watch commands: `POST /api/v1/watch-commands/alert/publish`
+- MQTT command status: `GET /api/v1/watch-commands/mqtt/status`
 - Completion tracker: `docs/merge-frontend-plan.md`
+
+### Current demo boundary
+
+The public product demo is elderly care: `/`, `/residents`, `/position`, `/operations`, `/family`, and `/admin`.
+`/flycare` is retained only as a compatibility redirect to `/position`.
+Flight, airport, gate, and passenger semantics are not part of the current implemented backend or frontend demo surface.
 
 ## Planned (from PDFs — not fully implemented in repo)
 

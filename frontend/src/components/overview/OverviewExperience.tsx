@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { metricOrder, type Metrics } from '../../constants/metrics';
@@ -421,7 +420,7 @@ export function OverviewExperience({
         </div>
 
         <div className="overview-roadmap__content">
-          <span className="overview-panel__chip">Non-FlyCare roadmap</span>
+          <span className="overview-panel__chip">Elderly care roadmap</span>
           <ol className="overview-next-list">
             {nextSteps.map((step) => (
               <li key={step}>{step}</li>
@@ -429,12 +428,6 @@ export function OverviewExperience({
           </ol>
         </div>
       </motion.section>
-
-      <div className="overview-flycare-hint">
-        <NavLink to="/flycare" aria-label={t('layout.nav.flycare')}>
-          {t('layout.nav.flycare')}
-        </NavLink>
-      </div>
     </div>
   );
 }

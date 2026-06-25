@@ -7,6 +7,7 @@ from pymongo import MongoClient
 
 from app.config import settings
 from app.db.mongo import COLLECTION_RAW_UPSTREAM, get_mongo_db
+from app.services.position_normalizer import SCENARIO, SCHEMA_VERSION, normalize_position_payload
 
 _sync_mongo_client: Optional[MongoClient] = None
 _DATA_TYPE_ALIASES = {
@@ -19,7 +20,6 @@ _DATA_TYPE_ALIASES = {
     "light": "light",
     "log": "log",
     "heartbeat": "heartbeat",
-    "flight": "flight",
 }
 
 
@@ -74,12 +74,17 @@ def _build_doc(data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         device_id = str(device_id)
     mysql_device_id = _resolve_mysql_device_id(data, device_id)
+    data_type = _normalize_data_type(data)
+    position = normalize_position_payload(data)
 
     return {
+        "schema_version": SCHEMA_VERSION,
+        "scenario": SCENARIO,
         "device_id": device_id,
         "mysql_device_id": mysql_device_id,
         "timestamp": data.get("timestamp"),
-        "data_type": _normalize_data_type(data),
+        "data_type": data_type,
+        "position": position,
         "server_received_at": datetime.now(timezone.utc),
         "payload": data,
     }

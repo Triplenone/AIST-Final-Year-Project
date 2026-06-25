@@ -105,7 +105,7 @@ function formatMetric(value: number | null, suffix: string): string {
 
 function formatCoords(resident: PositionResidentViewModel | null): string {
   if (!resident?.currentCoords) return 'No data';
-  return `${resident.currentCoords.x}, ${resident.currentCoords.y}`;
+  return `${resident.currentCoords.x.toFixed(2)}m, ${resident.currentCoords.y.toFixed(2)}m`;
 }
 
 function formatActivityTimestamp(timestamp: string | null, locale: string): string {
@@ -450,6 +450,22 @@ export function PositionDecisionPanel({
             <dl className="position-decision-panel__facts">
               <div>
                 <dt>{t('position.deviceId', { defaultValue: 'Device ID' })}</dt>
+                <dd>{resident.deviceLabel ?? resident.deviceId}</dd>
+              </div>
+              {resident.roomLabel ? (
+                <div>
+                  <dt>{t('position.assignedRoom', { defaultValue: 'Assigned room' })}</dt>
+                  <dd>{resident.roomLabel}</dd>
+                </div>
+              ) : null}
+              {resident.deviceAliases?.length ? (
+                <div>
+                  <dt>{t('position.deviceAliases', { defaultValue: 'Device aliases' })}</dt>
+                  <dd>{resident.deviceAliases.join(', ')}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>{t('position.rawDeviceId', { defaultValue: 'Raw device ID' })}</dt>
                 <dd>{resident.deviceId}</dd>
               </div>
               <div>

@@ -30,10 +30,29 @@ Backend loads `.env` (pydantic-settings `env_file = ".env"`):
 - `DB_PASSWORD` (default `root`)
 - `DB_NAME` (default `smart_elderly_care_system`)
 - `DEBUG` (default `True`)
+- `MQTT_BROKER` (default `192.168.1.232`, the demo router/broker IP)
+- `MQTT_PORT` (default `1883`)
 
 Template: `backend/.env.example` (copy to `backend/.env`).
 
 See: `backend/.env.example`, `backend/.env`, and `backend/app/config.py`.
+
+## Indoor Positioning Payload Schema
+
+Mongo raw upstream writes preserve the original `payload` and add normalized elderly-care fields:
+
+- `schema_version`: `2`
+- `scenario`: `elderly_care`
+- `position.coordinate_space`: `elderly_care_v1`
+- `position.map_asset`: `ElderlyCare.png`
+- `position.map_width_px/map_height_px`: `1755/2309`
+- `position.real_width_m/real_height_m`: `12.0/16.0`
+- `position.current`: meters, ratios, pixels, `location_zone_id`, `zone_key`, room `name`, `accuracy_m`, `quality`
+- `position.beacons`: MAC, elderly-care alias, zone, meter coordinates, RSSI, distance, confidence
+
+Legacy `location.current.x/y` payloads are accepted and normalized by `backend/app/services/position_normalizer.py`. Query routes under `/api/v1/mongo-upstream/*` return the additive `position` field alongside legacy `location`.
+
+Device aliases for the six demo wearables live in `backend/config/device_id_map.json`.
 
 ## Routes (verified)
 
@@ -61,3 +80,12 @@ python test_data_reception.py
 ```
 
 It posts to `POST /api/v1/data-reception/receive` and can auto-create a `fall` event when `is_fall_confirmed=true` (see `backend/app/crud/device_data_log.py`).
+
+## Position normalizer fixture
+
+```bash
+cd backend
+python backend/test_position_normalizer.py
+```
+
+This checks legacy `location.current.x/y` conversion and schema v2 `position` normalization without requiring MongoDB, MySQL, MQTT, or the offline router IP.
