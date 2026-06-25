@@ -5,7 +5,9 @@ param(
     [switch]$RestartMqtt,
     [switch]$StartSerialBridge,
     [switch]$RestartSerialBridge,
-    [string]$SerialPort = "COM5"
+    [string]$SerialPort = "COM5",
+    [int]$BackendPort = 8001,
+    [switch]$StartLegacyBackend8000
 )
 
 $ErrorActionPreference = "Stop"
@@ -426,12 +428,11 @@ function Start-ProcessIfPortFree {
     }
 
     Write-Host "Starting $Name on port $Port"
-    Start-HiddenProcess `
-        -FilePath $FilePath `
-        -ArgumentList $ArgumentList `
-        -WorkingDirectory $WorkingDirectory `
-        -OutLog $OutLog `
-        -ErrLog $ErrLog | Out-Null
+    $quotedFilePath = if ($FilePath -match "\s") { "`"$FilePath`"" } else { $FilePath }
+    Start-MinimizedConsoleProcess `
+        -FilePath "cmd.exe" `
+        -ArgumentList "/k `"$quotedFilePath $ArgumentList > $OutLog 2> $ErrLog`"" `
+        -WorkingDirectory $WorkingDirectory | Out-Null
     return $true
 }
 
@@ -461,6 +462,11 @@ if ($Elevate -and -not (Test-IsAdmin)) {
         $args += "-SerialPort"
         $args += $SerialPort
     }
+    $args += "-BackendPort"
+    $args += $BackendPort
+    if ($StartLegacyBackend8000) {
+        $args += "-StartLegacyBackend8000"
+    }
     Start-Process -FilePath "powershell.exe" -ArgumentList $args -Verb RunAs
     Write-Host "Requested elevated PowerShell. Accept the UAC prompt, then read logs/flycare-local-stack-status.json."
     return
@@ -479,7 +485,7 @@ if ($RestartMqtt) {
 }
 
 if ($RestartApps) {
-    Stop-PortListeners -Ports @(8000, 5173) -Reason "RestartApps"
+    Stop-PortListeners -Ports @(8000, 8001, 5173) -Reason "RestartApps"
 }
 
 if ($RestartSerialBridge) {
@@ -517,13 +523,24 @@ if (-not (Test-Path $pythonExe)) {
 }
 
 Start-ProcessIfPortFree `
-    -Port 8000 `
+    -Port $BackendPort `
     -Name "Backend" `
     -FilePath $pythonExe `
-    -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 8000" `
+    -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port $BackendPort" `
     -WorkingDirectory $backendRoot `
-    -OutLog (Join-Path $logRoot "backend-local.out.log") `
-    -ErrLog (Join-Path $logRoot "backend-local.err.log") | Out-Null
+    -OutLog (Join-Path $logRoot ("backend-{0}.out.log" -f $BackendPort)) `
+    -ErrLog (Join-Path $logRoot ("backend-{0}.err.log" -f $BackendPort)) | Out-Null
+
+if ($StartLegacyBackend8000 -and $BackendPort -ne 8000) {
+    Start-ProcessIfPortFree `
+        -Port 8000 `
+        -Name "Legacy Backend" `
+        -FilePath $pythonExe `
+        -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 8000" `
+        -WorkingDirectory $backendRoot `
+        -OutLog (Join-Path $logRoot "backend-8000.out.log") `
+        -ErrLog (Join-Path $logRoot "backend-8000.err.log") | Out-Null
+}
 
 $npmCmd = "C:\Program Files\nodejs\npm.cmd"
 if (-not (Test-Path $npmCmd)) {
@@ -585,9 +602,17 @@ if ($StartSerialBridge -or $RestartSerialBridge) {
 Start-Sleep -Seconds 3
 
 $backendCandidates = @()
-$backendCandidates += Get-BackendCandidate -Port 8000
-if (Test-PortListen -Port 8001) {
-    $backendCandidates += Get-BackendCandidate -Port 8001
+$candidatePorts = @($BackendPort)
+if ($StartLegacyBackend8000 -or (Test-PortListen -Port 8000)) {
+    $candidatePorts += 8000
+}
+if ((Test-PortListen -Port 8001) -and ($BackendPort -ne 8001)) {
+    $candidatePorts += 8001
+}
+foreach ($candidatePort in @($candidatePorts | Select-Object -Unique)) {
+    if (Test-PortListen -Port $candidatePort) {
+        $backendCandidates += Get-BackendCandidate -Port $candidatePort
+    }
 }
 $activeBackend = $backendCandidates |
     Where-Object { $_.healthy -and $_.mqttConnected } |
@@ -610,6 +635,8 @@ $status = [pscustomobject]@{
     timestamp = (Get-Date).ToString("s")
     repoRoot = $repoRoot
     isAdmin = $isAdmin
+    backendPort = $BackendPort
+    startLegacyBackend8000 = [bool]$StartLegacyBackend8000
     startedServices = $startedServices
     ports = $ports
     lanIPv4 = @(Get-ActiveIPv4Addresses)

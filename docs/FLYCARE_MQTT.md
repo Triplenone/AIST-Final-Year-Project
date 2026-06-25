@@ -168,6 +168,51 @@ For the router-based local demo, use one local network at a time:
 
 The current firmware is tuned for a powered local router with no WAN cable. `FLYCARE_LOCAL_ROUTER_MODE 1` disables startup/runtime NTP access to `pool.ntp.org`, keeps MQTT connect/raw-uplink timeouts short, and makes the display task outrank network retry work. The demo target is visible watch page switching within 100-200 ms while keeping direct local MQTT status/location and flight downlinks on `192.168.1.232:1883`.
 
+Watch clock time does not depend on internet NTP in final local-router mode. Firmware first reads the onboard BM8563/PCF8563-compatible RTC at `0x51` on `IIC_SDA=1` / `IIC_SCL=2`. If the RTC is missing or invalid, publish Server PC time to the watch over local MQTT:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_flycare_time.ps1
+```
+
+By default this sends a non-retained `time_sync` payload to all six final demo watches plus known aliases:
+
+- `ESP32_000048CA43A42298` / `ESP32_48CA43A42298` for NG WAI LUN
+- `ESP32_0000C8292A04A7AC` / `ESP32_00005CFA7AD4DB1C` for WONG KA MING
+- `ESP32_0000A022A443CA48` for HO CHI WAI
+- `ESP32_00008C292A04A7AC` for MA KA WAI
+- `ESP32_00009022A443CA48` for YIP MAN LING
+- `ESP32_0000E03948D4DB1C` / `ESP32_1CDBD44839E0` for LEE KA YAN
+
+Each watch sets Singapore time from the payload and writes it back to RTC. This keeps the offline demo responsive because NTP/DNS remain disabled. To target only one watch, pass `-DeviceId <canonical_device_id>` and optional `-AliasDeviceId <alias>`.
+
+For a full offline demo, start a local time broadcaster and leave that PowerShell window running:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_flycare_time.ps1 -BrokerHost 192.168.1.232 -RepeatSeconds 10 -MaxPublishes 0
+```
+
+Wi-Fi switching does not automatically publish Server PC time. The watch automatically reconnects to MQTT and subscribes to `/time`, but a local publisher must be running. In repeat mode, temporary broker failures during Wi-Fi switching are logged as warnings and the next cycle continues. If the onboard RTC already contains valid Singapore time, a watch reboot can start from RTC without the publisher. If the RTC is invalid or has lost backup power, the next `/time` payload corrects the watch after MQTT reconnects.
+
+To record an offline run for later review:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\record_flycare_offline_demo.ps1 -Minutes 20 -BrokerHost 192.168.1.232 -BaseUrl http://127.0.0.1:8001
+```
+
+The recorder writes `logs/offline-demo-YYYYMMDD-HHMMSS/` with `preflight.txt`, `mqtt-smartwatch.log`, `api-samples.jsonl`, `manual-observations.md`, and `summary.json`. `summary.json` counts `/status`, `/location`, `/flight`, `/alert`, `/time`, `/sos`, and `/fall` messages. Stop the COM5 serial bridge before recording direct Wi-Fi proof unless fallback evidence is intentionally being tested.
+
+For the least error-prone offline run, use the one-command launcher after the Server PC is connected back to `flycare`:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_offline_demo.ps1
+```
+
+The launcher starts/restarts Mosquitto, backend `8001`, and frontend `5173`, then opens a separate time-broadcaster PowerShell and a separate recorder PowerShell. It writes `logs/flycare-offline-demo-launcher-YYYYMMDD-HHMMSS.json` with the launched process IDs and demo URLs. If you want it to open `/flycare` and `/admin` automatically, add `-OpenBrowser`.
+
 For offline page-switch checks, watch Serial for `[UI_LATENCY] event=page_switch handled_ms=... redraw_ms=...`. During the UI fast-path guard, firmware defers one BLE/network cycle, keeps Wi-Fi reconnect nonblocking, and logs `[OfflineLAN] healthy=1 skip_wifi_recovery=1` instead of restarting Wi-Fi when the watch is already on `flycare` with a `192.168.1.x` address and broker `192.168.1.232:1883`.
 
 Latest NG WAI LUN phase-1 proof uses `192.168.1.232:1883` with COM5 bridge stopped: `logs/flycare-direct-mqtt-after-final-upload-20260618-151111.log` captured direct broker-side `/status` and `/location` payloads for `ESP32_48CA43A42298` after the final COM5 upload. Gate 11 direct smoke used `-DisableDownlink` and `logs/flycare-gate11-direct-final-20260618-145844.log`, so the watch popup evidence came from the direct MQTT flight subscription, not USB downlink. Retained alert cleanup proof is `logs/flycare-retained-alert-clear-check-20260618-151337.log`, which showed no retained `fall` or `sos` payload for the alias topic.
@@ -246,9 +291,9 @@ cd E:\flycare
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate
 ```
 
-The launcher checks/starts MySQL, MongoDB, MQTT, backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, LAN IPv4 addresses, `mqttLanListener`, `activeBackend`, and MQTT status evidence. If `8000` is occupied by a stale backend but a recovery bridge on `8001` has MQTT connected, `activeBackend` is set to `http://127.0.0.1:8001` and the top-level `health` / `mqttStatus` fields come from that bridge. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
+The launcher checks/starts MySQL, MongoDB, MQTT, the final hardware backend, and frontend where available, then writes `logs/flycare-local-stack-status.json` with `isAdmin`, port listeners, `/health`, LAN IPv4 addresses, `mqttLanListener`, `activeBackend`, and MQTT status evidence. The default backend port is `8001` because the final FlyCare hardware demo frontend points at `http://192.168.1.232:8001`. If it is already running inside an Administrator PowerShell, omit `-Elevate`.
 
-The launcher starts backend from `backend\.venv` when available and runs uvicorn without `--reload` so `-RestartApps` can replace the single port owner cleanly during demo recovery. The Vite frontend is started in a minimized `cmd /k` window because hidden, detached Vite processes can exit after printing `ready` on Windows.
+The launcher starts backend from `backend\.venv` when available and runs uvicorn without `--reload` so `-RestartApps` can replace the single final port owner cleanly during demo recovery. The Vite frontend is started in a minimized `cmd /k` window because hidden, detached Vite processes can exit after printing `ready` on Windows.
 
 If a stale local process owns the demo ports, add explicit restart flags:
 
@@ -256,7 +301,7 @@ If a stale local process owns the demo ports, add explicit restart flags:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_local_stack.ps1 -Elevate -RestartMqtt -RestartApps
 ```
 
-`-RestartMqtt` stops the listener on `1883` before starting Mosquitto with `infra/mosquitto/local-windows.conf`. This is required when the Windows Mosquitto service is listening only on `127.0.0.1:1883`; the watch cannot reach that localhost-only broker. `-RestartApps` stops listeners on `8000` and `5173` before starting backend and frontend again.
+`-RestartMqtt` stops the listener on `1883` before starting Mosquitto with `infra/mosquitto/local-windows.conf`. This is required when the Windows Mosquitto service is listening only on `127.0.0.1:1883`; the watch cannot reach that localhost-only broker. `-RestartApps` stops listeners on `8000`, `8001`, and `5173` before starting the final backend on `8001` and frontend again. Use `-BackendPort <port>` only for deliberate debugging, and use `-StartLegacyBackend8000` only when you intentionally need the old `8000` backend too; do not run both backends for final hardware smoke because both can subscribe to MQTT.
 
 For a COM5 watch on a network that blocks watch-to-PC MQTT, the launcher can also start the USB serial bridge and include its PID/log evidence in `logs/flycare-local-stack-status.json`:
 
@@ -267,24 +312,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_flycare_loca
 
 `-RestartSerialBridge` stops the previously recorded bridge PID from `logs/flycare-serial-bridge-process.json`, then starts a new minimized console process and records `serialBridge.running`, `pids`, `logPath`, `stdoutLog`, and `stderrLog`. In Codex's restricted shell, a background serial bridge may be cleaned up when the command exits; use an elevated/non-sandbox PowerShell for a persistent demo bridge. The bridge log is the runtime proof for live dashboard freshness. It also preserves watch reset, panic, abort, stack, overflow, and backtrace markers so runtime stability checks can catch reboots instead of filtering those lines out as noise.
 
-If a Windows/sandbox ghost listener keeps `8000` occupied but cannot be killed, run a temporary backend bridge on `8001` from an Administrator PowerShell so MQTT still writes Mongo while the dashboard continues reading through `8000`:
+If you need to launch the final backend manually instead of using the one-command launcher, run it on `8001` from an Administrator PowerShell:
 
 ```powershell
 cd E:\flycare\backend\backend
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
-Verify the bridge with `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status`. The expected MQTT state is `enabled=true`, `connected=true`, broker `192.168.1.232`, port `1883`.
+Verify it with `http://127.0.0.1:8001/api/v1/data-reception/mqtt/status`. The expected MQTT state is `enabled=true`, `connected=true`, broker `192.168.1.232`, port `1883`.
 
 After running the launcher, `scripts/audit_flycare_goal.ps1` automatically uses `logs/flycare-local-stack-status.json.activeBackend.baseUrl` when no explicit `-BaseUrl` is supplied and that backend reports MQTT connected. Pass `-BaseUrl` only when you intentionally want to audit a specific backend port.
 
-For a Vite dev dashboard during that ghost-listener recovery, set `frontend\.env.local` to the LAN bridge URL before restarting `5173`:
+For the final demo dashboard, keep `frontend\.env.local` pointed at the LAN backend URL before restarting `5173`:
 
 ```text
 VITE_BACKEND_BASE_URL=http://192.168.1.232:8001
 ```
 
-The frontend still defaults to the same host on `:8000` when this override is absent.
+The frontend may fall back to `:8000` when this override is absent; final hardware demo should keep the explicit `:8001` override.
 
 If the watch is connected over USB but the current Wi-Fi/hotspot blocks watch-to-PC traffic, use the serial fallback bridge for local demo validation. Firmware emits compact `FLYCARE_UPLINK <topic> <json>` status/SOS/fall payloads on Serial before attempting MQTT; the bridge reads those lines from COM5 and republishes them into the local Mosquitto broker so the existing backend MQTT subscriber writes Mongo and EventLog exactly as if the watch had reached MQTT itself. The bridge is bidirectional for flight updates: it also polls retained `smartwatch/+/flight` MQTT downlinks, de-duplicates each topic and identical alias payload, and writes `FLYCARE_DOWNLINK <topic> <json>` back to the watch over USB. Firmware handles that serial downlink through `FlightInfoManager`, which also ignores identical retained flight payloads, so Gate Change popups still work when hotspot isolation blocks direct watch MQTT without flickering from repeat messages.
 
@@ -348,7 +393,7 @@ Backend:
 
 ```powershell
 cd E:\flycare\backend\backend
-..\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+..\.venv\Scripts\python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
 Frontend:

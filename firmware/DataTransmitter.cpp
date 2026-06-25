@@ -8,6 +8,8 @@
 #include <esp_wifi.h>
 #include <ArduinoJson.h>
 
+extern bool applyServerTimeSync(unsigned long epoch, const char* source);
+
 static void addBrokerCandidate(String brokers[], int& count, int maxCount, const String& host) {
     String clean = host;
     clean.trim();
@@ -376,6 +378,12 @@ DataTransmitter::DataTransmitter(MyNetworkManager* net, IMUManager* imu_mgr,
     }
     
     // 初始化传感器数据
+    String configuredDeviceId = String(DEVICE_ID);
+    configuredDeviceId.trim();
+    if (configuredDeviceId.length() > 0 && configuredDeviceId != "ESP32_SmartWatch") {
+        device_id = configuredDeviceId;
+    }
+
     heart_rate = {0, 0.0, 0, false};
     spo2 = {0, 0.0, 0, false};
 
@@ -646,14 +654,16 @@ void DataTransmitter::subscribeMqttDownlinksUnlocked() {
     String topicBase = String(MQTT_TOPIC_PREFIX) + "/" + device_id;
     bool flightOk = mqttClient.subscribe((topicBase + "/flight").c_str());
     bool alertOk = mqttClient.subscribe((topicBase + "/alert").c_str());
+    bool timeOk = mqttClient.subscribe((topicBase + "/time").c_str());
     bool navOk = true;
 #if ENABLE_NAVIGATION_DOWNLINK
     navOk = mqttClient.subscribe((topicBase + "/navigation").c_str());
 #endif
-    mqttDownlinksSubscribed = flightOk && alertOk && navOk;
-    Serial.printf("[MQTT_DIAG] downlinks subscribed flight=%d alert=%d nav=%d active=%d\n",
+    mqttDownlinksSubscribed = flightOk && alertOk && timeOk && navOk;
+    Serial.printf("[MQTT_DIAG] downlinks subscribed flight=%d alert=%d time=%d nav=%d active=%d\n",
                   flightOk ? 1 : 0,
                   alertOk ? 1 : 0,
+                  timeOk ? 1 : 0,
                   navOk ? 1 : 0,
                   mqttDownlinksSubscribed ? 1 : 0);
     for (int i = 0; i < 8; i++) {
@@ -1053,6 +1063,23 @@ void DataTransmitter::handleMQTTMessage(const String& topic, const String& paylo
         if (voice_manager) {
             voice_manager->parseIncomingMessage(payload);
             addLog("info", "Voice message received");
+        }
+    }
+    else if (topic.endsWith("/time")) {
+        unsigned long epoch = doc["epoch"] | 0UL;
+        String timezone = doc["timezone"] | "Asia/Singapore";
+        String source = doc["source"] | "server_pc";
+        bool accepted = applyServerTimeSync(epoch, source.c_str());
+        Serial.printf("[TimeSync] topic=%s epoch=%lu timezone=%s source=%s accepted=%d\n",
+                      topic.c_str(),
+                      epoch,
+                      timezone.c_str(),
+                      source.c_str(),
+                      accepted ? 1 : 0);
+        if (accepted) {
+            addLog("info", "Time sync accepted: " + timezone);
+        } else {
+            addLog("warning", "Time sync rejected");
         }
     }
     else if (topic.endsWith("/alert")) {

@@ -32,6 +32,7 @@
 #define MQTT_TOPIC_NAVIGATION MQTT_TOPIC_PREFIX "/%s/navigation"    // 下行 - 导航
 #define MQTT_TOPIC_FLIGHT MQTT_TOPIC_PREFIX "/%s/flight"            // 下行 - 航班
 #define MQTT_TOPIC_ALERT MQTT_TOPIC_PREFIX "/%s/alert"              // 下行 - 警报
+#define MQTT_TOPIC_TIME MQTT_TOPIC_PREFIX "/%s/time"                // 下行 - 服务器时间同步
 // #define MQTT_TOPIC_VOICE "smartwatch/%s/voice"              // 下行 - 语音
 // #define MQTT_TOPIC_DOOR_CTRL "smartwatch/%s/door_control"   // 下行 - 门禁控制
 // #define MQTT_TOPIC_LIGHT_CTRL "smartwatch/%s/light_control" // 下行 - 灯光控制

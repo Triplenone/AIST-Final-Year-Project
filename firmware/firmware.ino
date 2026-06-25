@@ -13,6 +13,9 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <PubSubClient.h>
+#include <time.h>
+#include <sys/time.h>
+#include <string.h>
 
 #include "Types.h"
 #include "Config.h"
@@ -463,14 +466,121 @@ void initDataTransmitter() {
     data_transmitter = new DataTransmitter(network, imu, fallForTelemetry, ble_location, power);
 }
 
+static void configureSingaporeTimezone() {
+    setenv("TZ", FLYCARE_TIMEZONE_POSIX, 1);
+    tzset();
+}
+
+static bool applyEpochToSystemClock(unsigned long epoch, const char* source, bool writeRtc) {
+    if (epoch < FLYCARE_TIME_VALID_AFTER_EPOCH) {
+        Serial.printf("[TimeSync] source=%s rejected invalid epoch=%lu\n",
+                      source ? source : "unknown",
+                      epoch);
+        return false;
+    }
+
+    configureSingaporeTimezone();
+    struct timeval tv;
+    tv.tv_sec = (time_t)epoch;
+    tv.tv_usec = 0;
+    settimeofday(&tv, nullptr);
+
+    time_t now = (time_t)epoch;
+    struct tm localTime;
+    if (!localtime_r(&now, &localTime)) {
+        Serial.printf("[TimeSync] source=%s localtime failed epoch=%lu\n",
+                      source ? source : "unknown",
+                      epoch);
+        return false;
+    }
+
+    if (display) {
+        display->setTime(localTime.tm_hour, localTime.tm_min, localTime.tm_sec);
+        display->setDate(localTime.tm_year + 1900, localTime.tm_mon + 1, localTime.tm_mday);
+    }
+    if (data_transmitter) {
+        data_transmitter->setCurrentTimestamp(epoch);
+    }
+
+    bool rtcWriteOk = false;
+    if (writeRtc && rtc.begin(Wire, IIC_SDA, IIC_SCL)) {
+        rtcWriteOk = rtc.setDateTime(localTime.tm_year + 1900,
+                                     localTime.tm_mon + 1,
+                                     localTime.tm_mday,
+                                     localTime.tm_hour,
+                                     localTime.tm_min,
+                                     localTime.tm_sec);
+    }
+
+    Serial.printf("[TimeSync] source=%s epoch=%lu local=%04d-%02d-%02d %02d:%02d:%02d rtc_write=%d\n",
+                  source ? source : "unknown",
+                  epoch,
+                  localTime.tm_year + 1900,
+                  localTime.tm_mon + 1,
+                  localTime.tm_mday,
+                  localTime.tm_hour,
+                  localTime.tm_min,
+                  localTime.tm_sec,
+                  rtcWriteOk ? 1 : 0);
+    return true;
+}
+
+static bool syncTimeFromRtc() {
+    if (!rtc.begin(Wire, IIC_SDA, IIC_SCL)) {
+        Serial.printf("[RTC] BM8563/PCF8563 not detected at 0x%02X on SDA=%d SCL=%d\n",
+                      RTC_I2C_ADDR,
+                      IIC_SDA,
+                      IIC_SCL);
+        return false;
+    }
+
+    uint16_t year = 0;
+    uint8_t month = 0;
+    uint8_t day = 0;
+    uint8_t hour = 0;
+    uint8_t minute = 0;
+    uint8_t second = 0;
+    if (!rtc.getDateTime(year, month, day, hour, minute, second)) {
+        Serial.println("[RTC] detected but time invalid; waiting for server MQTT time sync");
+        return false;
+    }
+
+    configureSingaporeTimezone();
+    struct tm localTime;
+    memset(&localTime, 0, sizeof(localTime));
+    localTime.tm_year = year - 1900;
+    localTime.tm_mon = month - 1;
+    localTime.tm_mday = day;
+    localTime.tm_hour = hour;
+    localTime.tm_min = minute;
+    localTime.tm_sec = second;
+    localTime.tm_isdst = -1;
+    time_t epoch = mktime(&localTime);
+    if (epoch < (time_t)FLYCARE_TIME_VALID_AFTER_EPOCH) {
+        Serial.printf("[RTC] invalid epoch from RTC: %ld\n", (long)epoch);
+        return false;
+    }
+    return applyEpochToSystemClock((unsigned long)epoch, "rtc", false);
+}
+
+bool applyServerTimeSync(unsigned long epoch, const char* source) {
+    return applyEpochToSystemClock(epoch, source ? source : "server_pc", true);
+}
+
 void syncTime() {
 #if FLYCARE_LOCAL_ROUTER_MODE
-    Serial.println("[NTP] startup sync skipped in local router mode; using millis fallback");
+    configureSingaporeTimezone();
+    if (syncTimeFromRtc()) {
+        Serial.println("[NTP] startup sync skipped; RTC supplied Singapore time");
+        return;
+    }
+    Serial.println("[NTP] startup sync skipped in local router mode; using millis fallback until MQTT time sync");
     if (data_transmitter) {
         data_transmitter->setCurrentTimestamp(0);
     }
     return;
 #endif
+    configureSingaporeTimezone();
     configTime(8 * 3600, 0, NTP_SERVER, "time.nist.gov");
     Serial.print("同步时间");
     
@@ -485,6 +595,7 @@ void syncTime() {
     if (retry < 30) {
         // 定义 timestamp 变量
         unsigned long timestamp = mktime(&timeinfo);
+        applyEpochToSystemClock(timestamp, "ntp", true);
         
         // 更新显示
         if (display) {

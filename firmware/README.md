@@ -108,6 +108,24 @@ The committed local demo config leaves `MQTT_BROKER_FALLBACK_1` empty so an offl
 
 For the router-only demo, `FLYCARE_LOCAL_ROUTER_MODE 1` disables startup and runtime NTP access to `pool.ntp.org` and keeps MQTT connect/raw-uplink timeouts short. This prevents a powered router with no WAN cable from stalling page changes. Button handling remains the highest priority task, and the display task outranks network retry work so visible page switching should remain under the 100-200 ms demo target while direct MQTT status/location and flight downlinks continue on the local broker.
 
+Clock time uses the onboard BM8563/PCF8563-compatible RTC at I2C address `0x51` on the shared `IIC_SDA=1` / `IIC_SCL=2` bus. In router-only mode the firmware first reads RTC time and only falls back to a `millis()` display clock if the RTC is missing or invalid. To set Singapore time from the Server PC without internet, keep the watch on MQTT and run:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_flycare_time.ps1
+```
+
+By default the script publishes a non-retained `time_sync` payload to all six final demo watch `/time` topics plus known aliases. The watch applies the epoch as Singapore time, updates the display timestamp, and writes it back to RTC so later boots can start from hardware time without NTP. To set only one watch, pass `-DeviceId <canonical_device_id>` and optional `-AliasDeviceId <alias>`.
+
+For a live offline demo, keep a time broadcaster running in a separate PowerShell after the Server PC is back on the `flycare` Wi-Fi:
+
+```powershell
+cd E:\flycare
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publish_flycare_time.ps1 -BrokerHost 192.168.1.232 -RepeatSeconds 10 -MaxPublishes 0
+```
+
+Switching Wi-Fi does not itself publish time; this broadcaster is the local replacement for internet NTP. If the RTC already has valid time, a watch reboot can start from RTC without waiting for the PC. If the RTC is invalid or loses backup power, the watch will correct itself on the next `/time` payload after MQTT reconnects.
+
 The UI fast path records `[UI_LATENCY] event=... handled_ms=... redraw_ms=...` after SOS short-press page changes and PWR screen toggles. During the short `UI_FAST_PATH_GUARD_MS` window, BLE scans and network updates defer one cycle, Wi-Fi reconnect is nonblocking with `WIFI_RECONNECT_BACKOFF_MS`, and local-LAN MQTT failures do not trigger expensive Wi-Fi recovery while the watch is already on `flycare` with a `192.168.1.x` address.
 
 Current local API path is generated into `Config.h` by `scripts/set_flycare_mqtt_endpoint.ps1`:
