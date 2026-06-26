@@ -5,8 +5,8 @@ The active frontend is `frontend/`, a React/Vite/TypeScript app backed by FastAP
 ## Architecture
 
 - Frontend dev URL: `http://127.0.0.1:5173`
-- Backend API URL: `http://127.0.0.1:8000/api/v1`
-- Health check: `http://127.0.0.1:8000/health`
+- Backend API URL: `http://127.0.0.1:8001/api/v1`
+- Health check: `http://127.0.0.1:8001/health`
 - MQTT status: `/api/v1/flycare-admin/mqtt/status`
 - Live upstream data: `/api/v1/mongo-upstream/`
 
@@ -25,7 +25,7 @@ Backend:
 
 ```powershell
 cd backend/backend
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 Frontend:
